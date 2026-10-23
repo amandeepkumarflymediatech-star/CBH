@@ -11,25 +11,22 @@ export default function IndustrialFooter() {
         <div className="footer-grid">
           {/* Col 1 */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                background: '#D2051E',
-                color: '#FFFFFF',
-                display: 'flex',
+            <div style={{ marginBottom: '16px' }}>
+              <Link href="/" style={{
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: 'var(--font-headline)',
-                fontWeight: 800,
-                fontSize: '18px',
-                borderRadius: '3px'
+                background: '#FFFFFF',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                textDecoration: 'none'
               }}>
-                CBH
-              </div>
-              <span style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800 }}>
-                CBH FASTENERS
-              </span>
+                <img
+                  src="/assets/logo_blue.png"
+                  alt="CBH Fasteners"
+                  style={{ height: '38px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                />
+              </Link>
             </div>
 
             <p style={{ fontSize: '13px', color: '#9BA7B6', lineHeight: 1.6, marginBottom: '16px' }}>

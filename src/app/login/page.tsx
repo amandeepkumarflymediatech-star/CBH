@@ -79,23 +79,14 @@ export default function LoginPage() {
         }}>
           {/* Brand & Heading */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              background: '#D2051E',
-              color: '#FFFFFF',
-              borderRadius: '4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-headline)',
-              fontWeight: 800,
-              fontSize: '22px',
-              marginBottom: '10px'
-            }}>
-              CBH
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '28px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)' }}>
+            <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
+              <img
+                src="/assets/logo_blue.png"
+                alt="CBH Fasteners"
+                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+              />
+            </Link>
+            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '26px', fontWeight: 800, color: 'var(--color-dark-900)' }}>
               Sign In to CBH Fasteners
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>

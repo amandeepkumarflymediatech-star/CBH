@@ -93,10 +93,17 @@ export default function RegisterPage() {
         }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#D2051E', fontWeight: 800, textTransform: 'uppercase' }}>
+            <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
+              <img
+                src="/assets/logo_blue.png"
+                alt="CBH Fasteners"
+                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+              />
+            </Link>
+            <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#D2051E', fontWeight: 800, textTransform: 'uppercase' }}>
               B2B & B2C PROCUREMENT REGISTRATION
             </span>
-            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '30px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)', marginTop: '4px' }}>
+            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '28px', fontWeight: 800, color: 'var(--color-dark-900)', marginTop: '4px' }}>
               Create Enterprise Account
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>

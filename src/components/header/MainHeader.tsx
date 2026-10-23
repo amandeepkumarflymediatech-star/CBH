@@ -22,14 +22,12 @@ export default function MainHeader({
     <header className="main-header">
       <div className="container header-core">
         {/* Brand Identity */}
-        <Link href="/" className="brand-block">
-          <div className="brand-symbol">
-            <span>CBH</span>
-          </div>
-          <div className="brand-text">
-            <h1>CBH FASTENERS</h1>
-            <span>INDUSTRIAL GRADE • BIS CERTIFIED</span>
-          </div>
+        <Link href="/" className="brand-block" title="CBH Fasteners - Home">
+          <img
+            src="/assets/logo_blue.png"
+            alt="CBH Fasteners - Industrial Precision Fastener Platform"
+            className="brand-logo-img"
+          />
         </Link>
 
         {/* Precision Search Matrix */}

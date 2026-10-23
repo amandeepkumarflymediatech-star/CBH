@@ -78,20 +78,29 @@ export default function ResendVerificationPage() {
           borderTop: '4px solid var(--color-primary)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              background: 'var(--color-surface-subtle)',
-              color: '#D2051E',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '12px'
-            }}>
-              <RefreshCw size={22} />
+            <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
+              <img
+                src="/assets/logo_blue.png"
+                alt="CBH Fasteners"
+                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+              />
+            </Link>
+            <div style={{ display: 'block' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'var(--color-surface-subtle)',
+                color: '#D2051E',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '10px'
+              }}>
+                <RefreshCw size={20} />
+              </div>
             </div>
-            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '26px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)' }}>
+            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 800, color: 'var(--color-dark-900)' }}>
               Resend Verification Code
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
