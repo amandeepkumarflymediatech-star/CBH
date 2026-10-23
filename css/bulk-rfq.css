@@ -404,6 +404,84 @@
 }
 
 /* ==========================================================================
+   BULK ORDER PAGE DEDICATED HERO BANNER & BREADCRUMBS
+   ========================================================================== */
+.bulk-order-hero {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--color-surface-border);
+  padding: clamp(24px, 4vw, 40px) 0 clamp(18px, 3vw, 28px);
+}
+
+.bulk-order-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.bulk-order-badge .dot {
+  color: var(--color-text-muted);
+}
+
+.bulk-order-title {
+  font-family: var(--font-headline);
+  font-size: clamp(22px, 4.5vw, 36px);
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-dark-900);
+  line-height: 1.15;
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+
+.bulk-order-desc {
+  font-size: clamp(13px, 2vw, 15px);
+  color: var(--color-text-muted);
+  max-width: 720px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.bulk-order-trust-strip {
+  display: flex;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(11px, 2vw, 12px);
+  font-weight: 600;
+}
+
+.trust-item.green {
+  color: #059669;
+}
+
+.trust-item.red {
+  color: var(--color-primary);
+}
+
+.trust-item.amber {
+  color: #D97706;
+}
+
+.bulk-order-widget-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
    BULK RFQ RESPONSIVE SYSTEM (TABLET & MOBILE)
    ========================================================================== */
 @media (max-width: 1080px) {
@@ -418,16 +496,19 @@
 }
 
 @media (max-width: 768px) {
-  .rfq-header-banner h1 {
-    font-size: 26px !important;
+  .rfq-view-container {
+    padding: 20px 0 85px !important;
+  }
+  .bulk-order-widget-wrap {
+    padding-bottom: 20px;
   }
   .rfq-table-card {
-    padding: 14px;
+    padding: clamp(12px, 3vw, 18px);
   }
   .rfq-card-head {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 12px;
   }
   .rfq-tools-strip {
     gap: 12px;
@@ -435,10 +516,12 @@
   .quick-sku-picker {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
   .quick-sku-picker select,
   .quick-sku-picker button {
     width: 100%;
+    max-width: 100%;
   }
   .csv-upload-box {
     flex-direction: column;
@@ -452,17 +535,36 @@
     width: 100%;
     justify-content: center;
   }
+  .rfq-summary-card {
+    padding: clamp(14px, 3vw, 20px);
+  }
+  .rfq-action-buttons button,
+  .rfq-action-buttons a {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 @media (max-width: 540px) {
   .tier-milestones {
     font-size: 10px;
   }
-  .rfq-summary-card {
-    padding: 16px;
+  .rfq-total-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
   .rfq-total-box strong {
-    font-size: 19px;
+    font-size: 20px;
+  }
+  .btn-submit-rfq {
+    font-size: 13px !important;
+    padding: 12px 10px !important;
+  }
+  .btn-whatsapp-rfq {
+    font-size: 13px !important;
+    padding: 11px !important;
   }
 }
 
@@ -474,41 +576,50 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 16px;
+  width: 100%;
 }
 
 .rfq-mobile-item-card {
   background: var(--color-surface-bg);
   border: 1px solid var(--color-surface-border);
   border-radius: var(--radius-sm);
-  padding: 14px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rfq-mob-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .rfq-mob-card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-dark-900);
-  line-height: 1.3;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .rfq-mob-card-pricing {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   background: #FFFFFF;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--color-surface-border);
   font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rfq-mob-rate .label,
@@ -521,31 +632,35 @@
   color: var(--color-primary);
   font-family: var(--font-mono);
   font-weight: 800;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .rfq-mob-card-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .mob-stepper {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   background: #FFFFFF;
   border: 1px solid var(--color-surface-border);
   border-radius: var(--radius-xs);
   padding: 2px;
+  max-width: 100%;
 }
 
 .mob-stepper button {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
   background: var(--color-surface-subtle);
   border-radius: var(--radius-xs);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-dark-800);
   display: flex;
@@ -562,10 +677,11 @@
 }
 
 .mob-stepper input {
-  width: 70px;
+  width: 55px;
+  min-width: 40px;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   border: none;
   background: transparent;
@@ -577,8 +693,10 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 800;
-  padding: 8px 14px;
+  padding: 7px 12px;
   background: var(--color-dark-800);
   color: #FFFFFF;
   border-radius: var(--radius-xs);
+  white-space: nowrap;
 }
+

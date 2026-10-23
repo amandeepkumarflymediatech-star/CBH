@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import MainHeader from '@/components/header/MainHeader';
 import NavSubBar from '@/components/header/NavSubBar';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
-import { ShieldCheck, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, FileSpreadsheet, CheckCircle2, ChevronRight, ArrowLeft } from 'lucide-react';
 
 export default function BulkOrderPage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
@@ -14,7 +15,7 @@ export default function BulkOrderPage() {
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
 
   return (
-    <main>
+    <main style={{ background: 'var(--color-surface-bg)', minHeight: '100vh', overflowX: 'hidden' }}>
       <MainHeader
         unit={globalUnit}
         onUnitToggle={(u) => setGlobalUnit(u)}
@@ -23,35 +24,53 @@ export default function BulkOrderPage() {
       />
       <NavSubBar />
 
-      <div style={{ background: '#FFFFFF', padding: '30px 0 20px', borderBottom: '1px solid var(--color-surface-border)' }}>
+      {/* Responsive Breadcrumbs */}
+      <div style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-surface-border)', padding: '10px 0' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+          <ChevronRight size={13} />
+          <Link href="/#catalog" style={{ color: 'inherit', textDecoration: 'none' }}>Catalog</Link>
+          <ChevronRight size={13} />
+          <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Bulk Fastener RFQ Engine</span>
+        </div>
+      </div>
+
+      {/* Responsive Hero Banner */}
+      <section className="bulk-order-hero">
         <div className="container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '6px' }}>
+          <div className="bulk-order-badge">
             <span>DIRECT FACTORY OEM INTAKE</span>
-            <span>//</span>
+            <span className="dot">//</span>
             <span>BULK TARIFF CALCULATOR</span>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '38px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)' }}>
+
+          <h1 className="bulk-order-title">
             Enterprise Bulk Fastener Procurement & RFQ Engine
           </h1>
-          <p style={{ fontSize: '15px', color: 'var(--color-text-muted)', maxWidth: '720px', marginTop: '6px' }}>
-            Multi-line metric matrix with real-time volume tier discounting (up to 25% on ₹1,00,000+ purchase). Dual conversion between PCS and KGS with direct mill test inspection certificates included.
+
+          <p className="bulk-order-desc">
+            Multi-line metric matrix with real-time volume tier discounting (up to 25% on ₹1,00,000+ purchase).
+            Dual conversion between PCS and KGS with direct mill test inspection certificates included.
           </p>
 
-          <div style={{ display: 'flex', gap: '20px', marginTop: '16px', fontSize: '12px', fontWeight: 600, color: 'var(--color-dark-800)', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#059669' }}>
+          <div className="bulk-order-trust-strip">
+            <span className="trust-item green">
               <CheckCircle2 size={15} /> Instant PDF Quotation Generation
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <FileSpreadsheet size={15} color="#D2051E" /> CSV / Excel Batch Upload Supported
+            <span className="trust-item red">
+              <FileSpreadsheet size={15} /> CSV / Excel Batch Upload Supported
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#D97706' }}>
+            <span className="trust-item amber">
               <ShieldCheck size={15} /> 100% Guaranteed Thread Tolerance 6g
             </span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <RapidRFQWidget />
+      {/* Rapid RFQ Component */}
+      <div className="bulk-order-widget-wrap">
+        <RapidRFQWidget hideHeader={true} />
+      </div>
 
       <CartDrawer
         isOpen={isCartOpen}

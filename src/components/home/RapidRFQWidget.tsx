@@ -15,7 +15,11 @@ import { GlobalUnit, RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 
-export default function RapidRFQWidget() {
+interface RapidRFQWidgetProps {
+  hideHeader?: boolean;
+}
+
+export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetProps) {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
 
   // Initial line items matching the exact screenshot
@@ -150,16 +154,18 @@ export default function RapidRFQWidget() {
   return (
     <section className="rfq-view-container" id="rfq-section" style={{ background: 'var(--color-surface-bg)' }}>
       <div className="container">
-        {/* Header Block */}
-        <div className="rfq-header-block">
-          <div className="rfq-header-title">
-            <span>OEM Rapid Quotation Engine</span>
-            <h2>Rapid RFQ & Dual-Unit Matrix</h2>
+        {/* Header Block (Optional for dedicated /bulk-order page) */}
+        {!hideHeader && (
+          <div className="rfq-header-block">
+            <div className="rfq-header-title">
+              <span>OEM Rapid Quotation Engine</span>
+              <h2>Rapid RFQ & Dual-Unit Matrix</h2>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', maxWidth: '440px' }}>
+              Calculate procurement dynamically by pieces or weight tonnage. Automatic tier discounts applied in real time as your batch volume scales.
+            </p>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', maxWidth: '440px' }}>
-            Calculate procurement dynamically by pieces or weight tonnage. Automatic tier discounts applied in real time as your batch volume scales.
-          </p>
-        </div>
+        )}
 
         {/* Layout Bento */}
         <div className="rfq-layout-grid">

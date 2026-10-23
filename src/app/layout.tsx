@@ -1,4 +1,9 @@
 import type { Metadata, Viewport } from 'next';
+import '../../css/main.css';
+import '../../css/storefront.css';
+import '../../css/bulk-rfq.css';
+import '../../css/product-detail.css';
+import '../../css/admin-panel.css';
 import './globals.css';
 import TopOpsBar from '@/components/header/TopOpsBar';
 import IndustrialFooter from '@/components/footer/IndustrialFooter';
