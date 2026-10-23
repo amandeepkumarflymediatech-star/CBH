@@ -402,3 +402,66 @@
 .btn-whatsapp-rfq:hover {
   background: #1EBE5D;
 }
+
+/* ==========================================================================
+   BULK RFQ RESPONSIVE SYSTEM (TABLET & MOBILE)
+   ========================================================================== */
+@media (max-width: 1080px) {
+  .rfq-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .rfq-summary-card {
+    position: static;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .rfq-header-banner h1 {
+    font-size: 26px !important;
+  }
+  .rfq-table-card {
+    padding: 14px;
+  }
+  .rfq-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .rfq-tools-strip {
+    gap: 12px;
+  }
+  .quick-sku-picker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .quick-sku-picker select,
+  .quick-sku-picker button {
+    width: 100%;
+  }
+  .csv-upload-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .csv-upload-box > div {
+    flex-direction: column;
+    width: 100%;
+  }
+  .csv-upload-box button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 540px) {
+  .tier-milestones {
+    font-size: 10px;
+  }
+  .rfq-summary-card {
+    padding: 16px;
+  }
+  .rfq-total-box strong {
+    font-size: 19px;
+  }
+}

@@ -161,3 +161,67 @@
   color: var(--color-dark-800);
   text-transform: uppercase;
 }
+
+/* ==========================================================================
+   PORTAL & AUTH RESPONSIVE REFINEMENTS
+   ========================================================================== */
+@media (max-width: 960px) {
+  .portal-container {
+    padding: 24px 16px 80px;
+  }
+  .portal-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-container {
+    padding: 16px 12px 80px;
+  }
+  .portal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+  }
+  .portal-title h2 {
+    font-size: 24px !important;
+  }
+  .portal-sidebar-card,
+  .portal-main-card {
+    padding: 16px 14px;
+  }
+  .admin-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .kpi-card {
+    padding: 12px 14px;
+  }
+  .kpi-value {
+    font-size: 24px;
+  }
+  .timeline-tracker {
+    overflow-x: auto;
+    padding-bottom: 12px;
+    justify-content: flex-start;
+    gap: 28px;
+  }
+  .timeline-tracker::before {
+    display: none;
+  }
+  .step-node {
+    flex-shrink: 0;
+  }
+
+  /* Prevent iOS zoom on form inputs */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}

@@ -36,7 +36,7 @@ export default function NavSubBar() {
           </Link>
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#5A6678', fontFamily: 'var(--font-mono)' }}>
+        <div className="hide-tablet" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#5A6678', fontFamily: 'var(--font-mono)' }}>
           <ShieldCheck size={14} color="#059669" />
           <span>Direct Mill Traceability 3.1 Certs Included</span>
         </div>

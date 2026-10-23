@@ -1033,3 +1033,90 @@
   font-size: 12px;
   color: #7B8797;
 }
+
+/* ==========================================================================
+   STOREFRONT RESPONSIVE SYSTEM (TABLET & MOBILE)
+   ========================================================================== */
+@media (max-width: 992px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .hero-section {
+    padding: 24px 0 36px;
+  }
+  .surplus-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 28px !important;
+    line-height: 1.15 !important;
+  }
+  .hero-desc {
+    font-size: 14px;
+  }
+  .finder-card {
+    padding: 16px;
+  }
+  .finder-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .finder-grid > div:last-child {
+    grid-column: span 2;
+  }
+  .finder-grid > div:last-child button {
+    width: 100%;
+    margin-top: 4px;
+  }
+  .surplus-title {
+    font-size: 28px !important;
+  }
+  .consultation-strip {
+    padding: 20px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .consultation-strip a,
+  .consultation-strip button {
+    width: 100%;
+    justify-content: center;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .finder-grid {
+    grid-template-columns: 1fr;
+  }
+  .finder-grid > div:last-child {
+    grid-column: span 1;
+  }
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+  .qty-unit-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .qty-stepper {
+    width: 100%;
+    justify-content: center;
+  }
+  .btn-card-add {
+    padding: 10px;
+    font-size: 14px;
+  }
+  .hero-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
