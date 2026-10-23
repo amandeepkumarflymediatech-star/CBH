@@ -1,0 +1,255 @@
+// ============================================================================
+// Prisma Schema for Next.js App Router & SQL Database
+// Database: PostgreSQL / MySQL
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Or "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  METALLURGIST
+}
+
+enum Tier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  VIP
+}
+
+enum Unit {
+  PCS
+  KGS
+}
+
+enum RfqStatus {
+  PENDING
+  IN_REVIEW
+  QUOTED
+  APPROVED
+  CONVERTED_TO_PO
+  DECLINED
+}
+
+enum OrderStatus {
+  CONFIRMED
+  PROCESSING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  passwordHash    String
+  fullName        String
+  companyName     String?
+  gstin           String?
+  phone           String
+  role            Role      @default(CUSTOMER)
+  tier            Tier      @default(BRONZE)
+  tierDiscountPct Float     @default(0.0)
+  creditLimit     Float     @default(0.0)
+  isVerified      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  orders          Order[]
+  bulkRfqs        BulkRfq[]
+
+  @@map("users")
+}
+
+model Category {
+  id             Int       @id @default(autoincrement())
+  slug           String    @unique
+  name           String
+  standardPrefix String?
+  description    String?
+  createdAt      DateTime  @default(now())
+
+  products       Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                    Int       @id @default(autoincrement())
+  sku                   String    @unique
+  name                  String
+  categoryId            Int?
+  category              Category? @relation(fields: [categoryId], references: [id])
+  
+  // Parametric Specs
+  standard              String    // DIN 933, DIN 912, DIN 934, ASTM A193
+  grade                 String    // 5.8, 8.8, 10.9, 12.9, SS304, SS316
+  finish                String    // Black Phosphate, Black Zinc, HDG
+  threadType            String    // Full Thread, Half Thread
+  diameter              String    // M6, M8, M10, M12, M16, M20, M24
+  lengthMm              Int       // 12, 100, 110, 120, 125, 130, 140, 150
+  pitchMm               Float     // 1.5
+  weightPerPcKg         Float     // Unit weight for dual conversion
+
+  // Dual Pricing
+  pricePerPiece         Float
+  originalPricePerPiece Float?
+  pricePerKg            Float
+  originalPricePerKg    Float?
+
+  // Stock
+  stockPcs              Int       @default(0)
+  stockKg               Float     @default(0.0)
+  minOrderPcs           Int       @default(100)
+  minOrderKg            Float     @default(5.0)
+
+  // Status
+  isInStock             Boolean   @default(true)
+  isSurplus             Boolean   @default(false)
+  surplusDiscountPct    Int       @default(0)
+
+  // Media
+  imageUrl              String?
+  cadStepUrl            String?
+  mtcReportNumber       String?
+  bisCertNumber         String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  rfqItems              RfqItem[]
+  orderItems            OrderItem[]
+
+  @@index([standard])
+  @@index([grade])
+  @@index([diameter])
+  @@index([lengthMm])
+  @@map("products")
+}
+
+model BulkRfq {
+  id                 Int        @id @default(autoincrement())
+  rfqNumber          String     @unique
+  customerId         Int?
+  customer           User?      @relation(fields: [customerId], references: [id])
+  contactName        String
+  companyName        String
+  gstin              String?
+  phone              String
+  email              String
+  shippingPincode    String?
+  globalUnit         Unit       @default(PCS)
+
+  // Financials
+  grossAmount        Float
+  slabDiscountPct    Float      @default(0.0)
+  slabDiscountAmount Float      @default(0.0)
+  freightAmount      Float      @default(0.0)
+  gstRatePct         Float      @default(18.0)
+  gstAmount          Float
+  netTotal           Float
+  totalWeightKg      Float
+
+  status             RfqStatus  @default(PENDING)
+  adminNotes         String?
+  validityDate       DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  items              RfqItem[]
+  orders             Order[]
+
+  @@map("bulk_rfqs")
+}
+
+model RfqItem {
+  id              Int      @id @default(autoincrement())
+  rfqId           Int
+  rfq             BulkRfq  @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  productId       Int?
+  product         Product? @relation(fields: [productId], references: [id])
+  sku             String
+  itemDescription String
+  standard        String
+  unit            Unit
+  unitRate        Float
+  quantity        Float
+  totalWeightKg   Float
+  rowTotal        Float
+
+  @@map("rfq_items")
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  orderNumber     String      @unique
+  customerId      Int?
+  customer        User?       @relation(fields: [customerId], references: [id])
+  rfqId           Int?
+  rfq             BulkRfq?    @relation(fields: [rfqId], references: [id])
+
+  grossAmount     Float
+  discountAmount  Float       @default(0.0)
+  gstAmount       Float
+  netAmount       Float
+  totalWeightKg   Float
+
+  shippingAddress String
+  deliveryPincode String
+  carrierName     String?     // Blue Dart, TCI Freight
+  trackingNumber  String?
+  dispatchDate    DateTime?
+  orderStatus     OrderStatus @default(PROCESSING)
+  mtcDocumentUrl  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   Int?
+  product     Product? @relation(fields: [productId], references: [id])
+  sku         String
+  itemName    String
+  standard    String
+  quantity    Float
+  unit        Unit
+  unitPrice   Float
+  rowTotal    Float
+
+  @@map("order_items")
+}
+
+model SurplusLot {
+  id                  Int      @id @default(autoincrement())
+  lotNumber           String   @unique
+  title               String
+  description         String?
+  specStandard        String
+  totalWeightTonnes   Float
+  marketPricePerKg    Float
+  clearancePricePerKg Float
+  discountPct         Int
+  depotLocation       String
+  status              String   @default("AVAILABLE")
+  imageUrl            String?
+  createdAt           DateTime @default(now())
+
+  @@map("surplus_lots")
+}
