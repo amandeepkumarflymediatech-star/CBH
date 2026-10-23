@@ -13,10 +13,10 @@ export default function HeroSection() {
         <div className="hero-status-line">
           <div className="hero-status-tags">
             <span style={{ color: '#D2051E', fontWeight: 800 }}>CBH-OPS // DISPATCH-READY</span>
-            <span>/</span>
-            <span>DIN EN ISO COMPLIANT</span>
-            <span>/</span>
-            <span style={{ color: '#121518', fontWeight: 700 }}>PAN-INDIA 24-48HR DISPATCH</span>
+            <span className="hide-mobile" style={{ color: '#8290A2' }}>/</span>
+            <span className="hide-mobile">DIN EN ISO COMPLIANT</span>
+            <span style={{ color: '#8290A2' }}>/</span>
+            <span style={{ color: '#121518', fontWeight: 700 }}>PAN-INDIA DISPATCH</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

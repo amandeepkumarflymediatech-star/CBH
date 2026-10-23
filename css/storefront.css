@@ -28,7 +28,8 @@
 .hero-status-tags {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .hero-grid {
