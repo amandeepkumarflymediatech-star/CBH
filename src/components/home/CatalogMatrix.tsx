@@ -136,7 +136,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                   </div>
 
                   {/* Image */}
-                  <div className="card-img-wrap">
+                  <Link href={`/product/${p.id}`} className="card-img-wrap" style={{ display: 'block' }}>
                     <Image
                       src={p.imageUrl || '/assets/bolt_zinc.jpg'}
                       alt={p.name}
@@ -144,7 +144,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                       height={120}
                       style={{ objectFit: 'contain' }}
                     />
-                  </div>
+                  </Link>
 
                   {/* Specs Strip */}
                   <div className="specs-strip">
@@ -164,7 +164,9 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
 
                   {/* Title */}
                   <h3 className="card-title" title={p.name}>
-                    {p.name}
+                    <Link href={`/product/${p.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                      {p.name}
+                    </Link>
                   </h3>
 
                   {/* Dual Price Box */}
