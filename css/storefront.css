@@ -1094,28 +1094,96 @@
   }
 }
 
+@media (max-width: 640px) {
+  .catalog-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .catalog-header h2 {
+    font-size: 22px !important;
+  }
+  .catalog-tabs {
+    width: 100% !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 6px !important;
+    gap: 6px !important;
+  }
+  .catalog-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .catalog-tab {
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+    flex-shrink: 0 !important;
+  }
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .product-card {
+    padding: 16px !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .card-img-wrap {
+    height: 130px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-title {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+  }
+  .specs-strip {
+    padding: 8px 12px !important;
+  }
+  .dual-price-box {
+    padding: 10px 12px !important;
+  }
+  .qty-unit-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+  .qty-stepper {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  .qty-stepper button {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 18px !important;
+  }
+  .qty-stepper input {
+    font-size: 14px !important;
+    flex: 1 !important;
+  }
+  .btn-card-add {
+    min-height: 44px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-sm) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+}
+
 @media (max-width: 520px) {
   .finder-grid {
     grid-template-columns: 1fr;
   }
   .finder-grid > div:last-child {
     grid-column: span 1;
-  }
-  .product-grid {
-    grid-template-columns: 1fr;
-  }
-  .qty-unit-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .qty-stepper {
-    width: 100%;
-    justify-content: center;
-  }
-  .btn-card-add {
-    padding: 10px;
-    font-size: 14px;
   }
   .hero-stats-grid {
     grid-template-columns: repeat(2, 1fr);

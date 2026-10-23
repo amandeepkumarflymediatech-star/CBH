@@ -194,8 +194,8 @@ export default function RapidRFQWidget() {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="rfq-table-responsive">
+            {/* Desktop & Tablet Parametric Table View */}
+            <div className="rfq-table-responsive hide-mobile">
               <table className="rfq-table">
                 <thead>
                   <tr>
@@ -256,6 +256,65 @@ export default function RapidRFQWidget() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile App RFQ Card View (Seamless Phone Experience) */}
+            <div className="rfq-mobile-cards show-mobile-only">
+              {items.map((item) => (
+                <div className="rfq-mobile-item-card" key={item.id}>
+                  <div className="rfq-mob-card-head">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="badge badge-din">{item.standard}</span>
+                      <span className="rfq-item-sku">{item.sku}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-remove-row"
+                      onClick={() => handleRemoveRow(item.id)}
+                      title="Remove line item"
+                      style={{ padding: '6px', color: '#DC2626' }}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  <div className="rfq-mob-card-title">{item.name}</div>
+
+                  <div className="rfq-mob-card-pricing">
+                    <div className="rfq-mob-rate">
+                      <span className="label">Rate:</span>
+                      <strong>{formatINR(item.unitRate)} / {item.unit === 'PCS' ? 'Pc' : 'Kg'}</strong>
+                    </div>
+                    <div className="rfq-mob-subtotal">
+                      <span className="label">Total:</span>
+                      <strong className="val">{formatINR(item.rowTotal)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="rfq-mob-card-actions">
+                    <div className="mob-stepper">
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(item.id, item.quantity - (globalUnit === 'PCS' ? 500 : 50))}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(item.id, item.quantity + (globalUnit === 'PCS' ? 500 : 50))}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="mob-unit-badge">{globalUnit}</span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Quick Sku Adder & CSV Bar */}
