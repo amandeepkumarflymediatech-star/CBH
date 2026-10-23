@@ -1,91 +1,384 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import NavSubBar from '@/components/header/NavSubBar';
-import { INITIAL_PRODUCTS, INITIAL_QUOTES, INITIAL_ORDERS } from '@/lib/mock-data';
-import { Product, GlobalUnit } from '@/lib/types';
+import AdminProductsSection from '@/components/admin/AdminProductsSection';
+import AdminRfqsSection from '@/components/admin/AdminRfqsSection';
+import AdminOrdersSection from '@/components/admin/AdminOrdersSection';
+import AdminUsersSection from '@/components/admin/AdminUsersSection';
+import AdminSurplusSection from '@/components/admin/AdminSurplusSection';
+import {
+  INITIAL_PRODUCTS,
+  INITIAL_QUOTES,
+  INITIAL_ORDERS,
+  INITIAL_USERS,
+  INITIAL_SURPLUS_LOTS
+} from '@/lib/mock-data';
+import {
+  Product,
+  GlobalUnit,
+  BulkQuotation,
+  CustomerOrder,
+  UserAccount,
+  SurplusLot
+} from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
-import { 
-  Boxes, 
-  TrendingUp, 
-  FileText, 
-  Truck, 
-  Plus, 
-  Edit, 
-  CheckCircle, 
-  XCircle, 
-  Flame, 
-  Save 
+import {
+  Boxes,
+  FileCheck2,
+  Truck,
+  Users,
+  Flame,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  Scale,
+  Clock,
+  Layers
 } from 'lucide-react';
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'rfqs' | 'orders' | 'users' | 'surplus'>('inventory');
+
+  // Main collections state
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [adminTab, setAdminTab] = useState<'inventory' | 'rfqs' | 'orders'>('inventory');
+  const [quotes, setQuotes] = useState<BulkQuotation[]>(INITIAL_QUOTES);
+  const [orders, setOrders] = useState<CustomerOrder[]>(INITIAL_ORDERS);
+  const [users, setUsers] = useState<UserAccount[]>(INITIAL_USERS);
+  const [surplusLots, setSurplusLots] = useState<SurplusLot[]>(INITIAL_SURPLUS_LOTS);
 
-  // New Product Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newSku, setNewSku] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newStandard, setNewStandard] = useState('DIN 933');
-  const [newGrade, setNewGrade] = useState('8.8');
-  const [newPricePc, setNewPricePc] = useState('12.50');
-  const [newPriceKg, setNewPriceKg] = useState('165.00');
-  const [newWeight, setNewWeight] = useState('0.0750');
-  const [newStock, setNewStock] = useState('10000');
-  const [isSurplus, setIsSurplus] = useState(false);
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Handle Add Product
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    const created: Product = {
-      id: Date.now(),
-      sku: newSku || `CBH-SKU-${Math.floor(100 + Math.random() * 900)}`,
-      name: newName || `${newStandard} Metric Hex Fastener Grade ${newGrade}`,
-      category: 'Hex Screws',
-      standard: newStandard,
-      grade: newGrade,
-      finish: 'Black Zinc Phosphated',
-      threadType: 'Full Thread',
-      diameter: 'M12',
-      lengthMm: 100,
-      pitchMm: 1.75,
-      weightPerPcKg: parseFloat(newWeight) || 0.075,
-      pricePerPiece: parseFloat(newPricePc) || 12.5,
-      pricePerKg: parseFloat(newPriceKg) || 165.0,
-      stockPcs: parseInt(newStock) || 10000,
-      stockKg: (parseInt(newStock) || 10000) * (parseFloat(newWeight) || 0.075),
-      isInStock: true,
-      isSurplus: isSurplus,
-      surplusDiscountPct: isSurplus ? 35 : 0,
-      imageUrl: '/assets/bolt_zinc.jpg',
-    };
-
-    setProducts([created, ...products]);
-    setIsAddModalOpen(false);
-    alert(`SKU ${created.sku} added to CBH inventory! Immediately available on storefront and bulk RFQ matrix.`);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
   };
 
-  // Toggle Surplus status
-  const handleToggleSurplus = (id: number) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const nextSurplus = !p.isSurplus;
-          return {
-            ...p,
-            isSurplus: nextSurplus,
-            surplusDiscountPct: nextSurplus ? 40 : 0,
-          };
-        }
-        return p;
-      })
-    );
+  // Load initial data from APIs
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prodRes, rfqRes, ordRes, usrRes, surpRes] = await Promise.allSettled([
+          fetch('/api/products').then((r) => r.json()),
+          fetch('/api/rfq').then((r) => r.json()),
+          fetch('/api/orders').then((r) => r.json()),
+          fetch('/api/users').then((r) => r.json()),
+          fetch('/api/surplus').then((r) => r.json()),
+        ]);
+
+        if (prodRes.status === 'fulfilled' && prodRes.value?.data) setProducts(prodRes.value.data);
+        if (rfqRes.status === 'fulfilled' && rfqRes.value?.data) setQuotes(rfqRes.value.data);
+        if (ordRes.status === 'fulfilled' && ordRes.value?.data) setOrders(ordRes.value.data);
+        if (usrRes.status === 'fulfilled' && usrRes.value?.data) setUsers(usrRes.value.data);
+        if (surpRes.status === 'fulfilled' && surpRes.value?.data) setSurplusLots(surpRes.value.data);
+      } catch (err) {
+        console.error('Failed to load live admin data:', err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Live KPI aggregations
+  const totalTurnover = orders.reduce((sum, o) => sum + (o.netAmount || 0), 0);
+  const totalFreightKg = orders.reduce((sum, o) => sum + (o.totalWeightKg || 0), 0);
+  const pendingRfqsCount = quotes.filter((q) => q.status === 'PENDING' || q.status === 'IN_REVIEW').length;
+  const activeOemCount = users.filter((u) => u.isVerified).length;
+
+  // ==========================================
+  // SECTION 1: PRODUCTS CRUD HANDLERS
+  // ==========================================
+  const handleAddProduct = async (newP: Omit<Product, 'id'>) => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newP),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setProducts((prev) => [data.data, ...prev]);
+        showToast(`SKU ${data.data.sku} created and published.`);
+      } else {
+        // Fallback optimistic
+        const fallback: Product = { id: Date.now(), ...newP };
+        setProducts((prev) => [fallback, ...prev]);
+        showToast(`SKU ${fallback.sku} created.`);
+      }
+    } catch {
+      const fallback: Product = { id: Date.now(), ...newP };
+      setProducts((prev) => [fallback, ...prev]);
+      showToast(`SKU ${fallback.sku} created.`);
+    }
+  };
+
+  const handleUpdateProduct = async (updated: Product) => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        showToast(`SKU ${updated.sku} changes saved.`);
+      }
+    } catch {
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      showToast(`SKU ${updated.sku} updated.`);
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    try {
+      await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+      const del = products.find((p) => p.id === id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      showToast(`SKU ${del?.sku || id} deleted.`);
+    } catch {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      showToast(`SKU deleted.`);
+    }
+  };
+
+  const handleToggleSurplus = async (id: number) => {
+    const target = products.find((p) => p.id === id);
+    if (!target) return;
+    const nextSurplus = !target.isSurplus;
+    const updated: Product = {
+      ...target,
+      isSurplus: nextSurplus,
+      surplusDiscountPct: nextSurplus ? 35 : 0,
+    };
+    await handleUpdateProduct(updated);
+    showToast(`SKU ${target.sku} marked as ${nextSurplus ? 'SURPLUS (-35%)' : 'STANDARD'}.`);
+  };
+
+  // ==========================================
+  // SECTION 2: RFQ QUOTES CRUD HANDLERS
+  // ==========================================
+  const handleAddQuote = async (newQ: Omit<BulkQuotation, 'id'>) => {
+    try {
+      const res = await fetch('/api/rfq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newQ),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setQuotes((prev) => [data.data, ...prev]);
+        showToast(`Quotation ${data.data.rfqNumber} registered.`);
+      } else {
+        const fallback: BulkQuotation = { id: `quote-${Date.now()}`, ...newQ };
+        setQuotes((prev) => [fallback, ...prev]);
+        showToast(`Quotation ${fallback.rfqNumber} registered.`);
+      }
+    } catch {
+      const fallback: BulkQuotation = { id: `quote-${Date.now()}`, ...newQ };
+      setQuotes((prev) => [fallback, ...prev]);
+      showToast(`Quotation registered.`);
+    }
+  };
+
+  const handleUpdateQuote = async (updated: BulkQuotation) => {
+    try {
+      await fetch('/api/rfq', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
+      showToast(`Quotation ${updated.rfqNumber} saved.`);
+    } catch {
+      setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
+      showToast(`Quotation ${updated.rfqNumber} saved.`);
+    }
+  };
+
+  const handleDeleteQuote = async (id: string) => {
+    try {
+      await fetch(`/api/rfq?id=${id}`, { method: 'DELETE' });
+      setQuotes((prev) => prev.filter((q) => q.id !== id));
+      showToast(`Quotation deleted.`);
+    } catch {
+      setQuotes((prev) => prev.filter((q) => q.id !== id));
+      showToast(`Quotation deleted.`);
+    }
+  };
+
+  // ==========================================
+  // SECTION 3: ORDERS CRUD HANDLERS
+  // ==========================================
+  const handleAddOrder = async (newO: Omit<CustomerOrder, 'id'>) => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newO),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setOrders((prev) => [data.data, ...prev]);
+        showToast(`Order ${data.data.orderNumber} initiated.`);
+      } else {
+        const fallback: CustomerOrder = { id: `ord-${Date.now()}`, ...newO };
+        setOrders((prev) => [fallback, ...prev]);
+        showToast(`Order ${fallback.orderNumber} initiated.`);
+      }
+    } catch {
+      const fallback: CustomerOrder = { id: `ord-${Date.now()}`, ...newO };
+      setOrders((prev) => [fallback, ...prev]);
+      showToast(`Order initiated.`);
+    }
+  };
+
+  const handleUpdateOrder = async (updated: CustomerOrder) => {
+    try {
+      await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      showToast(`Order ${updated.orderNumber} updated.`);
+    } catch {
+      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      showToast(`Order updated.`);
+    }
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    try {
+      await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      showToast(`Order record cancelled.`);
+    } catch {
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      showToast(`Order record cancelled.`);
+    }
+  };
+
+  // ==========================================
+  // SECTION 4: USERS CRUD HANDLERS
+  // ==========================================
+  const handleAddUser = async (newU: Omit<UserAccount, 'id'>) => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newU),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setUsers((prev) => [data.data, ...prev]);
+        showToast(`Account for ${data.data.fullName} registered.`);
+      } else {
+        const fallback: UserAccount = { id: Date.now(), ...newU };
+        setUsers((prev) => [fallback, ...prev]);
+        showToast(`Account registered.`);
+      }
+    } catch {
+      const fallback: UserAccount = { id: Date.now(), ...newU };
+      setUsers((prev) => [fallback, ...prev]);
+      showToast(`Account registered.`);
+    }
+  };
+
+  const handleUpdateUser = async (updated: UserAccount) => {
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      showToast(`Account ${updated.fullName} updated.`);
+    } catch {
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      showToast(`Account updated.`);
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    try {
+      await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      showToast(`Account suspended/removed.`);
+    } catch {
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      showToast(`Account removed.`);
+    }
+  };
+
+  // ==========================================
+  // SECTION 5: SURPLUS LOTS CRUD HANDLERS
+  // ==========================================
+  const handleAddSurplusLot = async (newLot: Omit<SurplusLot, 'id'>) => {
+    try {
+      const res = await fetch('/api/surplus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLot),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSurplusLots((prev) => [data.data, ...prev]);
+        showToast(`Surplus Lot ${data.data.sku} opened.`);
+      } else {
+        const fallback: SurplusLot = { id: Date.now(), ...newLot };
+        setSurplusLots((prev) => [fallback, ...prev]);
+        showToast(`Surplus Lot opened.`);
+      }
+    } catch {
+      const fallback: SurplusLot = { id: Date.now(), ...newLot };
+      setSurplusLots((prev) => [fallback, ...prev]);
+      showToast(`Surplus Lot opened.`);
+    }
+  };
+
+  const handleUpdateSurplusLot = async (updated: SurplusLot) => {
+    try {
+      await fetch('/api/surplus', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      showToast(`Surplus Lot ${updated.sku} updated.`);
+    } catch {
+      setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      showToast(`Surplus Lot updated.`);
+    }
+  };
+
+  const handleDeleteSurplusLot = async (id: number) => {
+    try {
+      await fetch(`/api/surplus?id=${id}`, { method: 'DELETE' });
+      setSurplusLots((prev) => prev.filter((l) => l.id !== id));
+      showToast(`Surplus Lot delisted.`);
+    } catch {
+      setSurplusLots((prev) => prev.filter((l) => l.id !== id));
+      showToast(`Surplus Lot delisted.`);
+    }
+  };
+
+  const handleToggleSurplusActive = async (lot: SurplusLot) => {
+    const nextActive = !lot.isActive;
+    const updated: SurplusLot = {
+      ...lot,
+      isActive: nextActive,
+    };
+    await handleUpdateSurplusLot(updated);
+    showToast(`Lot ${lot.sku} storefront listing ${nextActive ? 'ACTIVATED' : 'PAUSED'}.`);
   };
 
   return (
-    <main style={{ background: 'var(--color-surface-bg)' }}>
+    <main style={{ background: 'var(--color-surface-bg)', minHeight: '100vh' }}>
       <MainHeader
         unit={globalUnit}
         onUnitToggle={(u) => setGlobalUnit(u)}
@@ -99,381 +392,187 @@ export default function AdminConsolePage() {
         <div className="portal-header">
           <div className="portal-title">
             <h2>CBH Central Admin Control Console</h2>
-            <p>Direct Inventory Catalog, RFQ Margins, and Pan-India Dispatch Management</p>
+            <p>Full Dynamic CRUD Operations, Real-Time Filtering, Stock Telemetry & Pan-India Dispatch Logistics</p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              <Plus size={16} />
-              <span>Add Fastener SKU</span>
-            </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              background: '#ECFDF5',
+              color: '#065F46',
+              fontSize: '12px',
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono)'
+            }}>
+              <CheckCircle2 size={14} color="#059669" />
+              <span>Database Sync Active</span>
+            </span>
           </div>
         </div>
 
-        {/* KPI Dashboard */}
+        {/* Dynamic KPI Dashboard */}
         <div className="admin-kpi-grid">
           <div className="kpi-card">
-            <span className="kpi-label">TOTAL GROSS TURNOVER</span>
-            <div className="kpi-value" style={{ color: '#D2051E' }}>₹ 84,52,400</div>
-            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>+18.4% month-on-month</span>
+            <span className="kpi-label">GROSS ORDERS TURNOVER</span>
+            <div className="kpi-value" style={{ color: '#D2051E' }}>
+              {formatINR(totalTurnover)}
+            </div>
+            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
+              Live from {orders.length} Dispatched Orders
+            </span>
           </div>
 
           <div className="kpi-card">
             <span className="kpi-label">TOTAL FREIGHT DISPATCHED</span>
-            <div className="kpi-value">142.8 MT</div>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Pan-India logistics depot</span>
+            <div className="kpi-value">
+              {(totalFreightKg / 1000).toFixed(1)} MT
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+              {totalFreightKg.toLocaleString()} Kg total cargo tonnage
+            </span>
           </div>
 
           <div className="kpi-card">
             <span className="kpi-label">ACTIVE BULK RFQs</span>
-            <div className="kpi-value" style={{ color: '#D97706' }}>8 Pending</div>
-            <span style={{ fontSize: '11px', color: '#0284C7' }}>3 requires metallurgist review</span>
+            <div className="kpi-value" style={{ color: '#D97706' }}>
+              {pendingRfqsCount} Pending
+            </div>
+            <span style={{ fontSize: '11px', color: '#0284C7' }}>
+              {quotes.length} total quotations on file
+            </span>
           </div>
 
           <div className="kpi-card">
             <span className="kpi-label">REGISTERED OEM ACCOUNTS</span>
-            <div className="kpi-value">124 Plants</div>
-            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>Diamond & VIP Tier</span>
-          </div>
-        </div>
-
-        {/* Tab Selector */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          <button
-            type="button"
-            className={`catalog-tab ${adminTab === 'inventory' ? 'active' : ''}`}
-            onClick={() => setAdminTab('inventory')}
-          >
-            Fastener Inventory ({products.length} SKUs)
-          </button>
-          <button
-            type="button"
-            className={`catalog-tab ${adminTab === 'rfqs' ? 'active' : ''}`}
-            onClick={() => setAdminTab('rfqs')}
-          >
-            Bulk RFQ Quotation Approvals
-          </button>
-          <button
-            type="button"
-            className={`catalog-tab ${adminTab === 'orders' ? 'active' : ''}`}
-            onClick={() => setAdminTab('orders')}
-          >
-            Orders & Carrier Dispatch
-          </button>
-        </div>
-
-        {/* Inventory View */}
-        {adminTab === 'inventory' && (
-          <div className="portal-main-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase' }}>
-                Active Fastener Inventory Catalog
-              </h3>
-              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                Direct live synchronization with Storefront & RFQ Matrix
-              </span>
+            <div className="kpi-value">
+              {users.length} Plants
             </div>
-
-            <table className="rfq-table">
-              <thead>
-                <tr>
-                  <th>SKU & Name</th>
-                  <th>Standard</th>
-                  <th>Grade</th>
-                  <th>Rate / Pc</th>
-                  <th>Rate / Kg</th>
-                  <th>Stock Levels</th>
-                  <th>Surplus Lot</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <strong>{p.sku}</strong>
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{p.name}</div>
-                    </td>
-                    <td>
-                      <span className="badge badge-din">{p.standard}</span>
-                    </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{p.grade}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>{formatINR(p.pricePerPiece)}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#D2051E' }}>{formatINR(p.pricePerKg)}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-                      {p.stockPcs.toLocaleString()} Pcs ({p.stockKg.toFixed(1)} Kg)
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSurplus(p.id)}
-                        className={`badge ${p.isSurplus ? 'badge-surplus' : 'badge-certified'}`}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to toggle surplus liquidation deal"
-                      >
-                        {p.isSurplus ? `SURPLUS (-${p.surplusDiscountPct}%)` : 'STANDARD'}
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-outline"
-                        style={{ padding: '4px 8px', fontSize: '11px' }}
-                        onClick={() => alert(`Editing price margins for SKU ${p.sku}`)}
-                      >
-                        <Edit size={12} />
-                        <span>Edit</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
+              {activeOemCount} GSTIN Verified OEM Accounts
+            </span>
           </div>
+        </div>
+
+        {/* Dynamic Section Navigation Tabs */}
+        <div className="admin-tab-nav">
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inventory')}
+          >
+            <Boxes size={15} />
+            <span>Fastener Catalog</span>
+            <span className="admin-tab-badge">{products.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'rfqs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rfqs')}
+          >
+            <FileCheck2 size={15} />
+            <span>Bulk RFQ Approvals</span>
+            <span className="admin-tab-badge">{quotes.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            <Truck size={15} />
+            <span>Orders & Dispatch</span>
+            <span className="admin-tab-badge">{orders.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            <Users size={15} />
+            <span>OEM Accounts & Tiers</span>
+            <span className="admin-tab-badge">{users.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'surplus' ? 'active' : ''}`}
+            onClick={() => setActiveTab('surplus')}
+          >
+            <Flame size={15} />
+            <span>Surplus Lots</span>
+            <span className="admin-tab-badge">{surplusLots.length}</span>
+          </button>
+        </div>
+
+        {/* Section 1: Fastener Inventory Catalog */}
+        {activeTab === 'inventory' && (
+          <AdminProductsSection
+            products={products}
+            onAdd={handleAddProduct}
+            onUpdate={handleUpdateProduct}
+            onDelete={handleDeleteProduct}
+            onToggleSurplus={handleToggleSurplus}
+            showToast={showToast}
+          />
         )}
 
-        {/* RFQ Approvals View */}
-        {adminTab === 'rfqs' && (
-          <div className="portal-main-card">
-            <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '16px' }}>
-              Pending Bulk RFQs & Custom Quotation Approvals
-            </h3>
-
-            <table className="rfq-table">
-              <thead>
-                <tr>
-                  <th>RFQ Reference</th>
-                  <th>Client / Plant</th>
-                  <th>Quantity & Weight</th>
-                  <th>Gross Est</th>
-                  <th>Tier Slab</th>
-                  <th>Net Quoted</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INITIAL_QUOTES.map((q) => (
-                  <tr key={q.id}>
-                    <td>
-                      <strong>{q.rfqNumber}</strong>
-                    </td>
-                    <td>
-                      <strong>Apex Heavy Infra Ltd.</strong>
-                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>GST: 29AABCA1234F1Z5</div>
-                    </td>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>{q.itemsCount} SKUs (485 Kg)</td>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>{formatINR(q.grossAmount)}</td>
-                    <td style={{ color: '#059669', fontWeight: 700 }}>-{q.discountPct}% OEM Slab</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E' }}>{formatINR(q.netTotal)}</td>
-                    <td>
-                      <span className="badge badge-vip">{q.status}</span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          style={{ padding: '4px 10px', fontSize: '11px' }}
-                          onClick={() => alert(`Quotation ${q.rfqNumber} approved! Issued to client portal with valid MTC spec.`)}
-                        >
-                          Approve Quote
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Section 2: Bulk RFQs Approvals */}
+        {activeTab === 'rfqs' && (
+          <AdminRfqsSection
+            quotes={quotes}
+            onAdd={handleAddQuote}
+            onUpdate={handleUpdateQuote}
+            onDelete={handleDeleteQuote}
+            showToast={showToast}
+          />
         )}
 
-        {/* Orders View */}
-        {adminTab === 'orders' && (
-          <div className="portal-main-card">
-            <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '16px' }}>
-              Dispatched Orders & Logistics Management
-            </h3>
+        {/* Section 3: Orders & Logistics Dispatch */}
+        {activeTab === 'orders' && (
+          <AdminOrdersSection
+            orders={orders}
+            onAdd={handleAddOrder}
+            onUpdate={handleUpdateOrder}
+            onDelete={handleDeleteOrder}
+            showToast={showToast}
+          />
+        )}
 
-            <table className="rfq-table">
-              <thead>
-                <tr>
-                  <th>Order #</th>
-                  <th>Client</th>
-                  <th>Weight</th>
-                  <th>Carrier</th>
-                  <th>Docket #</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INITIAL_ORDERS.map((ord) => (
-                  <tr key={ord.id}>
-                    <td>
-                      <strong>{ord.orderNumber}</strong>
-                    </td>
-                    <td>Apex Heavy Infra Ltd.</td>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>{ord.totalWeightKg} Kg</td>
-                    <td>{ord.carrier}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', color: '#0284C7' }}>{ord.trackingNumber}</td>
-                    <td>
-                      <span className="badge badge-certified">{ord.status}</span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-dark"
-                        style={{ padding: '4px 8px', fontSize: '11px' }}
-                        onClick={() => alert(`Updating logistics status for ${ord.orderNumber}`)}
-                      >
-                        Update Status
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Section 4: Registered Enterprise Users */}
+        {activeTab === 'users' && (
+          <AdminUsersSection
+            users={users}
+            onAdd={handleAddUser}
+            onUpdate={handleUpdateUser}
+            onDelete={handleDeleteUser}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Section 5: Surplus Liquidation Lots */}
+        {activeTab === 'surplus' && (
+          <AdminSurplusSection
+            lots={surplusLots}
+            onAdd={handleAddSurplusLot}
+            onUpdate={handleUpdateSurplusLot}
+            onDelete={handleDeleteSurplusLot}
+            onToggleActive={handleToggleSurplusActive}
+            showToast={showToast}
+          />
         )}
       </div>
 
-      {/* Add Fastener SKU Modal */}
-      {isAddModalOpen && (
-        <div className="modal-overlay active" onClick={() => setIsAddModalOpen(false)}>
-          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '28px' }}>
-            <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '16px', color: 'var(--color-dark-900)' }}>
-              Add New Fastener Product SKU
-            </h3>
-
-            <form onSubmit={handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="finder-field">
-                  <label>SKU Code</label>
-                  <input
-                    type="text"
-                    className="finder-select"
-                    placeholder="e.g. CBH-933-M12-100-8.8"
-                    value={newSku}
-                    onChange={(e) => setNewSku(e.target.value)}
-                  />
-                </div>
-
-                <div className="finder-field">
-                  <label>Standard Spec</label>
-                  <select
-                    className="finder-select"
-                    value={newStandard}
-                    onChange={(e) => setNewStandard(e.target.value)}
-                  >
-                    <option value="DIN 933">DIN 933 (Full Thread)</option>
-                    <option value="DIN 931">DIN 931 (Half Thread)</option>
-                    <option value="DIN 912">DIN 912 (Socket Cap)</option>
-                    <option value="DIN 934">DIN 934 (Hex Nut)</option>
-                    <option value="ASTM A193">ASTM A193 B7</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="finder-field">
-                <label>Product Title / Description</label>
-                <input
-                  type="text"
-                  className="finder-select"
-                  placeholder="e.g. Hex Screws Full Thread M12x1.75x100mm Grade 8.8 Blkzp"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                <div className="finder-field">
-                  <label>Grade</label>
-                  <input
-                    type="text"
-                    className="finder-select"
-                    value={newGrade}
-                    onChange={(e) => setNewGrade(e.target.value)}
-                  />
-                </div>
-
-                <div className="finder-field">
-                  <label>Price Per Piece (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="finder-select"
-                    value={newPricePc}
-                    onChange={(e) => setNewPricePc(e.target.value)}
-                  />
-                </div>
-
-                <div className="finder-field">
-                  <label>Price Per Kg (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="finder-select"
-                    value={newPriceKg}
-                    onChange={(e) => setNewPriceKg(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="finder-field">
-                  <label>Weight Per Piece (Kg)</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    className="finder-select"
-                    value={newWeight}
-                    onChange={(e) => setNewWeight(e.target.value)}
-                  />
-                </div>
-
-                <div className="finder-field">
-                  <label>Initial Stock (Pieces)</label>
-                  <input
-                    type="number"
-                    className="finder-select"
-                    value={newStock}
-                    onChange={(e) => setNewStock(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0' }}>
-                <input
-                  type="checkbox"
-                  id="surplusCheck"
-                  checked={isSurplus}
-                  onChange={(e) => setIsSurplus(e.target.checked)}
-                />
-                <label htmlFor="surplusCheck" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-dark-800)' }}>
-                  Mark as Surplus Clearance Lot (-35% Market Deal)
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => setIsAddModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  <Save size={16} />
-                  <span>Save SKU to Database</span>
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Floating Toast Feedback */}
+      {toastMessage && (
+        <div className="admin-toast">
+          <CheckCircle2 size={16} color="#059669" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </main>

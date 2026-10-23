@@ -91,22 +91,62 @@ export interface CustomerOrder {
   itemsCount: number;
   totalWeightKg: number;
   netAmount: number;
-  status: 'PROCESSING' | 'DISPATCHED' | 'IN_TRANSIT' | 'DELIVERED';
+  status: 'CONFIRMED' | 'PROCESSING' | 'DISPATCHED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
   carrier: string;
   trackingNumber: string;
   dispatchDate: string;
   shippingAddress: string;
   mtcCertNumber: string;
+  customerName?: string;
+  companyName?: string;
 }
 
 export interface BulkQuotation {
   id: string;
   rfqNumber: string;
   date: string;
+  customerName?: string;
+  companyName?: string;
+  gstin?: string;
+  phone?: string;
+  email?: string;
   itemsCount: number;
+  totalWeightKg?: number;
   grossAmount: number;
   discountPct: number;
   netTotal: number;
-  status: 'PENDING' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED';
+  status: 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED' | 'REJECTED';
   validUntil: string;
 }
+
+export interface UserAccount {
+  id: number;
+  fullName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  gstin: string;
+  role: 'CUSTOMER' | 'ADMIN' | 'METALLURGIST';
+  tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'VIP';
+  tierDiscountPct: number;
+  creditLimit: number;
+  isVerified: boolean;
+  city?: string;
+  createdAt: string;
+}
+
+export interface SurplusLot {
+  id: number;
+  sku: string;
+  name: string;
+  standard: string;
+  grade: string;
+  excessQtyPcs: number;
+  excessQtyKg: number;
+  regularPriceKg: number;
+  clearanceDiscountPct: number;
+  clearancePriceKg: number;
+  locationHub: string;
+  isActive: boolean;
+}
+
