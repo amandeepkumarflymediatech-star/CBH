@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import NavSubBar from '@/components/header/NavSubBar';
 import { RefreshCw, Mail, CheckCircle2, ArrowLeft, Send } from 'lucide-react';
 
-export default function ResendVerificationPage() {
+function ResendVerificationForm() {
   const searchParams = useSearchParams();
   const initialEmail = searchParams ? searchParams.get('email') || '' : '';
 
@@ -59,6 +59,119 @@ export default function ResendVerificationPage() {
   };
 
   return (
+    <div style={{
+      background: '#FFFFFF',
+      border: '1px solid var(--color-surface-border)',
+      borderRadius: 'var(--radius-md)',
+      padding: '36px 32px',
+      boxShadow: 'var(--shadow-md)',
+      borderTop: '4px solid var(--color-primary)'
+    }}>
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
+          <img
+            src="/assets/logo_blue.png"
+            alt="CBH Fasteners"
+            style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+          />
+        </Link>
+        <div style={{ display: 'block' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'var(--color-surface-subtle)',
+            color: '#D2051E',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '10px'
+          }}>
+            <RefreshCw size={20} />
+          </div>
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 800, color: 'var(--color-dark-900)' }}>
+          Resend Verification Code
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+          Enter your registered enterprise email or phone to receive a fresh verification OTP or activation token.
+        </p>
+      </div>
+
+      {feedback && (
+        <div style={{
+          background: feedback.type === 'success' ? '#ECFDF5' : '#FEE2E2',
+          border: `1px solid ${feedback.type === 'success' ? '#059669' : '#DC2626'}`,
+          color: feedback.type === 'success' ? '#065F46' : '#991B1B',
+          padding: '10px 12px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          marginBottom: '16px',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          {feedback.type === 'success' && <CheckCircle2 size={16} />}
+          <span>{feedback.text}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleResend} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="finder-field">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Mail size={12} />
+            <span>Registered Email / Mobile</span>
+          </label>
+          <input
+            type="text"
+            className="finder-select"
+            required
+            placeholder="e.g. procurement@apexinfra.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isLoading || countdown > 0}
+          style={{ padding: '12px', marginTop: '6px' }}
+        >
+          <Send size={15} />
+          <span>
+            {isLoading
+              ? 'Transmitting...'
+              : countdown > 0
+              ? `Resend in ${countdown}s`
+              : 'Transmit Verification OTP'}
+          </span>
+        </button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', paddingTop: '10px' }}>
+          <Link
+            href="/login"
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-dark-800)', fontWeight: 600 }}
+          >
+            <ArrowLeft size={14} />
+            <span>Back to Sign In</span>
+          </Link>
+
+          <Link
+            href="/register"
+            style={{ color: '#D2051E', fontWeight: 700 }}
+          >
+            Create Account
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function ResendVerificationPage() {
+  return (
     <main style={{ background: 'var(--color-surface-bg)', minHeight: '100vh' }}>
       <MainHeader
         unit="PCS"
@@ -69,114 +182,21 @@ export default function ResendVerificationPage() {
       <NavSubBar />
 
       <div className="container" style={{ padding: '60px 24px 80px', maxWidth: '480px' }}>
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid var(--color-surface-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '36px 32px',
-          boxShadow: 'var(--shadow-md)',
-          borderTop: '4px solid var(--color-primary)'
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
-              <img
-                src="/assets/logo_blue.png"
-                alt="CBH Fasteners"
-                style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
-              />
-            </Link>
-            <div style={{ display: 'block' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'var(--color-surface-subtle)',
-                color: '#D2051E',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '10px'
-              }}>
-                <RefreshCw size={20} />
-              </div>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 800, color: 'var(--color-dark-900)' }}>
-              Resend Verification Code
-            </h1>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-              Enter your registered enterprise email or phone to receive a fresh verification OTP or activation token.
-            </p>
+        <Suspense fallback={
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid var(--color-surface-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '36px 32px',
+            textAlign: 'center',
+            color: 'var(--color-text-muted)',
+            fontSize: '14px'
+          }}>
+            Loading verification portal...
           </div>
-
-          {feedback && (
-            <div style={{
-              background: feedback.type === 'success' ? '#ECFDF5' : '#FEE2E2',
-              border: `1px solid ${feedback.type === 'success' ? '#059669' : '#DC2626'}`,
-              color: feedback.type === 'success' ? '#065F46' : '#991B1B',
-              padding: '10px 12px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              marginBottom: '16px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              {feedback.type === 'success' && <CheckCircle2 size={16} />}
-              <span>{feedback.text}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleResend} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="finder-field">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Mail size={12} />
-                <span>Registered Email / Mobile</span>
-              </label>
-              <input
-                type="text"
-                className="finder-select"
-                required
-                placeholder="e.g. procurement@apexinfra.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={isLoading || countdown > 0}
-              style={{ padding: '12px', marginTop: '6px' }}
-            >
-              <Send size={15} />
-              <span>
-                {isLoading
-                  ? 'Transmitting...'
-                  : countdown > 0
-                  ? `Resend in ${countdown}s`
-                  : 'Transmit Verification OTP'}
-              </span>
-            </button>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', paddingTop: '10px' }}>
-              <Link
-                href="/login"
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-dark-800)', fontWeight: 600 }}
-              >
-                <ArrowLeft size={14} />
-                <span>Back to Sign In</span>
-              </Link>
-
-              <Link
-                href="/register"
-                style={{ color: '#D2051E', fontWeight: 700 }}
-              >
-                Create Account
-              </Link>
-            </div>
-          </form>
-        </div>
+        }>
+          <ResendVerificationForm />
+        </Suspense>
       </div>
     </main>
   );
