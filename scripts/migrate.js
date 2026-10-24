@@ -48,38 +48,80 @@ async function runMigration() {
   console.log(' CBH FASTENERS - MYSQL DATABASE MIGRATION RUNNER');
   console.log('======================================================\n');
 
-  const databaseUrl = process.env.DATABASE_URL;
-  let connectionConfig = {};
+  let host = process.env.DB_HOST;
+  let port = Number(process.env.DB_PORT) || 3306;
+  let user = process.env.DB_USER;
+  let password = process.env.DB_PASSWORD;
   let targetDb = process.env.DB_NAME || 'cbh_fasteners';
 
+  const databaseUrl = process.env.DATABASE_URL;
+
   if (databaseUrl && (databaseUrl.startsWith('mysql://') || databaseUrl.startsWith('mysql2://'))) {
-    try {
-      const parsedUrl = new URL(databaseUrl.replace('mysql2://', 'mysql://'));
-      connectionConfig = {
-        host: parsedUrl.hostname || 'localhost',
-        port: Number(parsedUrl.port) || 3306,
-        user: decodeURIComponent(parsedUrl.username || 'root'),
-        password: decodeURIComponent(parsedUrl.password || ''),
-        multipleStatements: true,
-      };
-      targetDb = parsedUrl.pathname.replace('/', '') || targetDb;
-    } catch {
-      connectionConfig = {
-        uri: databaseUrl,
-        multipleStatements: true,
-      };
+    const raw = databaseUrl.replace(/^mysql2?:\/\//, '');
+
+    const atIndex = raw.lastIndexOf('@');
+    if (atIndex !== -1) {
+      const userPassPart = raw.slice(0, atIndex);
+      const hostDbPart = raw.slice(atIndex + 1);
+
+      const colonIdx = userPassPart.indexOf(':');
+      if (colonIdx !== -1) {
+        user = user || decodeURIComponent(userPassPart.slice(0, colonIdx));
+        password = password !== undefined ? password : decodeURIComponent(userPassPart.slice(colonIdx + 1));
+      } else {
+        user = user || decodeURIComponent(userPassPart);
+        password = password !== undefined ? password : '';
+      }
+
+      const slashIdx = hostDbPart.indexOf('/');
+      const hostPortPart = slashIdx !== -1 ? hostDbPart.slice(0, slashIdx) : hostDbPart;
+      const dbPart = slashIdx !== -1 ? hostDbPart.slice(slashIdx + 1).split('?')[0] : '';
+
+      if (dbPart) targetDb = dbPart;
+
+      const hostColonIdx = hostPortPart.indexOf(':');
+      if (hostColonIdx !== -1) {
+        host = host || hostPortPart.slice(0, hostColonIdx);
+        port = Number(hostPortPart.slice(hostColonIdx + 1)) || port;
+      } else {
+        host = host || hostPortPart;
+      }
+    } else {
+      // User may have specified mysql://root:password/dbname (missing @localhost)
+      const slashIdx = raw.indexOf('/');
+      const credsPart = slashIdx !== -1 ? raw.slice(0, slashIdx) : raw;
+      const dbPart = slashIdx !== -1 ? raw.slice(slashIdx + 1).split('?')[0] : '';
+      if (dbPart) targetDb = dbPart;
+
+      const colonIdx = credsPart.indexOf(':');
+      if (colonIdx !== -1) {
+        user = user || credsPart.slice(0, colonIdx);
+        password = password !== undefined ? password : credsPart.slice(colonIdx + 1);
+      } else {
+        user = user || credsPart;
+      }
+      host = host || '127.0.0.1';
     }
-  } else {
-    connectionConfig = {
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      multipleStatements: true,
-    };
   }
 
-  console.log(`📡 Connecting to MySQL Server (${connectionConfig.host || 'localhost'}:${connectionConfig.port || 3306}) as [${connectionConfig.user || 'root'}]...`);
+  // Fallbacks and sanitize
+  host = host || '127.0.0.1';
+  // If host was mistakenly set to 'root' due to missing @, correct to 127.0.0.1
+  if (host === 'root') {
+    host = '127.0.0.1';
+  }
+  user = user || 'root';
+  password = password || '';
+
+  const connectionConfig = {
+    host,
+    port,
+    user,
+    password,
+    multipleStatements: true,
+  };
+
+  console.log(`📡 Connecting to MySQL Server [${connectionConfig.host}:${connectionConfig.port}] as user [${connectionConfig.user}]...`);
 
   let connection;
   try {
