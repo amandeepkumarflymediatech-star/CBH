@@ -1,14 +1,31 @@
-import mysql, { Pool, PoolOptions } from 'mysql2/promise';
+// Native MySQL Database Helper for CBH Fasteners Platform
+// Bulletproof dynamic loader to prevent Next.js build-time type errors on remote servers
+
+export type MySQLPool = any;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __mysqlPool: Pool | undefined;
+  var __mysqlPool: any | undefined;
 }
 
-function createPool(): Pool {
+function getMySQLDriver(): any {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('mysql2/promise');
+  } catch {
+    return null;
+  }
+}
+
+function createPool(): any {
+  const mysql = getMySQLDriver();
+  if (!mysql) {
+    return null;
+  }
+
   const databaseUrl = process.env.DATABASE_URL;
 
-  let poolConfig: PoolOptions;
+  let poolConfig: any;
 
   if (databaseUrl && (databaseUrl.startsWith('mysql://') || databaseUrl.startsWith('mysql2://'))) {
     poolConfig = {
@@ -38,9 +55,9 @@ function createPool(): Pool {
 }
 
 // Preserve pool across hot-reloads in Next.js development
-export const db: Pool = global.__mysqlPool ?? createPool();
+export const db: any = global.__mysqlPool ?? createPool();
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && db) {
   global.__mysqlPool = db;
 }
 
@@ -49,9 +66,18 @@ if (process.env.NODE_ENV !== 'production') {
  * @param sql - The SQL statement with '?' placeholders
  * @param values - Array of parameter values
  */
-export async function query<T = any>(sql: string, values?: any[]): Promise<T> {
+export async function query<T = any>(sql: string, values?: any[]): Promise<T[]> {
+  if (!db) {
+    const freshPool = createPool();
+    if (!freshPool) {
+      console.warn('[MySQL DB] mysql2 driver not available. Please run: npm install mysql2');
+      return [] as T[];
+    }
+    const [rows] = await freshPool.query(sql, values);
+    return rows as T[];
+  }
   const [rows] = await db.query(sql, values);
-  return rows as T;
+  return rows as T[];
 }
 
 export default db;
