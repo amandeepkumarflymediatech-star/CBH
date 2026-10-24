@@ -2703,15 +2703,192 @@
   line-height: 1.15;
 }
 
+/* Active Industry State & Beacon */
+.industry-list li.is-active {
+  border-color: #F18A45 !important;
+  color: #FFFFFF !important;
+  background: linear-gradient(90deg, rgba(241, 138, 69, 0.18), rgba(241, 138, 69, 0.04));
+  transform: translateZ(calc(var(--node-depth) + 18px)) scale(1.03);
+  padding: 0 10px;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(241, 138, 69, 0.15);
+  position: relative;
+}
+
+.industry-list li.is-active .industry-node-number {
+  color: #FFA559;
+  text-shadow: 0 0 10px rgba(241, 138, 69, 0.8);
+}
+
+.node-active-beacon {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  background: #F18A45;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #F18A45;
+  animation: beacon-pulse 1.2s infinite ease-in-out;
+}
+
+.industry-list--left li.is-active .node-active-beacon {
+  left: 4px;
+  transform: translateY(-50%);
+}
+
+.industry-list--right li.is-active .node-active-beacon {
+  right: 4px;
+  transform: translateY(-50%);
+}
+
+@keyframes beacon-pulse {
+  0%, 100% { transform: translateY(-50%) scale(1); opacity: 1; }
+  50% { transform: translateY(-50%) scale(2); opacity: 0.5; }
+}
+
 /* 3D Fastener Assembly Graphic */
 .fastener-visual {
   position: relative;
   display: grid;
-  min-height: 470px;
+  min-height: 520px;
   place-items: center;
   isolation: isolate;
   transform-style: preserve-3d;
 }
+
+/* Real-time laser scanner beam moving across the bolt shaft */
+.fastener-laser-beam {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #F18A45 30%, #FFFFFF 50%, #F18A45 70%, transparent);
+  box-shadow: 0 0 14px rgba(241, 138, 69, 0.9), 0 0 28px rgba(241, 138, 69, 0.5);
+  animation: laser-sweep 2.4s ease-in-out infinite alternate;
+  z-index: 10;
+  pointer-events: none;
+}
+
+@keyframes laser-sweep {
+  0% { top: 0%; opacity: 0.2; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 96%; opacity: 0.2; }
+}
+
+/* Orbit energy sparkles */
+.orbit-energy-sparkle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #FFA559;
+  box-shadow: 0 0 10px #FFA559, 0 0 18px rgba(241, 138, 69, 0.8);
+  transform: translate(-50%, -50%);
+}
+
+/* High-Tech HUD Display Card Overlay */
+.industry-hud-card {
+  position: absolute;
+  bottom: -46px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: rgba(10, 46, 78, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(241, 138, 69, 0.42);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #FFFFFF;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 20px rgba(241, 138, 69, 0.15);
+  z-index: 20;
+  pointer-events: none;
+  transition: border-color 0.3s ease;
+}
+
+.industry-hud-card .hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.industry-hud-card .hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: #F18A45;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.industry-hud-card .hud-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #34D399;
+}
+
+.industry-hud-card .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34D399;
+  box-shadow: 0 0 8px #34D399;
+  animation: beacon-pulse 1s infinite alternate;
+}
+
+.industry-hud-card .hud-title {
+  margin: 0 0 6px;
+  font-family: var(--font-headline);
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.industry-hud-card .hud-standard {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #CBD5E1;
+  margin-bottom: 4px;
+}
+
+.industry-hud-card .hud-standard strong {
+  color: #F8FAFC;
+}
+
+.industry-hud-card .hud-specs {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #94A3B8;
+}
+
+.industry-hud-card .hud-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #34D399;
+  font-weight: 600;
+}
+
 
 .fastener-aura {
   position: absolute;
