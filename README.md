@@ -59,7 +59,7 @@ CBH Fasteners is a B2B and B2C metal parts e-commerce and bulk procurement platf
 
 ---
 
-## 🗄️ Database Architecture (`db/schema.sql` & `prisma/schema.prisma`)
+## 🗄️ Database Architecture (`db/schema.sql` - MySQL Schema)
 
 - `users`: Enterprise buyers, admins, and metallurgists with tier status and credit lines.
 - `products`: Parametric fastener catalog with dual pricing, standards, grades, finishes, thread types, and unit weights.

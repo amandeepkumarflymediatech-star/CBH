@@ -1,12 +1,12 @@
 -- ============================================================================
--- CBH FASTENERS - INDUSTRIAL B2B & B2C E-COMMERCE SQL DATABASE SCHEMA
--- PostgreSQL / MySQL Compatible Standard DDL
+-- CBH FASTENERS - INDUSTRIAL B2B & B2C E-COMMERCE MYSQL DATABASE SCHEMA
+-- MySQL 8.x / MariaDB Relational Database Schema (InnoDB)
 -- Fasteners, Dual Pricing (PCS & KGS), Bulk RFQ Engine, Customer & Admin Panels
 -- ============================================================================
 
 -- 1. User & Enterprise Customer Profile Table
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE users (
 
 -- 2. Fastener Categories
 CREATE TABLE categories (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     slug VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     standard_prefix VARCHAR(50), -- DIN, ISO, ASTM, BIS
@@ -34,7 +34,7 @@ CREATE TABLE categories (
 
 -- 3. Fastener Product Inventory with Dual Pricing & Technical Metallurgy
 CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     sku VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
@@ -77,7 +77,7 @@ CREATE TABLE products (
 
 -- 4. Wholesale Volume Tier Rebate Settings
 CREATE TABLE tier_settings (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     tier_name VARCHAR(50) NOT NULL,
     min_order_value DECIMAL(12, 2) NOT NULL,
     discount_pct DECIMAL(5, 2) NOT NULL,
@@ -86,7 +86,7 @@ CREATE TABLE tier_settings (
 
 -- 5. Bulk RFQs (Request For Quotation) Engine
 CREATE TABLE bulk_rfqs (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. RFQ-CBH-2025-9831
     customer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     contact_name VARCHAR(150) NOT NULL,
@@ -117,7 +117,7 @@ CREATE TABLE bulk_rfqs (
 
 -- 6. RFQ Line Items
 CREATE TABLE rfq_items (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_id INTEGER NOT NULL REFERENCES bulk_rfqs(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id),
     sku VARCHAR(100) NOT NULL,
@@ -132,7 +132,7 @@ CREATE TABLE rfq_items (
 
 -- 7. Purchase Orders & Logistics Tracking
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     order_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. CBH-ORD-2025-8842
     customer_id INTEGER REFERENCES users(id),
     rfq_id INTEGER REFERENCES bulk_rfqs(id),
@@ -162,7 +162,7 @@ CREATE TABLE orders (
 
 -- 8. Order Line Items
 CREATE TABLE order_items (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id),
     sku VARCHAR(100) NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE order_items (
 
 -- 9. Certified Surplus Fastener Lots (EPC Liquidation Marketplace)
 CREATE TABLE surplus_lots (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     lot_number VARCHAR(50) UNIQUE NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
