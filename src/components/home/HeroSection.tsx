@@ -12,11 +12,11 @@ export default function HeroSection() {
         {/* Status Line */}
         <div className="hero-status-line">
           <div className="hero-status-tags">
-            <span style={{ color: '#D2051E', fontWeight: 800 }}>CBH-OPS // DISPATCH-READY</span>
+            <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>CBH-OPS // DISPATCH-READY</span>
             <span className="hide-mobile" style={{ color: '#8290A2' }}>/</span>
             <span className="hide-mobile">DIN EN ISO COMPLIANT</span>
             <span style={{ color: '#8290A2' }}>/</span>
-            <span style={{ color: '#121518', fontWeight: 700 }}>PAN-INDIA DISPATCH</span>
+            <span style={{ color: '#0B132B', fontWeight: 700 }}>PAN-INDIA DISPATCH</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -36,12 +36,12 @@ export default function HeroSection() {
           {/* Left Hero Details */}
           <div className="hero-content">
             <div className="hero-pill">
-              <span className="hero-pulse-dot" />
+              <span className="hero-pulse-dot" style={{ background: 'var(--color-accent)' }} />
               <span>Direct Factory Depot • 2,00,000+ Industrial Fastener SKUs</span>
             </div>
 
             <h1 className="hero-title">
-              India's Premier Digital Fastener <span>Procurement</span> Platform
+              India's Premier Digital Fastener <span>Procurement</span> <span style={{ color: 'var(--color-accent)' }}>Platform</span>
             </h1>
 
             <p className="hero-desc">
@@ -51,7 +51,7 @@ export default function HeroSection() {
             {/* Industrial Metrics Grid */}
             <div className="hero-stats-grid">
               <div className="stat-box highlight">
-                <span className="stat-number" style={{ color: '#D2051E' }}>2,00,000+</span>
+                <span className="stat-number" style={{ color: 'var(--color-primary)' }}>2,00,000+</span>
                 <span className="stat-label">SKUs In Stock</span>
               </div>
               <div className="stat-box">
@@ -63,7 +63,7 @@ export default function HeroSection() {
                 <span className="stat-label">Tested & Calibrated</span>
               </div>
               <div className="stat-box">
-                <span className="stat-number" style={{ color: '#D97706' }}>UP TO 25%</span>
+                <span className="stat-number" style={{ color: 'var(--color-accent)' }}>UP TO 25%</span>
                 <span className="stat-label">Bulk Slab Tier</span>
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function HeroSection() {
             <div className="blueprint-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="badge badge-din">DIN 933</span>
-                <span style={{ color: '#FF334B', fontWeight: 800, fontSize: '13px' }}>
+                <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '13px' }}>
                   GRADE 8.8 / 10.9
                 </span>
               </div>
@@ -123,7 +123,7 @@ export default function HeroSection() {
               </div>
               <div>
                 <span>DUAL BILLING</span>
-                <strong style={{ color: '#FF334B' }}>PCS / KGS Live</strong>
+                <strong style={{ color: 'var(--color-accent)' }}>PCS / KGS Live</strong>
               </div>
             </div>
           </div>

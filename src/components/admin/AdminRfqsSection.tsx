@@ -358,7 +358,7 @@ export default function AdminRfqsSection({
                         -{q.discountPct}% OEM Slab
                       </span>
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E', fontSize: '14px' }}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)', fontSize: '14px' }}>
                       {formatINR(q.netTotal)}
                     </td>
                     <td>

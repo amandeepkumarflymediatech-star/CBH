@@ -35,10 +35,11 @@ export default function NavSubBar() {
 
   const navCategories = [
     { label: 'All Catalog', href: '/' },
+    { label: 'Fixings & Anchors', href: '/products', badge: 'NEW' },
+    { label: 'Steel Fixings', href: '/products/steel-fixings' },
     { label: 'Hex Screws DIN 933', href: '/#catalog' },
     { label: 'Heavy Hex Bolts', href: '/#catalog' },
     { label: 'Nuts & Washers', href: '/#catalog' },
-    { label: 'Anchor Fasteners', href: '/#catalog' },
     { label: 'Threaded Studs B7', href: '/#catalog' },
     { label: 'High Tensile 10.9', href: '/#catalog' },
     { label: 'Surplus Clearance', href: '/surplus', badge: '-60%', isSurplus: true },

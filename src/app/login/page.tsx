@@ -127,7 +127,7 @@ export default function LoginPage() {
                 fontWeight: 700,
                 borderRadius: '3px',
                 transition: 'all 0.2s',
-                background: role === 'admin' ? '#D2051E' : 'transparent',
+                background: role === 'admin' ? 'var(--color-primary)' : 'transparent',
                 color: role === 'admin' ? '#FFFFFF' : 'var(--color-text-muted)',
               }}
               onClick={() => handleQuickFill('admin')}
@@ -162,7 +162,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleQuickFill('admin')}
-                style={{ color: '#D2051E', fontWeight: 700, textDecoration: 'underline' }}
+                style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' }}
               >
                 HQ Admin
               </button>
@@ -229,7 +229,7 @@ export default function LoginPage() {
                 </label>
                 <Link
                   href="/forgot-password"
-                  style={{ fontSize: '11px', color: '#D2051E', fontWeight: 700 }}
+                  style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 700 }}
                 >
                   Forgot Password?
                 </Link>
@@ -283,7 +283,7 @@ export default function LoginPage() {
             color: 'var(--color-text-muted)'
           }}>
             Don't have an enterprise account?{' '}
-            <Link href="/register" style={{ color: '#D2051E', fontWeight: 700 }}>
+            <Link href="/register" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
               Register OEM / Contractor Account
             </Link>
           </div>

@@ -125,10 +125,10 @@ export default function SurplusSection() {
           <div className="surplus-left-content surplus-anim-fade">
             <div className="surplus-badge light">
               <span className="pulse-icon">
-                <Flame size={15} color="#D2051E" />
+                <Flame size={15} color="#FF6B00" />
               </span>
               <span>Factory-Direct Liquidation Depot</span>
-              <span className="badge-pill">SAVE UP TO 60%</span>
+              <span className="badge-pill" style={{ background: '#FF6B00', color: '#FFFFFF' }}>SAVE UP TO 60%</span>
             </div>
 
             <h2 className="surplus-title light">
@@ -152,7 +152,7 @@ export default function SurplusSection() {
               </div>
 
               <div className="surplus-feature-card light">
-                <div className="feature-icon-box" style={{ background: 'rgba(210, 5, 30, 0.12)', color: '#D2051E' }}>
+                <div className="feature-icon-box" style={{ background: 'rgba(0, 82, 204, 0.1)', color: 'var(--color-primary)' }}>
                   <Truck size={20} />
                 </div>
                 <div>
@@ -206,7 +206,7 @@ export default function SurplusSection() {
             <div className="spotlight-card light" ref={spotlightRef}>
               <div className="spotlight-top-strip">
                 <div className="spotlight-badge">
-                  <Flame size={13} color="#D2051E" />
+                  <Flame size={13} color="var(--color-accent)" />
                   <span>{currentLot.badge}</span>
                 </div>
                 <div className="spotlight-discount-pill">
@@ -223,7 +223,7 @@ export default function SurplusSection() {
                   <span>{currentLot.specs}</span>
                 </div>
                 <div className="spec-line">
-                  <MapPin size={13} color="#D2051E" />
+                  <MapPin size={13} color="var(--color-accent)" />
                   <span>Ready at: <strong>{currentLot.location}</strong></span>
                 </div>
               </div>
@@ -281,7 +281,7 @@ export default function SurplusSection() {
             <div className="cbh-dialog-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
               <div className="cbh-dialog-header">
                 <div>
-                  <span className="cbh-cert-category" style={{ color: '#D2051E' }}>LOT RESERVATION</span>
+                  <span className="cbh-cert-category" style={{ color: 'var(--color-accent)' }}>LOT RESERVATION</span>
                   <h3 style={{ margin: '2px 0 0', fontSize: '18px', fontWeight: 800 }}>
                     {claimedModal.title}
                   </h3>

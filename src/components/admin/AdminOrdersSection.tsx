@@ -384,7 +384,7 @@ export default function AdminOrdersSection({
                         Dispatched: {o.dispatchDate}
                       </div>
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E' }}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {formatINR(o.netAmount)}
                     </td>
                     <td>

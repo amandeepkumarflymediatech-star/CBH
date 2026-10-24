@@ -170,7 +170,7 @@ export default function ProductDetailPage() {
                     fontFamily: 'var(--font-mono)',
                     color: '#242B35'
                   }}>
-                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#D2051E', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '8px' }}>
                       ENGINEERING 2D BLUEPRINT // {product.standard}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '12px', textAlign: 'left', marginTop: '14px' }}>
@@ -191,7 +191,7 @@ export default function ProductDetailPage() {
 
               {activeMediaTab === 'cert' && (
                 <div style={{ textAlign: 'center', padding: '24px', background: '#FFFFFF', borderRadius: '4px', border: '1px solid #D8DFE7' }}>
-                  <Award size={48} color="#D2051E" style={{ margin: '0 auto 12px' }} />
+                  <Award size={48} color="var(--color-primary)" style={{ margin: '0 auto 12px' }} />
                   <h4 style={{ fontFamily: 'var(--font-headline)', fontSize: '18px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>
                     NABL 3.1 Mill Test Certificate
                   </h4>
@@ -232,7 +232,7 @@ export default function ProductDetailPage() {
                 title="View CAD Blueprint"
                 style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}
               >
-                <Layers size={20} color="#D2051E" />
+                <Layers size={20} color="var(--color-primary)" />
                 <span>CAD 2D</span>
               </button>
 
@@ -268,7 +268,7 @@ export default function ProductDetailPage() {
           {/* RIGHT: Product Intelligence, Parametric Selectors, and Pricing */}
           <div className="pdp-info-col">
             <div className="pdp-title-block">
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#D2051E', fontWeight: 800, textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-accent)', fontWeight: 800, textTransform: 'uppercase' }}>
                 DIRECT FACTORY OEM FASTENERS • RAW METRIC HARDWARE
               </span>
               <h1>
@@ -561,7 +561,7 @@ export default function ProductDetailPage() {
 
               <div className="telemetry-row" style={{ paddingTop: '12px', borderTop: '1px solid var(--color-surface-subtle)' }}>
                 <div className="telemetry-icon">
-                  <ShieldCheck size={18} color="#D2051E" />
+                  <ShieldCheck size={18} color="var(--color-primary)" />
                 </div>
                 <div>
                   <strong style={{ fontSize: '13px', color: 'var(--color-dark-900)' }}>
@@ -711,7 +711,7 @@ export default function ProductDetailPage() {
             {activeSpecsTab === 'downloads' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
                 <div style={{ border: '1px solid var(--color-surface-border)', padding: '16px', borderRadius: '4px', background: 'var(--color-surface-bg)' }}>
-                  <FileText size={24} color="#D2051E" style={{ marginBottom: '8px' }} />
+                  <FileText size={24} color="var(--color-primary)" style={{ marginBottom: '8px' }} />
                   <strong style={{ display: 'block', fontSize: '13px' }}>DIN 933 Technical Datasheet</strong>
                   <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', margin: '4px 0 10px' }}>
                     PDF • 1.4 MB • Complete dimensional table
@@ -722,7 +722,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div style={{ border: '1px solid var(--color-surface-border)', padding: '16px', borderRadius: '4px', background: 'var(--color-surface-bg)' }}>
-                  <Layers size={24} color="#D2051E" style={{ marginBottom: '8px' }} />
+                  <Layers size={24} color="var(--color-primary)" style={{ marginBottom: '8px' }} />
                   <strong style={{ display: 'block', fontSize: '13px' }}>3D CAD Model (STEP / IGES)</strong>
                   <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', margin: '4px 0 10px' }}>
                     STEP • 3.2 MB • SolidWorks & AutoCAD ready

@@ -22,17 +22,17 @@ import {
 import { GlobalUnit } from '@/lib/types';
 
 interface MainHeaderProps {
-  unit: GlobalUnit;
-  onUnitToggle: (unit: GlobalUnit) => void;
-  cartCount: number;
-  onOpenCart: () => void;
+  unit?: GlobalUnit;
+  onUnitToggle?: (unit: GlobalUnit) => void;
+  cartCount?: number;
+  onOpenCart?: () => void;
 }
 
 export default function MainHeader({
-  unit,
-  onUnitToggle,
-  cartCount,
-  onOpenCart,
+  unit = 'PCS',
+  onUnitToggle = () => {},
+  cartCount = 0,
+  onOpenCart = () => {},
 }: MainHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -129,7 +129,7 @@ export default function MainHeader({
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: '#D2051E',
+                background: 'var(--color-primary)',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
@@ -255,9 +255,9 @@ export default function MainHeader({
                   className="drawer-nav-item surplus-highlight"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <Flame size={18} color="#D2051E" />
+                  <Flame size={18} color="#FF6B00" />
                   <span>Clearance &amp; Surplus Stock</span>
-                  <span className="drawer-badge-red">-60%</span>
+                  <span className="drawer-badge-red" style={{ background: '#FF6B00' }}>-60%</span>
                 </Link>
 
                 <div className="nav-group-title">COMPANY &amp; STANDARDS</div>

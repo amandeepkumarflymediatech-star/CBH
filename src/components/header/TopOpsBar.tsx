@@ -10,7 +10,7 @@ export default function TopOpsBar() {
       <div className="container top-ops-inner">
         <div className="ops-tags">
           <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <Phone size={13} color="#D2051E" />
+            <Phone size={13} color="var(--color-accent)" />
             <span>Toll-Free: <strong>+91 98880 21000</strong></span>
           </span>
           <span className="hide-mobile" style={{ color: '#2C3440' }}>|</span>

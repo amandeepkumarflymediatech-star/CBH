@@ -59,7 +59,7 @@ export default function CustomerPortalPage() {
                 width: '48px',
                 height: '48px',
                 borderRadius: '50%',
-                background: '#D2051E',
+                background: 'var(--color-primary)',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
@@ -211,7 +211,7 @@ export default function CustomerPortalPage() {
                         <span className={`badge ${order.status === 'DELIVERED' ? 'badge-certified' : 'badge-vip'}`}>
                           {order.status}
                         </span>
-                        <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color: '#D2051E' }}>
+                        <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', color: 'var(--color-primary)' }}>
                           {formatINR(order.netAmount)}
                         </strong>
                       </div>
@@ -258,7 +258,7 @@ export default function CustomerPortalPage() {
                         <span style={{ color: 'var(--color-text-subtle)', display: 'block' }}>MTC CERTIFICATE:</span>
                         <button
                           type="button"
-                          style={{ color: '#D2051E', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          style={{ color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           onClick={() => alert(`Downloading NABL Accredited Mill Test Certificate #${order.mtcCertNumber} with EN 10204 3.1 inspection lot specs.`)}
                         >
                           <FileDown size={14} /> Download 3.1 PDF
@@ -297,7 +297,7 @@ export default function CustomerPortalPage() {
                         <td>{q.date}</td>
                         <td>{q.itemsCount} SKUs</td>
                         <td style={{ color: '#059669', fontWeight: 700 }}>-{q.discountPct}% OEM Slab</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E' }}>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
                           {formatINR(q.netTotal)}
                         </td>
                         <td>

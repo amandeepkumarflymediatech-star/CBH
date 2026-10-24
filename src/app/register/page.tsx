@@ -100,7 +100,7 @@ export default function RegisterPage() {
                 style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
               />
             </Link>
-            <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#D2051E', fontWeight: 800, textTransform: 'uppercase' }}>
+            <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-accent)', fontWeight: 800, textTransform: 'uppercase' }}>
               CUSTOMER & ENTERPRISE BUYER ONBOARDING
             </span>
             <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '28px', fontWeight: 800, color: 'var(--color-dark-900)', marginTop: '4px' }}>
@@ -287,7 +287,7 @@ export default function RegisterPage() {
                 style={{ marginTop: '2px' }}
               />
               <label htmlFor="terms" style={{ color: 'var(--color-dark-800)' }}>
-                I agree to the <Link href="#" style={{ color: '#D2051E', textDecoration: 'underline' }}>Terms & Conditions</Link>, BIS 1364 metallurgical quality protocols, and NABL batch traceability terms.
+                I agree to the <Link href="#" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Terms & Conditions</Link>, BIS 1364 metallurgical quality protocols, and NABL batch traceability terms.
               </label>
             </div>
 
@@ -312,7 +312,7 @@ export default function RegisterPage() {
             color: 'var(--color-text-muted)'
           }}>
             Already have an active account?{' '}
-            <Link href="/login" style={{ color: '#D2051E', fontWeight: 700 }}>
+            <Link href="/login" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
               Sign In to Console
             </Link>
           </div>

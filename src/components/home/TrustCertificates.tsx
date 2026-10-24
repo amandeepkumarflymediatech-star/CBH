@@ -25,7 +25,7 @@ export default function TrustCertificates() {
 
         <div className="trust-badge-card">
           <div className="trust-badge-icon">
-            <Award size={24} color="#D2051E" />
+            <Award size={24} color="var(--color-primary)" />
           </div>
           <h4>ISO 9001:2015</h4>
           <p>Quality Management System Audited Depot</p>

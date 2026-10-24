@@ -8,6 +8,7 @@ import AdminRfqsSection from '@/components/admin/AdminRfqsSection';
 import AdminOrdersSection from '@/components/admin/AdminOrdersSection';
 import AdminUsersSection from '@/components/admin/AdminUsersSection';
 import AdminSurplusSection from '@/components/admin/AdminSurplusSection';
+import AdminCatalogSection from '@/components/admin/AdminCatalogSection';
 import {
   INITIAL_PRODUCTS,
   INITIAL_QUOTES,
@@ -40,7 +41,7 @@ import {
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [activeTab, setActiveTab] = useState<'inventory' | 'rfqs' | 'orders' | 'users' | 'surplus'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus'>('inventory');
 
   // Main collections state
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -418,7 +419,7 @@ export default function AdminConsolePage() {
         <div className="admin-kpi-grid">
           <div className="kpi-card">
             <span className="kpi-label">GROSS ORDERS TURNOVER</span>
-            <div className="kpi-value" style={{ color: '#D2051E' }}>
+            <div className="kpi-value" style={{ color: 'var(--color-primary)' }}>
               {formatINR(totalTurnover)}
             </div>
             <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
@@ -467,6 +468,16 @@ export default function AdminConsolePage() {
             <Boxes size={15} />
             <span>Fastener Catalog</span>
             <span className="admin-tab-badge">{products.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'catalog' ? 'active' : ''}`}
+            onClick={() => setActiveTab('catalog')}
+          >
+            <Layers size={15} />
+            <span>Fischer Catalog (4-Level)</span>
+            <span className="admin-tab-badge">PRO</span>
           </button>
 
           <button
@@ -520,6 +531,11 @@ export default function AdminConsolePage() {
             onToggleSurplus={handleToggleSurplus}
             showToast={showToast}
           />
+        )}
+
+        {/* Section 1.5: Fischer Dynamic 4-Level Catalog */}
+        {activeTab === 'catalog' && (
+          <AdminCatalogSection />
         )}
 
         {/* Section 2: Bulk RFQs Approvals */}

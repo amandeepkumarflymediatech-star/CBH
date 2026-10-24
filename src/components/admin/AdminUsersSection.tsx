@@ -377,7 +377,7 @@ export default function AdminUsersSection({
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#059669' }}>
                       -{u.tierDiscountPct}% Slab
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E' }}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {formatINR(u.creditLimit)}
                     </td>
                     <td>

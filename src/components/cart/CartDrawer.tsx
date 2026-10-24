@@ -164,7 +164,7 @@ export default function CartDrawer({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: 'var(--color-dark-900)', paddingTop: '6px', borderTop: '1px solid var(--color-surface-border)' }}>
                 <span>Estimated Net:</span>
-                <span style={{ color: '#D2051E' }}>{formatINR(summary.netTotal)}</span>
+                <span style={{ color: 'var(--color-primary)' }}>{formatINR(summary.netTotal)}</span>
               </div>
             </div>
 

@@ -61,7 +61,7 @@ export default function SurplusPage() {
 
       <div style={{ background: '#121518', color: '#FFFFFF', padding: '40px 0 30px', borderBottom: '2px solid var(--color-primary)' }}>
         <div className="container">
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#FF334B', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
             <Flame size={15} />
             <span>CERTIFIED DIRECT FACTORY CLEARANCE DEPOT</span>
           </div>
@@ -124,7 +124,7 @@ export default function SurplusPage() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--color-text-muted)' }}>Clearance Price:</span>
-                    <strong style={{ color: '#D2051E', fontSize: '15px' }}>{formatINR(lot.clearanceRate)} / Kg</strong>
+                    <strong style={{ color: 'var(--color-accent)', fontSize: '15px' }}>{formatINR(lot.clearanceRate)} / Kg</strong>
                   </div>
                 </div>
               </div>

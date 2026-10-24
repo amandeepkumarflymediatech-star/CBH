@@ -427,7 +427,7 @@ export default function AdminProductsSection({
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
                       {formatINR(p.pricePerPiece)}
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E' }}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {formatINR(p.pricePerKg)}
                     </td>
                     <td>

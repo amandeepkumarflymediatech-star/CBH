@@ -352,7 +352,7 @@ export default function AdminSurplusSection({
                     <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
                       {formatINR(l.regularPriceKg)}
                     </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#D2051E', fontSize: '14px' }}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-accent)', fontSize: '14px' }}>
                       {formatINR(l.clearancePriceKg)}
                     </td>
                     <td>

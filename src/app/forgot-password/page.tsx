@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                 height: '36px',
                 borderRadius: '50%',
                 background: 'var(--color-surface-subtle)',
-                color: '#D2051E',
+                color: 'var(--color-primary)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -177,7 +177,7 @@ export default function ForgotPasswordPage() {
 
                 <Link
                   href="/resend-verification"
-                  style={{ color: '#D2051E', fontWeight: 700 }}
+                  style={{ color: 'var(--color-primary)', fontWeight: 700 }}
                 >
                   Resend Verification Code
                 </Link>

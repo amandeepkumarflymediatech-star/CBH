@@ -150,3 +150,137 @@ export interface SurplusLot {
   isActive: boolean;
 }
 
+
+export type ApprovalType = 
+  | 'ETA Option 1 (Cracked Concrete)'
+  | 'ETA Option 7'
+  | 'ICC-ES ESR'
+  | 'Seismic C1 & C2'
+  | 'Fire Resistance R120'
+  | 'VdS Approved'
+  | 'CE Marking'
+  | 'FM Approved';
+
+export interface TechnicalDocument {
+  id: string;
+  title: string;
+  category: 'ETA_APPROVAL' | 'TECHNICAL_DATA_SHEET' | 'DECLARATION_OF_PERFORMANCE' | 'CAD_BIM_3D' | 'INSTALLATION_MANUAL' | 'MTC_CERTIFICATE';
+  docNumber?: string;
+  fileSize: string;
+  fileFormat: 'PDF' | 'DWG' | 'STEP' | 'BIM' | 'ZIP';
+  fileUrl: string;
+  language: string;
+}
+
+export interface InstallationStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+  toolRequired?: string;
+  imageUrl?: string;
+}
+
+export interface LoadSpecification {
+  anchorSize: string; // e.g. "M10"
+  effectiveEmbedmentDepthMm: number; // h_ef
+  minBaseThicknessMm: number; // h_min
+  crackedConcreteTensionKn: number; // N_Rd
+  crackedConcreteShearKn: number; // V_Rd
+  nonCrackedConcreteTensionKn: number;
+  nonCrackedConcreteShearKn: number;
+  installationTorqueNm: number; // T_inst
+  minEdgeDistanceMm: number; // c_min
+  minSpacingMm: number; // s_min
+}
+
+export interface TechnicalProductVariant {
+  id: string | number;
+  articleNumber: string; // e.g. "564580"
+  designation: string; // e.g. "FAZ II Plus 10/20 zp"
+  slug: string;
+  
+  // Dimensions matching Fischer specifications
+  drillDiameterD0: number; // [mm] d_0
+  minDrillHoleDepthH2: number; // [mm] h_2
+  maxFixtureThicknessTfix: string; // [mm] t_fix e.g. "20 / 40"
+  anchorLengthL: number; // [mm] l
+  thread: string; // e.g. "M10 x 63"
+  widthAcrossNutSW: number; // [mm] SW
+  installationTorqueTinst: number; // [Nm] T_inst
+  packagingPcs: number; // [pcs]
+  gtin: string; // EAN
+  
+  // Finish & Approvals
+  materialFinish: 'Zinc Plated (zp)' | 'Stainless Steel A4 (R)' | 'High Corrosion (HCR)' | 'Hot-Dip Galvanized (HDG)';
+  etaApproval: boolean;
+  iccApproval: boolean;
+  seismicApproval: 'C1' | 'C2' | 'C1 / C2' | '—';
+  fireProtection: boolean;
+  
+  // Pricing & Stock
+  pricePerPiece: number;
+  pricePerBox: number;
+  stockPcs: number;
+  hasCAD: boolean;
+  hasDrawing: boolean;
+  drawingUrl?: string;
+  imageUrl?: string;
+}
+
+export interface ProductFamily {
+  id: string;
+  slug: string; // e.g. "bolt-anchor-faz-ii-plus"
+  name: string; // e.g. "Bolt anchor FAZ II Plus"
+  categorySlug: string; // e.g. "steel-fixings"
+  categoryName: string; // e.g. "Steel fixings"
+  subCategorySlug: string; // e.g. "bolt-anchor"
+  subCategoryName: string; // e.g. "Bolt anchors"
+  
+  marketingClaim: string; // e.g. "For highest demands. Powerful and flexible."
+  description: string;
+  heroImage: string;
+  galleryImages: string[];
+  videoThumbnail?: string;
+  videoUrl?: string;
+  
+  topFeatures: string[];
+  advantages: string[];
+  applications: string[];
+  baseMaterials: string[];
+  approvals: ApprovalType[];
+  
+  // Engineering & Docs
+  installationSteps: InstallationStep[];
+  loadSpecs: LoadSpecification[];
+  documents: TechnicalDocument[];
+  
+  // Matrix Table
+  variants: TechnicalProductVariant[];
+}
+
+export interface ProductSubCategory {
+  id: string;
+  slug: string;
+  categorySlug: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  itemCount: number;
+  featuredFamilies: string[]; // slugs
+}
+
+export interface ProductCategory {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  imageUrl: string;
+  iconName: string;
+  badge?: string;
+  subcategories: ProductSubCategory[];
+  familiesCount: number;
+  totalSkus: number;
+}
+
+

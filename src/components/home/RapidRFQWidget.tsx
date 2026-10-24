@@ -354,7 +354,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
               {/* CSV Upload */}
               <div className="csv-upload-box">
                 <div className="csv-info">
-                  <FileSpreadsheet size={20} color="#D2051E" />
+                  <FileSpreadsheet size={20} color="var(--color-primary)" />
                   <span>Upload BOM (.CSV / .XLSX) for 100+ fastener batch quoting</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>

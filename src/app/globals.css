@@ -15,38 +15,45 @@
 
 
 :root {
-  /* Hilti & Fischer Industrial Reds */
-  --color-primary: #D2051E;
-  --color-primary-hover: #B80217;
-  --color-primary-dark: #8F0010;
-  --color-primary-light: #FF334B;
-  --color-primary-subtle: rgba(210, 5, 30, 0.08);
+  /* CBH Technical Precision Blues (Core Brand) */
+  --color-primary: #0052CC;
+  --color-primary-hover: #0747A6;
+  --color-primary-dark: #003882;
+  --color-primary-light: #2684FF;
+  --color-primary-subtle: rgba(0, 82, 204, 0.08);
 
-  /* Deep Technical Charcoals & Slate */
-  --color-dark-900: #121518;
-  --color-dark-800: #1A1F26;
-  --color-dark-700: #242B35;
-  --color-dark-600: #333C4A;
-  --color-dark-500: #4B5668;
+  /* Light Touch of Orange (Accents, Highlights, Flash & Badges) */
+  --color-accent: #FF6B00;
+  --color-accent-hover: #E55C00;
+  --color-accent-light: #FF8533;
+  --color-accent-subtle: rgba(255, 107, 0, 0.1);
+  --color-accent-border: rgba(255, 107, 0, 0.35);
 
-  /* Neutrals & Technical Backgrounds */
-  --color-surface-bg: #F4F6F9;
+  /* Deep Technical Navy & Slate Charcoals */
+  --color-dark-900: #0B132B;
+  --color-dark-800: #0F172A;
+  --color-dark-700: #1E293B;
+  --color-dark-600: #334155;
+  --color-dark-500: #475569;
+
+  /* Crisp White & Ice Surface Canvas */
+  --color-surface-bg: #F8FAFC;
   --color-surface-card: #FFFFFF;
-  --color-surface-subtle: #EDF1F5;
-  --color-surface-border: #D8DFE7;
-  --color-surface-border-strong: #BDC7D3;
+  --color-surface-subtle: #F1F5F9;
+  --color-surface-border: #E2E8F0;
+  --color-surface-border-strong: #CBD5E1;
 
   /* Typography Colors */
-  --color-text-main: #14181E;
-  --color-text-muted: #5A6678;
-  --color-text-subtle: #8290A2;
-  --color-text-light: #F4F6F9;
+  --color-text-main: #0F172A;
+  --color-text-muted: #475569;
+  --color-text-subtle: #64748B;
+  --color-text-light: #F8FAFC;
 
   /* Status Colors */
   --color-certified: #059669;
   --color-certified-bg: #ECFDF5;
-  --color-vip: #D97706;
-  --color-vip-bg: #FFFBEB;
+  --color-vip: #FF6B00;
+  --color-vip-bg: #FFF7ED;
   --color-info: #0284C7;
   --color-info-bg: #E0F2FE;
 
@@ -60,10 +67,12 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 12px 28px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
-  --shadow-red: 0 4px 14px rgba(210, 5, 30, 0.35);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --shadow-red: 0 4px 14px rgba(0, 82, 204, 0.25);
+  --shadow-primary: 0 4px 14px rgba(0, 82, 204, 0.3);
+  --shadow-orange: 0 4px 14px rgba(255, 107, 0, 0.35);
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
@@ -230,7 +239,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .badge-surplus {
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: #FFFFFF;
 }
 
@@ -585,7 +594,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .cart-counter {
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: #FFFFFF;
   font-size: 10px;
   font-weight: 700;
@@ -965,12 +974,12 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #D2051E 0%, #B9041A 100%);
+  background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
   color: #FFFFFF;
   padding: 14px 16px;
   border-radius: var(--radius-sm);
   text-decoration: none;
-  box-shadow: var(--shadow-red);
+  box-shadow: var(--shadow-primary);
   transition: transform 0.2s ease;
 }
 
@@ -1055,8 +1064,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .drawer-badge-red {
   margin-left: auto;
-  background: #FEE2E2;
-  color: #D2051E;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 800;
@@ -1465,7 +1474,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .finder-tab-btn.active .tab-indicator {
-  color: #D2051E;
+  color: var(--color-accent);
 }
 
 /* Quick Filter Chips */
@@ -1507,9 +1516,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .finder-chip.active {
-  background: #FEE2E2;
-  border-color: #D2051E;
-  color: #991B1B;
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -1979,7 +1988,7 @@ h1, h2, h3, h4, h5, h6 {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #D2051E 0%, #EA580C 50%, #0284C7 100%);
+  background: linear-gradient(90deg, #0052CC 0%, #FF6B00 50%, #2684FF 100%);
 }
 
 .surplus-grid {
@@ -2028,8 +2037,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .surplus-badge.light .badge-pill {
-  background: #FEE2E2;
-  color: #D2051E;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
   font-size: 10.5px;
   font-weight: 800;
   padding: 2px 8px;
@@ -2062,7 +2071,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .surplus-lead.light strong {
-  color: #D2051E;
+  color: var(--color-accent);
   font-weight: 700;
 }
 
@@ -2181,9 +2190,9 @@ h1, h2, h3, h4, h5, h6 {
 
 .lot-tab-btn.active {
   background: #FFFFFF;
-  border-color: #D2051E;
-  border-bottom: 2px solid #D2051E;
-  box-shadow: 0 -2px 10px rgba(210, 5, 30, 0.08);
+  border-color: var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+  box-shadow: 0 -2px 10px rgba(0, 82, 204, 0.12);
 }
 
 .lot-tab-btn .tab-idx {
@@ -2196,7 +2205,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .lot-tab-btn.active .tab-idx {
-  color: #D2051E;
+  color: var(--color-primary);
 }
 
 .lot-tab-btn .tab-name {
@@ -2217,7 +2226,7 @@ h1, h2, h3, h4, h5, h6 {
 .spotlight-card.light {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-top: 4px solid #D2051E;
+  border-top: 4px solid var(--color-primary);
   border-radius: 0 0 12px 12px;
   padding: 26px 28px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
@@ -2240,7 +2249,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.6px;
-  color: #D2051E;
+  color: var(--color-accent);
   text-transform: uppercase;
 }
 
@@ -2327,7 +2336,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #D2051E 0%, #EA580C 100%);
+  background: linear-gradient(90deg, #FF6B00 0%, #0052CC 100%);
   border-radius: 9999px;
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -2381,7 +2390,7 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-headline);
   font-size: 26px;
   font-weight: 900;
-  color: #D2051E;
+  color: var(--color-accent);
   line-height: 1;
 }
 
@@ -2608,13 +2617,13 @@ h1, h2, h3, h4, h5, h6 {
   width: 48px;
   height: 48px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #D2051E 0%, #A30417 100%);
+  background: linear-gradient(135deg, #0052CC 0%, #0747A6 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #FFFFFF;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(210, 5, 30, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 82, 204, 0.35);
   margin-top: 2px;
 }
 
@@ -2706,7 +2715,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .consult-btn:hover {
   background: #2D3643;
-  border-color: rgba(210, 5, 30, 0.5);
+  border-color: rgba(0, 82, 204, 0.5);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
@@ -2715,8 +2724,8 @@ h1, h2, h3, h4, h5, h6 {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: rgba(210, 5, 30, 0.15);
-  color: #D2051E;
+  background: rgba(0, 82, 204, 0.15);
+  color: #0052CC;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2725,7 +2734,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .consult-btn:hover .consult-btn-icon {
-  background: #D2051E;
+  background: #0052CC;
   color: #FFFFFF;
 }
 
@@ -4909,7 +4918,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .tier-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #D2051E, #FF334B);
+  background: linear-gradient(90deg, #0052CC, #FF6B00);
   border-radius: 10px;
   transition: width 0.4s ease;
 }
@@ -6401,10 +6410,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .step-node.active .step-circle {
-  background: #D2051E;
-  border-color: #D2051E;
+  background: #0052CC;
+  border-color: #0052CC;
   color: #FFFFFF;
-  box-shadow: 0 0 0 4px rgba(210, 5, 30, 0.2);
+  box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.2);
 }
 
 .step-label {

@@ -65,7 +65,7 @@ export default function Testimonials() {
           <div>
             <div className="review-header">
               <div className="reviewer-profile">
-                <div className="reviewer-avatar" style={{ background: '#D2051E' }}>A</div>
+                <div className="reviewer-avatar" style={{ background: 'var(--color-primary)' }}>A</div>
                 <div className="reviewer-info">
                   <h5>Ananya P.</h5>
                   <span>Procurement Manager • Infrastructure OEM</span>

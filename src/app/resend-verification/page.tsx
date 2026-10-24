@@ -81,7 +81,7 @@ function ResendVerificationForm() {
             height: '36px',
             borderRadius: '50%',
             background: 'var(--color-surface-subtle)',
-            color: '#D2051E',
+            color: 'var(--color-primary)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -160,7 +160,7 @@ function ResendVerificationForm() {
 
           <Link
             href="/register"
-            style={{ color: '#D2051E', fontWeight: 700 }}
+            style={{ color: 'var(--color-primary)', fontWeight: 700 }}
           >
             Create Account
           </Link>

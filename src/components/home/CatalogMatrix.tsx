@@ -57,7 +57,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
               fontSize: '11px',
               color: 'var(--color-text-muted)'
             }}>
-              <span style={{ color: '#D2051E', fontWeight: 800 }}>PARAMETRIC CATALOG</span>
+              <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>PARAMETRIC CATALOG</span>
               <span>•</span>
               <span>PRECISION TOLERANCE METRIC</span>
             </div>
@@ -102,7 +102,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
               onClick={() => setActiveTab('surplus')}
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D2051E' }} />
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-accent)' }} />
               <span>Surplus Lots</span>
             </button>
           </div>
@@ -276,7 +276,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
           gap: '16px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <PackageCheck size={28} color="#D2051E" />
+            <PackageCheck size={28} color="var(--color-primary)" />
             <div>
               <strong style={{ fontSize: '15px', color: 'var(--color-dark-900)', display: 'block' }}>
                 Need customized thread pitch or non-standard metric lengths?

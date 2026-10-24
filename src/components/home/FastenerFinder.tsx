@@ -175,7 +175,7 @@ export default function FastenerFinder({
         {/* Finder Header with Dynamic Telemetry */}
         <div className="finder-header">
           <div className="finder-title">
-            <SlidersHorizontal size={20} color="#D2051E" />
+            <SlidersHorizontal size={20} color="var(--color-primary)" />
             <span>Precision Fastener Finder Matrix</span>
           </div>
 
@@ -502,7 +502,7 @@ export default function FastenerFinder({
             <span>BIS Certified Lab Tested</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Scale size={16} color="#D2051E" />
+            <Scale size={16} color="var(--color-primary)" />
             <span>Dual Unit: PCS & KGS Live</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
