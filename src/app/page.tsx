@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import NavSubBar from '@/components/header/NavSubBar';
 import HeroSection from '@/components/home/HeroSection';
-import FastenerFinder from '@/components/home/FastenerFinder';
+import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinder';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
 import SurplusSection from '@/components/home/SurplusSection';
@@ -36,17 +36,66 @@ export default function HomePage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Filter Handler
-  const handleFilterChange = (filters: any) => {
+  const handleFilterChange = (filters: FastenerFilters) => {
     let filtered = [...INITIAL_PRODUCTS];
-    if (filters.grade && filters.grade !== 'all') {
-      filtered = filtered.filter((p) => p.grade.toLowerCase().includes(filters.grade));
+
+    // Tab-level filtering
+    if (filters.tab && filters.tab !== 'all') {
+      if (filters.tab === 'surplus') {
+        filtered = filtered.filter((p) => p.isSurplus);
+      } else if (filters.tab === 'hex-screws') {
+        filtered = filtered.filter((p) => p.standard === 'DIN 933' || p.category === 'Hex Screws');
+      } else if (filters.tab === 'hex-bolts') {
+        filtered = filtered.filter((p) => p.standard === 'DIN 931' || p.name.toLowerCase().includes('bolt'));
+      } else if (filters.tab === 'socket-cap') {
+        filtered = filtered.filter((p) => p.standard === 'DIN 912' || p.name.toLowerCase().includes('socket'));
+      } else if (filters.tab === 'nuts') {
+        filtered = filtered.filter((p) => p.standard === 'DIN 934' || p.name.toLowerCase().includes('nut'));
+      } else if (filters.tab === 'anchors') {
+        filtered = filtered.filter((p) => p.category === 'Anchors' || p.standard.includes('ETA') || p.name.toLowerCase().includes('anchor'));
+      } else if (filters.tab === 'threaded-rods') {
+        filtered = filtered.filter((p) => p.standard.includes('A193') || p.name.toLowerCase().includes('rod'));
+      }
     }
+
+    // Category filter
+    if (filters.category && filters.category !== 'all') {
+      const catClean = filters.category.toLowerCase().replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((p) => (p.category || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(catClean));
+    }
+
+    // Standard filter
+    if (filters.standard && filters.standard !== 'all') {
+      const stdClean = filters.standard.toLowerCase().replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((p) => (p.standard || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(stdClean));
+    }
+
+    // Grade filter
+    if (filters.grade && filters.grade !== 'all') {
+      const gradeQuery = filters.grade.toLowerCase();
+      filtered = filtered.filter((p) => (p.grade || '').toLowerCase().includes(gradeQuery));
+    }
+
+    // Diameter filter
+    if (filters.diameter && filters.diameter !== 'all') {
+      filtered = filtered.filter((p) => (p.diameter || '').toLowerCase() === filters.diameter.toLowerCase());
+    }
+
+    // Length filter
     if (filters.length && filters.length !== 'all') {
       filtered = filtered.filter((p) => p.lengthMm === parseInt(filters.length));
     }
+
+    // Finish filter
     if (filters.finish && filters.finish !== 'all') {
-      filtered = filtered.filter((p) => p.finish.toLowerCase().includes(filters.finish));
+      filtered = filtered.filter((p) => (p.finish || '').toLowerCase().includes(filters.finish.toLowerCase()));
     }
+
+    // In Stock Only filter
+    if (filters.inStockOnly) {
+      filtered = filtered.filter((p) => p.isInStock && p.stockPcs > 0);
+    }
+
     setProducts(filtered);
   };
 
@@ -121,7 +170,11 @@ export default function HomePage() {
       <HeroSection />
 
       {/* Fastener Finder Matrix (Hilti / Fischer Style Precision Engine) */}
-      <FastenerFinder onFilterChange={handleFilterChange} />
+      <FastenerFinder
+        onFilterChange={handleFilterChange}
+        productsCount={products.length}
+        totalProductsCount={INITIAL_PRODUCTS.length}
+      />
 
       {/* SECTION 2: Bulk Order & Rapid RFQ Interactive Widget */}
       <RapidRFQWidget />

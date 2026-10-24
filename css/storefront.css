@@ -230,16 +230,18 @@
   background: #FFFFFF;
   border: 1px solid var(--color-surface-border);
   border-radius: var(--radius-md);
-  padding: 20px 24px;
+  padding: 22px 24px 18px;
   margin-top: 36px;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .finder-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .finder-title {
@@ -251,6 +253,190 @@
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-dark-900);
+}
+
+.finder-telemetry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-dark-800);
+  background: #F1F4F8;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid #E2E8F0;
+}
+
+.finder-telemetry-badge .pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #059669;
+  box-shadow: 0 0 8px #059669;
+  animation: pulseDot 2s infinite;
+}
+
+/* Dynamic Tabs Strip */
+.finder-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #EAEFF5;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.finder-tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+.finder-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.finder-tab-btn:hover {
+  background: #F1F5F9;
+  color: var(--color-dark-900);
+  border-color: #CBD5E1;
+}
+
+.finder-tab-btn.active {
+  background: #181E26;
+  color: #FFFFFF;
+  border-color: #181E26;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.finder-tab-btn.active .tab-indicator {
+  color: #D2051E;
+}
+
+/* Quick Filter Chips */
+.finder-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.finder-quick-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748B;
+  letter-spacing: 0.03em;
+}
+
+.finder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.finder-chip:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+}
+
+.finder-chip.active {
+  background: #FEE2E2;
+  border-color: #D2051E;
+  color: #991B1B;
+  font-weight: 600;
+}
+
+/* Active Filters Summary Bar */
+.finder-active-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #FFF1F2;
+  border-radius: 6px;
+  border: 1px solid #FECDD3;
+  margin-bottom: 14px;
+}
+
+.finder-active-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.finder-active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #FFFFFF;
+  border: 1px solid #F43F5E;
+  color: #9F1239;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.finder-active-tag button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #9F1239;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.finder-reset-btn {
+  background: transparent;
+  border: none;
+  color: #BE123C;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.finder-reset-btn:hover {
+  color: #9F1239;
 }
 
 .finder-grid {
