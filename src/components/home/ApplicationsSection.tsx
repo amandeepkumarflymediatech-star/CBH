@@ -361,10 +361,10 @@ export default function ApplicationsSection() {
                     setActiveItem(app);
                   }}
                 >
-                  <span className="industry-node-name">{app.name}</span>
                   <span className="industry-node-number" aria-hidden="true">
                     {app.num}
                   </span>
+                  <span className="industry-node-name">{app.name}</span>
                   {isActive && <span className="node-active-beacon" />}
                 </li>
               );

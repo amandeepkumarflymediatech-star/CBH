@@ -2674,12 +2674,29 @@
 }
 
 .industry-list--left li {
+  grid-template-columns: minmax(0, 1fr) 28px;
   text-align: right;
+}
+
+.industry-list--left li .industry-node-name {
+  order: 1;
+}
+
+.industry-list--left li .industry-node-number {
+  order: 2;
 }
 
 .industry-list--right li {
   grid-template-columns: 28px minmax(0, 1fr);
   text-align: left;
+}
+
+.industry-list--right li .industry-node-number {
+  order: 1;
+}
+
+.industry-list--right li .industry-node-name {
+  order: 2;
 }
 
 .industry-list li:hover {
@@ -3082,7 +3099,7 @@
   background: #FFFFFF;
   border-radius: 10px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  /* transition: transform 0.25s ease, box-shadow 0.25s ease; */
 }
 
 .director-card:hover {
@@ -3249,9 +3266,25 @@
     transform: none;
   }
 
-  .industry-list--left li {
-    grid-template-columns: 28px minmax(0, 1fr);
-    text-align: left;
+  .industry-list--left li,
+  .industry-list--right li {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    text-align: left !important;
+    gap: 12px;
+  }
+
+  .industry-list--left li .industry-node-number,
+  .industry-list--right li .industry-node-number {
+    order: 1 !important;
+    text-align: left !important;
+  }
+
+  .industry-list--left li .industry-node-name,
+  .industry-list--right li .industry-node-name {
+    order: 2 !important;
+    text-align: left !important;
+    white-space: normal;
+    word-break: normal;
   }
 
   .industry-list--left li.is-active .node-active-beacon {
@@ -3376,20 +3409,33 @@
   }
 
   .industry-list li {
-    min-height: 44px;
-    padding: 4px 8px;
-    gap: 10px;
-    grid-template-columns: 26px minmax(0, 1fr) !important;
+    min-height: 46px;
+    padding: 6px 10px;
+    gap: 12px;
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    text-align: left !important;
+    align-items: center;
+  }
+
+  .industry-list li .industry-node-number {
+    order: 1 !important;
+    font-size: 11px;
+    font-weight: 800;
+    color: #F18A45;
     text-align: left !important;
   }
 
-  .industry-node-name {
+  .industry-list li .industry-node-name {
+    order: 2 !important;
     font-size: 15px;
-    line-height: 1.25;
+    line-height: 1.3;
+    white-space: normal;
+    word-break: normal;
+    text-align: left !important;
   }
 
-  .industry-node-number {
-    font-size: 10px;
+  .industry-list li.is-active .node-active-beacon {
+    left: 4px;
   }
 
   .director-section {
@@ -3402,6 +3448,26 @@
 
   .director-heading h2 {
     font-size: 30px;
+  }
+}
+
+/* 4. Compact Mobile Devices (max-width: 480px) */
+@media (max-width: 480px) {
+  .industry-list li {
+    padding: 6px 4px;
+    gap: 8px;
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+  }
+
+  .industry-list li .industry-node-name {
+    font-size: 13.5px;
+    line-height: 1.25;
+    white-space: normal;
+    word-break: normal;
+  }
+
+  .industry-list li .industry-node-number {
+    font-size: 10px;
   }
 }
 
