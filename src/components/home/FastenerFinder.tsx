@@ -49,7 +49,7 @@ const FINDER_TABS: TabOption[] = [
   { id: 'nuts', label: 'Hex Nuts & Washers', sub: 'DIN 934 / 125', icon: '🗜️', defaultStandard: 'din934', defaultCategory: 'nuts' },
   { id: 'anchors', label: 'Anchors & Fixings', sub: 'Concrete ETA', icon: '⚓', defaultStandard: 'eta', defaultCategory: 'anchors' },
   { id: 'threaded-rods', label: 'High-Tensile Rods', sub: 'ASTM A193 B7', icon: '🧵', defaultStandard: 'astma193', defaultCategory: 'threaded-rods' },
-  { id: 'surplus', label: 'Clearance Lots', sub: 'Up to 60% Off', icon: '🏷️' },
+  // { id: 'surplus', label: 'Clearance Lots', sub: 'Up to 60% Off', icon: '🏷️' },
 ];
 
 export default function FastenerFinder({

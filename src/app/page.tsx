@@ -8,7 +8,8 @@ import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinde
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
 import SurplusSection from '@/components/home/SurplusSection';
-import TrustCertificates from '@/components/home/TrustCertificates';
+import QualityRecognitionSection from '@/components/home/QualityRecognitionSection';
+import GlobalConnectionsSection from '@/components/home/GlobalConnectionsSection';
 import Testimonials from '@/components/home/Testimonials';
 import ConsultationBar from '@/components/home/ConsultationBar';
 import CartDrawer from '@/components/cart/CartDrawer';
@@ -188,10 +189,15 @@ export default function HomePage() {
       {/* SECTION 4: Surplus Stock Marketplace Banner */}
       <SurplusSection />
 
-      {/* SECTION 5: Trust, Compliance & Client Testimonials Section */}
+      {/* SECTION: Quality & Recognition - Certified for quality */}
+      <QualityRecognitionSection />
+
+      {/* SECTION: Global Connections - Trusted across markets */}
+      <GlobalConnectionsSection />
+
+      {/* SECTION 5: Client Reviews & Technical Consultation */}
       <section className="trust-section">
         <div className="container">
-          <TrustCertificates />
           <Testimonials />
           <ConsultationBar />
         </div>
