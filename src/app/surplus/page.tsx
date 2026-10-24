@@ -63,13 +63,13 @@ export default function SurplusPage() {
         <div className="container">
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#FF334B', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
             <Flame size={15} />
-            <span>CERTIFIED INDUSTRIAL CLEARANCE EXCHANGE</span>
+            <span>CERTIFIED DIRECT FACTORY CLEARANCE DEPOT</span>
           </div>
           <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '42px', fontWeight: 800, textTransform: 'uppercase', margin: '8px 0 12px' }}>
-            Buy & Sell Certified Fastener Surplus Stock
+            Direct CBH Warehouse Clearance Lots
           </h1>
           <p style={{ fontSize: '15px', color: '#B0BCCB', maxWidth: '680px', lineHeight: 1.6 }}>
-            Direct access to over 450+ metric tonnes of verified EPC liquidation lots, cancellation inventories, and plant surplus fasteners at up to 60% below standard tariffs.
+            Direct access to verified factory liquidation inventory and plant surplus fasteners at up to 60% below standard tariffs. Owned, stocked, and tested directly by CBH Fasteners with 100% authentic NABL 3.1 Mill Test Certificates.
           </p>
         </div>
       </div>

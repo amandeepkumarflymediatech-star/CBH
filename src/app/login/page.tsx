@@ -117,7 +117,7 @@ export default function LoginPage() {
               }}
               onClick={() => handleQuickFill('customer')}
             >
-              Contractor / Client
+              Customer / Buyer
             </button>
             <button
               type="button"
@@ -132,7 +132,7 @@ export default function LoginPage() {
               }}
               onClick={() => handleQuickFill('admin')}
             >
-              Operations Admin
+              CBH Operations Admin
             </button>
           </div>
 

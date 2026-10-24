@@ -7,7 +7,7 @@
 
 ## 🛠️ Overview & Architecture
 
-CBH Fasteners is a B2B and B2C metal parts e-commerce and bulk procurement platform built with **Next.js (App Router)**, **TypeScript**, and a **PostgreSQL / MySQL relational SQL schema**. The UI aesthetic is modeled after global engineering leaders **Hilti** and **Fischer**, featuring an industrial high-contrast dark charcoal and red palette (`#D2051E`), technical DIN blueprint callouts, parametric spec filtering, and real-time dual pricing in **Pieces (PCS)** and **Weight (KGS)**.
+CBH Fasteners is a direct, single-source B2B and B2C metal parts e-commerce and bulk procurement platform built with **Next.js (App Router)**, **TypeScript**, and a **MySQL relational SQL schema**. The platform operates strictly on a **Direct Customer ➔ CBH Operations (Admin)** model (no third-party vendor selling or multi-vendor onboarding). The UI aesthetic is modeled after global engineering leaders **Hilti** and **Fischer**, featuring an industrial high-contrast dark charcoal and red palette (`#D2051E`), technical DIN blueprint callouts, parametric spec filtering, and real-time dual pricing in **Pieces (PCS)** and **Weight (KGS)**.
 
 ---
 
@@ -30,9 +30,9 @@ CBH Fasteners is a B2B and B2C metal parts e-commerce and bulk procurement platf
 - One-click **Direct WhatsApp RFQ (+91 98880 21000)** and Instant Quotation PDF generation.
 - CSV / Excel Bill-of-Materials (BOM) batch upload simulator.
 
-### 3. EPC Surplus Fastener Exchange (`/surplus`)
-- Certified marketplace for plant liquidation lots, contractor overstock, and surplus structural fasteners at up to **60% below market tariff**.
-- 3 Verification Pillars: Lab Verification, Instant Liquidation (48-hr turnaround), Escrow Secured.
+### 3. CBH Factory Clearance & Surplus Inventory (`/surplus`)
+- Direct factory liquidation lots and surplus structural fasteners at up to **60% below standard tariffs**.
+- 3 Quality Pillars: NABL Lab Verification, Direct Factory Dispatch (24-48 hr turnaround), Zero Middlemen.
 - Active clearance deals (e.g. ASTM A193 B7 continuous threaded rods).
 
 ### 4. Customer Enterprise Portal (`/customer`)

@@ -101,13 +101,13 @@ export default function RegisterPage() {
               />
             </Link>
             <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#D2051E', fontWeight: 800, textTransform: 'uppercase' }}>
-              B2B & B2C PROCUREMENT REGISTRATION
+              CUSTOMER & ENTERPRISE BUYER ONBOARDING
             </span>
             <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '28px', fontWeight: 800, color: 'var(--color-dark-900)', marginTop: '4px' }}>
-              Create Enterprise Account
+              Create Customer Account
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-              Unlock wholesale volume discount slabs (up to 25% OFF), NABL 3.1 Mill Test certificates, and 30-day PO credit line.
+              Direct procurement platform for OEMs, contractors, and industrial buyers. Unlock wholesale volume discount slabs (up to 25% OFF), NABL 3.1 Mill Test certificates, and fast PO order dispatch directly from CBH Fasteners.
             </p>
           </div>
 

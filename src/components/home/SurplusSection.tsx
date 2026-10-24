@@ -13,45 +13,41 @@ export default function SurplusSection() {
           <div>
             <div className="surplus-badge">
               <Flame size={14} color="#FF334B" />
-              <span>India's 1st Certified Surplus Fastener Exchange</span>
+              <span>Certified Factory-Direct Clearance Depot</span>
             </div>
 
             <h2 className="surplus-title">
-              Buy & sell surplus fastener stock
+              Direct Factory Clearance & Surplus Inventory
             </h2>
 
             <p style={{ fontSize: '15px', color: '#B2BECF', lineHeight: 1.6, maxWidth: '580px' }}>
-              Turn dead inventory into immediate working capital or purchase verified surplus lots at up to <strong>60% below market tariff</strong>. Every listing is physically inspected, thread-gauge verified, and backed by CBH buyback guarantee.
+              Direct factory-cleared and plant surplus fasteners at up to <strong>60% below standard tariffs</strong>. Owned, stocked, and tested directly by CBH Fasteners with authentic NABL 3.1 Mill Test Certificates and immediate dispatch.
             </p>
 
             {/* 3 Pillars */}
             <div className="surplus-features">
               <div className="surplus-feature-card">
-                <strong>01. LAB VERIFICATION</strong>
-                <p>100% Optical sorting & chemical composition checks.</p>
+                <strong>01. NABL LAB CERTIFIED</strong>
+                <p>100% Optical sorting & thread-gauge calibrated in CBH testing labs.</p>
               </div>
               <div className="surplus-feature-card">
-                <strong style={{ color: '#D97706' }}>02. INSTANT LIQUIDATION</strong>
-                <p>Guaranteed payment within 48 hours for plant overstock.</p>
+                <strong style={{ color: '#D97706' }}>02. DIRECT FACTORY DISPATCH</strong>
+                <p>Shipped directly from CBH central warehouses within 24-48 hours.</p>
               </div>
               <div className="surplus-feature-card">
-                <strong style={{ color: '#FF334B' }}>03. ESCROW SECURED</strong>
-                <p>Zero transaction risk with full NABL mill certificates.</p>
+                <strong style={{ color: '#FF334B' }}>03. ZERO MIDDLEMEN</strong>
+                <p>Direct customer pricing with zero broker fees and authentic batch traceability.</p>
               </div>
             </div>
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => alert('Redirecting to Surplus Lots Intake Form. Upload lot weights, grade, and photos.')}
-              >
-                <span>List Surplus Fastener Inventory</span>
-              </button>
-              <Link href="/surplus" className="btn-outline" style={{ color: '#FFFFFF', borderColor: '#404B5C' }}>
-                <span>Browse Surplus Deals</span>
-                <ArrowRight size={14} />
+              <Link href="/surplus" className="btn-primary">
+                <span>Browse Clearance Lots</span>
+                <ArrowRight size={16} />
+              </Link>
+              <Link href="/bulk-order" className="btn-outline" style={{ color: '#FFFFFF', borderColor: '#404B5C' }}>
+                <span>Direct RFQ for Tonnage</span>
               </Link>
             </div>
           </div>
