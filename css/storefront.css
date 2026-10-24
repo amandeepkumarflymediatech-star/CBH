@@ -3155,46 +3155,256 @@
   line-height: 1.65;
 }
 
-/* Responsive Overrides */
-@media (max-width: 900px) {
-  .industry-3d-stage {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    perspective: none;
+/* Mobile Filter Tabs (Applications Section) */
+.industry-mobile-tabs {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .industry-mobile-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 24px auto 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    max-width: 100%;
   }
-  .industry-list,
-  .industry-list--left,
-  .industry-list--right {
+
+  .mobile-tab-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(238, 245, 251, 0.75);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 9999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #FFFFFF;
+  }
+
+  .mobile-tab-btn.active {
+    background: #F18A45;
+    color: #FFFFFF;
+    border-color: #F18A45;
+    box-shadow: 0 0 14px rgba(241, 138, 69, 0.45);
+  }
+
+  .industry-list.mobile-hidden {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Multi-Device Responsive Overrides (Desktop / Tablet / Mobile App)
+   ========================================================================== */
+
+/* 1. Large Laptops & Small Desktops (992px to 1200px) */
+@media (max-width: 1200px) {
+  .industry-3d-stage {
+    grid-template-columns: minmax(0, 1fr) 260px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .industry-node-name {
+    font-size: 16px;
+  }
+}
+
+/* 2. Tablet View (769px to 991px) */
+@media (max-width: 991px) {
+  .industry-section {
+    padding: 68px 0 76px;
+  }
+
+  .industry-3d-stage {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "visual visual"
+      "left right";
+    gap: 32px 24px;
+    perspective: none;
+    margin-top: 36px;
+  }
+
+  .fastener-visual {
+    grid-area: visual;
+    min-height: 480px;
+    margin: 0 auto;
+  }
+
+  .industry-list--left {
+    grid-area: left;
     transform: none;
   }
+
+  .industry-list--right {
+    grid-area: right;
+    transform: none;
+  }
+
   .industry-list--left li {
     grid-template-columns: 28px minmax(0, 1fr);
     text-align: left;
   }
+
+  .industry-list--left li.is-active .node-active-beacon {
+    left: 4px;
+  }
+
   .director-grid {
     grid-template-columns: 1fr;
   }
+
   .director-heading {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
   }
 }
 
-@media (max-width: 600px) {
+/* 3. Mobile Web & App View (up to 768px) */
+@media (max-width: 768px) {
   .industry-section {
-    padding: 56px 0;
+    padding: 48px 0 56px;
   }
-  .director-section {
-    padding: 56px 0;
+
+  .industry-section .section-wrap {
+    padding: 0 16px;
   }
+
+  .industry-3d-heading {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .industry-3d-heading h2 {
+    font-size: clamp(26px, 7.5vw, 36px);
+    line-height: 1.15;
+    letter-spacing: -0.3px;
+  }
+
+  .industry-total {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    border-left: none;
+    border-top: 1px solid rgba(238, 245, 251, 0.2);
+    padding: 12px 0 0;
+    min-width: auto;
+  }
+
+  .industry-total strong {
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .industry-total span {
+    margin-top: 0;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .industry-3d-stage {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "visual"
+      "left"
+      "right";
+    gap: 18px;
+    perspective: none;
+    margin-top: 20px;
+  }
+
   .fastener-visual {
-    min-height: 320px;
+    grid-area: visual;
+    min-height: 420px;
+    width: 100%;
+    margin-bottom: 12px;
   }
+
   .fastener-assembly {
-    transform: scale(0.75);
+    transform: scale(0.72);
+  }
+
+  .fastener-orbit--outer {
+    width: min(290px, 92vw);
+    height: 110px;
+  }
+
+  .fastener-orbit--inner {
+    width: min(230px, 78vw);
+    height: 90px;
+  }
+
+  .industry-hud-card {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    width: 100%;
+    max-width: 350px;
+    margin: 18px auto 0;
+    padding: 12px 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+  }
+
+  .industry-hud-card .hud-title {
+    font-size: 15px;
+  }
+
+  .industry-hud-card .hud-standard {
+    font-size: 10.5px;
+  }
+
+  .industry-hud-card .hud-specs {
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+
+  .industry-list,
+  .industry-list--left,
+  .industry-list--right {
+    transform: none;
+    width: 100%;
+  }
+
+  .industry-list li {
+    min-height: 44px;
+    padding: 4px 8px;
+    gap: 10px;
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+    text-align: left !important;
+  }
+
+  .industry-node-name {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .industry-node-number {
+    font-size: 10px;
+  }
+
+  .director-section {
+    padding: 48px 0;
+  }
+
+  .director-section .section-wrap {
+    padding: 0 16px;
+  }
+
+  .director-heading h2 {
+    font-size: 30px;
   }
 }
+
 
 
 

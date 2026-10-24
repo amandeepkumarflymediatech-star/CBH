@@ -180,6 +180,7 @@ export default function ApplicationsSection() {
   const allApplications = [...leftApplications, ...rightApplications];
   const [activeItem, setActiveItem] = useState<ApplicationItem>(allApplications[0]);
   const [isManualHover, setIsManualHover] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'all' | 'left' | 'right'>('all');
 
   // Auto-cycle through items when not hovered
   useEffect(() => {
@@ -306,17 +307,42 @@ export default function ApplicationsSection() {
             <span className="cbh-eyebrow-dot" style={{ background: '#F18A45' }}></span>
             APPLICATIONS
           </p>
-          <h2 id="industry-title">Fastening the industries that move us.</h2>
+          <h1 id="industry-title">Fastening the industries that drive world.</h1>
           <div className="industry-total" aria-label="19 application areas">
             <strong ref={counterRef}>19</strong>
             <span>APPLICATION AREAS</span>
           </div>
         </header>
 
+        {/* Mobile Filter Tabs (Visible on screens < 768px) */}
+        <div className="industry-mobile-tabs" role="tablist" aria-label="Application sectors filter">
+          <button
+            type="button"
+            className={`mobile-tab-btn ${mobileTab === 'all' ? 'active' : ''}`}
+            onClick={() => setMobileTab('all')}
+          >
+            All Sectors (19)
+          </button>
+          <button
+            type="button"
+            className={`mobile-tab-btn ${mobileTab === 'left' ? 'active' : ''}`}
+            onClick={() => setMobileTab('left')}
+          >
+            01-10 Core
+          </button>
+          <button
+            type="button"
+            className={`mobile-tab-btn ${mobileTab === 'right' ? 'active' : ''}`}
+            onClick={() => setMobileTab('right')}
+          >
+            11-19 Advanced
+          </button>
+        </div>
+
         <div className="industry-3d-stage">
           {/* Left Column (01 - 10) */}
           <ol
-            className="industry-list industry-list--left"
+            className={`industry-list industry-list--left ${mobileTab === 'right' ? 'mobile-hidden' : ''}`}
             onMouseEnter={() => setIsManualHover(true)}
             onMouseLeave={() => setIsManualHover(false)}
           >
@@ -398,7 +424,7 @@ export default function ApplicationsSection() {
 
           {/* Right Column (11 - 19) */}
           <ol
-            className="industry-list industry-list--right"
+            className={`industry-list industry-list--right ${mobileTab === 'left' ? 'mobile-hidden' : ''}`}
             onMouseEnter={() => setIsManualHover(true)}
             onMouseLeave={() => setIsManualHover(false)}
           >
