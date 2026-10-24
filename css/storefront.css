@@ -849,14 +849,14 @@
 .surplus-grid {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
-  gap: 48px;
+  gap: 36px;
   align-items: flex-start;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 880px) {
   .surplus-grid {
     grid-template-columns: 1fr;
-    gap: 36px;
+    gap: 32px;
   }
 }
 
@@ -903,26 +903,26 @@
 
 .surplus-title.light {
   font-family: var(--font-headline);
-  font-size: 38px;
+  font-size: 36px;
   line-height: 1.15;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: -0.5px;
   color: #0F172A;
-  margin: 0 0 16px;
+  margin: 0 0 14px;
 }
 
 @media (max-width: 640px) {
   .surplus-title.light {
-    font-size: 28px;
+    font-size: 26px;
   }
 }
 
 .surplus-lead.light {
-  font-size: 15px;
-  line-height: 1.65;
+  font-size: 14.5px;
+  line-height: 1.6;
   color: #475569;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
 
 .surplus-lead.light strong {
@@ -934,8 +934,8 @@
 .surplus-features.light {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
-  margin: 24px 0 32px;
+  gap: 10px;
+  margin: 20px 0 28px;
 }
 
 .surplus-feature-card.light {
