@@ -2228,4 +2228,475 @@
   }
 }
 
+/* ==========================================================================
+   APPLICATIONS SECTION (FASTENING THE INDUSTRIES THAT MOVE US - 3D FASTENER)
+   ========================================================================== */
+.industry-section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 84px 0 92px;
+  background: radial-gradient(ellipse at 50% 63%, rgba(24,84,137,.26), transparent 44%), radial-gradient(ellipse at 5% 2%, rgba(232,117,46,.1), transparent 30%), #061a34;
+  color: #f3f0e9;
+}
+
+.industry-section::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: linear-gradient(rgba(207,224,237,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(207,224,237,.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+  content: "";
+  mask-image: linear-gradient(transparent, #000 23%, #000 79%, transparent);
+}
+
+.industry-section .section-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.industry-3d-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: clamp(28px, 6vw, 82px);
+  row-gap: 12px;
+}
+
+.industry-3d-heading .cbh-eyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: 8px;
+}
+
+.industry-3d-heading h2 {
+  max-width: 790px;
+  margin: 0;
+  color: #fffdfa;
+  font-family: var(--font-headline);
+  font-size: clamp(38px, 4.8vw, 64px);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.industry-total {
+  display: flex;
+  min-width: 138px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 0 5px 20px;
+  border-left: 1px solid rgba(238, 245, 251, 0.24);
+}
+
+.industry-total strong {
+  color: #F18A45;
+  font-family: var(--font-headline);
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+.industry-total span {
+  margin-top: 8px;
+  color: rgba(238, 245, 251, 0.6);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.industry-3d-stage {
+  display: grid;
+  min-height: 510px;
+  grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 3vw, 44px);
+  margin-top: 48px;
+  perspective: 1500px;
+}
+
+.industry-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform-style: preserve-3d;
+}
+
+.industry-list--left {
+  transform: perspective(1100px) rotateY(8deg) rotateX(1.5deg);
+  transform-origin: right center;
+}
+
+.industry-list--right {
+  transform: perspective(1100px) rotateY(-8deg) rotateX(1.5deg);
+  transform-origin: left center;
+}
+
+.industry-list li {
+  --node-depth: 5px;
+  display: grid;
+  min-height: 46px;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(238, 245, 251, 0.15);
+  color: rgba(243, 240, 233, 0.88);
+  transform: translateZ(var(--node-depth));
+  transition: color 0.24s ease, border-color 0.24s ease, transform 0.28s ease;
+  cursor: pointer;
+}
+
+.industry-list--left li {
+  text-align: right;
+}
+
+.industry-list--right li {
+  grid-template-columns: 28px minmax(0, 1fr);
+  text-align: left;
+}
+
+.industry-list li:hover {
+  border-color: rgba(241, 138, 69, 0.6);
+  color: #FFFFFF;
+  transform: translateZ(calc(var(--node-depth) + 16px)) scale(1.02);
+}
+
+.industry-node-number {
+  color: #F18A45;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.industry-node-name {
+  font-family: var(--font-headline);
+  font-size: clamp(16px, 1.4vw, 20px);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+/* 3D Fastener Assembly Graphic */
+.fastener-visual {
+  position: relative;
+  display: grid;
+  min-height: 470px;
+  place-items: center;
+  isolation: isolate;
+  transform-style: preserve-3d;
+}
+
+.fastener-aura {
+  position: absolute;
+  z-index: -1;
+  width: 240px;
+  height: 310px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(85, 137, 172, 0.27), rgba(10, 46, 78, 0.13) 46%, transparent 72%);
+  filter: blur(9px);
+}
+
+.fastener-orbit {
+  position: absolute;
+  width: 300px;
+  height: 126px;
+  border: 1px solid rgba(193, 219, 234, 0.32);
+  border-radius: 50%;
+  box-shadow: 0 0 22px rgba(76, 143, 182, 0.12), inset 0 0 20px rgba(76, 143, 182, 0.08);
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.fastener-orbit--outer {
+  animation: fastener-orbit-spin 34s linear infinite;
+}
+
+.fastener-orbit--inner {
+  width: 238px;
+  height: 100px;
+  border-color: rgba(241, 138, 69, 0.43);
+  animation: fastener-orbit-spin-inner 27s linear infinite;
+}
+
+@keyframes fastener-orbit-spin {
+  0% { transform: rotateX(68deg) rotateZ(0deg); }
+  100% { transform: rotateX(68deg) rotateZ(360deg); }
+}
+
+@keyframes fastener-orbit-spin-inner {
+  0% { transform: rotateX(72deg) rotateZ(360deg); }
+  100% { transform: rotateX(72deg) rotateZ(0deg); }
+}
+
+.fastener-axis {
+  position: absolute;
+  top: 9%;
+  bottom: 9%;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(transparent, rgba(241, 138, 69, 0.58) 30%, rgba(164, 198, 218, 0.48) 70%, transparent);
+  transform: translateX(-50%);
+}
+
+.fastener-assembly {
+  position: relative;
+  display: block;
+  width: 172px;
+  height: 386px;
+  filter: drop-shadow(0 32px 22px rgba(0, 0, 0, 0.55));
+  transform: rotateX(var(--object-tilt-x, 0deg)) rotateY(var(--object-tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+.fastener-head {
+  position: absolute;
+  z-index: 4;
+  top: 37px;
+  left: 50%;
+  display: grid;
+  width: 154px;
+  height: 103px;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), transparent 32%), linear-gradient(90deg, #687c8b 0%, #d5dedc 22%, #738894 45%, #e8ddc1 66%, #667987 100%);
+  clip-path: polygon(26% 0, 74% 0, 100% 50%, 74% 100%, 26% 100%, 0 50%);
+  filter: drop-shadow(0 13px 9px rgba(0, 0, 0, 0.45));
+  transform: translateX(-50%) rotateX(57deg) rotateZ(30deg) translateZ(29px);
+  transform-style: preserve-3d;
+}
+
+.fastener-head-socket {
+  width: 34%;
+  height: 34%;
+  border: 4px solid rgba(255, 255, 255, 0.32);
+  background: linear-gradient(140deg, #081a2b, #243c4e 62%, #071426);
+  box-shadow: 0 4px 7px rgba(0, 0, 0, 0.58) inset, 0 1px rgba(255, 255, 255, 0.12);
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  transform: translateZ(12px);
+}
+
+.fastener-neck {
+  position: absolute;
+  z-index: 3;
+  top: 101px;
+  left: 50%;
+  width: 104px;
+  height: 56px;
+  background: linear-gradient(90deg, #586c7b, #d6dedc 18%, #7e9099 42%, #243c50 60%, #d2d8d6 80%, #5a6b77);
+  clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
+  transform: translateX(-50%) translateZ(12px);
+}
+
+.fastener-shaft {
+  position: absolute;
+  top: 140px;
+  bottom: 31px;
+  left: 50%;
+  width: 54px;
+  background: repeating-linear-gradient(164deg, transparent 0 8px, rgba(4, 16, 28, 0.54) 8px 10px, rgba(255, 255, 255, 0.25) 11px 13px, transparent 14px 20px), linear-gradient(90deg, #394f62 0%, #dbe0dc 19%, #8b9da4 39%, #283d50 58%, #d5d9d6 80%, #536977 100%);
+  box-shadow: 4px 0 12px rgba(255, 255, 255, 0.13) inset, -5px 0 12px rgba(0, 0, 0, 0.35) inset;
+  transform: translateX(-50%) translateZ(8px);
+}
+
+.fastener-tip {
+  position: absolute;
+  z-index: 2;
+  bottom: 13px;
+  left: 50%;
+  width: 54px;
+  height: 45px;
+  background: linear-gradient(90deg, #495e6d, #d0d8d6 22%, #7b8c94 49%, #304457 67%, #bfcacb 83%, #526875);
+  clip-path: polygon(0 0, 100% 0, 73% 100%, 27% 100%);
+  transform: translateX(-50%) translateZ(8px);
+}
+
+.fastener-floor-shadow {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  width: 172px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(1, 8, 18, 0.72);
+  filter: blur(14px);
+  transform: translateX(-50%) rotateX(70deg) translateZ(-30px);
+}
+
+/* ==========================================================================
+   LEADERSHIP SECTION (GUIDED BY EXPERIENCE. BUILT ACROSS GENERATIONS.)
+   ========================================================================== */
+.director-section {
+  padding: 84px 0 88px;
+  background: #EAF3F9;
+  border-top: 1px solid var(--color-surface-border);
+}
+
+.director-section .section-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.director-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 38px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.director-heading h2 {
+  max-width: 710px;
+  margin: 8px 0 0;
+  font-family: var(--font-headline);
+  font-size: clamp(34px, 4vw, 52px);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-dark-900);
+  letter-spacing: -0.5px;
+}
+
+.director-intro {
+  max-width: 320px;
+  margin: 0;
+  color: #556D82;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.director-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.director-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(17, 54, 88, 0.12);
+  background: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.director-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+.director-photo {
+  position: relative;
+  aspect-ratio: 1.5;
+  margin: 0;
+  overflow: hidden;
+  background: #DCE5EA;
+}
+
+.director-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  transition: transform 0.4s ease;
+}
+
+.director-card:hover .director-photo img {
+  transform: scale(1.03);
+}
+
+.director-photo figcaption {
+  position: absolute;
+  bottom: 15px;
+  left: 16px;
+  padding: 6px 12px;
+  background: #0A2E4E;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 4px;
+}
+
+.director-copy {
+  padding: 24px 28px 28px;
+}
+
+.director-copy h3 {
+  margin: 0 0 6px;
+  color: #0A2E4E;
+  font-family: var(--font-headline);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.director-credential {
+  margin: 0 0 12px;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.director-bio {
+  max-width: 530px;
+  margin: 0;
+  color: #556D82;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+/* Responsive Overrides */
+@media (max-width: 900px) {
+  .industry-3d-stage {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    perspective: none;
+  }
+  .industry-list,
+  .industry-list--left,
+  .industry-list--right {
+    transform: none;
+  }
+  .industry-list--left li {
+    grid-template-columns: 28px minmax(0, 1fr);
+    text-align: left;
+  }
+  .director-grid {
+    grid-template-columns: 1fr;
+  }
+  .director-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .industry-section {
+    padding: 56px 0;
+  }
+  .director-section {
+    padding: 56px 0;
+  }
+  .fastener-visual {
+    min-height: 320px;
+  }
+  .fastener-assembly {
+    transform: scale(0.75);
+  }
+}
+
+
 

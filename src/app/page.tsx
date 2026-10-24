@@ -8,6 +8,8 @@ import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinde
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
 import SurplusSection from '@/components/home/SurplusSection';
+import ApplicationsSection from '@/components/home/ApplicationsSection';
+import LeadershipSection from '@/components/home/LeadershipSection';
 import QualityRecognitionSection from '@/components/home/QualityRecognitionSection';
 import GlobalConnectionsSection from '@/components/home/GlobalConnectionsSection';
 import Testimonials from '@/components/home/Testimonials';
@@ -188,6 +190,12 @@ export default function HomePage() {
 
       {/* SECTION 4: Surplus Stock Marketplace Banner */}
       <SurplusSection />
+
+      {/* APPLICATIONS: Fastening the industries that move us */}
+      <ApplicationsSection />
+
+      {/* LEADERSHIP: Guided by experience. Built across generations */}
+      <LeadershipSection />
 
       {/* SECTION: Quality & Recognition - Certified for quality */}
       <QualityRecognitionSection />
