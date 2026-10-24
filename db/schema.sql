@@ -5,7 +5,7 @@
 -- ============================================================================
 
 -- 1. User & Enterprise Customer Profile Table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE users (
 );
 
 -- 2. Fastener Categories
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     slug VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE categories (
 );
 
 -- 3. Fastener Product Inventory with Dual Pricing & Technical Metallurgy
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sku VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE products (
 );
 
 -- 4. Wholesale Volume Tier Rebate Settings
-CREATE TABLE tier_settings (
+CREATE TABLE IF NOT EXISTS tier_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     tier_name VARCHAR(50) NOT NULL,
     min_order_value DECIMAL(12, 2) NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE tier_settings (
 );
 
 -- 5. Bulk RFQs (Request For Quotation) Engine
-CREATE TABLE bulk_rfqs (
+CREATE TABLE IF NOT EXISTS bulk_rfqs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. RFQ-CBH-2025-9831
     customer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -116,7 +116,7 @@ CREATE TABLE bulk_rfqs (
 );
 
 -- 6. RFQ Line Items
-CREATE TABLE rfq_items (
+CREATE TABLE IF NOT EXISTS rfq_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_id INTEGER NOT NULL REFERENCES bulk_rfqs(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id),
@@ -131,7 +131,7 @@ CREATE TABLE rfq_items (
 );
 
 -- 7. Purchase Orders & Logistics Tracking
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. CBH-ORD-2025-8842
     customer_id INTEGER REFERENCES users(id),
@@ -161,7 +161,7 @@ CREATE TABLE orders (
 );
 
 -- 8. Order Line Items
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id),
@@ -175,7 +175,7 @@ CREATE TABLE order_items (
 );
 
 -- 9. Certified Surplus Fastener Lots (EPC Liquidation Marketplace)
-CREATE TABLE surplus_lots (
+CREATE TABLE IF NOT EXISTS surplus_lots (
     id INT AUTO_INCREMENT PRIMARY KEY,
     lot_number VARCHAR(50) UNIQUE NOT NULL,
     title VARCHAR(255) NOT NULL,

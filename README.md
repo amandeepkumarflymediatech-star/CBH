@@ -85,14 +85,19 @@ cd CBH
 # Install dependencies
 npm install
 
+# Run database migration (creates database, tables & initial seeds in MySQL)
+npm run db:migrate
+
 # Run the development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) or [http://localhost:3001](http://localhost:3001) in your browser.
 
-### Production Build
+### Production Build & Deploy
 ```bash
+npm install
+npm run db:migrate
 npm run build
 npm run start
 ```
