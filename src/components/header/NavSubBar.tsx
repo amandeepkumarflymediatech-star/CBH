@@ -36,6 +36,7 @@ export default function NavSubBar() {
   const navCategories = [
     { label: 'All Catalog', href: '/' },
     { label: 'Fixings & Anchors', href: '/products', badge: 'NEW' },
+    { label: '3D Virtual Depot', href: '/virtual-store', badge: '3D GSAP', is3D: true },
     { label: 'Steel Fixings', href: '/products/steel-fixings' },
     { label: 'Hex Screws DIN 933', href: '/#catalog' },
     { label: 'Heavy Hex Bolts', href: '/#catalog' },

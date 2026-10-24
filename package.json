@@ -11,13 +11,15 @@
     "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
+    "@types/three": "^0.186.0",
     "clsx": "^2.1.1",
     "gsap": "^3.15.0",
     "lucide-react": "^0.453.0",
     "mysql2": "^3.24.6",
     "next": "^14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
