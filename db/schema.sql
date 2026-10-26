@@ -199,3 +199,27 @@ CREATE INDEX idx_products_length ON products(length_mm);
 CREATE INDEX idx_products_surplus ON products(is_surplus);
 CREATE INDEX idx_rfqs_status ON bulk_rfqs(status);
 CREATE INDEX idx_orders_customer ON orders(customer_id);
+
+-- 10. Technical Engineering Blogs & Articles Table
+CREATE TABLE IF NOT EXISTS blogs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    slug VARCHAR(150) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    excerpt TEXT NOT NULL,
+    content LONGTEXT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    read_time VARCHAR(50) DEFAULT '5 min read',
+    publish_date VARCHAR(50) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    image_url TEXT,
+    is_featured BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'PUBLISHED',
+    views INT DEFAULT 0,
+    tags JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_blogs_slug ON blogs(slug);
+CREATE INDEX idx_blogs_category ON blogs(category);
+CREATE INDEX idx_blogs_status ON blogs(status);

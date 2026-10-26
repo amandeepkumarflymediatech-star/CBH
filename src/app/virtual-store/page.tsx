@@ -741,7 +741,7 @@ export default function VirtualStorePage() {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#0a0f1d' }}>
+    <div style={{ position: 'relative', width: '100%', maxWidth: '100%', height: '100vh', overflow: 'hidden', background: '#0a0f1d' }}>
       {/* 3D WebGL Canvas Mount */}
       <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
 

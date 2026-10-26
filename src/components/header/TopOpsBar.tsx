@@ -20,8 +20,8 @@ export default function TopOpsBar() {
     return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
   }, []);
 
-  // Hide top operations bar on admin and dedicated authentication routes
-  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register') {
+  // Hide top operations bar on admin, auth routes, and full-screen 3D virtual store
+  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register' || pathname === '/virtual-store') {
     return null;
   }
 

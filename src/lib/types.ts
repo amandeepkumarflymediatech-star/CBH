@@ -283,4 +283,23 @@ export interface ProductCategory {
   totalSkus: number;
 }
 
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  readTime: string;
+  date: string;
+  author: string;
+  image: string;
+  featured?: boolean;
+  status: 'PUBLISHED' | 'DRAFT';
+  views?: number;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 

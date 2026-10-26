@@ -9,12 +9,14 @@ import AdminUsersSection from '@/components/admin/AdminUsersSection';
 import AdminSurplusSection from '@/components/admin/AdminSurplusSection';
 import AdminCatalogSection from '@/components/admin/AdminCatalogSection';
 import AdminErpNextSection from '@/components/admin/AdminErpNextSection';
+import AdminBlogSection from '@/components/admin/AdminBlogSection';
 import {
   INITIAL_PRODUCTS,
   INITIAL_QUOTES,
   INITIAL_ORDERS,
   INITIAL_USERS,
-  INITIAL_SURPLUS_LOTS
+  INITIAL_SURPLUS_LOTS,
+  INITIAL_BLOG_POSTS
 } from '@/lib/mock-data';
 import {
   Product,
@@ -22,7 +24,8 @@ import {
   BulkQuotation,
   CustomerOrder,
   UserAccount,
-  SurplusLot
+  SurplusLot,
+  BlogPost
 } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -47,13 +50,14 @@ import {
   LogOut,
   ShieldAlert,
   RefreshCw,
-  Menu
+  Menu,
+  BookOpen
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus' | 'erpnext'>('kpi');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus' | 'erpnext' | 'blogs'>('kpi');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -77,6 +81,7 @@ export default function AdminConsolePage() {
   const [orders, setOrders] = useState<CustomerOrder[]>(INITIAL_ORDERS);
   const [users, setUsers] = useState<UserAccount[]>(INITIAL_USERS);
   const [surplusLots, setSurplusLots] = useState<SurplusLot[]>(INITIAL_SURPLUS_LOTS);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(INITIAL_BLOG_POSTS);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -92,12 +97,13 @@ export default function AdminConsolePage() {
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
-      const [prodRes, rfqRes, ordRes, usrRes, surpRes] = await Promise.allSettled([
+      const [prodRes, rfqRes, ordRes, usrRes, surpRes, blogRes] = await Promise.allSettled([
         fetch('/api/products').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
         fetch('/api/orders').then((r) => r.json()),
         fetch('/api/users').then((r) => r.json()),
         fetch('/api/surplus').then((r) => r.json()),
+        fetch('/api/blogs?all=true').then((r) => r.json()),
       ]);
 
       if (prodRes.status === 'fulfilled' && prodRes.value?.data) setProducts(prodRes.value.data);
@@ -105,7 +111,8 @@ export default function AdminConsolePage() {
       if (ordRes.status === 'fulfilled' && ordRes.value?.data) setOrders(ordRes.value.data);
       if (usrRes.status === 'fulfilled' && usrRes.value?.data) setUsers(usrRes.value.data);
       if (surpRes.status === 'fulfilled' && surpRes.value?.data) setSurplusLots(surpRes.value.data);
-      showToast('Live inventory, RFQs, and orders synced.');
+      if (blogRes.status === 'fulfilled' && blogRes.value?.data) setBlogPosts(blogRes.value.data);
+      showToast('Live inventory, RFQs, orders, and blog articles synced.');
     } catch (err) {
       console.error('Failed to load live admin data:', err);
     } finally {
@@ -450,6 +457,68 @@ export default function AdminConsolePage() {
     };
     await handleUpdateSurplusLot(updated);
     showToast(`Lot ${lot.sku} storefront listing ${nextActive ? 'ACTIVATED' : 'PAUSED'}.`);
+  };
+
+  // Blog Management Handlers
+  const handleAddBlog = async (newB: Omit<BlogPost, 'id'>) => {
+    try {
+      const res = await fetch('/api/blogs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newB),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setBlogPosts((prev) => [data.data, ...prev]);
+        showToast(`Article "${data.data.title}" published successfully.`);
+      } else {
+        const fallback: BlogPost = { ...newB, id: newB.slug || String(Date.now()) };
+        setBlogPosts((prev) => [fallback, ...prev]);
+        showToast(`Article "${fallback.title}" published locally.`);
+      }
+    } catch {
+      const fallback: BlogPost = { ...newB, id: newB.slug || String(Date.now()) };
+      setBlogPosts((prev) => [fallback, ...prev]);
+      showToast(`Article "${fallback.title}" published locally.`);
+    }
+  };
+
+  const handleUpdateBlog = async (updated: BlogPost) => {
+    try {
+      const res = await fetch('/api/blogs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setBlogPosts((prev) => prev.map((b) => (b.id === updated.id || b.slug === updated.slug ? data.data : b)));
+        showToast(`Article "${updated.title}" updated.`);
+      } else {
+        setBlogPosts((prev) => prev.map((b) => (b.id === updated.id || b.slug === updated.slug ? updated : b)));
+        showToast(`Article "${updated.title}" updated.`);
+      }
+    } catch {
+      setBlogPosts((prev) => prev.map((b) => (b.id === updated.id || b.slug === updated.slug ? updated : b)));
+      showToast(`Article "${updated.title}" updated.`);
+    }
+  };
+
+  const handleDeleteBlog = async (id: string) => {
+    try {
+      const res = await fetch(`/api/blogs?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setBlogPosts((prev) => prev.filter((b) => b.id !== id && b.slug !== id));
+        showToast('Article deleted successfully.');
+      } else {
+        setBlogPosts((prev) => prev.filter((b) => b.id !== id && b.slug !== id));
+        showToast('Article removed.');
+      }
+    } catch {
+      setBlogPosts((prev) => prev.filter((b) => b.id !== id && b.slug !== id));
+      showToast('Article removed.');
+    }
   };
 
   // Case 1: Unauthenticated -> Require Admin Sign In
@@ -947,6 +1016,23 @@ export default function AdminConsolePage() {
         >
           ⚡ ERPNext Hub
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('blogs')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'blogs' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'blogs' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          📰 Technical Blog ({blogPosts.length})
+        </button>
       </div>
 
       {/* Main Admin Console Canvas with Sidebar */}
@@ -1231,6 +1317,37 @@ export default function AdminConsolePage() {
               </span>
             </button>
 
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
+              CONTENT &amp; KNOWLEDGE
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('blogs')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'blogs' ? 700 : 500,
+                background: activeTab === 'blogs' ? '#0052CC' : 'transparent',
+                color: activeTab === 'blogs' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <BookOpen size={16} color={activeTab === 'blogs' ? '#FFFFFF' : '#0052CC'} />
+                <span>Technical Blog Hub</span>
+              </div>
+              <span style={{ background: activeTab === 'blogs' ? '#FFFFFF' : '#E2E8F0', color: activeTab === 'blogs' ? '#0052CC' : '#475569', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 700 }}>
+                {blogPosts.length}
+              </span>
+            </button>
+
             {/* Operator Session & Sign Out */}
             <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
               <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1491,6 +1608,16 @@ export default function AdminConsolePage() {
                 showToast(`Catalog updated with ${newProds.length} items from ERPNext.`);
               }}
               showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: TECHNICAL BLOG & METALLURGY GUIDES */}
+          {activeTab === 'blogs' && (
+            <AdminBlogSection
+              blogPosts={blogPosts}
+              onAddBlog={handleAddBlog}
+              onUpdateBlog={handleUpdateBlog}
+              onDeleteBlog={handleDeleteBlog}
             />
           )}
 

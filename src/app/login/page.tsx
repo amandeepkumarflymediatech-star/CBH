@@ -24,10 +24,10 @@ import { setStoredUser, DEMO_CLIENT, AuthUser } from '@/lib/auth';
 
 export default function ClientLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('procurement@apexinfra.com');
-  const [password, setPassword] = useState('Password@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');

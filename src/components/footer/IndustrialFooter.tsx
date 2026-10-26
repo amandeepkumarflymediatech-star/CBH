@@ -8,8 +8,8 @@ import { ShieldCheck } from 'lucide-react';
 export default function IndustrialFooter() {
   const pathname = usePathname();
 
-  // Hide global consumer footer on internal admin portals and dedicated auth pages
-  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register') {
+  // Hide global consumer footer on internal admin portals, auth pages, and 3D virtual store
+  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register' || pathname === '/virtual-store') {
     return null;
   }
 

@@ -164,6 +164,7 @@ async function runMigration() {
     console.log('   - orders');
     console.log('   - order_items');
     console.log('   - surplus_lots');
+    console.log('   - blogs');
 
     // 3. Seed Default Admin & Demo Customer if users table is empty
     const [userRows] = await connection.query('SELECT COUNT(*) as count FROM users');
@@ -195,6 +196,38 @@ async function runMigration() {
         ('threaded-rods', 'Continuous Thread Stud Rods', 'ASTM A193 B7', 'High-temperature, high-pressure alloy continuous studs');
       `);
       console.log('✓ Fastener categories seeded.');
+    }
+
+    // 5. Seed Blogs if empty
+    const [blogRows] = await connection.query('SELECT COUNT(*) as count FROM blogs');
+    if (blogRows[0].count === 0) {
+      console.log('🌱 Seeding initial engineering blog guides...');
+      const blogsJsonPath = path.resolve(__dirname, '..', 'src', 'data', 'blogs-data.json');
+      if (fs.existsSync(blogsJsonPath)) {
+        const blogsData = JSON.parse(fs.readFileSync(blogsJsonPath, 'utf8'));
+        for (const b of blogsData) {
+          await connection.query(
+            `INSERT INTO blogs (slug, title, excerpt, content, category, read_time, publish_date, author, image_url, is_featured, status, views, tags)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              b.slug || b.id,
+              b.title,
+              b.excerpt,
+              b.content,
+              b.category,
+              b.readTime || '5 min read',
+              b.date,
+              b.author,
+              b.image,
+              b.featured ? 1 : 0,
+              b.status || 'PUBLISHED',
+              b.views || 0,
+              JSON.stringify(b.tags || [])
+            ]
+          );
+        }
+        console.log(`✓ Seeded ${blogsData.length} technical blog articles into MySQL.`);
+      }
     }
 
     console.log('\n======================================================');

@@ -25,9 +25,9 @@ import { setStoredUser, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminPortalLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@cbh.store');
-  const [password, setPassword] = useState('Admin@Fastener2025');
-  const [stationKey, setStationKey] = useState('CBH-HQ-OP-901');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [stationKey, setStationKey] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
