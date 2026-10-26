@@ -1,10 +1,30 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import { Phone, CheckCircle, ShieldCheck, User, Settings, LogIn, UserPlus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Phone, CheckCircle, ShieldCheck } from 'lucide-react';
+import { getStoredUser, AuthUser } from '@/lib/auth';
 
 export default function TopOpsBar() {
+  const pathname = usePathname();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+
+    const handleAuthChange = () => {
+      setUser(getStoredUser());
+    };
+
+    window.addEventListener('cbh_auth_change', handleAuthChange);
+    return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
+  }, []);
+
+  // Hide top operations bar on admin and dedicated authentication routes
+  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/register') {
+    return null;
+  }
+
   return (
     <div className="top-ops-bar">
       <div className="container top-ops-inner">
@@ -23,50 +43,12 @@ export default function TopOpsBar() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="hide-tablet" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ color: '#8896A6', fontSize: '11px' }}>Tier Status:</span>
             <span className="badge badge-vip">
               <ShieldCheck size={12} />
-              DIAMOND OEM (-18%)
+              {user?.tier ? `${user.tier} OEM` : 'DIAMOND OEM (-18%)'}
             </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-            <Link 
-              href="/login" 
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DCE2E8' }}
-              title="Sign in to your account"
-            >
-              <LogIn size={13} />
-              <span>Login</span>
-            </Link>
-            <span style={{ color: '#333D4B' }}>|</span>
-            <Link 
-              href="/register" 
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DCE2E8' }}
-              title="Register OEM / Contractor Account"
-            >
-              <UserPlus size={13} />
-              <span>Register</span>
-            </Link>
-            <span className="hide-mobile" style={{ color: '#333D4B' }}>|</span>
-            <Link 
-              href="/customer" 
-              className="hide-mobile"
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DCE2E8' }}
-            >
-              <User size={13} />
-              <span>Client Portal</span>
-            </Link>
-            <span className="hide-mobile" style={{ color: '#333D4B' }}>|</span>
-            <Link 
-              href="/admin" 
-              className="hide-mobile"
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DCE2E8' }}
-            >
-              <Settings size={13} />
-              <span>Admin</span>
-            </Link>
           </div>
         </div>
       </div>

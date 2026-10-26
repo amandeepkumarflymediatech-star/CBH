@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "node scripts/migrate.js"
+    "db:migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed-cbh-products.js"
   },
   "dependencies": {
     "@types/three": "^0.186.0",

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import { CatalogCategory, CatalogSubcategory } from '@/lib/catalog-types';
 import { INITIAL_CATEGORIES, INITIAL_SUBCATEGORIES } from '@/lib/catalog-data';
 import {
@@ -61,7 +60,6 @@ export default function CategoryDetailPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F9] text-[#14181E] flex flex-col font-sans">
       <MainHeader />
-      <NavSubBar />
 
       {/* Hero Category Banner - Dark Charcoal & CBH Red */}
       <section className="relative bg-[#121518] text-white py-14 px-4 sm:px-6 lg:px-8 border-b border-[#242B35]">

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import { CatalogProductFamily } from '@/lib/catalog-types';
 import { INITIAL_FAMILIES } from '@/lib/catalog-data';
 import {
@@ -53,7 +52,6 @@ export default function SubcategoryDetailPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F9] text-[#14181E] flex flex-col font-sans">
       <MainHeader />
-      <NavSubBar />
 
       {/* Hero Subcategory Banner - Dark Charcoal & CBH Red */}
       <section className="relative bg-[#121518] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-[#242B35]">

@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
@@ -22,7 +21,6 @@ export default function BulkOrderPage() {
         cartCount={cartItems.length}
         onOpenCart={() => setIsCartOpen(true)}
       />
-      <NavSubBar />
 
       {/* Responsive Breadcrumbs */}
       <div style={{ background: '#F8FAFC', borderBottom: '1px solid var(--color-surface-border)', padding: '10px 0' }}>

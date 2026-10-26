@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import SurplusSection from '@/components/home/SurplusSection';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit } from '@/lib/types';
@@ -57,7 +56,6 @@ export default function SurplusPage() {
         cartCount={0}
         onOpenCart={() => setIsCartOpen(true)}
       />
-      <NavSubBar />
 
       <div style={{ background: '#121518', color: '#FFFFFF', padding: '40px 0 30px', borderBottom: '2px solid var(--color-primary)' }}>
         <div className="container">

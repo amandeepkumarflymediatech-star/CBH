@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import { Mail, KeyRound, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
@@ -45,7 +44,6 @@ export default function ForgotPasswordPage() {
         cartCount={0}
         onOpenCart={() => {}}
       />
-      <NavSubBar />
 
       <div className="container" style={{ padding: '60px 24px 80px', maxWidth: '480px' }}>
         <div style={{

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
@@ -114,7 +113,6 @@ export default function ProductDetailPage() {
         cartCount={cartItems.length}
         onOpenCart={() => setIsCartOpen(true)}
       />
-      <NavSubBar />
 
       {/* Breadcrumb Navigation */}
       <div className="pdp-breadcrumb-bar">

@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import { RefreshCw, Mail, CheckCircle2, ArrowLeft, Send } from 'lucide-react';
 
 function ResendVerificationForm() {
@@ -179,7 +178,6 @@ export default function ResendVerificationPage() {
         cartCount={0}
         onOpenCart={() => {}}
       />
-      <NavSubBar />
 
       <div className="container" style={{ padding: '60px 24px 80px', maxWidth: '480px' }}>
         <Suspense fallback={

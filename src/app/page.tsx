@@ -2,16 +2,12 @@
 
 import React, { useState } from 'react';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import HeroSection from '@/components/home/HeroSection';
 import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinder';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
 import SurplusSection from '@/components/home/SurplusSection';
 import ApplicationsSection from '@/components/home/ApplicationsSection';
-import LeadershipSection from '@/components/home/LeadershipSection';
-import QualityRecognitionSection from '@/components/home/QualityRecognitionSection';
-import GlobalConnectionsSection from '@/components/home/GlobalConnectionsSection';
 import Testimonials from '@/components/home/Testimonials';
 import ConsultationBar from '@/components/home/ConsultationBar';
 import CartDrawer from '@/components/cart/CartDrawer';
@@ -167,7 +163,6 @@ export default function HomePage() {
         cartCount={cartItems.length}
         onOpenCart={() => setIsCartOpen(true)}
       />
-      <NavSubBar />
 
       {/* SECTION 1: High-Impact Technical Hero Section */}
       <HeroSection />
@@ -193,15 +188,6 @@ export default function HomePage() {
 
       {/* APPLICATIONS: Fastening the industries that move us */}
       <ApplicationsSection />
-
-      {/* LEADERSHIP: Guided by experience. Built across generations */}
-      <LeadershipSection />
-
-      {/* SECTION: Quality & Recognition - Certified for quality */}
-      <QualityRecognitionSection />
-
-      {/* SECTION: Global Connections - Trusted across markets */}
-      <GlobalConnectionsSection />
 
       {/* SECTION 5: Client Reviews & Technical Consultation */}
       <section className="trust-section">

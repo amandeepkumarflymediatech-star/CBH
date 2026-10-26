@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import AdminProductsSection from '@/components/admin/AdminProductsSection';
 import AdminRfqsSection from '@/components/admin/AdminRfqsSection';
 import AdminOrdersSection from '@/components/admin/AdminOrdersSection';
@@ -36,12 +36,40 @@ import {
   TrendingUp,
   Scale,
   Clock,
-  Layers
+  Layers,
+  Search,
+  ShieldCheck,
+  Building2,
+  Plus,
+  ArrowRight,
+  Database,
+  Lock,
+  LogOut,
+  ShieldAlert,
+  RefreshCw,
+  Menu
 } from 'lucide-react';
+import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [activeTab, setActiveTab] = useState<'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus'>('inventory');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus'>('kpi');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [hasLoadedAuth, setHasLoadedAuth] = useState(false);
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+    setHasLoadedAuth(true);
+
+    const handleAuthChange = () => setCurrentUser(getStoredUser());
+    window.addEventListener('cbh_auth_change', handleAuthChange);
+    return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
+  }, []);
 
   // Main collections state
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -61,26 +89,31 @@ export default function AdminConsolePage() {
   };
 
   // Load initial data from APIs
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [prodRes, rfqRes, ordRes, usrRes, surpRes] = await Promise.allSettled([
-          fetch('/api/products').then((r) => r.json()),
-          fetch('/api/rfq').then((r) => r.json()),
-          fetch('/api/orders').then((r) => r.json()),
-          fetch('/api/users').then((r) => r.json()),
-          fetch('/api/surplus').then((r) => r.json()),
-        ]);
+  const fetchData = async () => {
+    setIsLoadingData(true);
+    try {
+      const [prodRes, rfqRes, ordRes, usrRes, surpRes] = await Promise.allSettled([
+        fetch('/api/products').then((r) => r.json()),
+        fetch('/api/rfq').then((r) => r.json()),
+        fetch('/api/orders').then((r) => r.json()),
+        fetch('/api/users').then((r) => r.json()),
+        fetch('/api/surplus').then((r) => r.json()),
+      ]);
 
-        if (prodRes.status === 'fulfilled' && prodRes.value?.data) setProducts(prodRes.value.data);
-        if (rfqRes.status === 'fulfilled' && rfqRes.value?.data) setQuotes(rfqRes.value.data);
-        if (ordRes.status === 'fulfilled' && ordRes.value?.data) setOrders(ordRes.value.data);
-        if (usrRes.status === 'fulfilled' && usrRes.value?.data) setUsers(usrRes.value.data);
-        if (surpRes.status === 'fulfilled' && surpRes.value?.data) setSurplusLots(surpRes.value.data);
-      } catch (err) {
-        console.error('Failed to load live admin data:', err);
-      }
-    };
+      if (prodRes.status === 'fulfilled' && prodRes.value?.data) setProducts(prodRes.value.data);
+      if (rfqRes.status === 'fulfilled' && rfqRes.value?.data) setQuotes(rfqRes.value.data);
+      if (ordRes.status === 'fulfilled' && ordRes.value?.data) setOrders(ordRes.value.data);
+      if (usrRes.status === 'fulfilled' && usrRes.value?.data) setUsers(usrRes.value.data);
+      if (surpRes.status === 'fulfilled' && surpRes.value?.data) setSurplusLots(surpRes.value.data);
+      showToast('Live inventory, RFQs, and orders synced.');
+    } catch (err) {
+      console.error('Failed to load live admin data:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -90,9 +123,7 @@ export default function AdminConsolePage() {
   const pendingRfqsCount = quotes.filter((q) => q.status === 'PENDING' || q.status === 'IN_REVIEW').length;
   const activeOemCount = users.filter((u) => u.isVerified).length;
 
-  // ==========================================
-  // SECTION 1: PRODUCTS CRUD HANDLERS
-  // ==========================================
+  // CRUD Handlers
   const handleAddProduct = async (newP: Omit<Product, 'id'>) => {
     try {
       const res = await fetch('/api/products', {
@@ -103,17 +134,16 @@ export default function AdminConsolePage() {
       const data = await res.json();
       if (data.success && data.data) {
         setProducts((prev) => [data.data, ...prev]);
-        showToast(`SKU ${data.data.sku} created and published.`);
+        showToast(`SKU ${data.data.sku} created successfully.`);
       } else {
-        // Fallback optimistic
-        const fallback: Product = { id: Date.now(), ...newP };
+        const fallback: Product = { ...newP, id: Date.now() };
         setProducts((prev) => [fallback, ...prev]);
-        showToast(`SKU ${fallback.sku} created.`);
+        showToast(`SKU ${fallback.sku} created locally.`);
       }
     } catch {
-      const fallback: Product = { id: Date.now(), ...newP };
+      const fallback: Product = { ...newP, id: Date.now() };
       setProducts((prev) => [fallback, ...prev]);
-      showToast(`SKU ${fallback.sku} created.`);
+      showToast(`SKU ${fallback.sku} created locally.`);
     }
   };
 
@@ -125,9 +155,12 @@ export default function AdminConsolePage() {
         body: JSON.stringify(updated),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.data) {
+        setProducts((prev) => prev.map((p) => (p.id === updated.id ? data.data : p)));
+        showToast(`SKU ${updated.sku} updated.`);
+      } else {
         setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-        showToast(`SKU ${updated.sku} changes saved.`);
+        showToast(`SKU ${updated.sku} updated.`);
       }
     } catch {
       setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -137,32 +170,34 @@ export default function AdminConsolePage() {
 
   const handleDeleteProduct = async (id: number) => {
     try {
-      await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
-      const del = products.find((p) => p.id === id);
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      showToast(`SKU ${del?.sku || id} deleted.`);
+      const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        showToast(`Product deleted from database.`);
+      } else {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        showToast(`Product removed locally.`);
+      }
     } catch {
       setProducts((prev) => prev.filter((p) => p.id !== id));
-      showToast(`SKU deleted.`);
+      showToast(`Product removed locally.`);
     }
   };
 
   const handleToggleSurplus = async (id: number) => {
-    const target = products.find((p) => p.id === id);
-    if (!target) return;
-    const nextSurplus = !target.isSurplus;
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+    const nextVal = !product.isSurplus;
     const updated: Product = {
-      ...target,
-      isSurplus: nextSurplus,
-      surplusDiscountPct: nextSurplus ? 35 : 0,
+      ...product,
+      isSurplus: nextVal,
+      surplusDiscountPct: nextVal ? 50 : undefined,
     };
     await handleUpdateProduct(updated);
-    showToast(`SKU ${target.sku} marked as ${nextSurplus ? 'SURPLUS (-35%)' : 'STANDARD'}.`);
+    showToast(`SKU ${product.sku} surplus status: ${nextVal ? 'SURPLUS CLEARANCE (-50%)' : 'STANDARD STOCK'}`);
   };
 
-  // ==========================================
-  // SECTION 2: RFQ QUOTES CRUD HANDLERS
-  // ==========================================
   const handleAddQuote = async (newQ: Omit<BulkQuotation, 'id'>) => {
     try {
       const res = await fetch('/api/rfq', {
@@ -173,48 +208,57 @@ export default function AdminConsolePage() {
       const data = await res.json();
       if (data.success && data.data) {
         setQuotes((prev) => [data.data, ...prev]);
-        showToast(`Quotation ${data.data.rfqNumber} registered.`);
+        showToast(`Quote ${data.data.rfqNumber} registered.`);
       } else {
-        const fallback: BulkQuotation = { id: `quote-${Date.now()}`, ...newQ };
+        const fallback: BulkQuotation = { ...newQ, id: String(Date.now()) };
         setQuotes((prev) => [fallback, ...prev]);
-        showToast(`Quotation ${fallback.rfqNumber} registered.`);
+        showToast(`Quote ${fallback.rfqNumber} registered.`);
       }
     } catch {
-      const fallback: BulkQuotation = { id: `quote-${Date.now()}`, ...newQ };
+      const fallback: BulkQuotation = { ...newQ, id: String(Date.now()) };
       setQuotes((prev) => [fallback, ...prev]);
-      showToast(`Quotation registered.`);
+      showToast(`Quote ${fallback.rfqNumber} registered.`);
     }
   };
 
   const handleUpdateQuote = async (updated: BulkQuotation) => {
     try {
-      await fetch('/api/rfq', {
+      const res = await fetch('/api/rfq', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
-      setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
-      showToast(`Quotation ${updated.rfqNumber} saved.`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setQuotes((prev) => prev.map((q) => (q.id === updated.id ? data.data : q)));
+        showToast(`Quotation ${updated.rfqNumber} status updated.`);
+      } else {
+        setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
+        showToast(`Quotation ${updated.rfqNumber} updated.`);
+      }
     } catch {
       setQuotes((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
-      showToast(`Quotation ${updated.rfqNumber} saved.`);
+      showToast(`Quotation ${updated.rfqNumber} updated.`);
     }
   };
 
-  const handleDeleteQuote = async (id: string) => {
+  const handleDeleteQuote = async (id: string | number) => {
     try {
-      await fetch(`/api/rfq?id=${id}`, { method: 'DELETE' });
-      setQuotes((prev) => prev.filter((q) => q.id !== id));
-      showToast(`Quotation deleted.`);
+      const res = await fetch(`/api/rfq?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setQuotes((prev) => prev.filter((q) => q.id !== String(id)));
+        showToast(`Quotation record deleted.`);
+      } else {
+        setQuotes((prev) => prev.filter((q) => q.id !== String(id)));
+        showToast(`Quotation removed.`);
+      }
     } catch {
-      setQuotes((prev) => prev.filter((q) => q.id !== id));
-      showToast(`Quotation deleted.`);
+      setQuotes((prev) => prev.filter((q) => q.id !== String(id)));
+      showToast(`Quotation removed.`);
     }
   };
 
-  // ==========================================
-  // SECTION 3: ORDERS CRUD HANDLERS
-  // ==========================================
   const handleAddOrder = async (newO: Omit<CustomerOrder, 'id'>) => {
     try {
       const res = await fetch('/api/orders', {
@@ -225,48 +269,57 @@ export default function AdminConsolePage() {
       const data = await res.json();
       if (data.success && data.data) {
         setOrders((prev) => [data.data, ...prev]);
-        showToast(`Order ${data.data.orderNumber} initiated.`);
+        showToast(`Order ${data.data.orderNumber} added.`);
       } else {
-        const fallback: CustomerOrder = { id: `ord-${Date.now()}`, ...newO };
+        const fallback: CustomerOrder = { ...newO, id: String(Date.now()) };
         setOrders((prev) => [fallback, ...prev]);
-        showToast(`Order ${fallback.orderNumber} initiated.`);
+        showToast(`Order ${fallback.orderNumber} created.`);
       }
     } catch {
-      const fallback: CustomerOrder = { id: `ord-${Date.now()}`, ...newO };
+      const fallback: CustomerOrder = { ...newO, id: String(Date.now()) };
       setOrders((prev) => [fallback, ...prev]);
-      showToast(`Order initiated.`);
+      showToast(`Order ${fallback.orderNumber} created.`);
     }
   };
 
   const handleUpdateOrder = async (updated: CustomerOrder) => {
     try {
-      await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setOrders((prev) => prev.map((o) => (o.id === updated.id ? data.data : o)));
+        showToast(`Order ${updated.orderNumber} status updated.`);
+      } else {
+        setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+        showToast(`Order ${updated.orderNumber} updated.`);
+      }
+    } catch {
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
       showToast(`Order ${updated.orderNumber} updated.`);
-    } catch {
-      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-      showToast(`Order updated.`);
     }
   };
 
-  const handleDeleteOrder = async (id: string) => {
+  const handleDeleteOrder = async (id: string | number) => {
     try {
-      await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      showToast(`Order record cancelled.`);
+      const res = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setOrders((prev) => prev.filter((o) => o.id !== String(id)));
+        showToast(`Order deleted.`);
+      } else {
+        setOrders((prev) => prev.filter((o) => o.id !== String(id)));
+        showToast(`Order removed.`);
+      }
     } catch {
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      showToast(`Order record cancelled.`);
+      setOrders((prev) => prev.filter((o) => o.id !== String(id)));
+      showToast(`Order removed.`);
     }
   };
 
-  // ==========================================
-  // SECTION 4: USERS CRUD HANDLERS
-  // ==========================================
   const handleAddUser = async (newU: Omit<UserAccount, 'id'>) => {
     try {
       const res = await fetch('/api/users', {
@@ -277,48 +330,57 @@ export default function AdminConsolePage() {
       const data = await res.json();
       if (data.success && data.data) {
         setUsers((prev) => [data.data, ...prev]);
-        showToast(`Account for ${data.data.fullName} registered.`);
+        showToast(`User ${data.data.companyName} registered.`);
       } else {
-        const fallback: UserAccount = { id: Date.now(), ...newU };
+        const fallback: UserAccount = { ...newU, id: Date.now() };
         setUsers((prev) => [fallback, ...prev]);
-        showToast(`Account registered.`);
+        showToast(`User ${fallback.companyName} created.`);
       }
     } catch {
-      const fallback: UserAccount = { id: Date.now(), ...newU };
+      const fallback: UserAccount = { ...newU, id: Date.now() };
       setUsers((prev) => [fallback, ...prev]);
-      showToast(`Account registered.`);
+      showToast(`User ${fallback.companyName} created.`);
     }
   };
 
   const handleUpdateUser = async (updated: UserAccount) => {
     try {
-      await fetch('/api/users', {
+      const res = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
-      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      showToast(`Account ${updated.fullName} updated.`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setUsers((prev) => prev.map((u) => (u.id === updated.id ? data.data : u)));
+        showToast(`Account ${updated.companyName} updated.`);
+      } else {
+        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+        showToast(`Account ${updated.companyName} updated.`);
+      }
     } catch {
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      showToast(`Account updated.`);
+      showToast(`Account ${updated.companyName} updated.`);
     }
   };
 
   const handleDeleteUser = async (id: number) => {
     try {
-      await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-      showToast(`Account suspended/removed.`);
+      const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        showToast(`User record deleted.`);
+      } else {
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        showToast(`User removed.`);
+      }
     } catch {
       setUsers((prev) => prev.filter((u) => u.id !== id));
-      showToast(`Account removed.`);
+      showToast(`User removed.`);
     }
   };
 
-  // ==========================================
-  // SECTION 5: SURPLUS LOTS CRUD HANDLERS
-  // ==========================================
   const handleAddSurplusLot = async (newLot: Omit<SurplusLot, 'id'>) => {
     try {
       const res = await fetch('/api/surplus', {
@@ -329,42 +391,54 @@ export default function AdminConsolePage() {
       const data = await res.json();
       if (data.success && data.data) {
         setSurplusLots((prev) => [data.data, ...prev]);
-        showToast(`Surplus Lot ${data.data.sku} opened.`);
+        showToast(`Lot ${data.data.sku} created.`);
       } else {
-        const fallback: SurplusLot = { id: Date.now(), ...newLot };
+        const fallback: SurplusLot = { ...newLot, id: Date.now() };
         setSurplusLots((prev) => [fallback, ...prev]);
-        showToast(`Surplus Lot opened.`);
+        showToast(`Lot ${fallback.sku} created.`);
       }
     } catch {
-      const fallback: SurplusLot = { id: Date.now(), ...newLot };
+      const fallback: SurplusLot = { ...newLot, id: Date.now() };
       setSurplusLots((prev) => [fallback, ...prev]);
-      showToast(`Surplus Lot opened.`);
+      showToast(`Lot ${fallback.sku} created.`);
     }
   };
 
   const handleUpdateSurplusLot = async (updated: SurplusLot) => {
     try {
-      await fetch('/api/surplus', {
+      const res = await fetch('/api/surplus', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
-      setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-      showToast(`Surplus Lot ${updated.sku} updated.`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? data.data : l)));
+        showToast(`Lot ${updated.sku} updated.`);
+      } else {
+        setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+        showToast(`Lot ${updated.sku} updated.`);
+      }
     } catch {
       setSurplusLots((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-      showToast(`Surplus Lot updated.`);
+      showToast(`Lot ${updated.sku} updated.`);
     }
   };
 
   const handleDeleteSurplusLot = async (id: number) => {
     try {
-      await fetch(`/api/surplus?id=${id}`, { method: 'DELETE' });
-      setSurplusLots((prev) => prev.filter((l) => l.id !== id));
-      showToast(`Surplus Lot delisted.`);
+      const res = await fetch(`/api/surplus?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setSurplusLots((prev) => prev.filter((l) => l.id !== id));
+        showToast(`Surplus lot deleted.`);
+      } else {
+        setSurplusLots((prev) => prev.filter((l) => l.id !== id));
+        showToast(`Surplus lot removed.`);
+      }
     } catch {
       setSurplusLots((prev) => prev.filter((l) => l.id !== id));
-      showToast(`Surplus Lot delisted.`);
+      showToast(`Surplus lot removed.`);
     }
   };
 
@@ -378,219 +452,872 @@ export default function AdminConsolePage() {
     showToast(`Lot ${lot.sku} storefront listing ${nextActive ? 'ACTIVATED' : 'PAUSED'}.`);
   };
 
+  // Case 1: Unauthenticated -> Require Admin Sign In
+  if (hasLoadedAuth && !currentUser) {
+    return (
+      <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <MainHeader unit={globalUnit} onUnitToggle={(u) => setGlobalUnit(u)} cartCount={0} onOpenCart={() => {}} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            maxWidth: '540px',
+            width: '100%',
+            padding: '40px 32px',
+            textAlign: 'center',
+            boxShadow: '0 12px 35px rgba(15, 23, 42, 0.08)',
+            borderTop: '5px solid #0052CC'
+          }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#EFF6FF', color: '#0052CC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+              <ShieldAlert size={30} />
+            </div>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
+              CBH Operations Clearance Required
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, marginBottom: '24px' }}>
+              Access to central fastener inventories, pricing margin multipliers, bulk RFQ quotations, and fleet transport dispatch is restricted to authorized CBH platform operators.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Link
+                href="/admin/login"
+                className="btn-primary"
+                style={{ padding: '12px', justifyContent: 'center', background: '#0052CC', textDecoration: 'none' }}
+              >
+                <span>Authorize at Operations Terminal</span>
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                href="/"
+                style={{
+                  padding: '11px',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  background: '#F8FAFC',
+                  color: '#334155',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}
+              >
+                Return to Storefront
+              </Link>
+              <div style={{ margin: '16px 0 6px', borderTop: '1px solid #F1F5F9', paddingTop: '16px' }}>
+                <span style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>
+                  Developer &amp; Testing Access
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStoredUser(DEMO_ADMIN)}
+                  style={{
+                    width: '100%',
+                    marginTop: '8px',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    border: '1px dashed #BFDBFE',
+                    background: '#EFF6FF',
+                    color: '#0052CC',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚡ One-Click Demo: Sign In as Harpreet Singh (Chief Operations)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Case 2: Logged in as Customer -> Access Denied / 403 Forbidden Gate
+  if (hasLoadedAuth && currentUser && currentUser.role !== 'admin') {
+    return (
+      <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <MainHeader unit={globalUnit} onUnitToggle={(u) => setGlobalUnit(u)} cartCount={0} onOpenCart={() => {}} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #FECACA',
+            borderRadius: '16px',
+            maxWidth: '540px',
+            width: '100%',
+            padding: '40px 32px',
+            textAlign: 'center',
+            boxShadow: '0 12px 35px rgba(239, 68, 68, 0.08)',
+            borderTop: '5px solid #DC2626'
+          }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+              <ShieldAlert size={30} />
+            </div>
+            <div style={{ display: 'inline-block', background: '#FEE2E2', color: '#B91C1C', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, marginBottom: '8px' }}>
+              403 FORBIDDEN • PRIVILEGE RESTRICTED
+            </div>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
+              Administrative Privileges Required
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, marginBottom: '24px' }}>
+              You are currently logged in as <strong>{currentUser.companyName}</strong> ({currentUser.fullName}) with <strong>Client/Buyer</strong> privileges. This station is strictly reserved for CBH operations and management.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Link
+                href="/customer"
+                className="btn-primary"
+                style={{ padding: '12px', justifyContent: 'center', background: '#FF6B00', textDecoration: 'none' }}
+              >
+                <span>Return to My Client Portal</span>
+                <ArrowRight size={16} />
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  window.location.href = '/admin/login';
+                }}
+                style={{
+                  padding: '11px',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  background: '#F8FAFC',
+                  color: '#334155',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Sign Out &amp; Switch to Admin Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <main style={{ background: 'var(--color-surface-bg)', minHeight: '100vh' }}>
+    <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Primary Sticky Header */}
       <MainHeader
         unit={globalUnit}
         onUnitToggle={(u) => setGlobalUnit(u)}
         cartCount={0}
         onOpenCart={() => {}}
       />
-      <NavSubBar />
 
-      <div className="portal-container">
-        {/* Header */}
-        <div className="portal-header">
-          <div className="portal-title">
-            <h2>CBH Central Admin Control Console</h2>
-            <p>Full Dynamic CRUD Operations, Real-Time Filtering, Stock Telemetry & Pan-India Dispatch Logistics</p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{
-              display: 'inline-flex',
+      {/* RESPONSIVE SUB-HEADER / MOBILE NAV TOGGLE */}
+      <div style={{
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '10px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        flexWrap: 'wrap',
+        gap: '10px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+            style={{
+              display: 'flex',
               alignItems: 'center',
               gap: '6px',
               padding: '6px 12px',
-              borderRadius: '20px',
-              background: '#ECFDF5',
-              color: '#065F46',
+              borderRadius: '6px',
+              background: '#F1F5F9',
+              border: '1px solid #CBD5E1',
+              color: '#0F172A',
               fontSize: '12px',
               fontWeight: 700,
-              fontFamily: 'var(--font-mono)'
-            }}>
-              <CheckCircle2 size={14} color="#059669" />
-              <span>Database Sync Active</span>
-            </span>
-          </div>
+              cursor: 'pointer'
+            }}
+          >
+            <Menu size={16} />
+            <span>Console Menu</span>
+          </button>
+
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
+            CBH Operations Terminal
+          </span>
+          <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 800 }}>
+            SUPER ADMIN
+          </span>
         </div>
 
-        {/* Dynamic KPI Dashboard */}
-        <div className="admin-kpi-grid">
-          <div className="kpi-card">
-            <span className="kpi-label">GROSS ORDERS TURNOVER</span>
-            <div className="kpi-value" style={{ color: 'var(--color-primary)' }}>
-              {formatINR(totalTurnover)}
-            </div>
-            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
-              Live from {orders.length} Dispatched Orders
-            </span>
-          </div>
-
-          <div className="kpi-card">
-            <span className="kpi-label">TOTAL FREIGHT DISPATCHED</span>
-            <div className="kpi-value">
-              {(totalFreightKg / 1000).toFixed(1)} MT
-            </div>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-              {totalFreightKg.toLocaleString()} Kg total cargo tonnage
-            </span>
-          </div>
-
-          <div className="kpi-card">
-            <span className="kpi-label">ACTIVE BULK RFQs</span>
-            <div className="kpi-value" style={{ color: '#D97706' }}>
-              {pendingRfqsCount} Pending
-            </div>
-            <span style={{ fontSize: '11px', color: '#0284C7' }}>
-              {quotes.length} total quotations on file
-            </span>
-          </div>
-
-          <div className="kpi-card">
-            <span className="kpi-label">REGISTERED OEM ACCOUNTS</span>
-            <div className="kpi-value">
-              {users.length} Plants
-            </div>
-            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
-              {activeOemCount} GSTIN Verified OEM Accounts
-            </span>
-          </div>
-        </div>
-
-        {/* Dynamic Section Navigation Tabs */}
-        <div className="admin-tab-nav">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             type="button"
-            className={`admin-tab-btn ${activeTab === 'inventory' ? 'active' : ''}`}
-            onClick={() => setActiveTab('inventory')}
+            onClick={fetchData}
+            title="Sync Live Telemetry, RFQs & Inventory"
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#0052CC',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
           >
-            <Boxes size={15} />
-            <span>Fastener Catalog</span>
-            <span className="admin-tab-badge">{products.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-tab-btn ${activeTab === 'catalog' ? 'active' : ''}`}
-            onClick={() => setActiveTab('catalog')}
-          >
-            <Layers size={15} />
-            <span>Fischer Catalog (4-Level)</span>
-            <span className="admin-tab-badge">PRO</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-tab-btn ${activeTab === 'rfqs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rfqs')}
-          >
-            <FileCheck2 size={15} />
-            <span>Bulk RFQ Approvals</span>
-            <span className="admin-tab-badge">{quotes.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
-            onClick={() => setActiveTab('orders')}
-          >
-            <Truck size={15} />
-            <span>Orders & Dispatch</span>
-            <span className="admin-tab-badge">{orders.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-          >
-            <Users size={15} />
-            <span>OEM Accounts & Tiers</span>
-            <span className="admin-tab-badge">{users.length}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-tab-btn ${activeTab === 'surplus' ? 'active' : ''}`}
-            onClick={() => setActiveTab('surplus')}
-          >
-            <Flame size={15} />
-            <span>Surplus Lots</span>
-            <span className="admin-tab-badge">{surplusLots.length}</span>
+            <RefreshCw size={13} className={isLoadingData ? 'spin' : ''} />
+            <span>Sync Live Data</span>
           </button>
         </div>
-
-        {/* Section 1: Fastener Inventory Catalog */}
-        {activeTab === 'inventory' && (
-          <AdminProductsSection
-            products={products}
-            onAdd={handleAddProduct}
-            onUpdate={handleUpdateProduct}
-            onDelete={handleDeleteProduct}
-            onToggleSurplus={handleToggleSurplus}
-            showToast={showToast}
-          />
-        )}
-
-        {/* Section 1.5: Fischer Dynamic 4-Level Catalog */}
-        {activeTab === 'catalog' && (
-          <AdminCatalogSection />
-        )}
-
-        {/* Section 2: Bulk RFQs Approvals */}
-        {activeTab === 'rfqs' && (
-          <AdminRfqsSection
-            quotes={quotes}
-            onAdd={handleAddQuote}
-            onUpdate={handleUpdateQuote}
-            onDelete={handleDeleteQuote}
-            showToast={showToast}
-          />
-        )}
-
-        {/* Section 3: Orders & Logistics Dispatch */}
-        {activeTab === 'orders' && (
-          <AdminOrdersSection
-            orders={orders}
-            onAdd={handleAddOrder}
-            onUpdate={handleUpdateOrder}
-            onDelete={handleDeleteOrder}
-            showToast={showToast}
-          />
-        )}
-
-        {/* Section 4: Registered Enterprise Users */}
-        {activeTab === 'users' && (
-          <AdminUsersSection
-            users={users}
-            onAdd={handleAddUser}
-            onUpdate={handleUpdateUser}
-            onDelete={handleDeleteUser}
-            showToast={showToast}
-          />
-        )}
-
-        {/* Section 5: Surplus Liquidation Lots */}
-        {activeTab === 'surplus' && (
-          <AdminSurplusSection
-            lots={surplusLots}
-            onAdd={handleAddSurplusLot}
-            onUpdate={handleUpdateSurplusLot}
-            onDelete={handleDeleteSurplusLot}
-            onToggleActive={handleToggleSurplusActive}
-            showToast={showToast}
-          />
-        )}
       </div>
 
-      {/* Floating Toast Feedback */}
+      {/* QUICK HORIZONTAL TABS ON MOBILE / TABLET */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        overflowX: 'auto',
+        padding: '10px 20px',
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E2E8F0',
+        whiteSpace: 'nowrap'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('kpi')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'kpi' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'kpi' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          📊 KPI Hub
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('rfqs')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'rfqs' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'rfqs' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          📑 RFQs ({pendingRfqsCount})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('orders')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'orders' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'orders' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          🚚 Orders ({orders.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('inventory')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'inventory' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'inventory' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          📦 Fastener SKUs ({products.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('surplus')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'surplus' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'surplus' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          🏷️ Surplus ({surplusLots.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('users')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'users' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'users' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          👥 OEM Accounts ({users.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('catalog')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'catalog' ? '#0052CC' : '#F1F5F9',
+            color: activeTab === 'catalog' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          📖 Catalog Hierarchy
+        </button>
+      </div>
+
+      {/* Main Admin Console Canvas with Sidebar */}
+      <div style={{ flex: 1, display: 'flex', maxWidth: '1600px', width: '100%', margin: '0 auto', padding: '20px', gap: '20px', flexWrap: 'wrap' }}>
+        
+        {/* ============================================================== */}
+        {/* LEFT OPERATIONS SIDEBAR                                         */}
+        {/* ============================================================== */}
+        <aside
+          className="admin-sidebar-responsive"
+          style={{
+            width: '300px',
+            flexShrink: 0,
+            display: isMobileNavOpen ? 'flex' : 'none',
+            flexDirection: 'column',
+            gap: '18px'
+          }}
+        >
+          
+          {/* Console Header Card */}
+          <div style={{ background: '#0F172A', color: '#FFFFFF', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '8px', background: '#0052CC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Database size={22} color="#FFFFFF" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.01em' }}>CBH Control Console</h2>
+                <span style={{ fontSize: '11px', color: '#94A3B8' }}>Ludhiana Works • Factory Unit #1</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px' }}>
+              <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800 }}>
+                SUPER ADMIN
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#059669', fontSize: '11px', fontWeight: 700 }}>
+                <CheckCircle2 size={13} />
+                <span>Sync Active</span>
+              </span>
+            </div>
+
+            {/* Live Telemetry Tickers */}
+            <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '11px' }}>
+              <div>
+                <span style={{ color: '#94A3B8', display: 'block' }}>TOTAL REVENUE</span>
+                <strong style={{ color: '#38BDF8', fontSize: '13px', fontFamily: 'var(--font-mono)' }}>{formatINR(totalTurnover)}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#94A3B8', display: 'block' }}>FREIGHT DISPATCH</span>
+                <strong style={{ color: '#34D399', fontSize: '13px', fontFamily: 'var(--font-mono)' }}>{(totalFreightKg / 1000).toFixed(1)} MT</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Menu */}
+          <nav style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)' }}>
+            
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 12px 2px' }}>
+              EXECUTIVE &amp; SALES
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('kpi')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'kpi' ? 700 : 500,
+                background: activeTab === 'kpi' ? '#0052CC' : 'transparent',
+                color: activeTab === 'kpi' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <TrendingUp size={16} />
+              <span>Operations KPI Hub</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('rfqs')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'rfqs' ? 700 : 500,
+                background: activeTab === 'rfqs' ? '#0052CC' : 'transparent',
+                color: activeTab === 'rfqs' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FileCheck2 size={16} />
+                <span>Bulk RFQ Approvals</span>
+              </div>
+              <span style={{ background: activeTab === 'rfqs' ? '#FFFFFF' : '#FF6B00', color: activeTab === 'rfqs' ? '#0052CC' : '#FFFFFF', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 800 }}>
+                {pendingRfqsCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('orders')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'orders' ? 700 : 500,
+                background: activeTab === 'orders' ? '#0052CC' : 'transparent',
+                color: activeTab === 'orders' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Truck size={16} />
+                <span>Orders &amp; Dispatch Desk</span>
+              </div>
+              <span style={{ background: activeTab === 'orders' ? '#FFFFFF' : '#E2E8F0', color: activeTab === 'orders' ? '#0052CC' : '#475569', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 700 }}>
+                {orders.length}
+              </span>
+            </button>
+
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
+              CATALOG &amp; DUAL WEIGHTS
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('inventory')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'inventory' ? 700 : 500,
+                background: activeTab === 'inventory' ? '#0052CC' : 'transparent',
+                color: activeTab === 'inventory' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Boxes size={16} />
+                <span>Fastener Catalog (SKUs)</span>
+              </div>
+              <span style={{ background: activeTab === 'inventory' ? '#FFFFFF' : '#E2E8F0', color: activeTab === 'inventory' ? '#0052CC' : '#475569', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 700 }}>
+                {products.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('catalog')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'catalog' ? 700 : 500,
+                background: activeTab === 'catalog' ? '#0052CC' : 'transparent',
+                color: activeTab === 'catalog' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Layers size={16} />
+                <span>Fischer 4-Level Matrix</span>
+              </div>
+              <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>
+                PRO
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('surplus')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'surplus' ? 700 : 500,
+                background: activeTab === 'surplus' ? '#0052CC' : 'transparent',
+                color: activeTab === 'surplus' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Flame size={16} color={activeTab === 'surplus' ? '#FFFFFF' : '#FF6B00'} />
+                <span>Surplus Lots (-60%)</span>
+              </div>
+              <span style={{ background: activeTab === 'surplus' ? '#FFFFFF' : '#E2E8F0', color: activeTab === 'surplus' ? '#0052CC' : '#475569', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 700 }}>
+                {surplusLots.length}
+              </span>
+            </button>
+
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
+              CLIENTS &amp; CREDITS
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('users')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'users' ? 700 : 500,
+                background: activeTab === 'users' ? '#0052CC' : 'transparent',
+                color: activeTab === 'users' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Users size={16} />
+                <span>OEM Accounts &amp; Tiers</span>
+              </div>
+              <span style={{ background: activeTab === 'users' ? '#FFFFFF' : '#E2E8F0', color: activeTab === 'users' ? '#0052CC' : '#475569', padding: '2px 7px', borderRadius: '10px', fontSize: '11px', fontWeight: 700 }}>
+                {users.length}
+              </span>
+            </button>
+
+            {/* Operator Session & Sign Out */}
+            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
+              <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                  Operator: {currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  color: '#64748B',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <LogOut size={14} color="#EF4444" />
+                <span>Sign Out Station</span>
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        {/* ============================================================== */}
+        {/* RIGHT MAIN OPERATIONS CANVAS                                   */}
+        {/* ============================================================== */}
+        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Top Command Bar */}
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '220px' }}>
+              <Search size={16} color="#64748B" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search across SKUs, quotes, invoices, heat numbers..."
+                style={{ border: 'none', outline: 'none', fontSize: '13px', width: '100%', color: '#0F172A' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Dual Unit Global Switcher */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F1F5F9', padding: '3px 8px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>Telemetry Unit:</span>
+                <button
+                  type="button"
+                  onClick={() => setGlobalUnit('PCS')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: globalUnit === 'PCS' ? '#0052CC' : 'transparent',
+                    color: globalUnit === 'PCS' ? '#FFFFFF' : '#64748B'
+                  }}
+                >
+                  PCS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGlobalUnit('KGS')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: globalUnit === 'KGS' ? '#0052CC' : 'transparent',
+                    color: globalUnit === 'KGS' ? '#FFFFFF' : '#64748B'
+                  }}
+                >
+                  KGS
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('inventory')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#0052CC',
+                  color: '#FFFFFF',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={15} />
+                <span>Add Fastener SKU</span>
+              </button>
+            </div>
+          </div>
+
+          {/* VIEW: KPI DASHBOARD */}
+          {activeTab === 'kpi' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Gross Orders Turnover</span>
+                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0052CC', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                    {formatINR(totalTurnover)}
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>Live from {orders.length} Dispatched Orders</span>
+                </div>
+
+                <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Total Cargo Freight</span>
+                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0F172A', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                    {(totalFreightKg / 1000).toFixed(1)} MT
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>{totalFreightKg.toLocaleString()} Kg Total Shipped</span>
+                </div>
+
+                <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Active Bulk RFQs</span>
+                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#FF6B00', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                    {pendingRfqsCount} Pending
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#0052CC', fontWeight: 600 }}>{quotes.length} total quotations on file</span>
+                </div>
+
+                <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Registered OEM Plants</span>
+                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0F172A', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                    {users.length} Plants
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>{activeOemCount} GSTIN Verified B2B Accounts</span>
+                </div>
+              </div>
+
+              {/* Quick Jump Operations Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <FileCheck2 size={20} color="#0052CC" />
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>Bulk RFQ Review Desk</h3>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5, marginBottom: '16px' }}>
+                    Review incoming BOM spreadsheets, adjust raw steel index markups, and issue formal PDF quotations with WhatsApp dispatch links.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('rfqs')}
+                    style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 700, color: '#0F172A', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    Open RFQ Desk ({pendingRfqsCount} Pending) <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <Truck size={20} color="#059669" />
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>Dispatch &amp; LR Logistics</h3>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5, marginBottom: '16px' }}>
+                    Assign transporters (TCI Express, Safexpress, VRL), input truck LR docket numbers, and link weighbridge slips to client orders.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('orders')}
+                    style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 700, color: '#0F172A', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    Open Dispatch Desk <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: FASTENER INVENTORY CATALOG */}
+          {activeTab === 'inventory' && (
+            <AdminProductsSection
+              products={products}
+              onAdd={handleAddProduct}
+              onUpdate={handleUpdateProduct}
+              onDelete={handleDeleteProduct}
+              onToggleSurplus={handleToggleSurplus}
+              showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: FISCHER 4-LEVEL CATALOG */}
+          {activeTab === 'catalog' && (
+            <AdminCatalogSection />
+          )}
+
+          {/* VIEW: BULK RFQs APPROVALS */}
+          {activeTab === 'rfqs' && (
+            <AdminRfqsSection
+              quotes={quotes}
+              onAdd={handleAddQuote}
+              onUpdate={handleUpdateQuote}
+              onDelete={handleDeleteQuote}
+              showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: ORDERS & DISPATCH LOGISTICS */}
+          {activeTab === 'orders' && (
+            <AdminOrdersSection
+              orders={orders}
+              onAdd={handleAddOrder}
+              onUpdate={handleUpdateOrder}
+              onDelete={handleDeleteOrder}
+              showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: OEM ACCOUNTS & TIERS */}
+          {activeTab === 'users' && (
+            <AdminUsersSection
+              users={users}
+              onAdd={handleAddUser}
+              onUpdate={handleUpdateUser}
+              onDelete={handleDeleteUser}
+              showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: SURPLUS LOTS */}
+          {activeTab === 'surplus' && (
+            <AdminSurplusSection
+              lots={surplusLots}
+              onAdd={handleAddSurplusLot}
+              onUpdate={handleUpdateSurplusLot}
+              onDelete={handleDeleteSurplusLot}
+              onToggleActive={handleToggleSurplusActive}
+              showToast={showToast}
+            />
+          )}
+
+        </main>
+      </div>
+
+      {/* Floating Toast Notification */}
       {toastMessage && (
         <div className="admin-toast">
           <CheckCircle2 size={16} color="#059669" />
           <span>{toastMessage}</span>
         </div>
       )}
-    </main>
+    </div>
   );
 }

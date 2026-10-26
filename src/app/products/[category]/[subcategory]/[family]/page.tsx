@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
-import NavSubBar from '@/components/header/NavSubBar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { CatalogProductFamily, TechnicalVariant } from '@/lib/catalog-types';
 import { INITIAL_FAMILIES } from '@/lib/catalog-data';
@@ -116,7 +115,6 @@ export default function ProductFamilyDetailPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F9] text-[#14181E] flex flex-col font-sans">
       <MainHeader />
-      <NavSubBar />
 
       {/* Floating Add Notification */}
       {addedAlert && (
