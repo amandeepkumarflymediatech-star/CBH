@@ -52,7 +52,7 @@ CBH Fasteners is a direct, single-source B2B and B2C metal parts e-commerce and 
 - **Audit & Event Stream**: Live operational event log for dispatch releases, price overrides, and BIS compliance checks.
 
 ### 6. Full Authentication Suite
-- **Sign In** (`/login`): Role switcher (Contractor vs Operations Admin), quick-fill demo presets, 30-day session authorization.
+- **Sign In** (`/login`): Role switcher (Contractor vs Admin), quick-fill demo presets, 30-day session authorization.
 - **Register** (`/register`): Enterprise onboarding with Indian GSTIN validation, company representative, and procurement volume tier selection.
 - **Password Recovery** (`/forgot-password`): 6-digit OTP and reset token dispatch.
 - **Resend Verification** (`/resend-verification`): Live 60-second cooldown timer.

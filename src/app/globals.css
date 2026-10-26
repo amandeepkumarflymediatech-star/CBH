@@ -332,13 +332,15 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 12px 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
   width: 100%;
   transition: padding 0.2s ease;
 }
 
 .main-header.is-scrolled .header-core {
-  padding: 8px 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .header-actions {
@@ -949,7 +951,8 @@ h1, h2, h3, h4, h5, h6 {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 8px 0 !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
     gap: 8px !important;
     width: 100% !important;
   }
@@ -3371,29 +3374,31 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .cbh-client-logo-item {
-  width: 170px;
-  height: 72px;
+  width: 215px;
+  height: 92px;
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 12px 22px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   flex-shrink: 0;
 }
 
 .cbh-client-logo-item:hover {
   border-color: #CBD5E1;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
   transform: translateY(-2px);
 }
 
 .cbh-client-logo-img {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   filter: grayscale(10%) contrast(105%);
 }

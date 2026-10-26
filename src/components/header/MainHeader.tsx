@@ -24,7 +24,8 @@ import {
   Building2,
   ChevronDown,
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  Images
 } from 'lucide-react';
 import { GlobalUnit } from '@/lib/types';
 import { getStoredUser, logout, AuthUser } from '@/lib/auth';
@@ -38,9 +39,9 @@ interface MainHeaderProps {
 
 export default function MainHeader({
   unit = 'PCS',
-  onUnitToggle = () => {},
+  onUnitToggle = () => { },
   cartCount = 0,
-  onOpenCart = () => {},
+  onOpenCart = () => { },
 }: MainHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -98,12 +99,14 @@ export default function MainHeader({
 
   // Nav Links List
   const navLinks = [
-    { label: 'Home Page', href: '/', icon: Home, exact: true },
+    { label: 'Home', href: '/', icon: Home, exact: true },
     { label: 'About', href: '/about', icon: Info },
     { label: 'Product', href: '/products', icon: Package },
-    { label: 'Certificate', href: '/certificate', icon: Award },
-    { label: 'Our Client', href: '/clients', icon: Users2 },
-    { label: 'Blog', href: '/blog', icon: BookOpen },
+    { label: 'Certificates', href: '/certificate', icon: Award },
+    { label: 'Our Clients', href: '/clients', icon: Users2 },
+    { label: 'Blogs', href: '/blog', icon: BookOpen },
+    { label: 'Gallery', href: '/gallery', icon: Images },
+    
   ];
 
   const isLinkActive = (href: string, exact?: boolean) => {
@@ -232,7 +235,7 @@ export default function MainHeader({
                 >
                   {currentUser.role === 'admin' ? <ShieldCheck size={15} /> : <Building2 size={15} />}
                   <span style={{ maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {currentUser.role === 'admin' ? 'Operations Admin' : (currentUser.companyName ? currentUser.companyName.split(' ')[0] : 'My Account')}
+                    {currentUser.role === 'admin' ? 'Admin' : (currentUser.companyName ? currentUser.companyName.split(' ')[0] : 'My Account')}
                   </span>
                   <ChevronDown size={13} style={{ transform: isUserMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
                 </button>
