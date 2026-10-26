@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { BulkQuotation } from '@/lib/types';
+import { pushRfqToErpNext } from '@/lib/erpnext';
 
 let quotesDb: BulkQuotation[] = [...INITIAL_QUOTES];
 
@@ -70,6 +71,21 @@ export async function POST(request: Request) {
     };
 
     quotesDb.unshift(newQuotation);
+
+    // Asynchronously push to ERPNext Quotation doctype if configured
+    try {
+      pushRfqToErpNext({
+        rfqNumber: newQuotation.rfqNumber,
+        customerName: newQuotation.customerName,
+        companyName: newQuotation.companyName,
+        email: newQuotation.email,
+        phone: newQuotation.phone,
+        totalWeightKg: newQuotation.totalWeightKg,
+        grossAmount: newQuotation.grossAmount,
+      }).catch((e) => console.log('ERPNext Quotation push background notice:', e.message));
+    } catch {
+      // Ignore if ERPNext not connected
+    }
 
     return NextResponse.json(
       {

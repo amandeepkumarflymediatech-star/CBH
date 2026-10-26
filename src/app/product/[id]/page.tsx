@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
-import { INITIAL_PRODUCTS } from '@/lib/mock-data';
+import { ALL_STATIC_PRODUCTS, findProductByIdOrSku } from '@/lib/catalog-products-all';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -32,9 +32,9 @@ export default function ProductDetailPage() {
   const productId = params?.id ? String(params.id) : '1';
 
   // Find product from repository data or default to first
-  const product: Product = INITIAL_PRODUCTS.find(
-    (p) => String(p.id) === productId || p.sku.toLowerCase() === productId.toLowerCase()
-  ) || INITIAL_PRODUCTS[0];
+  const [product, setProduct] = useState<Product>(() => {
+    return findProductByIdOrSku(productId) || ALL_STATIC_PRODUCTS[0];
+  });
 
   // Configurator Interactive State
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
@@ -43,26 +43,40 @@ export default function ProductDetailPage() {
   const [selectedGrade, setSelectedGrade] = useState(product.grade || '5.8 BP');
   const [selectedFinish, setSelectedFinish] = useState(product.finish || 'Black Passivated (BP)');
   const [quantity, setQuantity] = useState(500);
+
+  // Fetch dynamic catalog on mount or when productId changes
+  useEffect(() => {
+    const staticFound = findProductByIdOrSku(productId);
+    if (staticFound) {
+      setProduct(staticFound);
+      setSelectedDiameter(staticFound.diameter || 'M10');
+      setSelectedLength(String(staticFound.lengthMm || 100));
+      setSelectedGrade(staticFound.grade || '5.8 BP');
+      setSelectedFinish(staticFound.finish || 'Black Passivated (BP)');
+    }
+
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          const apiFound = findProductByIdOrSku(productId, data.data);
+          if (apiFound) {
+            setProduct(apiFound);
+            setSelectedDiameter(apiFound.diameter || 'M10');
+            setSelectedLength(String(apiFound.lengthMm || 100));
+            setSelectedGrade(apiFound.grade || '5.8 BP');
+            setSelectedFinish(apiFound.finish || 'Black Passivated (BP)');
+          }
+        }
+      })
+      .catch((err) => console.error('Failed fetching dynamic product detail:', err));
+  }, [productId]);
   const [activeMediaTab, setActiveMediaTab] = useState<'photo' | 'cad' | 'cert'>('photo');
   const [activeSpecsTab, setActiveSpecsTab] = useState<'mechanical' | 'chemical' | 'torque' | 'downloads'>('mechanical');
   
   // Cart state
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<RfqLineItem[]>([
-    {
-      id: 1,
-      productId: product.id,
-      sku: product.sku,
-      name: product.name,
-      standard: product.standard,
-      unit: 'PCS',
-      unitRate: product.pricePerPiece,
-      quantity: 500,
-      weightPerPcKg: product.weightPerPcKg,
-      totalWeightKg: 500 * product.weightPerPcKg,
-      rowTotal: 500 * product.pricePerPiece,
-    }
-  ]);
+  const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Pincode state

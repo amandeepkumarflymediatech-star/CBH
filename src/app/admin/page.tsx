@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import MainHeader from '@/components/header/MainHeader';
 import AdminProductsSection from '@/components/admin/AdminProductsSection';
 import AdminRfqsSection from '@/components/admin/AdminRfqsSection';
 import AdminOrdersSection from '@/components/admin/AdminOrdersSection';
 import AdminUsersSection from '@/components/admin/AdminUsersSection';
 import AdminSurplusSection from '@/components/admin/AdminSurplusSection';
 import AdminCatalogSection from '@/components/admin/AdminCatalogSection';
+import AdminErpNextSection from '@/components/admin/AdminErpNextSection';
 import {
   INITIAL_PRODUCTS,
   INITIAL_QUOTES,
@@ -53,7 +53,7 @@ import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/li
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus'>('kpi');
+  const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus' | 'erpnext'>('kpi');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -456,7 +456,15 @@ export default function AdminConsolePage() {
   if (hasLoadedAuth && !currentUser) {
     return (
       <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <MainHeader unit={globalUnit} onUnitToggle={(u) => setGlobalUnit(u)} cartCount={0} onOpenCart={() => {}} />
+        <header style={{ background: '#0F172A', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>CBH<span style={{ color: '#FF6B00' }}>.</span></span>
+            <span style={{ fontSize: '11px', fontWeight: 800, background: '#0052CC', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px' }}>OPERATIONS TERMINAL</span>
+          </Link>
+          <Link href="/" style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+            &larr; Return to Storefront
+          </Link>
+        </header>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
           <div style={{
             background: '#FFFFFF',
@@ -536,7 +544,15 @@ export default function AdminConsolePage() {
   if (hasLoadedAuth && currentUser && currentUser.role !== 'admin') {
     return (
       <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <MainHeader unit={globalUnit} onUnitToggle={(u) => setGlobalUnit(u)} cartCount={0} onOpenCart={() => {}} />
+        <header style={{ background: '#0F172A', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>CBH<span style={{ color: '#FF6B00' }}>.</span></span>
+            <span style={{ fontSize: '11px', fontWeight: 800, background: '#DC2626', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px' }}>RESTRICTED ACCESS</span>
+          </Link>
+          <Link href="/customer" style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+            &larr; Back to Client Portal
+          </Link>
+        </header>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
           <div style={{
             background: '#FFFFFF',
@@ -598,13 +614,123 @@ export default function AdminConsolePage() {
 
   return (
     <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Primary Sticky Header */}
-      <MainHeader
-        unit={globalUnit}
-        onUnitToggle={(u) => setGlobalUnit(u)}
-        cartCount={0}
-        onOpenCart={() => {}}
-      />
+      {/* Dedicated Executive Admin Header (No public e-commerce navbar) */}
+      <header style={{
+        background: '#0F172A',
+        color: '#FFFFFF',
+        padding: '12px 24px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        {/* Left: Brand & Portal Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+              CBH<span style={{ color: '#FF6B00' }}>.</span>
+            </span>
+            <span style={{ fontSize: '11px', fontWeight: 800, background: '#0052CC', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.05em' }}>
+              OPERATIONS TERMINAL
+            </span>
+          </Link>
+
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#10B981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: '12px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+            <span>HQ Node: Ludhiana</span>
+          </span>
+        </div>
+
+        {/* Right: Store Link, Unit Toggle, Operator Profile & Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link
+            href="/"
+            target="_blank"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              color: '#94A3B8',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '6px 12px',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <span>View Live Store</span>
+            <ArrowRight size={13} />
+          </Link>
+
+          {/* Dual Unit Selector */}
+          <div style={{ display: 'inline-flex', background: 'rgba(255, 255, 255, 0.08)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <button
+              type="button"
+              onClick={() => setGlobalUnit('PCS')}
+              style={{
+                background: globalUnit === 'PCS' ? '#FF6B00' : 'transparent',
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              PCS
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalUnit('KGS')}
+              style={{
+                background: globalUnit === 'KGS' ? '#FF6B00' : 'transparent',
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              KGS
+            </button>
+          </div>
+
+          {/* Operator Profile & Sign Out */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid rgba(255, 255, 255, 0.15)', paddingLeft: '12px' }}>
+            <span style={{ fontSize: '12px', color: '#E2E8F0', fontWeight: 700 }}>
+              {currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)
+            </span>
+            <button
+              type="button"
+              onClick={() => logout()}
+              title="Sign Out of Operations Console"
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#F87171',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '5px 10px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <LogOut size={12} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* RESPONSIVE SUB-HEADER / MOBILE NAV TOGGLE */}
       <div style={{
@@ -803,6 +929,23 @@ export default function AdminConsolePage() {
           }}
         >
           📖 Catalog Hierarchy
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('erpnext')}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: 700,
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'erpnext' ? '#FF6B00' : '#F1F5F9',
+            color: activeTab === 'erpnext' ? '#FFFFFF' : '#334155'
+          }}
+        >
+          ⚡ ERPNext Hub
         </button>
       </div>
 
@@ -1057,6 +1200,37 @@ export default function AdminConsolePage() {
               </span>
             </button>
 
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
+              ENTERPRISE &amp; ERP
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('erpnext')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: activeTab === 'erpnext' ? 700 : 500,
+                background: activeTab === 'erpnext' ? '#0052CC' : 'transparent',
+                color: activeTab === 'erpnext' ? '#FFFFFF' : '#334155',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Layers size={16} color={activeTab === 'erpnext' ? '#FFFFFF' : '#0052CC'} />
+                <span>ERPNext Live Sync</span>
+              </div>
+              <span style={{ background: activeTab === 'erpnext' ? '#FFFFFF' : '#ECFDF5', color: activeTab === 'erpnext' ? '#0052CC' : '#047857', padding: '2px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 800 }}>
+                SYNC
+              </span>
+            </button>
+
             {/* Operator Session & Sign Out */}
             <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
               <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1304,6 +1478,18 @@ export default function AdminConsolePage() {
               onUpdate={handleUpdateSurplusLot}
               onDelete={handleDeleteSurplusLot}
               onToggleActive={handleToggleSurplusActive}
+              showToast={showToast}
+            />
+          )}
+
+          {/* VIEW: ERPNEXT INTEGRATION & SYNC HUB */}
+          {activeTab === 'erpnext' && (
+            <AdminErpNextSection
+              products={products}
+              onProductsSync={(newProds) => {
+                setProducts(newProds);
+                showToast(`Catalog updated with ${newProds.length} items from ERPNext.`);
+              }}
               showToast={showToast}
             />
           )}

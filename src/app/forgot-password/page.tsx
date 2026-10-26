@@ -57,8 +57,8 @@ export default function ForgotPasswordPage() {
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <Link href="/" style={{ display: 'inline-block', marginBottom: '14px' }}>
               <img
-                src="/assets/logo_blue.png"
-                alt="CBH Fasteners"
+                src="/assets/cbh-logo-stacked.png"
+                alt="CBH.STORE"
                 style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
               />
             </Link>

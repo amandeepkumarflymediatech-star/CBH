@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
+import TablePagination from '@/components/common/TablePagination';
 import { Product } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -42,6 +43,10 @@ export default function AdminProductsSection({
   const [selectedStock, setSelectedStock] = useState('all');
   const [selectedCatalog, setSelectedCatalog] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -118,6 +123,17 @@ export default function AdminProductsSection({
     return list;
   }, [products, search, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
 
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
+
+  // Sliced paginated products
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage, itemsPerPage]);
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedStandard('all');
@@ -125,6 +141,7 @@ export default function AdminProductsSection({
     setSelectedStock('all');
     setSelectedCatalog('all');
     setSortBy('default');
+    setCurrentPage(1);
   };
 
   const handleExportCSV = () => {
@@ -377,7 +394,7 @@ export default function AdminProductsSection({
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((p) => {
+              paginatedProducts.map((p) => {
                 const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
                 const isOutOfStock = p.stockPcs === 0;
 
@@ -497,6 +514,15 @@ export default function AdminProductsSection({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredProducts.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="fastener SKUs"
+          pageSizeOptions={[10, 20, 50, 100]}
+        />
       </div>
 
       {/* Add Fastener Modal */}

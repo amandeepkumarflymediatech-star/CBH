@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import TablePagination from '@/components/common/TablePagination';
 import { BulkQuotation } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -38,6 +39,10 @@ export default function AdminRfqsSection({
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -92,10 +97,22 @@ export default function AdminRfqsSection({
     return list;
   }, [quotes, search, selectedStatus, sortBy]);
 
+  // Reset page on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStatus, sortBy]);
+
+  // Sliced paginated quotes
+  const paginatedQuotes = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredQuotes.slice(start, start + itemsPerPage);
+  }, [filteredQuotes, currentPage, itemsPerPage]);
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedStatus('all');
     setSortBy('date_desc');
+    setCurrentPage(1);
   };
 
   const handleExportCSV = () => {
@@ -311,7 +328,7 @@ export default function AdminRfqsSection({
                 </td>
               </tr>
             ) : (
-              filteredQuotes.map((q) => {
+              paginatedQuotes.map((q) => {
                 const isApproved = q.status === 'APPROVED' || q.status === 'PO_ISSUED';
                 const isPending = q.status === 'PENDING' || q.status === 'IN_REVIEW';
 
@@ -415,6 +432,15 @@ export default function AdminRfqsSection({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredQuotes.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="quotations"
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {/* Add Custom RFQ Modal */}

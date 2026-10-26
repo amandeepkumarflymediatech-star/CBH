@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 import { Product } from '@/lib/types';
-
-// In-memory persistent collection for dev / runtime
-let productsDb: Product[] = [...INITIAL_PRODUCTS];
+import { getProductsDb, setProductsDb } from '@/lib/products-db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,6 +11,7 @@ export async function GET(request: Request) {
   const stockStatus = searchParams.get('stockStatus');
   const sortBy = searchParams.get('sortBy');
 
+  const productsDb = getProductsDb();
   let results = [...productsDb];
 
   // Search filter
@@ -113,7 +111,9 @@ export async function POST(request: Request) {
       imageUrl: body.imageUrl || '/assets/bolt_zinc.jpg',
     };
 
+    const productsDb = getProductsDb();
     productsDb.unshift(newProduct);
+    setProductsDb(productsDb);
 
     return NextResponse.json(
       {
@@ -140,6 +140,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Product ID is required for update' }, { status: 400 });
     }
 
+    const productsDb = getProductsDb();
     const index = productsDb.findIndex((p) => p.id === Number(id));
     if (index === -1) {
       return NextResponse.json({ success: false, error: 'Product SKU not found' }, { status: 404 });
@@ -161,6 +162,7 @@ export async function PUT(request: Request) {
     };
 
     productsDb[index] = updatedProduct;
+    setProductsDb(productsDb);
 
     return NextResponse.json({
       success: true,
@@ -181,12 +183,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Product ID is required for deletion' }, { status: 400 });
     }
 
+    const productsDb = getProductsDb();
     const index = productsDb.findIndex((p) => p.id === Number(id));
     if (index === -1) {
       return NextResponse.json({ success: false, error: 'Product SKU not found' }, { status: 404 });
     }
 
     const deleted = productsDb.splice(index, 1)[0];
+    setProductsDb(productsDb);
 
     return NextResponse.json({
       success: true,

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import TablePagination from '@/components/common/TablePagination';
 import {
   CatalogCategory,
   CatalogSubcategory,
@@ -127,6 +128,18 @@ export default function AdminCatalogSection() {
 
   // Variant Actions
   const currentFamily = families.find((f) => f.slug === selectedFamilySlug) || families[0];
+  const [variantsPage, setVariantsPage] = useState(1);
+  const [variantsPerPage, setVariantsPerPage] = useState(10);
+
+  useEffect(() => {
+    setVariantsPage(1);
+  }, [selectedFamilySlug]);
+
+  const variantsList = useMemo(() => currentFamily?.variants || [], [currentFamily]);
+  const paginatedVariants = useMemo(() => {
+    const start = (variantsPage - 1) * variantsPerPage;
+    return variantsList.slice(start, start + variantsPerPage);
+  }, [variantsList, variantsPage, variantsPerPage]);
 
   const handleCreateVariant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -672,39 +685,56 @@ export default function AdminCatalogSection() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#D8DFE7]">
-                  {currentFamily?.variants?.map((v) => (
-                    <tr key={v.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-[#14181E]">{v.artName}</div>
-                        <div className="font-mono text-[11px] text-[#0052CC]">Art. {v.itemNo}</div>
-                      </td>
-                      <td className="py-3 px-3 text-center font-bold text-slate-700">{v.drillHoleDiameterMm}</td>
-                      <td className="py-3 px-3 text-center text-slate-600">{v.effectiveAnchorageDepthMm}</td>
-                      <td className="py-3 px-3 text-center font-semibold text-[#0052CC]">{v.maxFixtureThicknessMm}</td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-700">{v.thread}</td>
-                      <td className="py-3 px-3 text-center">
-                        <span className="px-2 py-0.5 rounded bg-[#F4F6F9] border border-[#D8DFE7] text-[10px] font-bold uppercase">
-                          {v.materialCode}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#0052CC]">
-                        {formatINR(v.unitPriceInr)}
-                      </td>
-                      <td className="py-3 px-3 text-center text-slate-600">{v.packQty}</td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleDeleteVariant(v.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
-                          title="Delete variant"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                  {variantsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-slate-500">
+                        No technical variants registered for this family yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    paginatedVariants.map((v) => (
+                      <tr key={v.id} className="hover:bg-slate-50/70">
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-[#14181E]">{v.artName}</div>
+                          <div className="font-mono text-[11px] text-[#0052CC]">Art. {v.itemNo}</div>
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-slate-700">{v.drillHoleDiameterMm}</td>
+                        <td className="py-3 px-3 text-center text-slate-600">{v.effectiveAnchorageDepthMm}</td>
+                        <td className="py-3 px-3 text-center font-semibold text-[#0052CC]">{v.maxFixtureThicknessMm}</td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-700">{v.thread}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="px-2 py-0.5 rounded bg-[#F4F6F9] border border-[#D8DFE7] text-[10px] font-bold uppercase">
+                            {v.materialCode}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-[#0052CC]">
+                          {formatINR(v.unitPriceInr)}
+                        </td>
+                        <td className="py-3 px-3 text-center text-slate-600">{v.packQty}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleDeleteVariant(v.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                            title="Delete variant"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+            <TablePagination
+              currentPage={variantsPage}
+              totalItems={variantsList.length}
+              itemsPerPage={variantsPerPage}
+              onPageChange={setVariantsPage}
+              onItemsPerPageChange={setVariantsPerPage}
+              itemLabel="technical variants"
+              pageSizeOptions={[5, 10, 20]}
+            />
           </div>
         </div>
       )}

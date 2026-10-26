@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import TablePagination from '@/components/common/TablePagination';
 import { SurplusLot } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -41,6 +42,10 @@ export default function AdminSurplusSection({
   const [selectedHub, setSelectedHub] = useState('all');
   const [selectedActive, setSelectedActive] = useState('all');
   const [sortBy, setSortBy] = useState('discount_desc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -100,12 +105,24 @@ export default function AdminSurplusSection({
     return list;
   }, [lots, search, selectedStandard, selectedHub, selectedActive, sortBy]);
 
+  // Reset page on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStandard, selectedHub, selectedActive, sortBy]);
+
+  // Sliced paginated surplus lots
+  const paginatedLots = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredLots.slice(start, start + itemsPerPage);
+  }, [filteredLots, currentPage, itemsPerPage]);
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedStandard('all');
     setSelectedHub('all');
     setSelectedActive('all');
     setSortBy('discount_desc');
+    setCurrentPage(1);
   };
 
   const handleExportCSV = () => {
@@ -324,7 +341,7 @@ export default function AdminSurplusSection({
                 </td>
               </tr>
             ) : (
-              filteredLots.map((l) => {
+              paginatedLots.map((l) => {
                 return (
                   <tr key={l.id} className="surplus-row">
                     <td>
@@ -413,6 +430,15 @@ export default function AdminSurplusSection({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredLots.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="surplus liquidation lots"
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {/* Add Surplus Lot Modal */}

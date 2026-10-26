@@ -121,10 +121,10 @@ export default function MainHeader({
       <header className={`main-header ${isScrolled ? 'is-scrolled' : ''}`}>
         <div className="container header-core">
           {/* Brand Identity */}
-          <Link href="/" className="brand-block" title="CBH Fasteners - Home">
+          <Link href="/" className="brand-block" title="CBH.STORE - Fastening Solutions At Your Fingertips">
             <img
-              src="/assets/logo_blue.png"
-              alt="CBH Fasteners - Industrial Precision Fastener Platform"
+              src="/assets/cbh-logo-stacked.png"
+              alt="CBH.STORE - Fastening Solutions At Your Fingertips"
               className="brand-logo-img"
             />
           </Link>
@@ -300,45 +300,22 @@ export default function MainHeader({
                           </span>
                         </div>
 
-                        {currentUser.role === 'admin' ? (
-                          <>
-                            <Link
-                              href="/admin"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#0F172A', textDecoration: 'none', background: '#EFF6FF' }}
-                            >
-                              <ShieldCheck size={15} color="#0052CC" />
-                              <span>Admin Operations Console</span>
-                            </Link>
-                            <Link
-                              href="/customer"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#475569', textDecoration: 'none' }}
-                            >
-                              <Building2 size={15} />
-                              <span>Inspect Client Portal View</span>
-                            </Link>
-                          </>
-                        ) : (
-                          <>
-                            <Link
-                              href="/customer"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#0F172A', textDecoration: 'none', background: '#FFF7ED' }}
-                            >
-                              <Building2 size={15} color="#FF6B00" />
-                              <span>Client Portal Dashboard</span>
-                            </Link>
-                            <Link
-                              href="/bulk-order"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#475569', textDecoration: 'none' }}
-                            >
-                              <Zap size={15} color="#FF6B00" />
-                              <span>Rapid RFQ Engine</span>
-                            </Link>
-                          </>
-                        )}
+                        <Link
+                          href="/customer"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#0F172A', textDecoration: 'none', background: '#F8FAFC' }}
+                        >
+                          <Building2 size={15} color="#0052CC" />
+                          <span>Client Portal &amp; Orders</span>
+                        </Link>
+                        <Link
+                          href="/bulk-order"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#475569', textDecoration: 'none' }}
+                        >
+                          <Zap size={15} color="#FF6B00" />
+                          <span>Rapid RFQ Engine</span>
+                        </Link>
 
                         <div style={{ borderTop: '1px solid #F1F5F9', marginTop: '6px', paddingTop: '6px' }}>
                           <button
@@ -445,10 +422,10 @@ export default function MainHeader({
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <img
-                  src="/assets/logo_blue.png"
-                  alt="CBH Fasteners"
+                  src="/assets/cbh-logo-stacked.png"
+                  alt="CBH.STORE"
                   className="brand-logo-img"
-                  style={{ height: '32px' }}
+                  style={{ height: '56px' }}
                 />
               </Link>
               <button
@@ -586,16 +563,7 @@ export default function MainHeader({
                       <span>Client Portal &amp; Order History</span>
                     </Link>
 
-                    {currentUser.role === 'admin' && (
-                      <Link
-                        href="/admin"
-                        className="drawer-nav-item"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        <ShieldCheck size={18} color="#0052CC" />
-                        <span>Admin Operations Console</span>
-                      </Link>
-                    )}
+
 
                     <button
                       type="button"

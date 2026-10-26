@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import HeroSection from '@/components/home/HeroSection';
 import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinder';
@@ -16,7 +16,24 @@ import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 
 export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
+  const [allProducts, setAllProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  // Fetch live products dynamically from API & ERPNext database
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data && data.data.length > 0) {
+          setAllProducts(data.data);
+          setProducts(data.data);
+        }
+      })
+      .catch((err) => console.log('Could not fetch dynamic products:', err))
+      .finally(() => setIsLoadingProducts(false));
+  }, []);
+
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([
     {
       id: 1,
@@ -36,7 +53,7 @@ export default function HomePage() {
 
   // Filter Handler
   const handleFilterChange = (filters: FastenerFilters) => {
-    let filtered = [...INITIAL_PRODUCTS];
+    let filtered = [...allProducts];
 
     // Tab-level filtering
     if (filters.tab && filters.tab !== 'all') {

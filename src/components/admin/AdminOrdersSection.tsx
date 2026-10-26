@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import TablePagination from '@/components/common/TablePagination';
 import { CustomerOrder } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -39,6 +40,10 @@ export default function AdminOrdersSection({
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedCarrier, setSelectedCarrier] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -98,11 +103,23 @@ export default function AdminOrdersSection({
     return list;
   }, [orders, search, selectedStatus, selectedCarrier, sortBy]);
 
+  // Reset page on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStatus, selectedCarrier, sortBy]);
+
+  // Sliced paginated orders
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredOrders.slice(start, start + itemsPerPage);
+  }, [filteredOrders, currentPage, itemsPerPage]);
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedStatus('all');
     setSelectedCarrier('all');
     setSortBy('date_desc');
+    setCurrentPage(1);
   };
 
   const handleExportCSV = () => {
@@ -336,7 +353,7 @@ export default function AdminOrdersSection({
                 </td>
               </tr>
             ) : (
-              filteredOrders.map((o) => {
+              paginatedOrders.map((o) => {
                 const isDelivered = o.status === 'DELIVERED';
 
                 return (
@@ -451,6 +468,15 @@ export default function AdminOrdersSection({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredOrders.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="shipment orders"
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {/* New Shipment Modal */}

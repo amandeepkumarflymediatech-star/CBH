@@ -19,20 +19,16 @@ export default function IndustrialFooter() {
         <div className="footer-grid">
           {/* Col 1 */}
           <div>
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <Link href="/" style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                background: '#FFFFFF',
-                padding: '8px 16px',
-                borderRadius: '6px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
                 textDecoration: 'none'
               }}>
                 <img
-                  src="/assets/logo_blue.png"
-                  alt="CBH Fasteners"
-                  style={{ height: '38px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                  src="/assets/cbh-logo-icon.png"
+                  alt="CBH.STORE"
+                  style={{ height: '78px', width: 'auto', objectFit: 'contain', display: 'block' }}
                 />
               </Link>
             </div>

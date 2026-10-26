@@ -140,9 +140,9 @@ export default function RegisterPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <img
-              src="/assets/logo_blue.png"
-              alt="CBH Fasteners"
-              style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
+              src="/assets/cbh-logo-stacked.png"
+              alt="CBH.STORE"
+              style={{ height: '44px', width: 'auto', objectFit: 'contain' }}
             />
           </Link>
           <span style={{ color: '#CBD5E1' }}>|</span>

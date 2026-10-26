@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import TablePagination from '@/components/common/TablePagination';
 import { UserAccount } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -42,6 +43,10 @@ export default function AdminUsersSection({
   const [selectedTier, setSelectedTier] = useState('all');
   const [selectedVerified, setSelectedVerified] = useState('all');
   const [sortBy, setSortBy] = useState('credit_desc');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -106,12 +111,24 @@ export default function AdminUsersSection({
     return list;
   }, [users, search, selectedRole, selectedTier, selectedVerified, sortBy]);
 
+  // Reset page on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedRole, selectedTier, selectedVerified, sortBy]);
+
+  // Sliced paginated users
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredUsers.slice(start, start + itemsPerPage);
+  }, [filteredUsers, currentPage, itemsPerPage]);
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedRole('all');
     setSelectedTier('all');
     setSelectedVerified('all');
     setSortBy('credit_desc');
+    setCurrentPage(1);
   };
 
   const handleExportCSV = () => {
@@ -342,7 +359,7 @@ export default function AdminUsersSection({
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((u) => {
+              paginatedUsers.map((u) => {
                 return (
                   <tr key={u.id}>
                     <td>
@@ -432,6 +449,15 @@ export default function AdminUsersSection({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="client accounts"
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       {/* Add User Modal */}

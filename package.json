@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "node scripts/migrate.js",
-    "seed": "node scripts/seed-cbh-products.js"
+    "seed": "node scripts/seed-cbh-products.js",
+    "fetch-products": "node scripts/seed-cbh-products.js"
   },
   "dependencies": {
     "@types/three": "^0.186.0",
@@ -28,6 +29,7 @@
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.6.1",
     "postcss": "^8.5.31",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.6.3"
   }

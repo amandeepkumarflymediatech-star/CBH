@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
+import TablePagination from '@/components/common/TablePagination';
 import { GlobalUnit, RfqLineItem, CustomerOrder, BulkQuotation } from '@/lib/types';
 import { INITIAL_ORDERS, INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
@@ -108,6 +109,20 @@ export default function CustomerPortalPage() {
   const [isNewSiteModalOpen, setIsNewSiteModalOpen] = useState(false);
   const [isNewTeamModalOpen, setIsNewTeamModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pagination States for all customer sections
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPerPage, setOrdersPerPage] = useState(5);
+  const [rfqsPage, setRfqsPage] = useState(1);
+  const [rfqsPerPage, setRfqsPerPage] = useState(5);
+  const [certsPage, setCertsPage] = useState(1);
+  const [certsPerPage, setCertsPerPage] = useState(5);
+  const [invoicesPage, setInvoicesPage] = useState(1);
+  const [invoicesPerPage, setInvoicesPerPage] = useState(5);
+  const [sitesPage, setSitesPage] = useState(1);
+  const [sitesPerPage, setSitesPerPage] = useState(6);
+  const [teamPage, setTeamPage] = useState(1);
+  const [teamPerPage, setTeamPerPage] = useState(5);
 
   // Form states
   const [newRfqForm, setNewRfqForm] = useState({
@@ -360,6 +375,45 @@ export default function CustomerPortalPage() {
         qt.companyName?.toLowerCase().includes(q)
     );
   }, [quotes, searchQuery]);
+
+  // Reset pagination when search query changes
+  useEffect(() => {
+    setOrdersPage(1);
+    setRfqsPage(1);
+    setCertsPage(1);
+    setInvoicesPage(1);
+  }, [searchQuery]);
+
+  // Paginated data slices for each view
+  const paginatedOrders = useMemo(() => {
+    const start = (ordersPage - 1) * ordersPerPage;
+    return filteredOrders.slice(start, start + ordersPerPage);
+  }, [filteredOrders, ordersPage, ordersPerPage]);
+
+  const paginatedQuotes = useMemo(() => {
+    const start = (rfqsPage - 1) * rfqsPerPage;
+    return filteredQuotes.slice(start, start + rfqsPerPage);
+  }, [filteredQuotes, rfqsPage, rfqsPerPage]);
+
+  const paginatedCerts = useMemo(() => {
+    const start = (certsPage - 1) * certsPerPage;
+    return filteredOrders.slice(start, start + certsPerPage);
+  }, [filteredOrders, certsPage, certsPerPage]);
+
+  const paginatedInvoices = useMemo(() => {
+    const start = (invoicesPage - 1) * invoicesPerPage;
+    return filteredOrders.slice(start, start + invoicesPerPage);
+  }, [filteredOrders, invoicesPage, invoicesPerPage]);
+
+  const paginatedSites = useMemo(() => {
+    const start = (sitesPage - 1) * sitesPerPage;
+    return sites.slice(start, start + sitesPerPage);
+  }, [sites, sitesPage, sitesPerPage]);
+
+  const paginatedTeam = useMemo(() => {
+    const start = (teamPage - 1) * teamPerPage;
+    return team.slice(start, start + teamPerPage);
+  }, [team, teamPage, teamPerPage]);
 
   // Handle BOM upload simulation
   const handleSimulateBOMUpload = () => {
@@ -1136,115 +1190,126 @@ export default function CustomerPortalPage() {
                   No orders match your search query.
                 </div>
               ) : (
-                filteredOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    style={{
-                      border: '1px solid #E2E8F0',
-                      borderRadius: '10px',
-                      padding: '18px',
-                      background: '#F8FAFC'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-                      <div>
-                        <span style={{ fontSize: '12px', fontWeight: 800, background: '#0F172A', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', marginRight: '8px', fontFamily: 'var(--font-mono)' }}>
-                          {order.orderNumber}
-                        </span>
-                        <span style={{ fontSize: '12px', color: '#64748B' }}>Booked on {order.date}</span>
+                <>
+                  {paginatedOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      style={{
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '10px',
+                        padding: '18px',
+                        background: '#F8FAFC'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                        <div>
+                          <span style={{ fontSize: '12px', fontWeight: 800, background: '#0F172A', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', marginRight: '8px', fontFamily: 'var(--font-mono)' }}>
+                            {order.orderNumber}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#64748B' }}>Booked on {order.date}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{
+                            background: order.status === 'DELIVERED' ? '#ECFDF5' : order.status === 'IN_TRANSIT' ? '#EFF6FF' : '#FEF3C7',
+                            color: order.status === 'DELIVERED' ? '#047857' : order.status === 'IN_TRANSIT' ? '#0052CC' : '#B45309',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}>
+                            {order.status}
+                          </span>
+                          <strong style={{ fontSize: '17px', color: '#0052CC', fontFamily: 'var(--font-mono)' }}>
+                            {formatINR(order.netAmount)}
+                          </strong>
+                        </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          background: order.status === 'DELIVERED' ? '#ECFDF5' : order.status === 'IN_TRANSIT' ? '#EFF6FF' : '#FEF3C7',
-                          color: order.status === 'DELIVERED' ? '#047857' : order.status === 'IN_TRANSIT' ? '#0052CC' : '#B45309',
-                          padding: '3px 8px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: 800
-                        }}>
-                          {order.status}
-                        </span>
-                        <strong style={{ fontSize: '17px', color: '#0052CC', fontFamily: 'var(--font-mono)' }}>
-                          {formatINR(order.netAmount)}
-                        </strong>
+                      {/* Milestone Tracker */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                        gap: '8px',
+                        margin: '14px 0 16px',
+                        background: '#FFFFFF',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid #E2E8F0'
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>✓</div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Confirmed</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>✓</div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Calibrated</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status !== 'PROCESSING' ? '#10B981' : '#FF6B00', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
+                            {order.status !== 'PROCESSING' ? '✓' : '3'}
+                          </div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Dispatched</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status === 'DELIVERED' ? '#10B981' : order.status === 'IN_TRANSIT' ? '#0052CC' : '#E2E8F0', color: order.status === 'DELIVERED' || order.status === 'IN_TRANSIT' ? '#FFFFFF' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
+                            {order.status === 'DELIVERED' ? '✓' : '4'}
+                          </div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>In Transit</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status === 'DELIVERED' ? '#10B981' : '#E2E8F0', color: order.status === 'DELIVERED' ? '#FFFFFF' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
+                            {order.status === 'DELIVERED' ? '✓' : '5'}
+                          </div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Delivered</div>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Milestone Tracker */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                      gap: '8px',
-                      margin: '14px 0 16px',
-                      background: '#FFFFFF',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #E2E8F0'
-                    }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>✓</div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Confirmed</div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>✓</div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Calibrated</div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status !== 'PROCESSING' ? '#10B981' : '#FF6B00', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
-                          {order.status !== 'PROCESSING' ? '✓' : '3'}
+                      {/* Shipment Details Matrix */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', background: '#FFFFFF', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+                        <div>
+                          <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>CARRIER / TRANSPORTER:</span>
+                          <strong>{order.carrier}</strong>
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Dispatched</div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status === 'DELIVERED' ? '#10B981' : order.status === 'IN_TRANSIT' ? '#0052CC' : '#E2E8F0', color: order.status === 'DELIVERED' || order.status === 'IN_TRANSIT' ? '#FFFFFF' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
-                          {order.status === 'DELIVERED' ? '✓' : '4'}
+                        <div>
+                          <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>DOCKET / LR NUMBER:</span>
+                          <strong style={{ color: '#0052CC' }}>{order.trackingNumber}</strong>
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>In Transit</div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: order.status === 'DELIVERED' ? '#10B981' : '#E2E8F0', color: order.status === 'DELIVERED' ? '#FFFFFF' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: '11px', fontWeight: 700 }}>
-                          {order.status === 'DELIVERED' ? '✓' : '5'}
+                        <div>
+                          <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>TOTAL WEIGHT:</span>
+                          <strong>
+                            {globalUnit === 'PCS' ? `${(order.totalWeightKg * 14.2).toFixed(0)} Pcs` : `${order.totalWeightKg} Kg (${(order.totalWeightKg / 1000).toFixed(2)} MT)`}
+                          </strong>
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0F172A' }}>Delivered</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMtcModal(order)}
+                            style={{ color: '#0052CC', fontWeight: 700, border: '1px solid #BFDBFE', background: '#EFF6FF', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}
+                          >
+                            <FileDown size={12} /> View MTC
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveInvoiceModal(order)}
+                            style={{ color: '#059669', fontWeight: 700, border: '1px solid #A7F3D0', background: '#ECFDF5', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}
+                          >
+                            <CreditCard size={12} /> Tax Invoice
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Shipment Details Matrix */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', background: '#FFFFFF', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
-                      <div>
-                        <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>CARRIER / TRANSPORTER:</span>
-                        <strong>{order.carrier}</strong>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>DOCKET / LR NUMBER:</span>
-                        <strong style={{ color: '#0052CC' }}>{order.trackingNumber}</strong>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>TOTAL WEIGHT:</span>
-                        <strong>
-                          {globalUnit === 'PCS' ? `${(order.totalWeightKg * 14.2).toFixed(0)} Pcs` : `${order.totalWeightKg} Kg (${(order.totalWeightKg / 1000).toFixed(2)} MT)`}
-                        </strong>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveMtcModal(order)}
-                          style={{ color: '#0052CC', fontWeight: 700, border: '1px solid #BFDBFE', background: '#EFF6FF', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}
-                        >
-                          <FileDown size={12} /> View MTC
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveInvoiceModal(order)}
-                          style={{ color: '#059669', fontWeight: 700, border: '1px solid #A7F3D0', background: '#ECFDF5', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}
-                        >
-                          <CreditCard size={12} /> Tax Invoice
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                  <TablePagination
+                    currentPage={ordersPage}
+                    totalItems={filteredOrders.length}
+                    itemsPerPage={ordersPerPage}
+                    onPageChange={setOrdersPage}
+                    onItemsPerPageChange={setOrdersPerPage}
+                    itemLabel="orders"
+                    pageSizeOptions={[3, 5, 10, 20]}
+                  />
+                </>
               )}
             </div>
           )}
@@ -1295,49 +1360,66 @@ export default function CustomerPortalPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredQuotes.map((q) => (
-                      <tr key={q.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                        <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0F172A' }}>
-                          {q.rfqNumber}
-                        </td>
-                        <td style={{ padding: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>{q.date}</td>
-                        <td style={{ padding: '12px' }}>{q.itemsCount} SKUs ({q.totalWeightKg} Kg)</td>
-                        <td style={{ padding: '12px', color: '#059669', fontWeight: 700 }}>
-                          -{q.discountPct}% OEM Tier
-                        </td>
-                        <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>
-                          {formatINR(q.netTotal)}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{
-                            background: q.status === 'PO_ISSUED' ? '#ECFDF5' : q.status === 'QUOTED' ? '#EFF6FF' : '#FEF3C7',
-                            color: q.status === 'PO_ISSUED' ? '#047857' : q.status === 'QUOTED' ? '#0052CC' : '#B45309',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 800
-                          }}>
-                            {q.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          {q.status !== 'PO_ISSUED' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleAcceptQuote(q)}
-                              style={{ background: '#0052CC', color: '#FFFFFF', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              Accept &amp; Order
-                            </button>
-                          ) : (
-                            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>PO Confirmed</span>
-                          )}
+                    {filteredQuotes.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#64748B' }}>
+                          No quotations found matching your search.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedQuotes.map((q) => (
+                        <tr key={q.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                          <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0F172A' }}>
+                            {q.rfqNumber}
+                          </td>
+                          <td style={{ padding: '12px', color: '#64748B', whiteSpace: 'nowrap' }}>{q.date}</td>
+                          <td style={{ padding: '12px' }}>{q.itemsCount} SKUs ({q.totalWeightKg} Kg)</td>
+                          <td style={{ padding: '12px', color: '#059669', fontWeight: 700 }}>
+                            -{q.discountPct}% OEM Tier
+                          </td>
+                          <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>
+                            {formatINR(q.netTotal)}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{
+                              background: q.status === 'PO_ISSUED' ? '#ECFDF5' : q.status === 'QUOTED' ? '#EFF6FF' : '#FEF3C7',
+                              color: q.status === 'PO_ISSUED' ? '#047857' : q.status === 'QUOTED' ? '#0052CC' : '#B45309',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 800
+                            }}>
+                              {q.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {q.status !== 'PO_ISSUED' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptQuote(q)}
+                                style={{ background: '#0052CC', color: '#FFFFFF', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Accept &amp; Order
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>PO Confirmed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                currentPage={rfqsPage}
+                totalItems={filteredQuotes.length}
+                itemsPerPage={rfqsPerPage}
+                onPageChange={setRfqsPage}
+                onItemsPerPageChange={setRfqsPerPage}
+                itemLabel="quotations"
+                pageSizeOptions={[3, 5, 10, 20]}
+              />
             </div>
           )}
 
@@ -1395,24 +1477,39 @@ export default function CustomerPortalPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {orders.map((ord) => (
-                  <div key={ord.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                      <strong style={{ fontSize: '13px', color: '#0F172A', fontFamily: 'var(--font-mono)' }}>{ord.mtcCertNumber}</strong>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                        Linked PO: {ord.orderNumber} • Batch Heat #{ord.trackingNumber?.slice(-5) || '8829'} • High Tensile EN 10204
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMtcModal(ord)}
-                      style={{ background: '#0052CC', color: '#FFFFFF', border: 'none', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Eye size={13} /> View Certificate
-                    </button>
+                {filteredOrders.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
+                    No certificates matched your search criteria.
                   </div>
-                ))}
+                ) : (
+                  paginatedCerts.map((ord) => (
+                    <div key={ord.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#0F172A', fontFamily: 'var(--font-mono)' }}>{ord.mtcCertNumber}</strong>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                          Linked PO: {ord.orderNumber} • Batch Heat #{ord.trackingNumber?.slice(-5) || '8829'} • High Tensile EN 10204
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMtcModal(ord)}
+                        style={{ background: '#0052CC', color: '#FFFFFF', border: 'none', padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Eye size={13} /> View Certificate
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
+              <TablePagination
+                currentPage={certsPage}
+                totalItems={filteredOrders.length}
+                itemsPerPage={certsPerPage}
+                onPageChange={setCertsPage}
+                onItemsPerPageChange={setCertsPerPage}
+                itemLabel="certificates"
+                pageSizeOptions={[3, 5, 10, 20]}
+              />
             </div>
           )}
 
@@ -1427,24 +1524,39 @@ export default function CustomerPortalPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {orders.map((ord) => (
-                  <div key={ord.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                      <strong style={{ fontSize: '13px', color: '#0F172A', fontFamily: 'var(--font-mono)' }}>INV-CBH-2025-{ord.id}</strong>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                        Ref Order: {ord.orderNumber} • HSN: 7318 (Fasteners 18% GST) • Total: {formatINR(ord.netAmount)}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveInvoiceModal(ord)}
-                      style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', padding: '7px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Eye size={13} color="#0052CC" /> View Tax Invoice
-                    </button>
+                {filteredOrders.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
+                    No invoices matched your search criteria.
                   </div>
-                ))}
+                ) : (
+                  paginatedInvoices.map((ord) => (
+                    <div key={ord.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#0F172A', fontFamily: 'var(--font-mono)' }}>INV-CBH-2025-{ord.id}</strong>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                          Ref Order: {ord.orderNumber} • HSN: 7318 (Fasteners 18% GST) • Total: {formatINR(ord.netAmount)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveInvoiceModal(ord)}
+                        style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', padding: '7px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Eye size={13} color="#0052CC" /> View Tax Invoice
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
+              <TablePagination
+                currentPage={invoicesPage}
+                totalItems={filteredOrders.length}
+                itemsPerPage={invoicesPerPage}
+                onPageChange={setInvoicesPage}
+                onItemsPerPageChange={setInvoicesPerPage}
+                itemLabel="tax invoices"
+                pageSizeOptions={[3, 5, 10, 20]}
+              />
             </div>
           )}
 
@@ -1468,27 +1580,42 @@ export default function CustomerPortalPage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-                {sites.map((site) => (
-                  <div key={site.id} style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', background: '#F8FAFC', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '14px', color: '#0F172A' }}>{site.name}</strong>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSite(site.id)}
-                        title="Remove project site"
-                        style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px' }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, margin: '0 0 10px 0' }}>{site.address}</p>
-                    <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '8px', fontSize: '11px' }}>
-                      <div>Incharge: <strong>{site.incharge}</strong></div>
-                      <div style={{ color: '#0052CC', fontFamily: 'var(--font-mono)' }}>{site.phone}</div>
-                    </div>
+                {sites.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#64748B', gridColumn: '1 / -1' }}>
+                    No delivery sites configured.
                   </div>
-                ))}
+                ) : (
+                  paginatedSites.map((site) => (
+                    <div key={site.id} style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '16px', background: '#F8FAFC', position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <strong style={{ fontSize: '14px', color: '#0F172A' }}>{site.name}</strong>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSite(site.id)}
+                          title="Remove project site"
+                          style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, margin: '0 0 10px 0' }}>{site.address}</p>
+                      <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '8px', fontSize: '11px' }}>
+                        <div>Incharge: <strong>{site.incharge}</strong></div>
+                        <div style={{ color: '#0052CC', fontFamily: 'var(--font-mono)' }}>{site.phone}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
+              <TablePagination
+                currentPage={sitesPage}
+                totalItems={sites.length}
+                itemsPerPage={sitesPerPage}
+                onPageChange={setSitesPage}
+                onItemsPerPageChange={setSitesPerPage}
+                itemLabel="project sites"
+                pageSizeOptions={[3, 6, 12, 24]}
+              />
             </div>
           )}
 
@@ -1523,34 +1650,51 @@ export default function CustomerPortalPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {team.map((m) => (
-                      <tr key={m.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                        <td style={{ padding: '12px' }}>
-                          <strong>{m.name}</strong>
-                          <div style={{ fontSize: '11px', color: '#64748B' }}>{m.role}</div>
-                        </td>
-                        <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', color: '#0052CC' }}>{m.email}</td>
-                        <td style={{ padding: '12px' }}>{m.access}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800 }}>
-                            {m.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTeam(m.id)}
-                            style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
-                            title="Revoke access"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                    {team.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
+                          No team members registered.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedTeam.map((m) => (
+                        <tr key={m.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                          <td style={{ padding: '12px' }}>
+                            <strong>{m.name}</strong>
+                            <div style={{ fontSize: '11px', color: '#64748B' }}>{m.role}</div>
+                          </td>
+                          <td style={{ padding: '12px', fontFamily: 'var(--font-mono)', color: '#0052CC' }}>{m.email}</td>
+                          <td style={{ padding: '12px' }}>{m.access}</td>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{ background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800 }}>
+                              {m.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTeam(m.id)}
+                              style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+                              title="Revoke access"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                currentPage={teamPage}
+                totalItems={team.length}
+                itemsPerPage={teamPerPage}
+                onPageChange={setTeamPage}
+                onItemsPerPageChange={setTeamPerPage}
+                itemLabel="team members"
+                pageSizeOptions={[3, 5, 10, 20]}
+              />
             </div>
           )}
 

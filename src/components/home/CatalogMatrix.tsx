@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingCart, CheckCircle2, PackageCheck } from 'lucide-react';
+import { ShoppingCart, CheckCircle2, PackageCheck, ArrowRight } from 'lucide-react';
 import { Product, GlobalUnit } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 
@@ -19,10 +19,13 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
 
   const filteredProducts = products.filter((p) => {
     if (activeTab === 'surplus') return p.isSurplus;
-    if (activeTab === 'bolts') return p.category === 'Bolts' || p.standard === 'DIN 931';
-    if (activeTab === 'socket') return p.standard === 'DIN 912';
+    if (activeTab === 'bolts') return p.category === 'Bolts' || p.standard === 'DIN 931' || p.name.includes('DIN 931');
+    if (activeTab === 'socket') return p.standard === 'DIN 912' || p.name.includes('DIN 912');
     return true;
   });
+
+  // Limit to exactly 8 cards on homepage
+  const visibleProducts = filteredProducts.slice(0, 8);
 
   const getUnit = (id: number): GlobalUnit => cardUnits[id] || 'PCS';
   const getQty = (id: number): number => cardQtys[id] || (getUnit(id) === 'PCS' ? 500 : 50);
@@ -110,7 +113,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
 
         {/* 8 Product Cards Grid */}
         <div className="product-grid">
-          {filteredProducts.map((p) => {
+          {visibleProducts.map((p) => {
             const currentUnit = getUnit(p.id);
             const currentQty = getQty(p.id);
 
@@ -262,9 +265,44 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
           })}
         </div>
 
+        {/* View All Redirect CTA */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: '36px',
+          textAlign: 'center'
+        }}>
+          <Link
+            href="/products"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: '#0052CC',
+              color: '#FFFFFF',
+              padding: '14px 34px',
+              borderRadius: '8px',
+              fontSize: '15px',
+              fontWeight: 800,
+              textDecoration: 'none',
+              letterSpacing: '0.01em',
+              boxShadow: '0 4px 14px rgba(0, 82, 204, 0.25)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <span>View All Fasteners ({products.length > 0 ? products.length : '57+'} Products)</span>
+            <ArrowRight size={18} />
+          </Link>
+          <span style={{ fontSize: '12px', color: '#64748B', marginTop: '10px' }}>
+            Browse full procurement catalog with parametric filters, diameter sizes &amp; DIN/ISO standard drawings
+          </span>
+        </div>
+
         {/* Load More Banner */}
         <div style={{
-          marginTop: '36px',
+          marginTop: '28px',
           background: '#FFFFFF',
           border: '1px solid var(--color-surface-border)',
           borderRadius: 'var(--radius-sm)',
@@ -287,8 +325,8 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
             </div>
           </div>
 
-          <Link href="/bulk-order" className="btn-dark">
-            <span>View Entire 2,00,000+ SKU Catalog</span>
+          <Link href="/products" className="btn-dark" style={{ textDecoration: 'none' }}>
+            <span>Explore Entire Fastener Catalog</span>
           </Link>
         </div>
       </div>
