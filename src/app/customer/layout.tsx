@@ -1,33 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Home,
+  BarChart2,
+  Users,
+  Calendar,
+  Zap,
+  Award,
+  Bell,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  CreditCard,
   Building2,
-  ShieldCheck,
   Truck,
   FileText,
-  Package,
-  CheckCircle2,
   MapPin,
-  Users2,
-  CreditCard,
-  ArrowRight,
-  TrendingUp,
-  Download,
-  AlertCircle,
-  RefreshCw,
-  LogOut,
-  ShieldAlert,
-  Menu,
-  Award,
-  Layers,
-  Sparkles,
-  X
+  ExternalLink,
+  ChevronRight,
+  ShieldCheck,
+  CheckCircle2,
+  User
 } from 'lucide-react';
-import { getStoredUser, setStoredUser, logout, DEMO_CLIENT, AuthUser } from '@/lib/auth';
-import { formatINR } from '@/lib/rfq-calculator';
+import { getStoredUser, logout, AuthUser } from '@/lib/auth';
 
 export default function CustomerLayout({
   children,
@@ -38,117 +37,72 @@ export default function CustomerLayout({
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCurrentUser(getStoredUser());
+    const user = getStoredUser();
+    setCurrentUser(user);
     setHasLoadedAuth(true);
 
-    const handleAuthChange = () => setCurrentUser(getStoredUser());
+    // If unauthenticated on /customer/* routes, immediately redirect to /
+    if (!user && typeof window !== 'undefined') {
+      window.location.replace('/');
+      return;
+    }
+
+    const handleAuthChange = () => {
+      const u = getStoredUser();
+      setCurrentUser(u);
+      if (!u && typeof window !== 'undefined') {
+        window.location.replace('/');
+      }
+    };
     window.addEventListener('cbh_auth_change', handleAuthChange);
-    return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
+
+    // Close popups when clicking outside
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('cbh_auth_change', handleAuthChange);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  // Case 1: Unauthenticated -> Require Client Login
+  // Case 1: Unauthenticated -> Immediately redirect to home /
   if (hasLoadedAuth && !currentUser) {
+    if (typeof window !== 'undefined') {
+      window.location.replace('/');
+    }
     return (
-      <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ background: '#0F172A', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>CBH<span style={{ color: '#FF6B00' }}>.</span></span>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#0052CC', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px' }}>ENTERPRISE CLIENT STATION</span>
-          </Link>
-          <Link href="/" style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
-            &larr; Return to Storefront
-          </Link>
-        </header>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: '16px',
-            maxWidth: '540px',
-            width: '100%',
-            padding: '40px 32px',
-            textAlign: 'center',
-            boxShadow: '0 12px 35px rgba(15, 23, 42, 0.08)',
-            borderTop: '5px solid #0052CC'
-          }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#EFF6FF', color: '#0052CC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-              <Building2 size={30} />
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-              Enterprise Client Authorization Required
-            </h2>
-            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, marginBottom: '24px' }}>
-              Please sign in to access your company purchase orders, live dispatch logistics, approved credit limits, and certified NABL MTC test reports.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Link
-                href="/login"
-                className="btn-primary"
-                style={{ padding: '12px', justifyContent: 'center', background: '#0052CC', textDecoration: 'none' }}
-              >
-                <span>Sign In to Client Portal</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/"
-                style={{
-                  padding: '11px',
-                  borderRadius: '6px',
-                  border: '1px solid #CBD5E1',
-                  background: '#F8FAFC',
-                  color: '#334155',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                Return to Storefront
-              </Link>
-              <div style={{ margin: '16px 0 6px', borderTop: '1px solid #F1F5F9', paddingTop: '16px' }}>
-                <span style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>
-                  Developer &amp; Testing Access
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStoredUser(DEMO_CLIENT)}
-                  style={{
-                    width: '100%',
-                    marginTop: '8px',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px dashed #BFDBFE',
-                    background: '#EFF6FF',
-                    color: '#0052CC',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  ⚡ One-Click Demo: Sign In as Apex Infrastructure Corp (VIP Tier)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div style={{ background: '#F4F5F9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748B', fontSize: '13px', fontWeight: 600 }}>Redirecting to home...</p>
       </div>
     );
   }
 
   const clientCompany = currentUser?.companyName || 'Apex Infrastructure Corp';
   const clientName = currentUser?.fullName || 'Rajesh Sharma';
-  const clientGstin = currentUser?.gstin || '07AAAAA0000A1Z5';
-  const clientTier = currentUser?.tier || 'VIP';
 
-  // Navigation Links for Customer
-  const customerNav = [
-    { label: 'Buyer Overview', href: '/customer', icon: Building2, exact: true },
-    { label: 'Purchase Orders', href: '/customer/orders', icon: Truck },
-    { label: 'Bulk RFQs & Quotes', href: '/customer/rfqs', icon: FileText },
-    { label: 'NABL MTC & Quality', href: '/customer/certificates', icon: Award },
-    { label: 'Project Delivery Sites', href: '/customer/sites', icon: MapPin },
-    { label: 'Procurement Team', href: '/customer/team', icon: Users2 },
+  // Navigation Items
+  const railNav = [
+    { label: 'Overview', href: '/customer', icon: Home, exact: true },
+    { label: 'Purchase Orders', href: '/customer/orders', icon: BarChart2 },
+    { label: 'Procurement Team', href: '/customer/team', icon: Users },
+    { label: 'Project Sites', href: '/customer/sites', icon: Calendar },
+    { label: 'Bulk RFQs', href: '/customer/rfqs', icon: Zap },
+    { label: 'NABL Certificates', href: '/customer/certificates', icon: Award },
+    { label: 'Enterprise Profile', href: '/customer/profile', icon: User },
   ];
 
   const isLinkActive = (href: string, exact?: boolean) => {
@@ -157,315 +111,346 @@ export default function CustomerLayout({
   };
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Enterprise Buyer Portal Top Header */}
-      <header className="bg-white border-b border-slate-200 px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center justify-between gap-2 sm:gap-4 max-w-[1600px] mx-auto">
-          {/* Left: Mobile Toggle + Logo + Badges */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors shrink-0"
-              title="Toggle Portal Navigation"
-              aria-label="Toggle Portal Navigation"
-            >
-              <Menu size={18} />
-            </button>
+    <div style={{ background: '#F4F5F9', minHeight: '100vh', display: 'flex' }}>
+      {/* ================================================================ */}
+      {/* DESKTOP & TABLET SLIM ICON RAIL (width: 76px)                    */}
+      {/* ================================================================ */}
+      <aside
+        className="hidden md:flex flex-col items-center justify-between py-6 sticky top-0 h-screen shrink-0 border-r border-[#E5E7EB] bg-white z-40"
+        style={{ width: '76px' }}
+      >
+        {/* Top: CBH Logo (Square branded container with real logo icon) */}
+        <div className="flex flex-col items-center gap-7 w-full">
+          <Link
+            href="/customer"
+            className="w-12 h-12 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex items-center justify-center p-2 hover:scale-105 hover:shadow-md transition-all no-underline group"
+            title="CBH Fastener Procurement"
+          >
+            <img
+              src="/assets/cbh-logo-icon.png"
+              alt="CBH"
+              className="w-full h-full object-contain transition-transform group-hover:scale-110"
+            />
+          </Link>
 
-            <Link href="/customer" className="flex items-center gap-1.5 sm:gap-2 shrink-0 no-underline">
-              <span className="text-lg sm:text-xl font-black text-[#0F172A] tracking-tight">
-                CBH<span className="text-[#0052CC]">.</span>
-              </span>
-              <span className="hidden sm:inline-block text-[10px] sm:text-[11px] font-extrabold bg-[#0052CC] text-white px-2 py-0.5 rounded tracking-wider uppercase">
-                Buyer Portal
-              </span>
-              <span className="sm:hidden text-[9px] font-extrabold bg-[#0052CC] text-white px-1.5 py-0.5 rounded uppercase">
-                Client
-              </span>
-            </Link>
-
-            {/* GST Verified Badge - Visible on wide screens */}
-            <span className="hidden xl:inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-              <ShieldCheck size={12} className="text-emerald-600" />
-              <span>GST Verified: {clientGstin}</span>
-            </span>
-          </div>
-
-          {/* Right: Available Credit + Procure Button + Account & Sign Out */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Credit Limit Badge: Compact on mobile, full on tablet/desktop */}
-            <div className="hidden md:flex items-center gap-2 sm:gap-2.5 bg-slate-50 border border-slate-200 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs">
-              <CreditCard size={15} className="text-[#0052CC] shrink-0" />
-              <div className="leading-tight">
-                <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider">Credit Available</div>
-                <strong className="text-xs text-[#0F172A] font-mono font-bold">₹37.5L <span className="hidden lg:inline text-slate-400 font-normal">/ 50L</span></strong>
-              </div>
-              <span className="hidden xl:inline text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                30D
-              </span>
-            </div>
-
-            {/* Direct Storefront Procure Fasteners button */}
-            <Link
-              href="/products"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg transition-colors shadow-sm no-underline"
-              title="Open Storefront Fastener Catalog"
-            >
-              <span className="hidden sm:inline">Procure Fasteners</span>
-              <span className="sm:hidden">Store</span>
-              <ArrowRight size={13} />
-            </Link>
-
-            {/* Account Info & Logout */}
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 border-l border-slate-200">
-              <div className="hidden sm:block text-right leading-tight max-w-[130px] lg:max-w-[180px]">
-                <div className="text-xs font-extrabold text-[#0F172A] truncate">{clientCompany}</div>
-                <div className="text-[10px] text-slate-500 truncate">{clientName}</div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => logout()}
-                title="Sign Out of Buyer Portal"
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
-              >
-                <LogOut size={13} />
-                <span className="hidden md:inline">Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Drawer Backdrop */}
-      {isMobileNavOpen && (
-        <div
-          onClick={() => setIsMobileNavOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.5)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 45
-          }}
-        />
-      )}
-
-      {/* Main Customer Layout Canvas with Dedicated Sidebar */}
-      <div className="flex-1 flex max-w-[1600px] w-full mx-auto p-3 sm:p-5 lg:p-6 gap-4 lg:gap-6">
-        {/* Left Customer Sidebar */}
-        <aside
-          className={`customer-portal-sidebar ${isMobileNavOpen ? 'mobile-open' : ''}`}
-          style={{
-            width: '280px',
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}
-        >
-          {/* Mobile Drawer Top Bar with Close Button */}
-          <div className="flex items-center justify-between lg:hidden pb-2 border-b border-slate-200">
-            <span className="text-xs font-black text-[#0F172A] uppercase tracking-wider">
-              Procurement Menu
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(false)}
-              className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors"
-              title="Close Menu"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Client Account Card */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '18px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: '#EFF6FF',
-                color: '#0052CC',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '18px'
-              }}>
-                <Building2 size={22} />
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {clientCompany}
-                </h3>
-                <span style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  <ShieldCheck size={12} color="#059669" />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clientGstin}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Tier Badge */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: '#FEF3C7',
-              border: '1px solid #FDE68A',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              marginBottom: '12px'
-            }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#92400E' }}>
-                ⭐ {clientTier} TIER ACCOUNT
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: 800, background: '#F59E0B', color: '#FFFFFF', padding: '2px 6px', borderRadius: '4px' }}>
-                8% REBATE
-              </span>
-            </div>
-
-            {/* 30-Day Revolving Credit Gauge */}
-            <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Revolving Credit</span>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#059669' }}>30D Net</span>
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
-                ₹37,50,000 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 500 }}>/ ₹50L</span>
-              </div>
-              <div style={{ width: '100%', height: '6px', background: '#E2E8F0', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
-                <div style={{ width: '75%', height: '100%', background: 'linear-gradient(90deg, #0052CC, #059669)', borderRadius: '3px' }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Vertical Sidebar Navigation */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '12px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px'
-          }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '6px 12px' }}>
-              Buyer Portal Navigation
-            </span>
-            {customerNav.map((item) => {
+          {/* Navigation Stack */}
+          <nav className="flex flex-col items-center gap-3 w-full px-3">
+            {railNav.map((item) => {
               const active = isLinkActive(item.href, item.exact);
               const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setIsMobileNavOpen(false)}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                    fontSize: '13px',
-                    fontWeight: active ? 800 : 600,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: active ? '#0052CC' : 'transparent',
-                    color: active ? '#FFFFFF' : '#334155',
-                    transition: 'all 0.15s ease'
-                  }}
-                  className={active ? '' : 'hover:bg-slate-100'}
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all group relative no-underline ${
+                    active
+                      ? 'bg-[#EEF0FD] text-[#5B4DF6] font-bold shadow-xs'
+                      : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+                  }`}
+                  title={item.label}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon size={16} color={active ? '#FFFFFF' : '#64748B'} />
-                    <span>{item.label}</span>
-                  </div>
-                  {active && <ArrowRight size={14} color="#FFFFFF" />}
+                  <Icon size={20} strokeWidth={active ? 2.4 : 1.9} />
+                  
+                  {/* Tooltip on hover */}
+                  <span className="absolute left-[70px] bg-[#0F172A] text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
-          </div>
 
-          {/* Custom BOM Schedule Callout */}
-          <div style={{
-            background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-            color: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={16} color="#38BDF8" />
-              <span style={{ fontSize: '12px', fontWeight: 800 }}>Need Custom Fasteners?</span>
+            {/* Notification Bell with interactive popover */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors relative group ${
+                  isNotificationsOpen ? 'bg-[#EEF0FD] text-[#5B4DF6]' : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+                }`}
+                title="Notifications"
+              >
+                <Bell size={20} strokeWidth={1.9} />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#5B4DF6] ring-2 ring-white" />
+              </button>
+
+              {/* Notifications Popover */}
+              {isNotificationsOpen && (
+                <div className="absolute left-[74px] top-0 w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <span className="font-bold text-xs text-[#0F172A]">Recent Activity &amp; Alerts</span>
+                    <span className="text-[10px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-2 py-0.5 rounded-full">3 New</span>
+                  </div>
+                  <div className="divide-y divide-slate-100 text-xs mt-2 max-h-72 overflow-y-auto">
+                    <div className="py-2.5">
+                      <div className="font-bold text-[#0F172A]">Consignment In Transit</div>
+                      <div className="text-[11px] text-slate-500">TCI Express docket #782910 dispatched from Ludhiana Works.</div>
+                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">20 mins ago</div>
+                    </div>
+                    <div className="py-2.5">
+                      <div className="font-bold text-[#0F172A]">MTC Certificate Ready</div>
+                      <div className="text-[11px] text-slate-500">NABL chemical test report issued for PO #CBH-2026-881.</div>
+                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">2 hours ago</div>
+                    </div>
+                    <div className="py-2.5">
+                      <div className="font-bold text-[#0F172A]">Credit Facility Active</div>
+                      <div className="text-[11px] text-slate-500">Monthly revolving credit renewed: ₹37.5L available.</div>
+                      <div className="text-[10px] text-slate-400 font-semibold mt-1">Yesterday</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-              Upload BOM schedules or request customized DIN / ISO non-standard fasteners directly.
-            </p>
-            <Link
-              href="/bulk-order"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                background: '#0052CC',
-                color: '#FFFFFF',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                textDecoration: 'none',
-                textAlign: 'center'
-              }}
-            >
-              <span>Submit Custom BOM</span>
-              <ArrowRight size={12} />
-            </Link>
-          </div>
-        </aside>
+          </nav>
+        </div>
 
-        {/* Customer Page Body Viewport */}
-        <main style={{ flex: 1, minWidth: 0 }}>
+        {/* Bottom: Settings & User Profile Avatar */}
+        <div className="flex flex-col items-center gap-4 w-full relative" ref={userMenuRef}>
+          {/* Settings Icon (Links to /customer/settings) */}
+          <Link
+            href="/customer/settings"
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors group relative no-underline ${
+              pathname === '/customer/settings'
+                ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+            }`}
+            title="Account Settings"
+          >
+            <Settings size={20} strokeWidth={1.9} />
+            <span className="absolute left-[70px] bg-[#0F172A] text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+              Account Settings
+            </span>
+          </Link>
+
+          {/* User Profile Avatar with Online Dot */}
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:ring-2 hover:ring-[#5B4DF6] transition-all cursor-pointer focus:outline-none"
+            title={`${clientName} (${clientCompany})`}
+          >
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+              alt={clientName}
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+          </button>
+
+          {/* User Account Popover Dropdown */}
+          {isUserMenuOpen && (
+            <div className="absolute left-[74px] bottom-2 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 z-50 text-left animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="p-2 border-b border-slate-100 mb-2">
+                <div className="text-xs font-bold text-[#0F172A] truncate">{clientCompany}</div>
+                <div className="text-[11px] text-slate-500 truncate">{clientName}</div>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+                    VIP TIER • 8% REBATE
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Link
+                  href="/customer/profile"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#5B4DF6] bg-[#EEF0FD]/60 hover:bg-[#EEF0FD] no-underline"
+                >
+                  <User size={14} className="text-[#5B4DF6]" />
+                  <span>Enterprise Profile</span>
+                </Link>
+                <Link
+                  href="/customer/settings"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                >
+                  <Settings size={14} className="text-[#5B4DF6]" />
+                  <span>Account Settings</span>
+                </Link>
+                <Link
+                  href="/customer/orders"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                >
+                  <BarChart2 size={14} className="text-[#5B4DF6]" />
+                  <span>My Orders</span>
+                </Link>
+                <Link
+                  href="/products"
+                  target="_blank"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                >
+                  <ExternalLink size={14} className="text-[#5B4DF6]" />
+                  <span>Open Fastener Catalog</span>
+                </Link>
+                <Link
+                  href="/"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                >
+                  <Home size={14} className="text-[#5B4DF6]" />
+                  <span>Return to Storefront</span>
+                </Link>
+              </div>
+
+              <div className="mt-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout('/');
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* ================================================================ */}
+      {/* MOBILE TOP BAR (< 768px)                                         */}
+      {/* ================================================================ */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="md:hidden bg-white border-b border-[#E5E7EB] px-4 py-3 sticky top-0 z-30 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors"
+              title="Open Navigation Menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs">
+                <img
+                  src="/assets/cbh-logo-icon.png"
+                  alt="CBH"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <span className="font-bold text-sm text-[#0F172A]">Customer Overview</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => logout('/')}
+              className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-red-200"
+              title="Sign Out"
+            >
+              <LogOut size={13} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+              alt={clientName}
+              className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+            />
+          </div>
+        </header>
+
+        {/* Mobile Slide-In Drawer Navigation */}
+        {isMobileNavOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+              onClick={() => setIsMobileNavOpen(false)}
+            />
+            <div className="fixed top-0 bottom-0 left-0 w-[280px] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 p-1.5 flex items-center justify-center shadow-xs">
+                      <img
+                        src="/assets/cbh-logo-icon.png"
+                        alt="CBH"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-[#0F172A]">CBH Fasteners</div>
+                      <div className="text-[10px] text-slate-500">{clientCompany}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <nav className="mt-5 space-y-1.5">
+                  {railNav.map((item) => {
+                    const active = isLinkActive(item.href, item.exact);
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileNavOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                          active
+                            ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <Icon size={18} strokeWidth={active ? 2.4 : 1.9} />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    href="/customer/settings"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all no-underline"
+                  >
+                    <Settings size={18} strokeWidth={1.9} />
+                    <span>Account Settings</span>
+                  </Link>
+                </nav>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 space-y-2">
+                <Link
+                  href="/products"
+                  target="_blank"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 text-slate-700 text-xs font-semibold no-underline"
+                >
+                  <span>Procure Fasteners</span>
+                  <ExternalLink size={14} className="text-slate-400" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileNavOpen(false);
+                    logout('/');
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 cursor-pointer"
+                >
+                  <LogOut size={15} />
+                  <span>Sign Out of Portal</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================ */}
+        {/* MAIN BODY CANVAS                                                 */}
+        {/* ================================================================ */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
-
-      <style jsx global>{`
-        @media (max-width: 1023px) {
-          .customer-mobile-toggle {
-            display: flex !important;
-          }
-          .customer-portal-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: min(320px, 86vw) !important;
-            z-index: 50 !important;
-            background: #F8FAFC !important;
-            padding: 20px !important;
-            overflow-y: auto !important;
-            box-shadow: 6px 0 24px rgba(15, 23, 42, 0.15) !important;
-            transform: translateX(-100%);
-            transition: transform 0.25s ease-in-out !important;
-          }
-          .customer-portal-sidebar.mobile-open {
-            transform: translateX(0) !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

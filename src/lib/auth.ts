@@ -71,8 +71,11 @@ export function setStoredUser(user: AuthUser | null, token?: string): void {
   }
 }
 
-export function logout(): void {
+export function logout(redirectTo: string = '/'): void {
   setStoredUser(null);
+  if (typeof window !== 'undefined') {
+    window.location.replace(redirectTo);
+  }
 }
 
 export function isCustomer(user: AuthUser | null): boolean {

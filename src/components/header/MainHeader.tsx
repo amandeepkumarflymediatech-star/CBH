@@ -325,7 +325,7 @@ export default function MainHeader({
                             type="button"
                             onClick={() => {
                               setIsUserMenuOpen(false);
-                              logout();
+                              logout('/');
                             }}
                             style={{
                               width: '100%',
@@ -573,7 +573,7 @@ export default function MainHeader({
                       className="drawer-nav-item"
                       onClick={() => {
                         setIsMobileMenuOpen(false);
-                        logout();
+                        logout('/');
                       }}
                       style={{ color: '#EF4444' }}
                     >

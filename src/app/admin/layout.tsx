@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Zap,
   BookOpen,
-  Globe
+  Globe,
+  User
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -52,17 +53,29 @@ export default function AdminLayout({
   });
 
   useEffect(() => {
-    setCurrentUser(getStoredUser());
+    const user = getStoredUser();
+    setCurrentUser(user);
     setHasLoadedAuth(true);
 
-    const handleAuthChange = () => setCurrentUser(getStoredUser());
+    if (pathname !== '/admin/login' && !user && typeof window !== 'undefined') {
+      window.location.replace('/');
+      return;
+    }
+
+    const handleAuthChange = () => {
+      const u = getStoredUser();
+      setCurrentUser(u);
+      if (pathname !== '/admin/login' && !u && typeof window !== 'undefined') {
+        window.location.replace('/');
+      }
+    };
     window.addEventListener('cbh_auth_change', handleAuthChange);
 
     // Initial telemetry fetch
     fetchTelemetry();
 
     return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
-  }, []);
+  }, [pathname]);
 
   const fetchTelemetry = async () => {
     try {
@@ -91,90 +104,14 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // Case 1: Unauthenticated -> Require Admin Sign In
+  // Case 1: Unauthenticated -> Immediately redirect to home /
   if (hasLoadedAuth && !currentUser) {
+    if (typeof window !== 'undefined') {
+      window.location.replace('/');
+    }
     return (
-      <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ background: '#0F172A', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>CBH<span style={{ color: '#FF6B00' }}>.</span></span>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#0052CC', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px' }}>OPERATIONS TERMINAL</span>
-          </Link>
-          <Link href="/" style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
-            &larr; Return to Storefront
-          </Link>
-        </header>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: '16px',
-            maxWidth: '540px',
-            width: '100%',
-            padding: '40px 32px',
-            textAlign: 'center',
-            boxShadow: '0 12px 35px rgba(15, 23, 42, 0.08)',
-            borderTop: '5px solid #0052CC'
-          }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#EFF6FF', color: '#0052CC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-              <ShieldAlert size={30} />
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-              CBH Operations Clearance Required
-            </h2>
-            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, marginBottom: '24px' }}>
-              Access to central fastener inventories, pricing margin multipliers, bulk RFQ quotations, and fleet transport dispatch is restricted to authorized CBH platform operators.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Link
-                href="/admin/login"
-                className="btn-primary"
-                style={{ padding: '12px', justifyContent: 'center', background: '#0052CC', textDecoration: 'none' }}
-              >
-                <span>Authorize at Operations Terminal</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/"
-                style={{
-                  padding: '11px',
-                  borderRadius: '6px',
-                  border: '1px solid #CBD5E1',
-                  background: '#F8FAFC',
-                  color: '#334155',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                Return to Storefront
-              </Link>
-              <div style={{ margin: '16px 0 6px', borderTop: '1px solid #F1F5F9', paddingTop: '16px' }}>
-                <span style={{ fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>
-                  Developer &amp; Testing Access
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStoredUser(DEMO_ADMIN)}
-                  style={{
-                    width: '100%',
-                    marginTop: '8px',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px dashed #BFDBFE',
-                    background: '#EFF6FF',
-                    color: '#0052CC',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  ⚡ One-Click Demo: Sign In as Harpreet Singh (Chief Operations)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div style={{ background: '#0F172A', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#94A3B8', fontSize: '13px', fontWeight: 600 }}>Redirecting to home...</p>
       </div>
     );
   }
@@ -228,8 +165,7 @@ export default function AdminLayout({
               <button
                 type="button"
                 onClick={() => {
-                  logout();
-                  window.location.href = '/admin/login';
+                  logout('/admin/login');
                 }}
                 style={{
                   padding: '11px',
@@ -263,6 +199,7 @@ export default function AdminLayout({
     { label: 'ERPNext Two-Way Sync', href: '/admin/erpnext', icon: Database, badge: 'SYNC' },
     { label: 'Technical Metallurgy Blog', href: '/admin/blogs', icon: BookOpen, badge: telemetry.blogsCount },
     { label: 'Dynamic SEO & Schemas', href: '/admin/seo', icon: Globe, badge: 'HEAD' },
+    { label: 'Operator Clearance Profile', href: '/admin/profile', icon: User, badge: 'MASTER', badgeColor: '#5B4DF6' },
   ];
 
   const isLinkActive = (href: string, exact?: boolean) => {
@@ -362,12 +299,28 @@ export default function AdminLayout({
 
           {/* Operator Profile & Sign Out */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid rgba(255, 255, 255, 0.15)', paddingLeft: '12px' }}>
-            <span style={{ fontSize: '12px', color: '#E2E8F0', fontWeight: 700 }}>
-              {currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)
-            </span>
+            <Link
+              href="/admin/profile"
+              title="View Operator Clearance Profile"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: '#E2E8F0',
+                fontWeight: 700,
+                textDecoration: 'none',
+                background: 'rgba(255, 255, 255, 0.08)',
+                padding: '4px 10px',
+                borderRadius: '6px'
+              }}
+            >
+              <User size={13} color="#38BDF8" />
+              <span>{currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)</span>
+            </Link>
             <button
               type="button"
-              onClick={() => logout()}
+              onClick={() => logout('/')}
               title="Sign Out of Operations Console"
               style={{
                 background: 'rgba(239, 68, 68, 0.15)',
