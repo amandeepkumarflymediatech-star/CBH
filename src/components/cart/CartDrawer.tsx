@@ -170,13 +170,35 @@ export default function CartDrawer({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <Link
-                href="/bulk-order"
-                className="btn-primary"
-                style={{ width: '100%', padding: '12px' }}
+                href="/checkout"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#5f259f',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
+                }}
                 onClick={onClose}
               >
-                <span>Complete Bulk Order Matrix</span>
+                <span>⚡ Instant PhonePe Checkout</span>
                 <ArrowRight size={16} />
+              </Link>
+
+              <Link
+                href="/bulk-order"
+                className="btn-primary"
+                style={{ width: '100%', padding: '10px', background: '#0F172A', fontSize: '12px', justifyContent: 'center' }}
+                onClick={onClose}
+              >
+                <span>Review Full RFQ Matrix &amp; Proforma</span>
               </Link>
             </div>
 

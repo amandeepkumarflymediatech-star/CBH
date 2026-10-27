@@ -23,7 +23,8 @@ import {
   Building2,
   Flame,
   Package,
-  Globe
+  Globe,
+  CreditCard
 } from 'lucide-react';
 import { formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS, INITIAL_QUOTES, INITIAL_ORDERS, INITIAL_USERS, INITIAL_SURPLUS_LOTS } from '@/lib/mock-data';
@@ -414,6 +415,35 @@ export default function AdminConsolePage() {
                 className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#0052CC] text-[#0F172A] hover:text-white font-bold text-xs flex items-center justify-between transition-colors"
               >
                 <span>Open Dynamic SEO Console</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Section Card: PhonePe Payment Gateway */}
+          <div className="bg-white p-6 rounded-2xl border border-[#D8DFE7] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#5f259f] flex items-center justify-center">
+                    <CreditCard size={18} />
+                  </div>
+                  <h3 className="font-extrabold text-[#0F172A] text-base">PhonePe Gateway</h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#5f259f] text-xs font-bold font-mono">
+                  UPI &amp; CARDS
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Manage PhonePe Merchant ID, SHA256 Salt Key, Sandbox/Production modes, live payment telemetry, and automated transaction verification.
+              </p>
+            </div>
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <Link
+                href="/admin/payments"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#5f259f] text-[#0F172A] hover:text-white font-bold text-xs flex items-center justify-between transition-colors"
+              >
+                <span>Open Payments Console</span>
                 <ArrowRight size={14} />
               </Link>
             </div>

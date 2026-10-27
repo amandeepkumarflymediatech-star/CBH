@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Zap,
   BookOpen,
-  Globe
+  Globe,
+  CreditCard
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -263,6 +264,7 @@ export default function AdminLayout({
     { label: 'ERPNext Two-Way Sync', href: '/admin/erpnext', icon: Database, badge: 'SYNC' },
     { label: 'Technical Metallurgy Blog', href: '/admin/blogs', icon: BookOpen, badge: telemetry.blogsCount },
     { label: 'Dynamic SEO & Schemas', href: '/admin/seo', icon: Globe, badge: 'HEAD' },
+    { label: 'PhonePe PG & Payments', href: '/admin/payments', icon: CreditCard, badge: 'UPI', badgeColor: '#5f259f' },
   ];
 
   const isLinkActive = (href: string, exact?: boolean) => {

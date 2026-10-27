@@ -1,0 +1,16 @@
+[
+  {
+    "transactionId": "TXN-CBH-ORD-1793086220134-285",
+    "orderNumber": "TXN-CBH-ORD-1793086220134-285",
+    "amount": 54200,
+    "customerName": "Test Industrial Buyer",
+    "customerPhone": "9888021000",
+    "customerEmail": "orders@cbh.store",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-27T07:30:20.281Z",
+    "updatedAt": "2026-10-27T07:30:20.281Z",
+    "paymentMode": "UPI (PhonePe Simulator)",
+    "phonepeReferenceId": "T1793086220281",
+    "responseMessage": "Payment Completed via PhonePe UAT Simulator"
+  }
+]

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -9,7 +10,8 @@ import {
   Send, 
   MessageSquare, 
   CheckCircle,
-  FileDown
+  FileDown,
+  ArrowRight
 } from 'lucide-react';
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
@@ -468,6 +470,28 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
 
             {/* Action Buttons */}
             <div className="rfq-action-buttons">
+              <Link
+                href="/checkout"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#5f259f',
+                  color: '#FFFFFF',
+                  borderRadius: '4px',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
+                }}
+              >
+                <span>Pay via PhonePe (Instant Order Dispatch)</span>
+                <ArrowRight size={16} />
+              </Link>
+
               <button
                 type="button"
                 className="btn-primary"
