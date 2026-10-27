@@ -148,7 +148,7 @@ export default function CustomerLayout({
                   href={item.href}
                   className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all group relative no-underline ${
                     active
-                      ? 'bg-[#EEF0FD] text-[#5B4DF6] font-bold shadow-xs'
+                      ? 'bg-[#EBF3FC] text-[#0052CC] font-bold shadow-xs'
                       : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
                   }`}
                   title={item.label}
@@ -169,12 +169,12 @@ export default function CustomerLayout({
                 type="button"
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors relative group ${
-                  isNotificationsOpen ? 'bg-[#EEF0FD] text-[#5B4DF6]' : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+                  isNotificationsOpen ? 'bg-[#EBF3FC] text-[#0052CC]' : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
                 }`}
                 title="Notifications"
               >
                 <Bell size={20} strokeWidth={1.9} />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#5B4DF6] ring-2 ring-white" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#0052CC] ring-2 ring-white" />
               </button>
 
               {/* Notifications Popover */}
@@ -182,18 +182,18 @@ export default function CustomerLayout({
                 <div className="absolute left-[74px] top-0 w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <span className="font-bold text-xs text-[#0F172A]">Recent Activity &amp; Alerts</span>
-                    <span className="text-[10px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-2 py-0.5 rounded-full">3 New</span>
+                    <span className="text-[10px] font-extrabold text-[#0052CC] bg-[#EBF3FC] px-2 py-0.5 rounded-full">3 New</span>
                   </div>
                   <div className="divide-y divide-slate-100 text-xs mt-2 max-h-72 overflow-y-auto">
                     <div className="py-2.5">
                       <div className="font-bold text-[#0F172A]">Consignment In Transit</div>
                       <div className="text-[11px] text-slate-500">TCI Express docket #782910 dispatched from Ludhiana Works.</div>
-                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">20 mins ago</div>
+                      <div className="text-[10px] text-[#0052CC] font-semibold mt-1">20 mins ago</div>
                     </div>
                     <div className="py-2.5">
                       <div className="font-bold text-[#0F172A]">MTC Certificate Ready</div>
                       <div className="text-[11px] text-slate-500">NABL chemical test report issued for PO #CBH-2026-881.</div>
-                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">2 hours ago</div>
+                      <div className="text-[10px] text-[#0052CC] font-semibold mt-1">2 hours ago</div>
                     </div>
                     <div className="py-2.5">
                       <div className="font-bold text-[#0F172A]">Credit Facility Active</div>
@@ -214,7 +214,7 @@ export default function CustomerLayout({
             href="/customer/settings"
             className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors group relative no-underline ${
               pathname === '/customer/settings'
-                ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                ? 'bg-[#EBF3FC] text-[#0052CC]'
                 : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
             }`}
             title="Account Settings"
@@ -229,7 +229,7 @@ export default function CustomerLayout({
           <button
             type="button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:ring-2 hover:ring-[#5B4DF6] transition-all cursor-pointer focus:outline-none"
+            className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:ring-2 hover:ring-[#0052CC] transition-all cursor-pointer focus:outline-none"
             title={`${clientName} (${clientCompany})`}
           >
             <img
@@ -257,9 +257,9 @@ export default function CustomerLayout({
                 <Link
                   href="/customer/profile"
                   onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#5B4DF6] bg-[#EEF0FD]/60 hover:bg-[#EEF0FD] no-underline"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#0052CC] bg-[#EBF3FC]/60 hover:bg-[#EBF3FC] no-underline"
                 >
-                  <User size={14} className="text-[#5B4DF6]" />
+                  <User size={14} className="text-[#0052CC]" />
                   <span>Enterprise Profile</span>
                 </Link>
                 <Link
@@ -267,7 +267,7 @@ export default function CustomerLayout({
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
                 >
-                  <Settings size={14} className="text-[#5B4DF6]" />
+                  <Settings size={14} className="text-[#0052CC]" />
                   <span>Account Settings</span>
                 </Link>
                 <Link
@@ -275,7 +275,7 @@ export default function CustomerLayout({
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
                 >
-                  <BarChart2 size={14} className="text-[#5B4DF6]" />
+                  <BarChart2 size={14} className="text-[#0052CC]" />
                   <span>My Orders</span>
                 </Link>
                 <Link
@@ -284,7 +284,7 @@ export default function CustomerLayout({
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
                 >
-                  <ExternalLink size={14} className="text-[#5B4DF6]" />
+                  <ExternalLink size={14} className="text-[#0052CC]" />
                   <span>Open Fastener Catalog</span>
                 </Link>
                 <Link
@@ -292,7 +292,7 @@ export default function CustomerLayout({
                   onClick={() => setIsUserMenuOpen(false)}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
                 >
-                  <Home size={14} className="text-[#5B4DF6]" />
+                  <Home size={14} className="text-[#0052CC]" />
                   <span>Return to Storefront</span>
                 </Link>
               </div>
@@ -403,7 +403,7 @@ export default function CustomerLayout({
                         onClick={() => setIsMobileNavOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
                           active
-                            ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                            ? 'bg-[#EBF3FC] text-[#0052CC]'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
