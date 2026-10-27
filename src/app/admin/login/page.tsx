@@ -271,7 +271,7 @@ export default function AdminPortalLoginPage() {
                 <span>OPERATOR CLEARANCE</span>
               </div>
 
-              <button
+              {/* <button
                 type="button"
                 onClick={fillDemoAdmin}
                 style={{
@@ -299,7 +299,7 @@ export default function AdminPortalLoginPage() {
               >
                 <Zap size={12} color="#FF6B00" />
                 <span>Fill Lead Operator</span>
-              </button>
+              </button> */}
             </div>
 
             {/* Alerts */}
