@@ -113,8 +113,8 @@ export default function CustomerRfqsPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {['ALL', 'PENDING', 'QUOTED', 'APPROVED', 'CONVERTED_TO_PO'].map((st) => (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+          {['ALL', 'PENDING', 'QUOTED', 'APPROVED', 'PO_ISSUED'].map((st) => (
             <button
               key={st}
               type="button"
@@ -122,7 +122,7 @@ export default function CustomerRfqsPage() {
                 setStatusFilter(st);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
                 statusFilter === st
                   ? 'bg-[#0052CC] text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -136,7 +136,8 @@ export default function CustomerRfqsPage() {
 
       {/* Quotations Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs min-w-[720px]">
           <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
             <tr>
               <th className="py-3 px-4">RFQ Ref &amp; Date</th>
@@ -203,6 +204,7 @@ export default function CustomerRfqsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {filteredQuotes.length > 0 && (
           <div className="p-4 border-t border-slate-200">

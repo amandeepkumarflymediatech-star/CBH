@@ -136,7 +136,7 @@ export default function CustomerSitesPage() {
       {/* Add Site Modal */}
       {isNewSiteModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-300 max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <h3 className="font-extrabold text-[#0F172A] text-base">Add Project Consignee Location</h3>
               <button
@@ -173,7 +173,7 @@ export default function CustomerSitesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Site In-Charge Name</label>
                   <input

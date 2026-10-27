@@ -66,7 +66,7 @@ export default function CustomerDashboardPage() {
         </div>
 
         {/* Credit Card Utilization Bar */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shrink-0 min-w-[280px]">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full lg:w-auto shrink-0 max-w-full">
           <div className="flex items-center justify-between text-xs font-bold mb-1.5">
             <span className="text-slate-600 flex items-center gap-1.5">
               <CreditCard size={14} className="text-[#0052CC]" /> Approved Credit Limit

@@ -144,72 +144,74 @@ export default function CustomerCertificatesPage() {
 
       {/* Certificates Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
-            <tr>
-              <th className="py-3 px-4">Certificate Ref</th>
-              <th className="py-3 px-4">Related PO Number</th>
-              <th className="py-3 px-4">Specification &amp; Grade</th>
-              <th className="py-3 px-3 text-center">Steel Heat Code</th>
-              <th className="py-3 px-3 text-center">Tensile Strength</th>
-              <th className="py-3 px-3 text-center">Hardness</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredCerts.map((c) => (
-              <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                <td className="py-3.5 px-4">
-                  <div className="font-mono font-bold text-emerald-700 text-sm flex items-center gap-1.5">
-                    <CheckCircle2 size={13} className="text-emerald-500" />
-                    <span>{c.certNumber}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400">Issued: {c.issueDate}</div>
-                </td>
-                <td className="py-3.5 px-4 font-mono font-bold text-[#0052CC]">
-                  {c.orderNumber}
-                </td>
-                <td className="py-3.5 px-4 max-w-xs">
-                  <div className="font-bold text-[#0F172A]">{c.standard}</div>
-                  <div className="text-[11px] text-slate-500">{c.grade}</div>
-                </td>
-                <td className="py-3.5 px-3 text-center font-mono font-semibold text-slate-700">
-                  {c.heatNumber}
-                </td>
-                <td className="py-3.5 px-3 text-center font-mono text-slate-700">
-                  {c.tensileMpa}
-                </td>
-                <td className="py-3.5 px-3 text-center font-mono text-slate-700">
-                  {c.hardnessHrc}
-                </td>
-                <td className="py-3.5 px-4 text-right">
-                  <div className="inline-flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setActiveCert(c)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors"
-                    >
-                      View Report
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => alert(`Downloading signed MTC PDF for ${c.certNumber}`)}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition-colors flex items-center gap-1"
-                    >
-                      <Download size={12} /> PDF
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs min-w-[720px]">
+            <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4">Certificate Ref</th>
+                <th className="py-3 px-4">Related PO Number</th>
+                <th className="py-3 px-4">Specification &amp; Grade</th>
+                <th className="py-3 px-3 text-center">Steel Heat Code</th>
+                <th className="py-3 px-3 text-center">Tensile Strength</th>
+                <th className="py-3 px-3 text-center">Hardness</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredCerts.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3.5 px-4">
+                    <div className="font-mono font-bold text-emerald-700 text-sm flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
+                      <span>{c.certNumber}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">Issued: {c.issueDate}</div>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono font-bold text-[#0052CC]">
+                    {c.orderNumber}
+                  </td>
+                  <td className="py-3.5 px-4 max-w-xs">
+                    <div className="font-bold text-[#0F172A]">{c.standard}</div>
+                    <div className="text-[11px] text-slate-500">{c.grade}</div>
+                  </td>
+                  <td className="py-3.5 px-3 text-center font-mono font-semibold text-slate-700">
+                    {c.heatNumber}
+                  </td>
+                  <td className="py-3.5 px-3 text-center font-mono text-slate-700">
+                    {c.tensileMpa}
+                  </td>
+                  <td className="py-3.5 px-3 text-center font-mono text-slate-700">
+                    {c.hardnessHrc}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveCert(c)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors"
+                      >
+                        View Report
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => alert(`Downloading signed MTC PDF for ${c.certNumber}`)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition-colors flex items-center gap-1"
+                      >
+                        <Download size={12} /> PDF
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* MTC Full Report Modal */}
       {activeCert && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-300 max-w-2xl w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div>
                 <h3 className="font-extrabold text-[#0F172A] text-base">NABL MTC 3.1 Chemical &amp; Mechanical Inspection Report</h3>
@@ -225,7 +227,7 @@ export default function CustomerCertificatesPage() {
             </div>
 
             <div className="py-4 space-y-4 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>Standard: <strong>{activeCert.standard}</strong></div>
                 <div>Class/Grade: <strong>{activeCert.grade}</strong></div>
                 <div>Primary Heat Code: <strong>{activeCert.heatNumber}</strong></div>
@@ -234,7 +236,7 @@ export default function CustomerCertificatesPage() {
 
               <div>
                 <span className="text-[11px] font-bold text-slate-600 uppercase block mb-2">Spectrometry Chemical Analysis (OES):</span>
-                <div className="grid grid-cols-3 gap-2 font-mono text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-center">
                   <div className="bg-slate-50 p-2 rounded border">Carbon (C): <strong>{activeCert.carbonPct}</strong></div>
                   <div className="bg-slate-50 p-2 rounded border">Manganese (Mn): <strong>{activeCert.manganesePct}</strong></div>
                   <div className="bg-slate-50 p-2 rounded border">Chromium (Cr): <strong>{activeCert.chromiumPct}</strong></div>
@@ -243,7 +245,7 @@ export default function CustomerCertificatesPage() {
 
               <div>
                 <span className="text-[11px] font-bold text-slate-600 uppercase block mb-2">Mechanical &amp; Surface Metallurgy Results:</span>
-                <div className="grid grid-cols-2 gap-2 font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
                   <div className="bg-slate-50 p-2.5 rounded border">Tensile Strength: <strong>{activeCert.tensileMpa}</strong></div>
                   <div className="bg-slate-50 p-2.5 rounded border">Proof Yield Strength: <strong>{activeCert.yieldMpa}</strong></div>
                   <div className="bg-slate-50 p-2.5 rounded border">Core Hardness: <strong>{activeCert.hardnessHrc}</strong></div>

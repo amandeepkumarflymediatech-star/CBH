@@ -101,7 +101,7 @@ export default function CustomerOrdersPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
           {['ALL', 'CONFIRMED', 'PROCESSING', 'DISPATCHED', 'DELIVERED'].map((st) => (
             <button
               key={st}
@@ -110,7 +110,7 @@ export default function CustomerOrdersPage() {
                 setStatusFilter(st);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
                 statusFilter === st
                   ? 'bg-[#0052CC] text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -124,19 +124,20 @@ export default function CustomerOrdersPage() {
 
       {/* Orders Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
-            <tr>
-              <th className="py-3 px-4">PO Number &amp; Date</th>
-              <th className="py-3 px-4">Consignee Site</th>
-              <th className="py-3 px-3 text-right">Net Value</th>
-              <th className="py-3 px-3 text-center">Gross Weight</th>
-              <th className="py-3 px-4">Carrier &amp; LR Docket</th>
-              <th className="py-3 px-3 text-center">Status</th>
-              <th className="py-3 px-4 text-right">Documentation</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs min-w-[760px]">
+            <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4">PO Number &amp; Date</th>
+                <th className="py-3 px-4">Consignee Site</th>
+                <th className="py-3 px-3 text-right">Net Value</th>
+                <th className="py-3 px-3 text-center">Gross Weight</th>
+                <th className="py-3 px-4">Carrier &amp; LR Docket</th>
+                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-3 px-4 text-right">Documentation</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {paginatedOrders.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-slate-400">
@@ -203,6 +204,7 @@ export default function CustomerOrdersPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {filteredOrders.length > 0 && (
           <div className="p-4 border-t border-slate-200">

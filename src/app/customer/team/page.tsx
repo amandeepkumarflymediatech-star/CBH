@@ -80,60 +80,62 @@ export default function CustomerTeamPage() {
 
       {/* Team Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
-            <tr>
-              <th className="py-3 px-4">Authorized Member</th>
-              <th className="py-3 px-4">Corporate Role</th>
-              <th className="py-3 px-4">Permission Tier</th>
-              <th className="py-3 px-3 text-center">Status</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {team.map((mem) => (
-              <tr key={mem.id} className="hover:bg-slate-50/70 transition-colors">
-                <td className="py-3.5 px-4">
-                  <div className="font-extrabold text-[#0F172A] text-sm">{mem.name}</div>
-                  <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
-                    <Mail size={11} /> {mem.email}
-                  </div>
-                </td>
-                <td className="py-3.5 px-4 font-semibold text-slate-700">
-                  {mem.role}
-                </td>
-                <td className="py-3.5 px-4">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-[#0052CC] text-[11px] font-bold">
-                    <Lock size={11} /> {mem.access}
-                  </span>
-                </td>
-                <td className="py-3.5 px-3 text-center">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
-                    {mem.status}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4 text-right">
-                  {mem.id !== 'tm-1' && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(mem.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
-                      title="Revoke access"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </td>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs min-w-[650px]">
+            <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4">Authorized Member</th>
+                <th className="py-3 px-4">Corporate Role</th>
+                <th className="py-3 px-4">Permission Tier</th>
+                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {team.map((mem) => (
+                <tr key={mem.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3.5 px-4">
+                    <div className="font-extrabold text-[#0F172A] text-sm">{mem.name}</div>
+                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                      <Mail size={11} /> {mem.email}
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 font-semibold text-slate-700">
+                    {mem.role}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-[#0052CC] text-[11px] font-bold">
+                      <Lock size={11} /> {mem.access}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3 text-center">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                      {mem.status}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    {mem.id !== 'tm-1' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(mem.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Revoke access"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Invite Member Modal */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-white rounded-2xl border border-slate-300 max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <h3 className="font-extrabold text-[#0F172A] text-base">Authorize New Team Member</h3>
               <button
