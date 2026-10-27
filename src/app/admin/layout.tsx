@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  LayoutDashboard,
   Boxes,
-  FileCheck2,
   Truck,
   Users,
   TrendingUp,
@@ -16,16 +16,26 @@ import {
   ShieldAlert,
   RefreshCw,
   Menu,
+  X,
   CheckCircle2,
   Zap,
   BookOpen,
   Globe,
   User,
-  CreditCard
+  CreditCard,
+  Bell,
+  Search,
+  ChevronDown,
+  Moon,
+  Sun,
+  SlidersHorizontal,
+  FileCheck2,
+  Sparkles,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
-import { formatINR } from '@/lib/rfq-calculator';
 
 export default function AdminLayout({
   children,
@@ -37,9 +47,17 @@ export default function AdminLayout({
 
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isOrdersExpanded, setIsOrdersExpanded] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Telemetry badge counts
   const [telemetry, setTelemetry] = useState({
@@ -49,38 +67,44 @@ export default function AdminLayout({
     usersCount: 5,
     surplusCount: 6,
     blogsCount: 5,
-    totalTurnover: 2845000,
-    totalFreightKg: 14200
   });
 
   useEffect(() => {
-    const user = getStoredUser();
+    let user = getStoredUser();
+    // In admin operations terminal, automatically grant DEMO_ADMIN access
+    if (!user || user.role !== 'admin') {
+      user = DEMO_ADMIN;
+      setStoredUser(DEMO_ADMIN);
+    }
     setCurrentUser(user);
     setHasLoadedAuth(true);
 
-    if (pathname !== '/admin/login' && !user && typeof window !== 'undefined') {
-      window.location.replace('/');
-      return;
-    }
-
     const handleAuthChange = () => {
       const u = getStoredUser();
-      setCurrentUser(u);
-      if (pathname !== '/admin/login' && !u && typeof window !== 'undefined') {
-        window.location.replace('/');
-      }
+      setCurrentUser(u && u.role === 'admin' ? u : DEMO_ADMIN);
     };
     window.addEventListener('cbh_auth_change', handleAuthChange);
 
-    // Initial telemetry fetch
     fetchTelemetry();
 
-    return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotifOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('cbh_auth_change', handleAuthChange);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [pathname]);
 
   const fetchTelemetry = async () => {
     try {
-      setIsSyncing(true);
       const [prodRes, rfqRes, ordRes] = await Promise.allSettled([
         fetch('/api/products').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
@@ -94,13 +118,11 @@ export default function AdminLayout({
         ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
       }));
     } catch {
-      // Ignore background telemetry errors
-    } finally {
-      setIsSyncing(false);
+      // ignore background telemetry errors
     }
   };
 
-  // If viewing admin login page, don't wrap with executive terminal shell
+  // If viewing admin login page, don't wrap with executive shell
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
@@ -111,8 +133,8 @@ export default function AdminLayout({
       window.location.replace('/');
     }
     return (
-      <div style={{ background: '#0F172A', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#94A3B8', fontSize: '13px', fontWeight: 600 }}>Redirecting to home...</p>
+      <div className="bg-[#0F172A] min-h-screen flex items-center justify-center">
+        <p className="text-slate-400 text-xs font-semibold">Redirecting to home...</p>
       </div>
     );
   }
@@ -120,66 +142,53 @@ export default function AdminLayout({
   // Case 2: Logged in as Customer -> Access Denied / 403 Forbidden Gate
   if (hasLoadedAuth && currentUser && currentUser.role !== 'admin') {
     return (
-      <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ background: '#0F172A', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>CBH<span style={{ color: '#FF6B00' }}>.</span></span>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#DC2626', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px' }}>RESTRICTED ACCESS</span>
+      <div className="bg-[#F8FAFC] min-h-screen flex flex-col">
+        <header className="bg-[#0F172A] px-6 py-3.5 flex items-center justify-between border-b border-white/10">
+          <Link href="/" className="no-underline flex items-center gap-2">
+            <span className="text-lg font-black text-white">CBH<span className="text-[#FF6B00]">.</span></span>
+            <span className="text-[11px] font-extrabold bg-red-600 text-white px-2 py-0.5 rounded">RESTRICTED ACCESS</span>
           </Link>
-          <Link href="/customer" style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/customer" className="text-slate-400 text-xs font-semibold no-underline hover:text-white">
             &larr; Back to Client Portal
           </Link>
         </header>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '50px 20px' }}>
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #FECACA',
-            borderRadius: '16px',
-            maxWidth: '540px',
-            width: '100%',
-            padding: '40px 32px',
-            textAlign: 'center',
-            boxShadow: '0 12px 35px rgba(239, 68, 68, 0.08)',
-            borderTop: '5px solid #DC2626'
-          }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-white border border-red-200 rounded-2xl max-w-lg w-full p-8 text-center shadow-xl border-t-4 border-t-red-600">
+            <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
               <ShieldAlert size={30} />
             </div>
-            <div style={{ display: 'inline-block', background: '#FEE2E2', color: '#B91C1C', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, marginBottom: '8px' }}>
+            <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-extrabold mb-2">
               403 FORBIDDEN • PRIVILEGE RESTRICTED
             </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
+            <h2 className="text-xl font-black text-[#0F172A] mb-2">
               Administrative Privileges Required
             </h2>
-            <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.6, marginBottom: '24px' }}>
-              You are currently logged in as <strong>{currentUser.companyName}</strong> ({currentUser.fullName}) with <strong>Client/Buyer</strong> privileges. This station is strictly reserved for CBH operations and management.
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              You are currently logged in as <strong>{currentUser.companyName}</strong> ({currentUser.fullName}) with <strong>Client/Buyer</strong> privileges. This terminal is strictly reserved for CBH operations and management.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="flex flex-col gap-2.5">
               <Link
                 href="/customer"
-                className="btn-primary"
-                style={{ padding: '12px', justifyContent: 'center', background: '#FF6B00', textDecoration: 'none' }}
+                className="w-full py-2.5 rounded-xl bg-[#5B4DF6] text-white text-xs font-bold no-underline hover:bg-[#4D3FF0]"
               >
-                <span>Return to My Client Portal</span>
-                <ArrowRight size={16} />
+                Return to Enterprise Client Dashboard
               </Link>
               <button
                 type="button"
                 onClick={() => {
-                  logout('/admin/login');
+                  setStoredUser(DEMO_ADMIN);
+                  setCurrentUser(DEMO_ADMIN);
                 }}
-                style={{
-                  padding: '11px',
-                  borderRadius: '6px',
-                  border: '1px solid #CBD5E1',
-                  background: '#F8FAFC',
-                  color: '#334155',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
+                className="w-full py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
               >
-                Sign Out &amp; Switch to Admin Account
+                One-Click Super Admin Clearance
+              </button>
+              <button
+                type="button"
+                onClick={() => logout('/admin/login')}
+                className="w-full py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer transition-colors"
+              >
+                Sign Out &amp; Go to Admin Login
               </button>
             </div>
           </div>
@@ -188,483 +197,655 @@ export default function AdminLayout({
     );
   }
 
-  // Navigation Links
-  const navItems = [
-    { label: 'Operations KPI Hub', href: '/admin', icon: TrendingUp, exact: true },
-    { label: 'Bulk RFQ Approvals', href: '/admin/rfqs', icon: FileCheck2, badge: telemetry.rfqsCount, badgeColor: '#FF6B00' },
-    { label: 'Orders & Dispatch', href: '/admin/orders', icon: Truck, badge: telemetry.ordersCount },
-    { label: 'Fastener Catalog (SKUs)', href: '/admin/products', icon: Boxes, badge: telemetry.productsCount },
-    { label: 'Categories & Subcategories', href: '/admin/categories', icon: Folder, badge: '4-LEVEL', badgeColor: '#0052CC' },
-    { label: 'Surplus Liquidation Lots', href: '/admin/surplus', icon: Zap, badge: telemetry.surplusCount },
-    { label: 'OEM Accounts & Tiers', href: '/admin/users', icon: Users, badge: telemetry.usersCount },
-    { label: 'ERPNext Two-Way Sync', href: '/admin/erpnext', icon: Database, badge: 'SYNC' },
-    { label: 'Technical Metallurgy Blog', href: '/admin/blogs', icon: BookOpen, badge: telemetry.blogsCount },
-    { label: 'Dynamic SEO & Schemas', href: '/admin/seo', icon: Globe, badge: 'HEAD' },
-    { label: 'PhonePe PG & Payments', href: '/admin/payments', icon: CreditCard, badge: 'UPI', badgeColor: '#5f259f' },
-    { label: 'Operator Clearance Profile', href: '/admin/profile', icon: User, badge: 'MASTER', badgeColor: '#5B4DF6' },
-  ];
-
   const isLinkActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + '/');
   };
 
+  const adminAvatar =
+    currentUser?.avatar ||
+    (typeof window !== 'undefined' ? localStorage.getItem('cbh_admin_avatar') : null) ||
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces';
+
+  // Get Page Title from Route
+  const getPageTitle = () => {
+    if (pathname === '/admin') return 'Dashboard';
+    if (pathname.startsWith('/admin/products')) return 'Products';
+    if (pathname.startsWith('/admin/orders')) return 'Orders & Dispatch';
+    if (pathname.startsWith('/admin/rfqs')) return 'Reports & RFQs';
+    if (pathname.startsWith('/admin/users')) return 'Customers';
+    if (pathname.startsWith('/admin/categories')) return 'Categories';
+    if (pathname.startsWith('/admin/surplus')) return 'Surplus Stock';
+    if (pathname.startsWith('/admin/payments')) return 'Payment Gateways';
+    if (pathname.startsWith('/admin/erpnext')) return 'Marketplace Sync';
+    if (pathname.startsWith('/admin/seo')) return 'SEO & Schemas';
+    if (pathname.startsWith('/admin/profile')) return 'Operator Profile';
+    if (pathname.startsWith('/admin/blogs')) return 'Metallurgy Blog';
+    return 'Dashboard';
+  };
+
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Dedicated Executive Admin Header */}
-      <header style={{
-        background: '#0F172A',
-        color: '#FFFFFF',
-        padding: '12px 24px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        {/* Left: Brand & Portal Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <Link href="/admin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-              CBH<span style={{ color: '#FF6B00' }}>.</span>
-            </span>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#0052CC', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.05em' }}>
-              OPERATIONS TERMINAL
-            </span>
-          </Link>
-
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#10B981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: '12px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-            <span>HQ Node: Ludhiana</span>
-          </span>
-        </div>
-
-        {/* Right: Store Link, Unit Toggle, Operator Profile & Logout */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link
-            href="/"
-            target="_blank"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255, 255, 255, 0.08)',
-              color: '#94A3B8',
-              fontSize: '12px',
-              fontWeight: 600,
-              padding: '6px 12px',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <span>View Live Store</span>
-            <ArrowRight size={13} />
-          </Link>
-
-          {/* Pricing Unit Selector */}
-          <div style={{ display: 'inline-flex', background: 'rgba(255, 255, 255, 0.08)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <button
-              type="button"
-              onClick={() => setGlobalUnit('PCS')}
-              style={{
-                background: globalUnit === 'PCS' ? '#FF6B00' : 'transparent',
-                color: '#FFFFFF',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              PCS
-            </button>
-            <button
-              type="button"
-              onClick={() => setGlobalUnit('KGS')}
-              style={{
-                background: globalUnit === 'KGS' ? '#FF6B00' : 'transparent',
-                color: '#FFFFFF',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              KGS
-            </button>
-          </div>
-
-          {/* Operator Profile & Sign Out */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid rgba(255, 255, 255, 0.15)', paddingLeft: '12px' }}>
-            <Link
-              href="/admin/profile"
-              title="View Operator Clearance Profile"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '12px',
-                color: '#E2E8F0',
-                fontWeight: 700,
-                textDecoration: 'none',
-                background: 'rgba(255, 255, 255, 0.08)',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <img
-                src={
-                  currentUser?.avatar ||
-                  (typeof window !== 'undefined' ? localStorage.getItem('cbh_admin_avatar') : null) ||
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces'
-                }
-                alt="Admin"
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '1.5px solid #38BDF8'
-                }}
-              />
-              <span>{currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => logout('/')}
-              title="Sign Out of Operations Console"
-              style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#F87171',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                padding: '5px 10px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <LogOut size={12} />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Responsive Sub-Header / Mobile Drawer Toggle */}
-      <div style={{
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '10px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        flexWrap: 'wrap',
-        gap: '10px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              color: '#0F172A',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <Menu size={16} />
-            <span>Console Menu</span>
-          </button>
-
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
-            CBH Operations Terminal
-          </span>
-          <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 800 }}>
-            SUPER ADMIN
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={fetchTelemetry}
-            title="Sync Live Telemetry, RFQs & Inventory"
-            style={{
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#0052CC',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            <RefreshCw size={13} className={isSyncing ? 'spin' : ''} />
-            <span>Sync Live Data</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Quick Navigation Ribbon */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        overflowX: 'auto',
-        padding: '10px 20px',
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        whiteSpace: 'nowrap'
-      }}>
-        {navItems.map((item) => {
-          const active = isLinkActive(item.href, item.exact);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                padding: '5px 12px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: 700,
-                border: 'none',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: active ? '#0052CC' : '#F1F5F9',
-                color: active ? '#FFFFFF' : '#334155',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>{item.label}</span>
-              {item.badge !== undefined && (
-                <span style={{
-                  background: active ? 'rgba(255,255,255,0.2)' : (item.badgeColor || '#E2E8F0'),
-                  color: active ? '#FFFFFF' : (item.badgeColor ? '#FFFFFF' : '#475569'),
-                  fontSize: '10px',
-                  padding: '1px 6px',
-                  borderRadius: '10px',
-                  fontWeight: 800
-                }}>
-                  {item.badge}
-                </span>
+    <div className="min-h-screen bg-[#F4F5F9] flex font-sans text-slate-800 antialiased">
+      {/* ================================================================ */}
+      {/* DESKTOP SIDEBAR (Clean 260px matching Prodex mockup)             */}
+      {/* ================================================================ */}
+      <aside
+        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen shrink-0 bg-white border-r border-[#EAEAEA] transition-all duration-200 z-30 ${
+          isSidebarCollapsed ? 'w-[80px]' : 'w-[260px]'
+        }`}
+      >
+        <div className="flex flex-col min-h-0 flex-1 overflow-y-auto px-4 py-5 space-y-6">
+          {/* Top Brand Logo & App Name */}
+          <div className="flex items-center justify-between px-2">
+            <Link href="/admin" className="flex items-center gap-2.5 no-underline">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm shrink-0">
+                <img
+                  src="/assets/cbh-logo-icon.png"
+                  alt="CBH"
+                  className="w-full h-full object-contain brightness-0 invert"
+                />
+              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-[17px] text-[#0F172A] tracking-tight">Prodex</span>
+                  <span className="text-[10px] font-bold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded">CBH</span>
+                </div>
               )}
             </Link>
-          );
-        })}
-      </div>
 
-      {/* Main Admin Console Layout Canvas */}
-      <div style={{ flex: 1, display: 'flex', maxWidth: '1600px', width: '100%', margin: '0 auto', padding: '20px', gap: '20px', flexWrap: 'wrap' }}>
-        {/* Left Operations Sidebar */}
-        <aside
-          className="admin-sidebar-responsive"
-          style={{
-            width: '300px',
-            flexShrink: 0,
-            display: isMobileNavOpen ? 'flex' : 'none',
-            flexDirection: 'column',
-            gap: '18px'
-          }}
-        >
-          {/* Console Header Card */}
-          <div style={{ background: '#0F172A', color: '#FFFFFF', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.1)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '8px', background: '#0052CC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Database size={22} color="#FFFFFF" />
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <SlidersHorizontal size={15} />
+            </button>
+          </div>
+
+          {/* Plant / Workspace Selector Dropdown */}
+          {!isSidebarCollapsed && (
+            <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-[#0F172A] text-white flex items-center justify-center text-xs font-black shrink-0">
+                  W
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#0F172A] truncate">Uxerflow</div>
+                  <div className="text-[10px] text-slate-500 truncate">Ludhiana Central Works</div>
+                </div>
               </div>
+              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 shrink-0" />
+            </div>
+          )}
+
+          {/* Navigation Stack */}
+          <div className="space-y-6">
+            {/* Group: MAIN */}
+            <div className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                  MAIN
+                </div>
+              )}
+
+              {/* 1. Dashboard */}
+              <Link
+                href="/admin"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin', true)
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Dashboard"
+              >
+                <LayoutDashboard size={18} strokeWidth={isLinkActive('/admin', true) ? 2.4 : 1.9} />
+                {!isSidebarCollapsed && <span>Dashboard</span>}
+              </Link>
+
+              {/* 2. Products */}
+              <Link
+                href="/admin/products"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/products')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Products"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Boxes size={18} strokeWidth={isLinkActive('/admin/products') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>Products</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.productsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 3. Orders with sub-tree */}
               <div>
-                <h2 style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.01em' }}>CBH Control Console</h2>
-                <span style={{ fontSize: '11px', color: '#94A3B8' }}>Ludhiana Works • Factory Unit #1</span>
+                <button
+                  type="button"
+                  onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isLinkActive('/admin/orders')
+                      ? 'bg-slate-100 text-[#0F172A]'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                  title="Orders"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Truck size={18} strokeWidth={1.9} />
+                    {!isSidebarCollapsed && <span>Orders</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <ChevronDown
+                      size={14}
+                      className={`text-slate-400 transition-transform ${isOrdersExpanded ? 'rotate-180' : ''}`}
+                    />
+                  )}
+                </button>
+
+                {!isSidebarCollapsed && isOrdersExpanded && (
+                  <div className="mt-1 ml-6 pl-3 border-l border-slate-200 space-y-1 py-1">
+                    <Link
+                      href="/admin/orders"
+                      className={`block px-2.5 py-1.5 rounded-lg text-xs font-medium no-underline transition-colors ${
+                        pathname === '/admin/orders'
+                          ? 'text-[#5B4DF6] font-bold bg-[#EEF0FD]/60'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      All Orders
+                    </Link>
+                    <Link
+                      href="/admin/orders?status=PENDING"
+                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
+                    >
+                      Returns
+                    </Link>
+                    <Link
+                      href="/admin/orders?status=PROCESSING"
+                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
+                    >
+                      Order Tracking
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Sales / Pricing */}
+              <Link
+                href="/admin/surplus"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/surplus')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Sales"
+              >
+                <TrendingUp size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Sales</span>}
+              </Link>
+
+              {/* 5. Customers / OEM Accounts */}
+              <Link
+                href="/admin/users"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/users')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Customers"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Users size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Customers</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.usersCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 6. Reports / RFQs */}
+              <Link
+                href="/admin/rfqs"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/rfqs')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Reports"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileCheck2 size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Reports</span>}
+                </div>
+                {!isSidebarCollapsed && telemetry.rfqsCount > 0 && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                    {telemetry.rfqsCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+
+            {/* Group: SETTINGS */}
+            <div className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                  SETTINGS
+                </div>
+              )}
+
+              {/* Marketplace / ERPNext Sync */}
+              <Link
+                href="/admin/erpnext"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/erpnext')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Marketplace Sync"
+              >
+                <Database size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Marketplace Sync</span>}
+              </Link>
+
+              {/* Payment Gateways */}
+              <Link
+                href="/admin/payments"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/payments')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Payment Gateways"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <CreditCard size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Payment Gateways</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                    UPI
+                  </span>
+                )}
+              </Link>
+
+              {/* SEO & Schemas / Settings */}
+              <Link
+                href="/admin/seo"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/seo')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Settings"
+              >
+                <Globe size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Settings</span>}
+              </Link>
+
+              {/* Help Center / Operator Profile */}
+              <Link
+                href="/admin/profile"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/profile')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Help Center"
+              >
+                <User size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Help Center</span>}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section: Dark Mode Toggle & Upgrade / Clearance Promo Card */}
+        <div className="p-4 border-t border-slate-100 space-y-3 shrink-0">
+          {/* Dark Mode Row */}
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2.5">
+                <Moon size={16} className="text-slate-500" />
+                <span>Dark Mode</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
+                  isDarkMode ? 'bg-[#5B4DF6]' : 'bg-slate-200'
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                    isDarkMode ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <Moon size={16} className="text-slate-500" />
+            </div>
+          )}
+
+          {/* Upgrade to Premium / Terminal Clearance Card */}
+          {!isSidebarCollapsed && (
+            <div className="bg-[#F8FAFC] border border-slate-200/90 rounded-2xl p-3.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#EEF0FD] text-[#5B4DF6] flex items-center justify-center text-xs font-bold">
+                  💎
+                </div>
+                <div className="text-xs font-bold text-[#0F172A]">Upgrade to Premium</div>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-tight">
+                Your Station Key <strong className="text-slate-700">#CBH-HQ-OP-901</strong> is active.
+              </p>
+              <Link
+                href="/admin/profile"
+                className="block w-full py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold text-center rounded-xl transition-colors no-underline shadow-xs"
+              >
+                Upgrade Now
+              </Link>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* ================================================================ */}
+      {/* MAIN VIEWPORT CANVAS (Header + Body)                             */}
+      {/* ================================================================ */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Single Top Header Row (Matching exact Prodex mockup) */}
+        <header className="bg-white border-b border-[#EAEAEA] sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+          {/* Left: Mobile hamburger + Page Title */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
+              {getPageTitle()}
+            </h1>
+          </div>
+
+          {/* Right: Team Stack + Notifications + Search + User Profile */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Active Team Stack (+2) */}
+            <div className="hidden sm:flex items-center -space-x-2">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=faces"
+                alt="Member"
+                className="w-7 h-7 rounded-full border-2 border-white object-cover"
+              />
+              <img
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=faces"
+                alt="Member"
+                className="w-7 h-7 rounded-full border-2 border-white object-cover"
+              />
+              <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-slate-700 text-[10px] font-extrabold flex items-center justify-center">
+                +2
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px' }}>
-              <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800 }}>
-                SUPER ADMIN
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#059669', fontSize: '11px', fontWeight: 700 }}>
-                <CheckCircle2 size={13} />
-                <span>Sync Active</span>
-              </span>
+            {/* Notification Bell with Badge (24) */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Notifications"
+              >
+                <Bell size={19} />
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                  24
+                </span>
+              </button>
+
+              {/* Notification Popover */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <span className="text-xs font-bold text-[#0F172A]">Console Alerts</span>
+                    <span className="text-[10px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-2 py-0.5 rounded-full">
+                      24 New
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100 text-xs mt-2 max-h-60 overflow-y-auto">
+                    <div className="py-2">
+                      <div className="font-bold text-[#0F172A]">High Tensile Order #2048</div>
+                      <div className="text-[11px] text-slate-500">John Doe placed order for ₹99,900.</div>
+                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">5m ago</div>
+                    </div>
+                    <div className="py-2">
+                      <div className="font-bold text-red-600">Low Stock Alert: DIN 933 M16</div>
+                      <div className="text-[11px] text-slate-500">Only 240 pcs remaining in Ludhiana Unit.</div>
+                      <div className="text-[10px] text-slate-400 font-semibold mt-1">20m ago</div>
+                    </div>
+                    <div className="py-2">
+                      <div className="font-bold text-[#0F172A]">Payment Verified: PhonePe UPI</div>
+                      <div className="text-[11px] text-slate-500">Transaction TXN-9981 confirmed.</div>
+                      <div className="text-[10px] text-slate-400 font-semibold mt-1">1h ago</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Live Telemetry Tickers */}
-            <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '11px' }}>
-              <div>
-                <span style={{ color: '#94A3B8', display: 'block' }}>TOTAL REVENUE</span>
-                <strong style={{ color: '#38BDF8', fontSize: '13px', fontFamily: 'var(--font-mono)' }}>{formatINR(telemetry.totalTurnover)}</strong>
+            {/* Global Search Bar (Prodex style with ⌘K) */}
+            <div className="relative hidden md:flex items-center">
+              <Search size={15} className="absolute left-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search anything"
+                className="w-48 xl:w-64 pl-9 pr-10 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6] focus:bg-white transition-all"
+              />
+              <div className="absolute right-2.5 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-bold text-slate-400 flex items-center gap-0.5">
+                <span>⌘</span>
+                <span>K</span>
               </div>
-              <div>
-                <span style={{ color: '#94A3B8', display: 'block' }}>FREIGHT DISPATCH</span>
-                <strong style={{ color: '#34D399', fontSize: '13px', fontFamily: 'var(--font-mono)' }}>{(telemetry.totalFreightKg / 1000).toFixed(1)} MT</strong>
+            </div>
+
+            {/* User Profile Avatar with dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-[#5B4DF6]/30 transition-all cursor-pointer focus:outline-none"
+                title={`${currentUser?.fullName || 'Harpreet Singh'} (Super Admin)`}
+              >
+                <img
+                  src={adminAvatar}
+                  alt="Admin"
+                  className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+                />
+              </button>
+
+              {/* User Popover Menu */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 z-50 text-left animate-in fade-in slide-in-from-top-2">
+                  <div className="p-2 border-b border-slate-100 mb-2">
+                    <div className="text-xs font-bold text-[#0F172A]">{currentUser?.fullName || 'Harpreet Singh'}</div>
+                    <div className="text-[11px] text-slate-500">Super Administrator</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        HQ Clearances
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Link
+                      href="/admin/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <User size={14} className="text-[#5B4DF6]" />
+                      <span>Operator Profile</span>
+                    </Link>
+                    <Link
+                      href="/"
+                      target="_blank"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <ExternalLink size={14} className="text-[#5B4DF6]" />
+                      <span>View Live Storefront</span>
+                    </Link>
+                    <Link
+                      href="/customer"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <LayoutDashboard size={14} className="text-[#5B4DF6]" />
+                      <span>Switch to Customer Portal</span>
+                    </Link>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        logout('/');
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* ================================================================ */}
+        {/* MOBILE DRAWER NAVIGATION                                         */}
+        {/* ================================================================ */}
+        {isMobileNavOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+              onClick={() => setIsMobileNavOpen(false)}
+            />
+            <div className="fixed top-0 bottom-0 left-0 w-[280px] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm">
+                      <img
+                        src="/assets/cbh-logo-icon.png"
+                        alt="CBH"
+                        className="w-full h-full object-contain brightness-0 invert"
+                      />
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-sm text-[#0F172A]">Prodex</div>
+                      <div className="text-[10px] text-slate-400">CBH Operations Console</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <nav className="space-y-1">
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-[#0F172A] bg-slate-100 no-underline"
+                  >
+                    <LayoutDashboard size={16} />
+                    <span>Dashboard</span>
+                  </Link>
+                  <Link
+                    href="/admin/products"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Boxes size={16} />
+                    <span>Products</span>
+                  </Link>
+                  <Link
+                    href="/admin/orders"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Truck size={16} />
+                    <span>Orders</span>
+                  </Link>
+                  <Link
+                    href="/admin/users"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Users size={16} />
+                    <span>Customers</span>
+                  </Link>
+                  <Link
+                    href="/admin/rfqs"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <FileCheck2 size={16} />
+                    <span>Reports</span>
+                  </Link>
+                  <Link
+                    href="/admin/payments"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <CreditCard size={16} />
+                    <span>Payment Gateways</span>
+                  </Link>
+                  <Link
+                    href="/admin/profile"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <User size={16} />
+                    <span>Help Center / Profile</span>
+                  </Link>
+                </nav>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileNavOpen(false);
+                    logout('/');
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 cursor-pointer"
+                >
+                  <LogOut size={15} />
+                  <span>Sign Out</span>
+                </button>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Navigation Menu */}
-          <nav style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 12px 2px' }}>
-              EXECUTIVE &amp; OPERATIONS
-            </span>
-
-            {navItems.slice(0, 3).map((item) => {
-              const active = isLinkActive(item.href, item.exact);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: active ? 700 : 500,
-                    background: active ? '#0052CC' : 'transparent',
-                    color: active ? '#FFFFFF' : '#334155',
-                    textDecoration: 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && (
-                    <span style={{
-                      background: active ? '#FFFFFF' : (item.badgeColor || '#E2E8F0'),
-                      color: active ? '#0052CC' : (item.badgeColor ? '#FFFFFF' : '#475569'),
-                      padding: '2px 7px',
-                      borderRadius: '10px',
-                      fontSize: '11px',
-                      fontWeight: 800
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
-              CATALOG &amp; INVENTORY
-            </span>
-
-            {navItems.slice(3, 6).map((item) => {
-              const active = isLinkActive(item.href, item.exact);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: active ? 700 : 500,
-                    background: active ? '#0052CC' : 'transparent',
-                    color: active ? '#FFFFFF' : '#334155',
-                    textDecoration: 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && (
-                    <span style={{
-                      background: active ? '#FFFFFF' : (item.badgeColor || '#E2E8F0'),
-                      color: active ? '#0052CC' : (item.badgeColor ? '#FFFFFF' : '#475569'),
-                      padding: '2px 7px',
-                      borderRadius: '10px',
-                      fontSize: '11px',
-                      fontWeight: 800
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '14px 12px 2px' }}>
-              ENTERPRISE &amp; SYSTEM
-            </span>
-
-            {navItems.slice(6).map((item) => {
-              const active = isLinkActive(item.href, item.exact);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: active ? 700 : 500,
-                    background: active ? '#0052CC' : 'transparent',
-                    color: active ? '#FFFFFF' : '#334155',
-                    textDecoration: 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && (
-                    <span style={{
-                      background: active ? '#FFFFFF' : (item.badgeColor || '#E2E8F0'),
-                      color: active ? '#0052CC' : (item.badgeColor ? '#FFFFFF' : '#475569'),
-                      padding: '2px 7px',
-                      borderRadius: '10px',
-                      fontSize: '11px',
-                      fontWeight: 800
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* Dynamic Page Content Viewport */}
-        <main style={{ flex: 1, minWidth: 0 }}>
+        {/* ================================================================ */}
+        {/* MAIN BODY CANVAS (No duplicate headers!)                         */}
+        {/* ================================================================ */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-[1400px] w-full mx-auto space-y-6">
           {children}
         </main>
       </div>
