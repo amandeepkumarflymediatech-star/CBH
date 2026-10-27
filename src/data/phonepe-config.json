@@ -1,8 +1,8 @@
 {
-  "merchantId": "PGTESTPAYUAT",
-  "saltKey": "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399",
+  "merchantId": "M22DED07QHZJP_2606151144",
+  "saltKey": "6cfe19a8-7a82-4f05-8f90-9167e64874e2",
   "saltIndex": "1",
-  "environment": "SANDBOX",
+  "environment": "PRODUCTION",
   "enableSimulator": false,
   "defaultCallbackUrl": "https://cbh.store/api/payment/phonepe/callback",
   "defaultRedirectUrl": "http://localhost:3000/api/payment/phonepe/redirect",

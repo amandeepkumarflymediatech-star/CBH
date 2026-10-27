@@ -47,12 +47,29 @@ let memoryConfig: PhonePeConfig | null = null;
 let memoryTxns: PhonePeTransactionRecord[] | null = null;
 
 // Default configuration
+function resolveSaltKey(rawKey: string): string {
+  const trimmed = (rawKey || '').trim();
+  // If user pasted base64-encoded UUID (44 characters base64), decode it
+  if (/^[A-Za-z0-9+/=]{44}$/.test(trimmed)) {
+    try {
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf-8');
+      if (/^[0-9a-fA-F-]{36}$/.test(decoded)) {
+        return decoded;
+      }
+    } catch {
+      // keep trimmed
+    }
+  }
+  return trimmed;
+}
+
 // Default configuration
+const rawEnv = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase();
 const DEFAULT_CONFIG: PhonePeConfig = {
   merchantId: process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT',
-  saltKey: process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399',
+  saltKey: resolveSaltKey(process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399'),
   saltIndex: process.env.PHONEPE_SALT_INDEX || '1',
-  environment: (process.env.PHONEPE_ENV as 'SANDBOX' | 'PRODUCTION') || 'SANDBOX',
+  environment: rawEnv === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX',
   enableSimulator: process.env.PHONEPE_ENABLE_SIMULATOR === 'true',
   defaultCallbackUrl: process.env.NEXT_PUBLIC_APP_URL
     ? `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/phonepe/callback`
@@ -78,10 +95,12 @@ export function getPhonePeConfig(): PhonePeConfig {
 
   // Environment variables take precedence if explicitly defined
   const envOverrides: Partial<PhonePeConfig> = {};
-  if (process.env.PHONEPE_MERCHANT_ID) envOverrides.merchantId = process.env.PHONEPE_MERCHANT_ID;
-  if (process.env.PHONEPE_SALT_KEY) envOverrides.saltKey = process.env.PHONEPE_SALT_KEY;
-  if (process.env.PHONEPE_SALT_INDEX) envOverrides.saltIndex = process.env.PHONEPE_SALT_INDEX;
-  if (process.env.PHONEPE_ENV) envOverrides.environment = process.env.PHONEPE_ENV as 'SANDBOX' | 'PRODUCTION';
+  if (process.env.PHONEPE_MERCHANT_ID) envOverrides.merchantId = process.env.PHONEPE_MERCHANT_ID.trim();
+  if (process.env.PHONEPE_SALT_KEY) envOverrides.saltKey = resolveSaltKey(process.env.PHONEPE_SALT_KEY);
+  if (process.env.PHONEPE_SALT_INDEX) envOverrides.saltIndex = process.env.PHONEPE_SALT_INDEX.trim();
+  if (process.env.PHONEPE_ENV) {
+    envOverrides.environment = process.env.PHONEPE_ENV.trim().toUpperCase() === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX';
+  }
   if (process.env.PHONEPE_ENABLE_SIMULATOR !== undefined) {
     envOverrides.enableSimulator = process.env.PHONEPE_ENABLE_SIMULATOR === 'true';
   }

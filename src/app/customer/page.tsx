@@ -52,7 +52,6 @@ import { CustomerOrder, BulkQuotation } from '@/lib/types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 import { getStoredUser, AuthUser } from '@/lib/auth';
-import PhonePeModal from '@/components/payment/PhonePeModal';
 
 export type CustomerDashboardTab =
   | 'Overview'
@@ -114,11 +113,7 @@ export default function CustomerDashboardPage() {
   const [totalConsignments, setTotalConsignments] = useState(0);
   const [totalSpend, setTotalSpend] = useState(0);
   const [creditAvailable, setCreditAvailable] = useState(0);
-
-  // Modals state
-  const [isPhonePeModalOpen, setIsPhonePeModalOpen] = useState(false);
-  const [phonePePayAmount, setPhonePePayAmount] = useState(0);
-  const [phonePeOrderId, setPhonePeOrderId] = useState('');
+  const [isToppingUpCredit, setIsToppingUpCredit] = useState(false);
   const [activeMtcModal, setActiveMtcModal] = useState<CustomerOrder | null>(null);
   const [activeInvoiceModal, setActiveInvoiceModal] = useState<CustomerOrder | null>(null);
 
@@ -1717,15 +1712,38 @@ export default function CustomerDashboardPage() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPhonePeOrderId('CBH-CREDIT-TOPUP');
-                      setPhonePePayAmount(50000);
-                      setIsPhonePeModalOpen(true);
+                    disabled={isToppingUpCredit}
+                    onClick={async () => {
+                      try {
+                        setIsToppingUpCredit(true);
+                        const res = await fetch('/api/payment/phonepe/initiate', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            amount: 50000,
+                            orderId: `CBH-CREDIT-TOPUP-${Date.now()}`,
+                            customerName: clientName,
+                            customerPhone: '9888021000',
+                            customerEmail: 'procurement@apexinfra.com',
+                            companyName: clientCompany,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.success && data.paymentUrl) {
+                          window.location.href = data.paymentUrl;
+                        } else {
+                          setIsToppingUpCredit(false);
+                          alert(data.error || 'Failed to initiate PhonePe payment.');
+                        }
+                      } catch (err: any) {
+                        setIsToppingUpCredit(false);
+                        alert(err.message || 'Connection error to PhonePe.');
+                      }
                     }}
-                    className="w-full py-2.5 rounded-xl bg-[#5f259f] hover:bg-[#4a1c7d] text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-[#5f259f] hover:bg-[#4a1c7d] text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-70"
                   >
                     <QrCode size={14} />
-                    <span>Pay / Top-up Revolving Credit via PhonePe</span>
+                    <span>{isToppingUpCredit ? 'Redirecting to PhonePe...' : 'Pay / Top-up Revolving Credit via PhonePe'}</span>
                   </button>
                 </div>
               </div>
@@ -1733,28 +1751,6 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
       )}
-
-      {/* ================================================================ */}
-      {/* PHONEPE PAYMENT MODAL                                            */}
-      {/* ================================================================ */}
-      <PhonePeModal
-        isOpen={isPhonePeModalOpen}
-        onClose={() => setIsPhonePeModalOpen(false)}
-        amount={phonePePayAmount}
-        orderNumber={phonePeOrderId}
-        customerName={clientName}
-        customerPhone="+91 98880 21000"
-        customerEmail="procurement@apexinfra.com"
-        companyName={clientCompany}
-        onSuccess={(data) => {
-          setIsPhonePeModalOpen(false);
-          router.push(
-            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
-              data.mode
-            )}`
-          );
-        }}
-      />
 
       {/* ================================================================ */}
       {/* EN 10204 3.1 MTC INSPECTION CERTIFICATE PREVIEW MODAL            */}

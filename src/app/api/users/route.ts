@@ -101,10 +101,37 @@ export async function POST(request: Request) {
       );
     }
 
+    let createdId = Date.now();
+
+    // 1. Insert into MySQL
+    try {
+      const res: any = await query(
+        `INSERT INTO users (full_name, company_name, email, phone, gstin, role, tier, tier_discount_pct, credit_limit, is_verified, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          body.fullName.trim(),
+          body.companyName ? body.companyName.trim() : 'Enterprise Client',
+          body.email.trim().toLowerCase(),
+          body.phone.trim(),
+          body.gstin ? body.gstin.trim().toUpperCase() : 'UNREGISTERED',
+          body.role ? String(body.role).toLowerCase() : 'customer',
+          body.tier ? String(body.tier).toUpperCase() : 'BRONZE',
+          parseFloat(body.tierDiscountPct) || 0,
+          parseFloat(body.creditLimit) || 500000,
+          body.isVerified ? 1 : 0,
+        ]
+      );
+      if (res && res.insertId) {
+        createdId = res.insertId;
+      }
+    } catch (dbErr) {
+      console.warn('[Users API] MySQL insert error:', dbErr);
+    }
+
     const newUser: UserAccount = {
-      id: Date.now(),
+      id: createdId,
       fullName: body.fullName.trim(),
-      companyName: body.companyName ? body.companyName.trim() : 'Independent OEM Fabricator',
+      companyName: body.companyName ? body.companyName.trim() : 'Enterprise Client',
       email: body.email.trim().toLowerCase(),
       phone: body.phone.trim(),
       gstin: body.gstin ? body.gstin.trim().toUpperCase() : 'UNREGISTERED',
@@ -113,8 +140,9 @@ export async function POST(request: Request) {
       tierDiscountPct: parseFloat(body.tierDiscountPct) || 0,
       creditLimit: parseFloat(body.creditLimit) || 500000,
       isVerified: Boolean(body.isVerified),
-      city: body.city || 'Mumbai, MH',
+      city: body.city || 'Ludhiana, PB',
       createdAt: new Date().toISOString().split('T')[0],
+      ordersCount: 0,
     };
 
     usersDb.unshift(newUser);
@@ -141,23 +169,58 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
     }
 
-    const index = usersDb.findIndex((u) => u.id === Number(id));
-    if (index === -1) {
-      return NextResponse.json({ success: false, error: 'User account not found' }, { status: 404 });
+    const numId = Number(id);
+
+    // 1. Update in MySQL
+    try {
+      await query(
+        `UPDATE users SET
+          full_name = COALESCE(?, full_name),
+          company_name = COALESCE(?, company_name),
+          email = COALESCE(?, email),
+          phone = COALESCE(?, phone),
+          gstin = COALESCE(?, gstin),
+          role = COALESCE(?, role),
+          tier = COALESCE(?, tier),
+          tier_discount_pct = COALESCE(?, tier_discount_pct),
+          credit_limit = COALESCE(?, credit_limit),
+          is_verified = COALESCE(?, is_verified),
+          updated_at = NOW()
+        WHERE id = ?`,
+        [
+          updates.fullName ?? null,
+          updates.companyName ?? null,
+          updates.email ? updates.email.trim().toLowerCase() : null,
+          updates.phone ?? null,
+          updates.gstin ?? null,
+          updates.role ? String(updates.role).toLowerCase() : null,
+          updates.tier ? String(updates.tier).toUpperCase() : null,
+          updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : null,
+          updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : null,
+          updates.isVerified !== undefined ? (updates.isVerified ? 1 : 0) : null,
+          numId,
+        ]
+      );
+    } catch (dbErr) {
+      console.warn('[Users API] MySQL update error:', dbErr);
     }
 
-    const updated: UserAccount = {
-      ...usersDb[index],
-      ...updates,
-      tierDiscountPct: updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : usersDb[index].tierDiscountPct,
-      creditLimit: updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : usersDb[index].creditLimit,
-    };
-
-    usersDb[index] = updated;
+    // 2. Also sync in memory fallback if present
+    const index = usersDb.findIndex((u) => u.id === numId);
+    let updated: any = { id: numId, ...updates };
+    if (index !== -1) {
+      updated = {
+        ...usersDb[index],
+        ...updates,
+        tierDiscountPct: updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : usersDb[index].tierDiscountPct,
+        creditLimit: updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : usersDb[index].creditLimit,
+      };
+      usersDb[index] = updated;
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Account details for ${updated.fullName} updated.`,
+      message: `Account details updated.`,
       data: updated,
     });
   } catch (error: any) {
@@ -174,17 +237,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
     }
 
-    const index = usersDb.findIndex((u) => u.id === Number(id));
-    if (index === -1) {
-      return NextResponse.json({ success: false, error: 'User account not found' }, { status: 404 });
+    const numId = Number(id);
+
+    // 1. Delete from MySQL
+    try {
+      // Disconnect foreign keys from orders and bulk_rfqs first to prevent FK constraint failures
+      await query('UPDATE orders SET customer_id = NULL WHERE customer_id = ?', [numId]);
+      await query('UPDATE bulk_rfqs SET customer_id = NULL WHERE customer_id = ?', [numId]);
+      await query('DELETE FROM users WHERE id = ?', [numId]);
+    } catch (dbErr) {
+      console.warn('[Users API] MySQL delete error:', dbErr);
     }
 
-    const deleted = usersDb.splice(index, 1)[0];
+    // 2. Also remove from in-memory / fallback store if present
+    const index = usersDb.findIndex((u) => u.id === numId);
+    let deleted: any = null;
+    if (index !== -1) {
+      deleted = usersDb.splice(index, 1)[0];
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Account ${deleted.fullName} suspended/removed from system.`,
-      data: deleted,
+      message: `Account #${numId} deleted successfully from system.`,
+      data: deleted || { id: numId },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message || 'User deletion failed' }, { status: 500 });

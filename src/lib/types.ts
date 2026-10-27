@@ -68,6 +68,7 @@ export interface RfqLineItem {
   weightPerPcKg: number;
   totalWeightKg: number;
   rowTotal: number;
+  imageUrl?: string;
 }
 
 export interface RfqSummary {
@@ -115,7 +116,7 @@ export interface BulkQuotation {
   grossAmount: number;
   discountPct: number;
   netTotal: number;
-  status: 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED' | 'REJECTED';
+  status: 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED' | 'CONVERTED_TO_PO' | 'REJECTED';
   validUntil: string;
 }
 
@@ -133,6 +134,8 @@ export interface UserAccount {
   isVerified: boolean;
   city?: string;
   createdAt: string;
+  joinedDate?: string;
+  ordersCount?: number;
 }
 
 export interface SurplusLot {

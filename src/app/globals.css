@@ -6672,3 +6672,60 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 16px !important;
   }
 }
+
+/* ==========================================================================
+   ADMIN PORTAL EXECUTIVE DARK MODE
+   ========================================================================== */
+.dark body,
+body.dark {
+  background-color: #0B0F19;
+  color: #F1F5F9;
+}
+
+.dark .admin-canvas-bg {
+  background-color: #0B0F19 !important;
+}
+
+.dark .admin-card-bg {
+  background-color: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F1F5F9 !important;
+}
+
+.dark .admin-text-main {
+  color: #F8FAFC !important;
+}
+
+.dark .admin-text-sub {
+  color: #94A3B8 !important;
+}
+
+.dark .admin-sidebar-bg {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+.dark .admin-header-bg {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+.dark .admin-border-sub {
+  border-color: #1F2937 !important;
+}
+
+.dark .admin-input-bg {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.dark .admin-pill-bg {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+}
+
+.dark .admin-table-row:hover {
+  background-color: rgba(30, 41, 59, 0.6) !important;
+}
+

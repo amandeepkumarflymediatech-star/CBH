@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,7 +21,7 @@ import {
   Server,
   ArrowLeft
 } from 'lucide-react';
-import { setStoredUser, DEMO_ADMIN, AuthUser } from '@/lib/auth';
+import { getStoredUser, setStoredUser, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminPortalLoginPage() {
   const router = useRouter();
@@ -32,6 +32,13 @@ export default function AdminPortalLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user && user.role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [router]);
 
   const fillDemoAdmin = () => {
     setEmail('admin@cbh.store');

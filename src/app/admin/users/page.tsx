@@ -51,6 +51,10 @@ export default function AdminUsersPage() {
       const localUser: UserAccount = { ...userData, id: Date.now() };
       setUsers((prev) => [localUser, ...prev]);
       showToast(`Account for ${userData.companyName} created.`);
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cbh_telemetry_refresh'));
+      }
     }
   };
 
@@ -89,6 +93,10 @@ export default function AdminUsersPage() {
     } catch {
       setUsers((prev) => prev.filter((u) => u.id !== id));
       showToast('Account deleted.');
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cbh_telemetry_refresh'));
+      }
     }
   };
 

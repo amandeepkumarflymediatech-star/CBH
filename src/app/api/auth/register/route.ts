@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -19,26 +20,53 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const discountPct = tierPreference === 'DIAMOND' ? 18 : tierPreference === 'PLATINUM' ? 12 : 5;
+
+    let insertedId = Date.now();
+    try {
+      const res: any = await query(
+        `INSERT INTO users (email, password_hash, full_name, company_name, gstin, phone, role, tier, tier_discount_pct, credit_limit, is_verified, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'customer', ?, ?, 250000, 1, NOW())`,
+        [cleanEmail, password || 'Password@123', fullName, companyName || fullName, gstin || '', phone, tierPreference || 'GOLD', discountPct]
+      );
+      if (res && res.insertId) {
+        insertedId = Number(res.insertId);
+      }
+    } catch (dbErr) {
+      console.warn('[Register API] Could not insert to MySQL:', dbErr);
+    }
+
     const newUser = {
-      id: Date.now(),
+      id: insertedId,
       fullName,
       companyName: companyName || fullName,
       gstin: gstin || 'UNREGISTERED',
-      email,
+      email: cleanEmail,
       phone,
+      role: 'customer',
       tier: tierPreference || 'GOLD',
-      tierDiscountPct: tierPreference === 'DIAMOND' ? 18 : 8,
-      isVerified: false,
+      tierDiscountPct: discountPct,
+      creditLimit: 250000,
+      isVerified: true,
       createdAt: new Date().toISOString(),
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
-      message: 'Account registered successfully. Verification link and OTP dispatched.',
+      message: 'Account registered successfully. Enterprise procurement clearance granted.',
       user: newUser,
       token: 'cbh_token_' + Date.now(),
       redirectTo: '/customer',
     }, { status: 201 });
+
+    response.cookies.set('cbh_role', 'customer', {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || 'Registration failed' },

@@ -75,17 +75,33 @@ export default function CustomerLayout({
   });
 
   useEffect(() => {
-    let user = getStoredUser();
+    const user = getStoredUser();
     if (!user) {
-      user = DEMO_CLIENT;
-      setStoredUser(DEMO_CLIENT);
+      setCurrentUser(null);
+      setHasLoadedAuth(true);
+      router.replace('/login');
+      return;
+    }
+    if (user.role === 'admin') {
+      setCurrentUser(user);
+      setHasLoadedAuth(true);
+      router.replace('/admin');
+      return;
     }
     setCurrentUser(user);
     setHasLoadedAuth(true);
 
     const handleAuthChange = () => {
       const u = getStoredUser();
-      setCurrentUser(u || DEMO_CLIENT);
+      if (!u) {
+        setCurrentUser(null);
+        router.replace('/login');
+      } else if (u.role === 'admin') {
+        setCurrentUser(u);
+        router.replace('/admin');
+      } else {
+        setCurrentUser(u);
+      }
     };
     window.addEventListener('cbh_auth_change', handleAuthChange);
 
@@ -149,6 +165,42 @@ export default function CustomerLayout({
     return 'Dashboard';
   };
 
+  // Case 0: Still checking authentication on client
+  if (!hasLoadedAuth) {
+    return (
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#5B4DF6] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Verifying Client Session...</p>
+      </div>
+    );
+  }
+
+  // Case 1: Unauthenticated -> Immediately redirect to /login
+  if (!currentUser) {
+    if (typeof window !== 'undefined') {
+      router.replace('/login');
+    }
+    return (
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#5B4DF6] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold">Redirecting to Sign In...</p>
+      </div>
+    );
+  }
+
+  // Case 2: Logged in as Admin -> Redirect to /admin operations terminal
+  if (currentUser.role === 'admin') {
+    if (typeof window !== 'undefined') {
+      router.replace('/admin');
+    }
+    return (
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#0052CC] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold">Redirecting to Admin Operations Terminal...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F5F9] flex font-sans text-slate-800 antialiased">
       {/* ================================================================ */}
@@ -160,20 +212,23 @@ export default function CustomerLayout({
         }`}
       >
         <div className="flex flex-col min-h-0 flex-1 overflow-y-auto px-4 py-5 space-y-6">
-          {/* Top Brand Logo & App Name */}
-          <div className="flex items-center justify-between px-2">
-            <Link href="/customer" className="flex items-center gap-2.5 no-underline">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm shrink-0">
+          {/* Top Brand Logo */}
+          <div className="flex items-center justify-around px-2">
+            <Link href="/customer" className="flex items-center gap-2 no-underline" title="CBH Client Portal">
+              {isSidebarCollapsed ? (
                 <img
                   src="/assets/cbh-logo-icon.png"
-                  alt="CBH"
-                  className="w-full h-full object-contain brightness-0 invert"
+                  alt="CBH Fasteners"
+                  className="w-8 h-8 object-contain"
                 />
-              </div>
-              {!isSidebarCollapsed && (
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-[17px] text-[#0F172A] tracking-tight">Prodex</span>
-                  <span className="text-[10px] font-bold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded">CLIENT</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/assets/cbh-logo-stacked.png"
+                    alt="CBH Fasteners"
+                    className="h-10 w-auto max-w-[150px] object-contain"
+                  />
+                  <span className="text-[9px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded tracking-wider">CLIENT</span>
                 </div>
               )}
             </Link>
@@ -188,24 +243,7 @@ export default function CustomerLayout({
             </button>
           </div>
 
-          {/* Enterprise Account / Client Entity Selector */}
-          {!isSidebarCollapsed && (
-            <Link
-              href="/customer/profile"
-              className="bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 transition-colors no-underline group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-[#0F172A] text-white flex items-center justify-center text-xs font-black shrink-0">
-                  {clientCompany.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#0F172A] truncate">{clientCompany}</div>
-                  <div className="text-[10px] text-slate-500 truncate">VIP Tier 1 • 8% Rebate</div>
-                </div>
-              </div>
-              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 shrink-0" />
-            </Link>
-          )}
+         
 
           {/* Navigation Stack */}
           <div className="space-y-6">
@@ -446,37 +484,7 @@ export default function CustomerLayout({
           </div>
         </div>
 
-        {/* Bottom Section: Dark Mode Toggle & VIP Tier / Revolving Credit Card */}
-        <div className="p-4 border-t border-slate-100 space-y-3 shrink-0">
-          {/* Dark Mode Row */}
-          {!isSidebarCollapsed ? (
-            <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-slate-600">
-              <div className="flex items-center gap-2.5">
-                <Moon size={16} className="text-slate-500" />
-                <span>Dark Mode</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
-                  isDarkMode ? 'bg-[#5B4DF6]' : 'bg-slate-200'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                    isDarkMode ? 'translate-x-4' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <Moon size={16} className="text-slate-500" />
-            </div>
-          )}
-
-         
-        </div>
+      
       </aside>
 
       {/* ================================================================ */}
@@ -505,7 +513,7 @@ export default function CustomerLayout({
 
             {/* Notification Bell with Badge (3) */}
             <div className="relative" ref={notifRef}>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
                 className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -515,10 +523,10 @@ export default function CustomerLayout({
                 <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
                   3
                 </span>
-              </button>
+              </button> */}
 
               {/* Notification Popover */}
-              {isNotifOpen && (
+              {/* {isNotifOpen && (
                 <div className="absolute right-0 mt-2 w-76 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <span className="text-xs font-bold text-[#0F172A]">Consignment Alerts</span>
@@ -544,11 +552,11 @@ export default function CustomerLayout({
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Global Search Bar (with ⌘K) */}
-            <div className="relative hidden md:flex items-center">
+            {/* <div className="relative hidden md:flex items-center">
               <Search size={15} className="absolute left-3.5 text-slate-400" />
               <input
                 type="text"
@@ -560,7 +568,7 @@ export default function CustomerLayout({
               <span className="absolute right-2.5 text-[10px] font-bold text-slate-400 border border-slate-300 rounded px-1.5 py-0.5 bg-white">
                 ⌘K
               </span>
-            </div>
+            </div> */}
 
             {/* User Profile Avatar with Online Dot + Dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -594,14 +602,16 @@ export default function CustomerLayout({
                   </div>
 
                   <div className="space-y-1">
-                    <Link
-                      href="/customer/profile"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                    >
-                      <User size={14} className="text-slate-500" />
-                      <span>Enterprise Profile</span>
-                    </Link>
+                    {pathname !== '/customer/profile' && (
+                      <Link
+                        href="/customer/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                      >
+                        <User size={14} className="text-slate-500" />
+                        <span>Enterprise Profile</span>
+                      </Link>
+                    )}
                     <Link
                       href="/customer/orders"
                       onClick={() => setIsUserMenuOpen(false)}
@@ -642,7 +652,7 @@ export default function CustomerLayout({
                       type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        logout('/');
+                        logout('/login');
                       }}
                       className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
                     >
@@ -666,18 +676,15 @@ export default function CustomerLayout({
             <div className="fixed top-0 bottom-0 left-0 w-[280px] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200">
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-xs">
-                      <img
-                        src="/assets/cbh-logo-icon.png"
-                        alt="CBH"
-                        className="w-full h-full object-contain brightness-0 invert"
-                      />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-[#0F172A]">Prodex Client</div>
-                      <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{clientCompany}</div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <img
+                      src="/assets/cbh-logo-stacked.png"
+                      alt="CBH Fasteners"
+                      className="h-9 w-auto max-w-[140px] object-contain"
+                    />
+                    <span className="text-[9px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded tracking-wider">
+                      CLIENT
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -734,7 +741,7 @@ export default function CustomerLayout({
                   type="button"
                   onClick={() => {
                     setIsMobileNavOpen(false);
-                    logout('/');
+                    logout('/login');
                   }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 cursor-pointer"
                 >

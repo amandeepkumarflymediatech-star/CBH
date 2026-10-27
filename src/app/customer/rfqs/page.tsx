@@ -45,7 +45,13 @@ export default function CustomerRfqsPage() {
   const filteredQuotes = useMemo(() => {
     let list = [...quotes];
     if (statusFilter !== 'ALL') {
-      list = list.filter((q) => q.status === statusFilter);
+      if (statusFilter === 'PO_ISSUED') {
+        list = list.filter((q) => q.status === 'PO_ISSUED' || q.status === 'CONVERTED_TO_PO');
+      } else if (statusFilter === 'PENDING') {
+        list = list.filter((q) => q.status === 'PENDING' || q.status === 'IN_REVIEW');
+      } else {
+        list = list.filter((q) => q.status === statusFilter);
+      }
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -84,7 +90,7 @@ export default function CustomerRfqsPage() {
             <span>Industrial Quotations &amp; Bulk RFQ Desk</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Submit Bill of Materials (BOM) spreadsheets, review wholesale tier discounts, and convert quotations into approved purchase orders.
+            Submit Bill of Materials (BOM) spreadsheets, review wholesale tier discounts, and convert finalized quotations into purchase orders.
           </p>
         </div>
 
@@ -114,21 +120,26 @@ export default function CustomerRfqsPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-          {['ALL', 'PENDING', 'QUOTED', 'APPROVED', 'PO_ISSUED'].map((st) => (
+          {[
+            { label: 'ALL', value: 'ALL' },
+            { label: 'UNDER REVIEW', value: 'PENDING' },
+            { label: 'QUOTES READY', value: 'QUOTED' },
+            { label: 'PO ISSUED', value: 'PO_ISSUED' },
+          ].map((tab) => (
             <button
-              key={st}
+              key={tab.value}
               type="button"
               onClick={() => {
-                setStatusFilter(st);
+                setStatusFilter(tab.value);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-                statusFilter === st
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                statusFilter === tab.value
                   ? 'bg-[#0052CC] text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {st}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -181,13 +192,17 @@ export default function CustomerRfqsPage() {
                   </td>
                   <td className="py-3.5 px-3 text-center">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      q.status === 'PO_ISSUED' || q.status === 'APPROVED'
+                      q.status === 'PO_ISSUED' || q.status === 'CONVERTED_TO_PO'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : q.status === 'QUOTED'
                         ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
                         : 'bg-amber-50 text-amber-700 border border-amber-200'
                     }`}>
-                      {q.status}
+                      {q.status === 'CONVERTED_TO_PO' || q.status === 'PO_ISSUED'
+                        ? 'PO ISSUED'
+                        : q.status === 'QUOTED'
+                        ? 'QUOTE READY'
+                        : 'UNDER REVIEW'}
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-right">
@@ -310,21 +325,43 @@ export default function CustomerRfqsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200 flex-wrap">
               <button
                 type="button"
                 onClick={() => setActiveQuoteModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
               >
                 Close
               </button>
-              <button
-                type="button"
-                onClick={() => alert('Quotation approved! Converted into Purchase Order PO-CBH-2026-8841. Production initiated.')}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
-              >
-                <CheckCircle2 size={14} /> Approve &amp; Convert to PO
-              </button>
+
+              <div className="flex items-center gap-2">
+                {activeQuoteModal.status === 'QUOTED' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert(`Quotation ${activeQuoteModal.rfqNumber} accepted! Converted into Purchase Order PO-CBH-2026-8841.`);
+                      setActiveQuoteModal(null);
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
+                  >
+                    <CheckCircle2 size={14} /> Accept Quote &amp; Generate PO
+                  </button>
+                ) : activeQuoteModal.status === 'CONVERTED_TO_PO' || activeQuoteModal.status === 'PO_ISSUED' ? (
+                  <Link
+                    href="/customer/orders"
+                    onClick={() => setActiveQuoteModal(null)}
+                    className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow no-underline"
+                  >
+                    <span>View in Purchase Orders</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 font-semibold">
+                    <Clock size={14} className="text-amber-600" />
+                    <span>Awaiting CBH Metallurgy Review &amp; Quotation</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

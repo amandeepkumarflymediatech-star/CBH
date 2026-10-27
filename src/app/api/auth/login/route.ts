@@ -27,13 +27,21 @@ export async function POST(request: Request) {
       tierDiscountPct: isAdmin ? 25 : 18,
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Authentication successful. Secure session initialized.',
       user,
       token: 'cbh_token_' + Date.now(),
       redirectTo: isAdmin ? '/admin' : '/customer',
     });
+
+    response.cookies.set('cbh_role', user.role, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || 'Authentication failed' },

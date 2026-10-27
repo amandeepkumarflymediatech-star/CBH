@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -17,7 +17,8 @@ import {
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
-import PhonePeModal from '@/components/payment/PhonePeModal';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
+import { getStoredUser } from '@/lib/auth';
 
 interface RapidRFQWidgetProps {
   hideHeader?: boolean;
@@ -26,8 +27,8 @@ interface RapidRFQWidgetProps {
 export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetProps) {
   const router = useRouter();
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [activeOrderId, setActiveOrderId] = useState(`CBH-ORD-${Date.now()}`);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   // Initial line items matching the exact screenshot
   const [items, setItems] = useState<RfqLineItem[]>([
@@ -43,6 +44,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
       weightPerPcKg: 0.0601,
       totalWeightKg: 2500 * 0.0601,
       rowTotal: 2500 * 5.39,
+      imageUrl: '/assets/bolt_zinc.jpg',
     },
     {
       id: 2,
@@ -56,6 +58,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
       weightPerPcKg: 0.0680,
       totalWeightKg: 3000 * 0.0680,
       rowTotal: 3000 * 9.84,
+      imageUrl: '/assets/bolt_zinc.jpg',
     },
     {
       id: 3,
@@ -69,8 +72,28 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
       weightPerPcKg: 0.0775,
       totalWeightKg: 2000 * 0.0775,
       rowTotal: 2000 * 10.62,
+      imageUrl: '/assets/bolt_zinc.jpg',
     },
   ]);
+
+  // Restore cart on mount or persist default cart
+  useEffect(() => {
+    const saved = getStoredCart();
+    if (saved && saved.length > 0) {
+      // Ensure any item without an imageUrl is enriched with the catalog image
+      const enriched = saved.map((item) => {
+        if (!item.imageUrl) {
+          const match = INITIAL_PRODUCTS.find((p) => p.sku === item.sku);
+          return { ...item, imageUrl: match?.imageUrl || '/assets/bolt_zinc.jpg' };
+        }
+        return item;
+      });
+      setItems(enriched);
+      setStoredCart(enriched);
+    } else {
+      setStoredCart(items);
+    }
+  }, []);
 
   const [selectedSku, setSelectedSku] = useState(INITIAL_PRODUCTS[1].sku);
   const [quoteSuccessMsg, setQuoteSuccessMsg] = useState('');
@@ -78,13 +101,12 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
   // Switch between PCS and KGS
   const handleUnitSwitch = (newUnit: GlobalUnit) => {
     setGlobalUnit(newUnit);
-    setItems((prev) =>
-      prev.map((item) => {
+    setItems((prev) => {
+      const updated = prev.map((item) => {
         const prod = INITIAL_PRODUCTS.find((p) => p.sku === item.sku);
         if (!prod) return item;
 
         const rate = newUnit === 'PCS' ? prod.pricePerPiece : prod.pricePerKg;
-        // Adjust quantity to roughly preserve scale or set standard batch
         const qty = newUnit === 'PCS' ? item.quantity : Math.round(item.quantity * prod.weightPerPcKg);
         const weight = newUnit === 'PCS' ? qty * prod.weightPerPcKg : qty;
         const total = qty * rate;
@@ -97,15 +119,17 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
           totalWeightKg: weight,
           rowTotal: total,
         };
-      })
-    );
+      });
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   // Adjust quantity
   const handleQtyChange = (id: string | number, newQty: number) => {
     const validQty = Math.max(10, newQty);
-    setItems((prev) =>
-      prev.map((item) => {
+    setItems((prev) => {
+      const updated = prev.map((item) => {
         if (item.id === id) {
           const totalWeight = globalUnit === 'PCS' ? validQty * item.weightPerPcKg : validQty;
           return {
@@ -116,8 +140,10 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
           };
         }
         return item;
-      })
-    );
+      });
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   // Add SKU to table
@@ -140,14 +166,23 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
       weightPerPcKg: prod.weightPerPcKg,
       totalWeightKg: globalUnit === 'PCS' ? defaultQty * prod.weightPerPcKg : defaultQty,
       rowTotal: defaultQty * rate,
+      imageUrl: prod.imageUrl || '/assets/bolt_zinc.jpg',
     };
 
-    setItems((prev) => [...prev, newItem]);
+    setItems((prev) => {
+      const updated = [...prev, newItem];
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   // Remove row
   const handleRemoveRow = (id: string | number) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   const summary = calculateRfqSummary(items);
@@ -221,75 +256,134 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <div className="rfq-item-desc">{item.name}</div>
-                        <div className="rfq-item-sku">SKU: {item.sku}</div>
-                      </td>
-                      <td>
-                        <span className="badge badge-din">{item.standard}</span>
-                      </td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
-                        {formatINR(item.unitRate)} / {item.unit === 'PCS' ? 'Pc' : 'Kg'}
-                      </td>
-                      <td>
-                        <div className="rfq-qty-stepper">
+                  {items.map((item) => {
+                    const itemImage = item.imageUrl || INITIAL_PRODUCTS.find((p) => p.sku === item.sku)?.imageUrl || '/assets/bolt_zinc.jpg';
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{
+                              width: '48px',
+                              height: '48px',
+                              borderRadius: '6px',
+                              backgroundColor: '#F8FAFC',
+                              border: '1px solid #E2E8F0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              padding: '2px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            }}>
+                              <img
+                                src={itemImage}
+                                alt={item.name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain'
+                                }}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                                }}
+                              />
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div className="rfq-item-desc">{item.name}</div>
+                              <div className="rfq-item-sku">SKU: {item.sku}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-din">{item.standard}</span>
+                        </td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>
+                          {formatINR(item.unitRate)} / {item.unit === 'PCS' ? 'Pc' : 'Kg'}
+                        </td>
+                        <td>
+                          <div className="rfq-qty-stepper">
+                            <button
+                              type="button"
+                              onClick={() => handleQtyChange(item.id, item.quantity - (globalUnit === 'PCS' ? 500 : 50))}
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQtyChange(item.id, item.quantity + (globalUnit === 'PCS' ? 500 : 50))}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="rfq-row-total">{formatINR(item.rowTotal)}</td>
+                        <td>
                           <button
                             type="button"
-                            onClick={() => handleQtyChange(item.id, item.quantity - (globalUnit === 'PCS' ? 500 : 50))}
+                            className="btn-remove-row"
+                            onClick={() => handleRemoveRow(item.id)}
+                            title="Remove line"
                           >
-                            -
+                            <Trash2 size={16} />
                           </button>
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleQtyChange(item.id, item.quantity + (globalUnit === 'PCS' ? 500 : 50))}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                      <td className="rfq-row-total">{formatINR(item.rowTotal)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn-remove-row"
-                          onClick={() => handleRemoveRow(item.id)}
-                          title="Remove line"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile App RFQ Card View (Seamless Phone Experience) */}
             <div className="rfq-mobile-cards show-mobile-only">
-              {items.map((item) => (
-                <div className="rfq-mobile-item-card" key={item.id}>
-                  <div className="rfq-mob-card-head">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="badge badge-din">{item.standard}</span>
-                      <span className="rfq-item-sku">{item.sku}</span>
+              {items.map((item) => {
+                const itemImage = item.imageUrl || INITIAL_PRODUCTS.find((p) => p.sku === item.sku)?.imageUrl || '/assets/bolt_zinc.jpg';
+                return (
+                  <div className="rfq-mobile-item-card" key={item.id}>
+                    <div className="rfq-mob-card-head">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '6px',
+                          backgroundColor: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2px',
+                          flexShrink: 0
+                        }}>
+                          <img
+                            src={itemImage}
+                            alt={item.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <span className="badge badge-din">{item.standard}</span>
+                          <span className="rfq-item-sku" style={{ marginLeft: '6px' }}>{item.sku}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-remove-row"
+                        onClick={() => handleRemoveRow(item.id)}
+                        title="Remove line item"
+                        style={{ padding: '6px', color: '#DC2626' }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="btn-remove-row"
-                      onClick={() => handleRemoveRow(item.id)}
-                      title="Remove line item"
-                      style={{ padding: '6px', color: '#DC2626' }}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
 
                   <div className="rfq-mob-card-title">{item.name}</div>
 
@@ -327,8 +421,9 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                     <span className="mob-unit-badge">{globalUnit}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
 
             {/* Quick Sku Adder & CSV Bar */}
             <div className="rfq-tools-strip">
@@ -477,9 +572,46 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
             <div className="rfq-action-buttons">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveOrderId(`CBH-ORD-${Date.now()}`);
-                  setIsPayModalOpen(true);
+                disabled={isPaying}
+                onClick={async () => {
+                  try {
+                    setIsPaying(true);
+                    setPayError(null);
+                    // Ensure current cart items are stored
+                    setStoredCart(items);
+
+                    // Check if user is logged in
+                    const user = getStoredUser();
+                    if (!user) {
+                      router.push('/login?redirect=/checkout');
+                      return;
+                    }
+
+                    const orderId = `CBH-ORD-${Date.now()}`;
+                    const res = await fetch('/api/payment/phonepe/initiate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        amount: summary.netTotal,
+                        orderId,
+                        customerName: user.fullName || 'Commercial RFQ Buyer',
+                        customerPhone: user.phone || '9888021000',
+                        customerEmail: user.email || 'rfq@cbhfasteners.com',
+                        companyName: user.companyName || 'Industrial Procurement Desk',
+                        totalWeightKg: summary.totalWeightKg,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success && data.paymentUrl) {
+                      window.location.href = data.paymentUrl;
+                    } else {
+                      setIsPaying(false);
+                      setPayError(data.error || 'Failed to initiate PhonePe payment.');
+                    }
+                  } catch (err: any) {
+                    setIsPaying(false);
+                    setPayError(err.message || 'Payment connection error.');
+                  }
                 }}
                 style={{
                   width: '100%',
@@ -493,35 +625,22 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  cursor: 'pointer',
+                  cursor: isPaying ? 'wait' : 'pointer',
                   border: 'none',
                   boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
+                  opacity: isPaying ? 0.8 : 1,
                 }}
               >
-                <span>⚡ Pay via PhonePe (Instant UPI / Cards Modal)</span>
+                <span>{isPaying ? 'Redirecting to PhonePe Gateway...' : '⚡ Pay via PhonePe Gateway'}</span>
                 <ArrowRight size={16} />
               </button>
 
-              <Link
-                href="/checkout"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  background: '#0052CC',
-                  color: '#FFFFFF',
-                  borderRadius: '4px',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  textDecoration: 'none',
-                }}
-              >
-                <span>Commercial Checkout &amp; GST Invoicing</span>
-              </Link>
-
+              {payError && (
+                <div style={{ color: '#DC2626', fontSize: '11px', textAlign: 'center', fontWeight: 700, padding: '4px 0' }}>
+                  {payError}
+                </div>
+              )}
+ 
               <button
                 type="button"
                 className="btn-primary"
@@ -545,26 +664,6 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
           </div>
         </div>
       </div>
-
-      {/* Direct PhonePe Payment Modal for Rapid RFQ */}
-      <PhonePeModal
-        isOpen={isPayModalOpen}
-        onClose={() => setIsPayModalOpen(false)}
-        amount={summary.netTotal}
-        orderNumber={activeOrderId}
-        customerName="Commercial RFQ Buyer"
-        customerPhone="9888021000"
-        customerEmail="rfq@cbhfasteners.com"
-        companyName="Industrial Procurement Desk"
-        onSuccess={(data) => {
-          setIsPayModalOpen(false);
-          router.push(
-            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
-              data.mode
-            )}`
-          );
-        }}
-      />
     </section>
   );
 }
