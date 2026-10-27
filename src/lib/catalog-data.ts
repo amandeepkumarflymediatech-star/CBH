@@ -555,18 +555,96 @@ if (!global.__cbhCatalogFamilies) {
   global.__cbhCatalogFamilies = [...INITIAL_FAMILIES];
 }
 
-export function getCategories(): CatalogCategory[] {
-  return global.__cbhCatalogCategories!;
-}
-
 export function getSubcategories(categorySlug?: string): CatalogSubcategory[] {
-  const subs = global.__cbhCatalogSubcategories!;
+  if (!global.__cbhCatalogSubcategories) {
+    global.__cbhCatalogSubcategories = [...INITIAL_SUBCATEGORIES];
+  }
+  const subs = global.__cbhCatalogSubcategories;
   if (!categorySlug) return subs;
   return subs.filter((s) => s.categorySlug === categorySlug);
 }
 
+export function getCategories(): CatalogCategory[] {
+  if (!global.__cbhCatalogCategories) {
+    global.__cbhCatalogCategories = [...INITIAL_CATEGORIES];
+  }
+  const subs = getSubcategories();
+  return global.__cbhCatalogCategories.map((c) => ({
+    ...c,
+    subcategoriesCount: subs.filter((s) => s.categorySlug === c.slug).length,
+  }));
+}
+
+export function getCategoryBySlug(slug: string): CatalogCategory | undefined {
+  return getCategories().find((c) => c.slug === slug);
+}
+
+export function addCategory(category: CatalogCategory): CatalogCategory {
+  if (!global.__cbhCatalogCategories) {
+    global.__cbhCatalogCategories = [...INITIAL_CATEGORIES];
+  }
+  global.__cbhCatalogCategories.push(category);
+  return category;
+}
+
+export function updateCategory(idOrSlug: string, updates: Partial<CatalogCategory>): CatalogCategory | null {
+  if (!global.__cbhCatalogCategories) {
+    global.__cbhCatalogCategories = [...INITIAL_CATEGORIES];
+  }
+  const idx = global.__cbhCatalogCategories.findIndex((c) => c.id === idOrSlug || c.slug === idOrSlug);
+  if (idx === -1) return null;
+  global.__cbhCatalogCategories[idx] = { ...global.__cbhCatalogCategories[idx], ...updates };
+  return global.__cbhCatalogCategories[idx];
+}
+
+export function deleteCategory(idOrSlug: string): CatalogCategory | null {
+  if (!global.__cbhCatalogCategories) {
+    global.__cbhCatalogCategories = [...INITIAL_CATEGORIES];
+  }
+  const idx = global.__cbhCatalogCategories.findIndex((c) => c.id === idOrSlug || c.slug === idOrSlug);
+  if (idx === -1) return null;
+  const removed = global.__cbhCatalogCategories.splice(idx, 1)[0];
+  return removed;
+}
+
+export function getSubcategoryBySlug(slug: string, categorySlug?: string): CatalogSubcategory | undefined {
+  const subs = getSubcategories(categorySlug);
+  return subs.find((s) => s.slug === slug);
+}
+
+export function addSubcategory(subcategory: CatalogSubcategory): CatalogSubcategory {
+  if (!global.__cbhCatalogSubcategories) {
+    global.__cbhCatalogSubcategories = [...INITIAL_SUBCATEGORIES];
+  }
+  global.__cbhCatalogSubcategories.push(subcategory);
+  return subcategory;
+}
+
+export function updateSubcategory(idOrSlug: string, updates: Partial<CatalogSubcategory>): CatalogSubcategory | null {
+  if (!global.__cbhCatalogSubcategories) {
+    global.__cbhCatalogSubcategories = [...INITIAL_SUBCATEGORIES];
+  }
+  const idx = global.__cbhCatalogSubcategories.findIndex((s) => s.id === idOrSlug || s.slug === idOrSlug);
+  if (idx === -1) return null;
+  global.__cbhCatalogSubcategories[idx] = { ...global.__cbhCatalogSubcategories[idx], ...updates };
+  return global.__cbhCatalogSubcategories[idx];
+}
+
+export function deleteSubcategory(idOrSlug: string): CatalogSubcategory | null {
+  if (!global.__cbhCatalogSubcategories) {
+    global.__cbhCatalogSubcategories = [...INITIAL_SUBCATEGORIES];
+  }
+  const idx = global.__cbhCatalogSubcategories.findIndex((s) => s.id === idOrSlug || s.slug === idOrSlug);
+  if (idx === -1) return null;
+  const removed = global.__cbhCatalogSubcategories.splice(idx, 1)[0];
+  return removed;
+}
+
 export function getFamilies(categorySlug?: string, subcategorySlug?: string): CatalogProductFamily[] {
-  let list = global.__cbhCatalogFamilies!;
+  if (!global.__cbhCatalogFamilies) {
+    global.__cbhCatalogFamilies = [...INITIAL_FAMILIES];
+  }
+  let list = global.__cbhCatalogFamilies;
   if (categorySlug) {
     list = list.filter((f) => f.categorySlug === categorySlug);
   }
@@ -577,7 +655,10 @@ export function getFamilies(categorySlug?: string, subcategorySlug?: string): Ca
 }
 
 export function getFamilyBySlug(familySlug: string): CatalogProductFamily | undefined {
-  return global.__cbhCatalogFamilies!.find((f) => f.slug === familySlug);
+  if (!global.__cbhCatalogFamilies) {
+    global.__cbhCatalogFamilies = [...INITIAL_FAMILIES];
+  }
+  return global.__cbhCatalogFamilies.find((f) => f.slug === familySlug);
 }
 
 export function resetCatalogToDefault() {

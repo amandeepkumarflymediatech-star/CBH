@@ -43,15 +43,16 @@ export default function CategoryDetailPage() {
     fetch(`/api/catalog/subcategories?category=${categorySlug}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data && data.data.length > 0) {
+        if (data.success && Array.isArray(data.data)) {
           setSubcategories(data.data);
         } else {
           const fallback = INITIAL_SUBCATEGORIES.filter((s) => s.categorySlug === categorySlug);
-          setSubcategories(fallback.length > 0 ? fallback : INITIAL_SUBCATEGORIES);
+          setSubcategories(fallback);
         }
       })
       .catch(() => {
-        setSubcategories(INITIAL_SUBCATEGORIES);
+        const fallback = INITIAL_SUBCATEGORIES.filter((s) => s.categorySlug === categorySlug);
+        setSubcategories(fallback);
       });
   }, [categorySlug]);
 

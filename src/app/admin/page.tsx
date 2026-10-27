@@ -51,13 +51,15 @@ import {
   ShieldAlert,
   RefreshCw,
   Menu,
-  BookOpen
+  BookOpen,
+  Folder
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminConsolePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [activeTab, setActiveTab] = useState<'kpi' | 'inventory' | 'catalog' | 'rfqs' | 'orders' | 'users' | 'surplus' | 'erpnext' | 'blogs'>('kpi');
+  const [catalogInitialTab, setCatalogInitialTab] = useState<'categories' | 'subcategories' | 'families' | 'variants'>('categories');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -985,7 +987,10 @@ export default function AdminConsolePage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('catalog')}
+          onClick={() => {
+            setCatalogInitialTab('categories');
+            setActiveTab('catalog');
+          }}
           style={{
             padding: '5px 12px',
             borderRadius: '20px',
@@ -997,7 +1002,7 @@ export default function AdminConsolePage() {
             color: activeTab === 'catalog' ? '#FFFFFF' : '#334155'
           }}
         >
-          📖 Catalog Hierarchy
+          📁 Categories &amp; Subcategories
         </button>
 
         <button
@@ -1203,7 +1208,10 @@ export default function AdminConsolePage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('catalog')}
+              onClick={() => {
+                setCatalogInitialTab('categories');
+                setActiveTab('catalog');
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1220,11 +1228,11 @@ export default function AdminConsolePage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Layers size={16} />
-                <span>Fischer 4-Level Matrix</span>
+                <Folder size={16} />
+                <span>Categories &amp; Subcategories</span>
               </div>
               <span style={{ background: '#FF6B00', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>
-                PRO
+                4-LEVEL
               </span>
             </button>
 
@@ -1533,6 +1541,38 @@ export default function AdminConsolePage() {
                     Open Dispatch Desk <ArrowRight size={14} />
                   </button>
                 </div>
+
+                <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <Folder size={20} color="#0052CC" />
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>Categories &amp; Subcategories</h3>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5, marginBottom: '16px' }}>
+                    Create new fastener categories, add subcategories, configure technical product families and live variant matrices.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCatalogInitialTab('categories');
+                        setActiveTab('catalog');
+                      }}
+                      style={{ background: '#0052CC', color: '#FFFFFF', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      + Add Category
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCatalogInitialTab('subcategories');
+                        setActiveTab('catalog');
+                      }}
+                      style={{ background: '#FF6B00', color: '#FFFFFF', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      + Add Subcategory
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1549,9 +1589,9 @@ export default function AdminConsolePage() {
             />
           )}
 
-          {/* VIEW: FISCHER 4-LEVEL CATALOG */}
+          {/* VIEW: FISCHER 4-LEVEL CATALOG & CATEGORIES */}
           {activeTab === 'catalog' && (
-            <AdminCatalogSection />
+            <AdminCatalogSection key={catalogInitialTab} initialSubTab={catalogInitialTab} />
           )}
 
           {/* VIEW: BULK RFQs APPROVALS */}

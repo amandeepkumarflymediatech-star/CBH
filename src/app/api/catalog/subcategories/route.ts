@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSubcategories } from '@/lib/catalog-data';
+import { getSubcategories, addSubcategory, updateSubcategory, deleteSubcategory } from '@/lib/catalog-data';
 import { CatalogSubcategory } from '@/lib/catalog-types';
 
 export async function GET(request: Request) {
@@ -12,44 +12,72 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    if (!body.name || !body.slug || !body.categorySlug) {
-      return NextResponse.json({ success: false, error: 'Name, slug, and categorySlug are required' }, { status: 400 });
+    if (!body.name || !body.name.trim()) {
+      return NextResponse.json({ success: false, error: 'Subcategory name is required' }, { status: 400 });
+    }
+    if (!body.categorySlug || !body.categorySlug.trim()) {
+      return NextResponse.json({ success: false, error: 'Parent category (categorySlug) is required' }, { status: 400 });
     }
 
-    const subcategories = global.__cbhCatalogSubcategories!;
+    const rawSlug = body.slug?.trim() || body.name.trim();
+    const slug = rawSlug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const categorySlug = body.categorySlug.trim();
+
+    const existingSubs = getSubcategories();
+    const duplicate = existingSubs.find((s) => s.slug === slug && s.categorySlug === categorySlug);
+    if (duplicate) {
+      return NextResponse.json(
+        { success: false, error: `A subcategory with slug "${slug}" already exists in category "${categorySlug}"` },
+        { status: 409 }
+      );
+    }
+
     const newSubcategory: CatalogSubcategory = {
       id: `sub-${Date.now()}`,
-      slug: body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-      categorySlug: body.categorySlug.trim(),
+      slug,
+      categorySlug,
       name: body.name.trim(),
-      tagline: body.tagline || '',
-      description: body.description || '',
-      imageUrl: body.imageUrl || 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
-      bannerUrl: body.bannerUrl || '',
+      tagline: body.tagline?.trim() || '',
+      description: body.description?.trim() || '',
+      imageUrl: body.imageUrl?.trim() || 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
+      bannerUrl: body.bannerUrl?.trim() || '',
       familiesCount: 0,
       featured: Boolean(body.featured),
-      sortOrder: subcategories.length + 1,
+      sortOrder: existingSubs.length + 1,
     };
 
-    subcategories.push(newSubcategory);
-    return NextResponse.json({ success: true, message: 'Subcategory created', data: newSubcategory }, { status: 201 });
+    addSubcategory(newSubcategory);
+    return NextResponse.json({ success: true, message: 'Subcategory created successfully', data: newSubcategory }, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message || 'Failed to create subcategory' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const subcategories = global.__cbhCatalogSubcategories!;
-    const idx = subcategories.findIndex((s) => s.id === body.id || (s.slug === body.slug && s.categorySlug === body.categorySlug));
-    if (idx === -1) {
+    const targetIdOrSlug = body.id || body.slug;
+    if (!targetIdOrSlug) {
+      return NextResponse.json({ success: false, error: 'Subcategory id or slug is required for updating' }, { status: 400 });
+    }
+
+    const updated = updateSubcategory(targetIdOrSlug, {
+      name: body.name?.trim(),
+      categorySlug: body.categorySlug?.trim(),
+      tagline: body.tagline !== undefined ? body.tagline.trim() : undefined,
+      description: body.description !== undefined ? body.description.trim() : undefined,
+      imageUrl: body.imageUrl?.trim(),
+      bannerUrl: body.bannerUrl !== undefined ? body.bannerUrl.trim() : undefined,
+      featured: body.featured !== undefined ? Boolean(body.featured) : undefined,
+    });
+
+    if (!updated) {
       return NextResponse.json({ success: false, error: 'Subcategory not found' }, { status: 404 });
     }
-    subcategories[idx] = { ...subcategories[idx], ...body };
-    return NextResponse.json({ success: true, message: 'Subcategory updated', data: subcategories[idx] });
+
+    return NextResponse.json({ success: true, message: 'Subcategory updated successfully', data: updated });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message || 'Failed to update subcategory' }, { status: 500 });
   }
 }
 
@@ -58,14 +86,19 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const slug = searchParams.get('slug');
-    const subcategories = global.__cbhCatalogSubcategories!;
-    const idx = subcategories.findIndex((s) => s.id === id || s.slug === slug);
-    if (idx === -1) {
+    const target = id || slug;
+
+    if (!target) {
+      return NextResponse.json({ success: false, error: 'Subcategory id or slug parameter is required' }, { status: 400 });
+    }
+
+    const removed = deleteSubcategory(target);
+    if (!removed) {
       return NextResponse.json({ success: false, error: 'Subcategory not found' }, { status: 404 });
     }
-    const removed = subcategories.splice(idx, 1)[0];
-    return NextResponse.json({ success: true, message: 'Subcategory deleted', data: removed });
+
+    return NextResponse.json({ success: true, message: 'Subcategory deleted successfully', data: removed });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message || 'Failed to delete subcategory' }, { status: 500 });
   }
 }
