@@ -18,7 +18,8 @@ import {
   Menu,
   CheckCircle2,
   Zap,
-  BookOpen
+  BookOpen,
+  Globe
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -261,6 +262,7 @@ export default function AdminLayout({
     { label: 'OEM Accounts & Tiers', href: '/admin/users', icon: Users, badge: telemetry.usersCount },
     { label: 'ERPNext Two-Way Sync', href: '/admin/erpnext', icon: Database, badge: 'SYNC' },
     { label: 'Technical Metallurgy Blog', href: '/admin/blogs', icon: BookOpen, badge: telemetry.blogsCount },
+    { label: 'Dynamic SEO & Schemas', href: '/admin/seo', icon: Globe, badge: 'HEAD' },
   ];
 
   const isLinkActive = (href: string, exact?: boolean) => {

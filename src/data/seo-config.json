@@ -1,0 +1,265 @@
+{
+  "global": {
+    "siteName": "CBH Fasteners",
+    "siteUrl": "https://cbh.store",
+    "defaultTitle": "CBH Fasteners | India's Premier Digital Fastener Procurement Platform",
+    "titleTemplate": "%s | CBH Fasteners",
+    "defaultDescription": "2 Lacs+ SKUs under one roof. BIS Certified DIN & ISO precision fasteners, hex screws, heavy bolts, and anchors. Rapid RFQ & dual unit PCS/KGS wholesale pricing.",
+    "defaultKeywords": "fasteners, hex screws, DIN 933, DIN 912, DIN 934, bolts, anchors, BIS certified fasteners, bulk fastener order, surplus stock, Hilti, Fischer, industrial fasteners India",
+    "canonicalBase": "https://cbh.store",
+    "author": "CBH Tech Pvt. Ltd.",
+    "publisher": "CBH Fasteners",
+    "themeColor": "#0F172A",
+    "ogImage": "/assets/cbh-logo-icon.png",
+    "ogType": "website",
+    "twitterCard": "summary_large_image",
+    "twitterHandle": "@cbhfasteners",
+    "googleVerification": "",
+    "bingVerification": "",
+    "yandexVerification": "",
+    "customHeadTags": "<!-- CBH Digital Procurement Platform Verified -->",
+    "organization": {
+      "name": "CBH Fasteners",
+      "legalName": "CBH Tech Private Limited",
+      "url": "https://cbh.store",
+      "logo": "https://cbh.store/assets/cbh-logo-icon.png",
+      "telephone": "+91-98880-21000",
+      "email": "sales@cbh.store",
+      "gstin": "03AAACC1206M1ZN",
+      "streetAddress": "CBH Works, Industrial Focal Point Phase VIII",
+      "addressLocality": "Ludhiana",
+      "addressRegion": "Punjab",
+      "postalCode": "141010",
+      "addressCountry": "IN",
+      "sameAs": [
+        "https://www.linkedin.com/company/cbh-fasteners",
+        "https://twitter.com/cbhfasteners",
+        "https://wa.me/919888021000"
+      ]
+    },
+    "globalFaqs": [
+      {
+        "id": "faq-g-1",
+        "question": "What standards and certifications do CBH Fasteners supply?",
+        "answer": "CBH Fasteners manufactures and distributes industrial fasteners adhering to DIN (DIN 933, DIN 931, DIN 912, DIN 934), ISO (ISO 4014, ISO 4017), ASTM (ASTM A193 B7, ASTM A325), and BIS standards. Every commercial shipment is backed by an EN 10204 3.1 NABL-accredited Mill Test Certificate (MTC)."
+      },
+      {
+        "id": "faq-g-2",
+        "question": "How does dual-unit billing (Pieces vs Kilograms) work on CBH?",
+        "answer": "Our real-time engineering calculation engine allows clients to procure fasteners either by exact piece count (PCS) or by total weight in kilograms (KGS). Weight conversions are derived using theoretical weight matrices cross-referenced with actual metallurgical scale calibrations."
+      },
+      {
+        "id": "faq-g-3",
+        "question": "What wholesale discount tiers are available for bulk RFQ orders?",
+        "answer": "We offer tiered enterprise pricing: Orders above ₹25,000 receive a 5% rebate plus free Pan-India freight; orders above ₹50,000 qualify for a 15% wholesale slab; orders exceeding ₹1,00,000 unlock maximum OEM tier discounts up to 25%."
+      }
+    ]
+  },
+  "pages": [
+    {
+      "id": "page-home",
+      "path": "/",
+      "pageName": "Home Page",
+      "title": "CBH Fasteners | India's Premier Digital Fastener Procurement Platform",
+      "description": "Direct Mill Traceability with EN 10204 3.1 MTCs. 2 Lacs+ SKUs under one roof. BIS Certified DIN & ISO precision fasteners with live dual unit PCS/KGS wholesale pricing.",
+      "keywords": "industrial fasteners, hex bolts, DIN 933, DIN 912, high tensile bolts, grade 8.8, grade 10.9, stainless steel fasteners, bulk fastener procurement India",
+      "canonicalUrl": "https://cbh.store",
+      "robots": "index, follow",
+      "ogTitle": "CBH Fasteners — Digital Fastener Procurement Platform",
+      "ogDescription": "Direct-from-mill precision fasteners with live dual pricing (PCS & KGS), automated RFQs, and free freight on wholesale tiers.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": [
+        {
+          "id": "faq-home-1",
+          "question": "Can I request test certificates before dispatch?",
+          "answer": "Yes. All CBH industrial dispatches include physical and digital EN 10204 Type 3.1 Mill Test Certificates providing full heat-number traceability, chemical composition analysis, and tensile strength test results."
+        },
+        {
+          "id": "faq-home-2",
+          "question": "What is the dispatch turnaround time for standard orders?",
+          "answer": "Standard catalog items in stock ship within 24 to 48 hours directly from our Ludhiana hub via TCI Freight, Blue Dart Express, and Safexpress."
+        }
+      ]
+    },
+    {
+      "id": "page-products",
+      "path": "/products",
+      "pageName": "Fastener Catalog & Parametric Finder",
+      "title": "Industrial Fastener Catalog — DIN & ISO Parametric Matrix | CBH Fasteners",
+      "description": "Browse 2 Lacs+ fastener SKUs: Hex head bolts, socket cap screws, hex nuts, threaded rods, and plain washers across Grade 4.6, 8.8, 10.9, 12.9, SS 304, and SS 316.",
+      "keywords": "fastener catalog, DIN 933 hex screws, DIN 912 socket head, DIN 934 hex nuts, M6 to M36 bolts, zinc plated fasteners, hot dip galvanized bolts",
+      "canonicalUrl": "https://cbh.store/products",
+      "robots": "index, follow",
+      "ogTitle": "Industrial Fastener Matrix & Technical Catalog | CBH Fasteners",
+      "ogDescription": "Parametrically filter fasteners by standard, grade, thread diameter, length, and finish. Live per-piece and per-kg pricing.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": [
+        {
+          "id": "faq-prod-1",
+          "question": "Which surface finishes are available in the catalog?",
+          "answer": "Our fasteners are available in Black Phosphate (BP), Electro-Galvanized Clear Zinc, Yellow Zinc, Hot-Dip Galvanized (HDG) per ISO 10684, and passivated stainless steel."
+        },
+        {
+          "id": "faq-prod-2",
+          "question": "Are custom thread pitches and non-standard lengths supported?",
+          "answer": "Yes. Non-standard dimensions, fine pitch threads, and special alloy fasteners can be quoted on-demand via our Rapid RFQ desk."
+        }
+      ]
+    },
+    {
+      "id": "page-bulk-order",
+      "path": "/bulk-order",
+      "pageName": "Rapid RFQ & Bulk Ordering Matrix",
+      "title": "Bulk Fastener RFQ & OEM Wholesale Procurement | CBH Fasteners",
+      "description": "Submit multi-line fastener Bill of Materials (BOM) for instant commercial quotation. Automated wholesale slab discounts up to 25% with free Pan-India freight.",
+      "keywords": "bulk fastener RFQ, wholesale fasteners, OEM fastener pricing, fastener quotation, industrial fastener tender India, BOM upload fasteners",
+      "canonicalUrl": "https://cbh.store/bulk-order",
+      "robots": "index, follow",
+      "ogTitle": "Rapid RFQ & Commercial Quotation Desk | CBH Fasteners",
+      "ogDescription": "One-click BOM intake, automated wholesale rebates, GST breakdown, and instant WhatsApp PDF quotation.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": [
+        {
+          "id": "faq-bulk-1",
+          "question": "How quickly are commercial RFQs processed?",
+          "answer": "Automated RFQs are calculated instantly on-screen with downloadable PDF quotations. Custom technical tenders requiring metallurgist review are finalized within 2 hours."
+        },
+        {
+          "id": "faq-bulk-2",
+          "question": "Can I submit my procurement list via Excel or WhatsApp?",
+          "answer": "Yes. You can upload CSV/Excel files directly into the RFQ matrix or dispatch your requirements via WhatsApp to +91 98880 21000."
+        }
+      ]
+    },
+    {
+      "id": "page-surplus",
+      "path": "/surplus",
+      "pageName": "Factory Surplus & Clearance Lots",
+      "title": "Industrial Fastener Surplus & Factory Liquidation Lots | CBH Fasteners",
+      "description": "Verified industrial factory surplus fasteners and mill overrun lots at up to 60% below standard tariffs. 100% NABL lab tested with zero middlemen.",
+      "keywords": "surplus fasteners, discounted bolts, factory liquidation fasteners, mill overrun studs, ASTM A193 B7 surplus, cheap industrial bolts",
+      "canonicalUrl": "https://cbh.store/surplus",
+      "robots": "index, follow",
+      "ogTitle": "CBH Factory Clearance & Surplus Inventory",
+      "ogDescription": "High-tensile structural surplus lots at liquidation pricing. First-come, first-served with full lab inspection.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": [
+        {
+          "id": "faq-surp-1",
+          "question": "Are surplus lots certified and rust-free?",
+          "answer": "Every surplus lot undergoes rigorous NABL-accredited dimensional and metallurgical inspection to ensure zero defects, proper thread tolerance, and absence of corrosion."
+        }
+      ]
+    },
+    {
+      "id": "page-virtual-store",
+      "path": "/virtual-store",
+      "pageName": "3D Virtual Showroom",
+      "title": "3D Virtual Fastener Showroom & Interactive Engineering Hub | CBH Fasteners",
+      "description": "Experience our interactive Three.js 3D virtual showroom. Inspect fastener geometry, thread pitch, and surface finishes with realistic industrial lighting.",
+      "keywords": "3D fastener store, virtual fastener showroom, Three.js 3D bolts, CAD fasteners, interactive industrial parts",
+      "canonicalUrl": "https://cbh.store/virtual-store",
+      "robots": "index, follow",
+      "ogTitle": "Interactive 3D Virtual Fastener Store | CBH Fasteners",
+      "ogDescription": "Inspect precision fasteners in real-time 3D before placing enterprise orders.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": []
+    },
+    {
+      "id": "page-customer",
+      "path": "/customer",
+      "pageName": "Enterprise Client Portal",
+      "title": "Enterprise Client Portal — Order Tracking & MTC Calibration | CBH Fasteners",
+      "description": "Track active dispatches with 5-stage live logistics telemetry. Download NABL EN 10204 3.1 Mill Test Certificates and view past proforma invoices.",
+      "keywords": "fastener order tracking, MTC certificate download, EN 10204 3.1, GST invoice fasteners, CBH client portal",
+      "canonicalUrl": "https://cbh.store/customer",
+      "robots": "noindex, follow",
+      "ogTitle": "CBH Fasteners Enterprise Client Terminal",
+      "ogDescription": "Logistics tracking, MTC mill certificates, and account tier privileges.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": []
+    },
+    {
+      "id": "page-blog",
+      "path": "/blog",
+      "pageName": "Technical Metallurgy Blog",
+      "title": "Technical Metallurgy & Fastener Engineering Articles | CBH Fasteners",
+      "description": "Authoritative engineering guides on DIN vs ISO standards, bolt tensile classes, galvanization hydrogen embrittlement, and fastener torque calculation.",
+      "keywords": "fastener metallurgy, DIN standards guide, bolt grade chart, hydrogen embrittlement, torque tension fasteners, ISO 898-1",
+      "canonicalUrl": "https://cbh.store/blog",
+      "robots": "index, follow",
+      "ogTitle": "CBH Metallurgy & Engineering Knowledge Base",
+      "ogDescription": "Technical articles for procurement heads, structural engineers, and fabricators.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": []
+    },
+    {
+      "id": "page-contact",
+      "path": "/contact",
+      "pageName": "Contact & Dispatch Works",
+      "title": "Contact CBH Fasteners — Ludhiana Works & Procurement Desk",
+      "description": "Reach our engineering sales desk at +91 98880 21000 or email sales@cbh.store. Dispatch works located at Industrial Focal Point, Ludhiana, Punjab.",
+      "keywords": "contact CBH fasteners, fastener manufacturer Ludhiana, bolt supplier phone number, industrial fasteners enquiry",
+      "canonicalUrl": "https://cbh.store/contact",
+      "robots": "index, follow",
+      "ogTitle": "Contact CBH Fasteners — Procurement & Technical Support",
+      "ogDescription": "Direct mill procurement assistance, quotation review, and factory visits.",
+      "ogImage": "/assets/cbh-logo-icon.png",
+      "faqs": []
+    }
+  ],
+  "robots": {
+    "content": "# ==============================================================================\n# CBH FASTENERS - INDUSTRIAL B2B PLATFORM ROBOTS.TXT\n# Standard Compliant Directives for Web Spiders & Search Engines\n# ==============================================================================\n\nUser-agent: *\nAllow: /\nAllow: /products\nAllow: /products/*\nAllow: /bulk-order\nAllow: /surplus\nAllow: /virtual-store\nAllow: /blog\nAllow: /blog/*\nAllow: /about\nAllow: /contact\nAllow: /llms.txt\nAllow: /llms-full.txt\n\n# Disallow Admin & Private Customer Stations\nDisallow: /admin\nDisallow: /admin/*\nDisallow: /customer\nDisallow: /customer/*\nDisallow: /api/*\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /resend-verification\n\n# Host & XML Sitemap Locations\nHost: https://cbh.store\nSitemap: https://cbh.store/sitemap.xml\n",
+    "autoSitemap": true
+  },
+  "llms": {
+    "content": "# CBH Fasteners (Digital Fastener Procurement Platform)\n\n> India's premier digital procurement platform for industrial metal parts, DIN/ISO precision fasteners, and structural bolting systems.\n\n## Core Capabilities\n- Over 2,00,000 SKUs under one roof\n- Single-source Direct-to-Customer procurement model (no third-party vendors)\n- Dual-unit live pricing in Pieces (PCS) and Kilograms (KGS)\n- Full mill traceability with EN 10204 3.1 NABL-accredited inspection certificates\n- Rapid multi-line RFQ with wholesale tier rebates up to 25%\n- Factory clearance surplus inventory up to 60% below standard tariffs\n- 3D interactive virtual inspection showroom\n\n## Product Categories\n- **Hexagon Head Screws & Bolts**: DIN 933 (full thread), DIN 931 (half thread), ISO 4014, ISO 4017\n- **Socket Head Cap Screws**: DIN 912, ISO 4762\n- **Hexagon Nuts**: DIN 934, ISO 4032, ASTM A194 Grade 2H\n- **Washers**: Plain DIN 125A, Spring DIN 127B\n- **Studs & Threaded Rods**: DIN 975, ASTM A193 Grade B7\n- **Heavy Structural Bolts**: ASTM A325, EN 14399-4 (HV), IS 3757\n\n## Metallurgy & Material Grades\n- Mild Steel: Grade 4.6, 5.8\n- High-Tensile Steel: Grade 8.8, 10.9, 12.9 (Quenched & Tempered)\n- Stainless Steel: AISI 304 (A2-70), AISI 316 (A4-80), AISI 316L\n- Alloy Steel: ASTM A193 B7 / B7M, ASTM A320 L7 (Low temperature)\n\n## Surface Finishes\n- Black Phosphate (BP)\n- Electro-Galvanized Clear Zinc & Yellow Passivation\n- Hot-Dip Galvanized (HDG) per ISO 10684 / ASTM A153\n- PTFE / Xylan Fluoropolymer Coating\n\n## Commercial Slabs & Rebates\n- ₹25,000+: 5% Rebate + Free Pan-India Freight\n- ₹50,000+: 15% Wholesale Slab\n- ₹1,00,000+: 25% Maximum OEM Enterprise Tier\n\n## Operational Contacts & Dispatch Hub\n- Website: https://cbh.store\n- WhatsApp Desk: +91 98880 21000\n- Sales Email: sales@cbh.store\n- Manufacturing & Dispatch Hub: Industrial Focal Point, Phase VIII, Ludhiana, Punjab 141010, India\n- Sitemap: https://cbh.store/sitemap.xml\n- Full LLM Reference: https://cbh.store/llms-full.txt\n",
+    "fullContent": "# CBH Fasteners — Comprehensive LLM Reference Specification (llms-full.txt)\n\n## 1. Company Background\nCBH Fasteners (a venture of CBH Tech Pvt. Ltd.) operates a centralized manufacturing and digital distribution platform for precision engineering fasteners. The platform is architected to eliminate intermediary trading layers by providing direct mill procurement, verified metallurgical certifications, and real-time dual pricing.\n\n## 2. Standards Compliance Matrix\n- **DIN Standards**: DIN 933, DIN 931, DIN 912, DIN 934, DIN 125, DIN 127, DIN 975, DIN 6921, DIN 7991\n- **ISO Standards**: ISO 4014, ISO 4017, ISO 4762, ISO 4032, ISO 7089, ISO 10642\n- **ASTM Standards**: ASTM A193 (B7, B8, B8M), ASTM A194 (2H, 8, 8M), ASTM A325, ASTM A490\n- **BIS Standards**: IS 1363, IS 1364, IS 3757, IS 6639\n\n## 3. Test & Calibration Rigor\nEvery commercial shipment is matched with a physical and digital EN 10204 3.1 Mill Test Certificate (MTC) validated by NABL-accredited metallurgical testing laboratories. Tested parameters include:\n- Carbon (C), Manganese (Mn), Chromium (Cr), Nickel (Ni), Molybdenum (Mo) spectral breakdown\n- Proof Load & Ultimate Tensile Strength (UTS)\n- Core and Surface Hardness (HRC / HRB / HV)\n- Elongation percentage and impact toughness (Charpy V-notch)\n- Salt spray testing (SST) hours for corrosion-resistant finishes\n\n## 4. Digital Platform Architecture\n- Framework: Next.js 14 App Router, TypeScript, React 18\n- Logistics Telemetry: 5-Stage Live Dispatch Tracking (Order Placed -> Lab Calibration -> Dispatched -> In Transit -> Delivered)\n- ERP Integration: REST API sync with ERPNext for real-time inventory and quotation issuance\n- Contact: sales@cbh.store | +91 98880 21000\n"
+  },
+  "sitemap": {
+    "includeProducts": true,
+    "includeCategories": true,
+    "additionalUrls": [
+      {
+        "url": "https://cbh.store/",
+        "changefreq": "daily",
+        "priority": 1.0
+      },
+      {
+        "url": "https://cbh.store/products",
+        "changefreq": "daily",
+        "priority": 0.95
+      },
+      {
+        "url": "https://cbh.store/bulk-order",
+        "changefreq": "weekly",
+        "priority": 0.9
+      },
+      {
+        "url": "https://cbh.store/surplus",
+        "changefreq": "daily",
+        "priority": 0.85
+      },
+      {
+        "url": "https://cbh.store/virtual-store",
+        "changefreq": "monthly",
+        "priority": 0.8
+      },
+      {
+        "url": "https://cbh.store/blog",
+        "changefreq": "weekly",
+        "priority": 0.75
+      },
+      {
+        "url": "https://cbh.store/about",
+        "changefreq": "monthly",
+        "priority": 0.7
+      },
+      {
+        "url": "https://cbh.store/contact",
+        "changefreq": "monthly",
+        "priority": 0.7
+      }
+    ]
+  }
+}

@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   Building2,
   Flame,
-  Package
+  Package,
+  Globe
 } from 'lucide-react';
 import { formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS, INITIAL_QUOTES, INITIAL_ORDERS, INITIAL_USERS, INITIAL_SURPLUS_LOTS } from '@/lib/mock-data';
@@ -384,6 +385,35 @@ export default function AdminConsolePage() {
                 className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#0052CC] text-[#0F172A] hover:text-white font-bold text-xs flex items-center justify-between transition-colors"
               >
                 <span>Manage Technical Articles</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Section Card: Dynamic SEO & Schemas */}
+          <div className="bg-white p-6 rounded-2xl border border-[#D8DFE7] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0052CC] flex items-center justify-center">
+                    <Globe size={18} />
+                  </div>
+                  <h3 className="font-extrabold text-[#0F172A] text-base">Dynamic SEO &amp; Schemas</h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-[#0052CC] text-xs font-bold font-mono">
+                  &lt;head&gt; Injection
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Configure on-page dynamic SEO per route, Schema.org FAQs, global metadata, sitemap.xml, robots.txt, and llms.txt context for AI search spiders.
+              </p>
+            </div>
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <Link
+                href="/admin/seo"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#0052CC] text-[#0F172A] hover:text-white font-bold text-xs flex items-center justify-between transition-colors"
+              >
+                <span>Open Dynamic SEO Console</span>
                 <ArrowRight size={14} />
               </Link>
             </div>
