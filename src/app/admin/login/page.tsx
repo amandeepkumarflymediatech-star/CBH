@@ -458,7 +458,7 @@ export default function AdminPortalLoginPage() {
               </div>
 
               {/* Field 3: Hardware Security Key */}
-              <div>
+              {/* <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
                   <label style={{
                     display: 'flex',
@@ -516,7 +516,7 @@ export default function AdminPortalLoginPage() {
                     }}
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Submit CTA */}
               <button
