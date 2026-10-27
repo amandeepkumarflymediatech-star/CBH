@@ -16,8 +16,245 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
-  Filter
+  Filter,
+  UploadCloud,
+  ImageIcon,
+  Loader2,
+  Check
 } from 'lucide-react';
+
+const FASTENER_IMAGE_PRESETS = [
+  { label: 'Hex Bolt (DIN 933 Zinc)', url: '/assets/bolt_zinc.jpg' },
+  { label: 'Anchor Bolt (Heavy Duty)', url: '/assets/anchor_bolt.jpg' },
+  { label: 'Socket Cap (DIN 912)', url: '/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png' },
+  { label: 'Flange Bolt (High-Tensile)', url: '/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png' },
+  { label: 'Stud Bolt & Heavy Hex Nut', url: '/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png' },
+  { label: 'HDG Structural Bolt', url: '/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png' },
+];
+
+interface ImageUploaderProps {
+  currentUrl: string;
+  onUrlChange: (url: string) => void;
+  label?: string;
+}
+
+function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Product Photo' }: ImageUploaderProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isCustomUrlOpen, setIsCustomUrlOpen] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file (PNG, JPG, WEBP, SVG)');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Image size should be under 10MB');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadError(null);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        onUrlChange(data.url);
+      } else {
+        setUploadError(data.error || 'Failed to upload image');
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Error uploading file');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (fileInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      fileInputRef.current.files = dataTransfer.files;
+      handleFileChange({ target: { files: dataTransfer.files } } as any);
+    }
+  };
+
+  return (
+    <div className="admin-form-group" style={{ marginTop: '14px', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+        <label style={{ margin: 0, fontWeight: 700, fontSize: '13px' }}>{label}</label>
+        <button
+          type="button"
+          onClick={() => setIsCustomUrlOpen(!isCustomUrlOpen)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-primary)',
+            fontSize: '11px',
+            cursor: 'pointer',
+            fontWeight: 700,
+            textDecoration: 'underline'
+          }}
+        >
+          {isCustomUrlOpen ? 'Hide URL input' : 'Enter direct URL'}
+        </button>
+      </div>
+
+      {/* Upload & Preview Row */}
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Current Image Preview */}
+        <div style={{
+          width: '74px',
+          height: '74px',
+          borderRadius: '10px',
+          border: '1.5px solid var(--color-border)',
+          background: '#F8FAFC',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          flexShrink: 0,
+          position: 'relative',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          {currentUrl ? (
+            <img
+              src={currentUrl}
+              alt="Fastener Preview"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+              }}
+            />
+          ) : (
+            <ImageIcon size={26} color="#94A3B8" />
+          )}
+          {isUploading && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(255,255,255,0.85)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Loader2 size={22} className="animate-spin" color="#0052CC" />
+            </div>
+          )}
+        </div>
+
+        {/* Dropzone & Browse button */}
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            flex: 1,
+            minWidth: '220px',
+            border: '2px dashed #CBD5E1',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            background: '#F8FAFC',
+            cursor: 'pointer',
+            textAlign: 'center',
+            transition: 'border-color 0.15s ease',
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <UploadCloud size={18} color="#0052CC" />
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+              {isUploading ? 'Uploading SKU Photo...' : 'Click or Drag & Drop Photo Here'}
+            </span>
+          </div>
+          <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#64748B' }}>
+            PNG, JPG, WEBP, or SVG (Up to 10MB)
+          </p>
+        </div>
+      </div>
+
+      {uploadError && (
+        <div style={{ marginTop: '6px', fontSize: '11px', color: '#DC2626', fontWeight: 600 }}>
+          ⚠ {uploadError}
+        </div>
+      )}
+
+      {/* Manual URL Input */}
+      {isCustomUrlOpen && (
+        <div style={{ marginTop: '8px' }}>
+          <input
+            type="text"
+            placeholder="e.g. /assets/bolt_zinc.jpg or https://cdn.example.com/bolt.jpg"
+            value={currentUrl}
+            onChange={(e) => onUrlChange(e.target.value)}
+            style={{ fontSize: '12px', padding: '8px 10px', width: '100%', borderRadius: '8px' }}
+          />
+        </div>
+      )}
+
+      {/* Preset Fastener Catalog Images */}
+      <div style={{ marginTop: '8px' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>
+          Quick Fastener Photo Templates:
+        </span>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {FASTENER_IMAGE_PRESETS.map((preset) => {
+            const isSelected = currentUrl === preset.url;
+            return (
+              <button
+                key={preset.url}
+                type="button"
+                onClick={() => onUrlChange(preset.url)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  border: isSelected ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                  background: isSelected ? '#EFF6FF' : '#FFFFFF',
+                  color: isSelected ? '#0052CC' : '#334155',
+                  fontSize: '11px',
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <img
+                  src={preset.url}
+                  alt={preset.label}
+                  style={{ width: '14px', height: '14px', objectFit: 'contain' }}
+                />
+                <span>{preset.label}</span>
+                {isSelected && <Check size={11} color="#0052CC" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface AdminProductsSectionProps {
   products: Product[];
@@ -71,6 +308,7 @@ export default function AdminProductsSection({
     stockPcs: '15000',
     isSurplus: false,
     surplusDiscountPct: '35',
+    imageUrl: '/assets/bolt_zinc.jpg',
   });
 
   // Filtered & Sorted products
@@ -197,7 +435,7 @@ export default function AdminProductsSection({
       isInStock: stockPcs > 0,
       isSurplus: addForm.isSurplus,
       surplusDiscountPct: addForm.isSurplus ? (parseInt(addForm.surplusDiscountPct) || 35) : 0,
-      imageUrl: '/assets/bolt_zinc.jpg',
+      imageUrl: addForm.imageUrl || '/assets/bolt_zinc.jpg',
     });
 
     setIsAddOpen(false);
@@ -218,6 +456,7 @@ export default function AdminProductsSection({
       stockPcs: '15000',
       isSurplus: false,
       surplusDiscountPct: '35',
+      imageUrl: '/assets/bolt_zinc.jpg',
     });
   };
 
@@ -578,6 +817,12 @@ export default function AdminProductsSection({
                 />
               </div>
 
+              <FastenerImageUploader
+                currentUrl={addForm.imageUrl}
+                onUrlChange={(url) => setAddForm({ ...addForm, imageUrl: url })}
+                label="Fastener Product Photo (New SKU)"
+              />
+
               <div className="admin-modal-grid" style={{ marginTop: '12px' }}>
                 <div className="admin-form-group">
                   <label>Standard Spec</label>
@@ -752,6 +997,12 @@ export default function AdminProductsSection({
                   onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
                 />
               </div>
+
+              <FastenerImageUploader
+                currentUrl={editProduct.imageUrl || '/assets/bolt_zinc.jpg'}
+                onUrlChange={(url) => setEditProduct({ ...editProduct, imageUrl: url })}
+                label="Fastener Product Photo (Update SKU)"
+              />
 
               <div className="admin-modal-grid" style={{ marginTop: '12px' }}>
                 <div className="admin-form-group">
