@@ -73,7 +73,6 @@ function loadConfigFile(): FullSeoConfig {
     },
     llms: {
       content: '# CBH Fasteners\nIndia premier digital fastener procurement platform.',
-      fullContent: '# CBH Fasteners Specification\nComplete engineering and metallurgical catalog.',
     },
     sitemap: {
       includeProducts: true,
@@ -225,14 +224,6 @@ export function getLlmsTxtContent(): string {
 }
 
 /**
- * Get llms-full.txt content
- */
-export function getLlmsFullTxtContent(): string {
-  const config = getFullSeoConfig();
-  return config.llms?.fullContent || config.llms?.content || '# CBH Fasteners Specification';
-}
-
-/**
  * Generate XML Sitemap string
  */
 export function generateSitemapXml(): string {
@@ -281,14 +272,14 @@ export function generateSitemapXml(): string {
 
   // Build XML
   const entries: string[] = [];
-  for (const [loc, meta] of urlMap.entries()) {
+  urlMap.forEach((meta, loc) => {
     entries.push(`  <url>
     <loc>${escapeXml(loc)}</loc>
     <lastmod>${meta.lastmod}</lastmod>
     <changefreq>${meta.changefreq}</changefreq>
     <priority>${meta.priority.toFixed(2)}</priority>
   </url>`);
-  }
+  });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

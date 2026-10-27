@@ -331,10 +331,10 @@ export default function AdminSeoPage() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between md:col-span-2">
                 <div>
                   <div className="font-mono text-xs font-bold text-[#0F172A]">/llms.txt</div>
-                  <div className="text-[11px] text-slate-500">Emerging standard for AI search engines &amp; models</div>
+                  <div className="text-[11px] text-slate-500">Official open AI standard context for LLMs &amp; AI search spiders</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -351,31 +351,6 @@ export default function AdminSeoPage() {
                     className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#0052CC] border border-blue-200 text-xs font-bold flex items-center gap-1 hover:bg-blue-100"
                   >
                     <span>View llms.txt</span>
-                    <ExternalLink size={12} />
-                  </a>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                <div>
-                  <div className="font-mono text-xs font-bold text-[#0F172A]">/llms-full.txt</div>
-                  <div className="text-[11px] text-slate-500">Full metallurgical specifications &amp; test details for LLMs</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(`${window.location.origin}/llms-full.txt`, 'llms-full')}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-black"
-                  >
-                    {copiedLink === 'llms-full' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                  </button>
-                  <a
-                    href="/llms-full.txt"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#0052CC] border border-blue-200 text-xs font-bold flex items-center gap-1 hover:bg-blue-100"
-                  >
-                    <span>View Full</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>
@@ -1159,9 +1134,9 @@ export default function AdminSeoPage() {
         <div className="bg-white rounded-2xl border border-[#D8DFE7] p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
             <div>
-              <h3 className="text-base font-black text-[#0F172A]">llms.txt &amp; llms-full.txt AI Specification</h3>
+              <h3 className="text-base font-black text-[#0F172A]">llms.txt AI Specification</h3>
               <p className="text-xs text-slate-500">
-                The open AI standard for feeding clean, markdown-structured industrial specifications to LLM crawlers.
+                The open AI standard for feeding clean, markdown-structured industrial specifications to LLM search spiders and crawlers.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1169,18 +1144,9 @@ export default function AdminSeoPage() {
                 href="/llms.txt"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1 hover:bg-slate-50"
+                className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1.5 hover:bg-slate-50"
               >
-                <span>Live /llms.txt</span>
-                <ExternalLink size={12} />
-              </a>
-              <a
-                href="/llms-full.txt"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 flex items-center gap-1 hover:bg-slate-50"
-              >
-                <span>Live /llms-full.txt</span>
+                <span>Test Live /llms.txt</span>
                 <ExternalLink size={12} />
               </a>
             </div>
@@ -1189,25 +1155,13 @@ export default function AdminSeoPage() {
           <div className="space-y-4">
             <div>
               <label className="block font-bold text-[#0F172A] text-xs mb-1">
-                Summary AI Context (<code className="text-[#0052CC]">/llms.txt</code>)
+                llms.txt Markdown Specification (<code className="text-[#0052CC]">/llms.txt</code>)
               </label>
               <textarea
-                rows={10}
+                rows={18}
                 value={config.llms?.content || ''}
                 onChange={(e) => setConfig({ ...config, llms: { ...config.llms, content: e.target.value } })}
-                className="w-full p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-[#0F172A] text-xs mb-1">
-                Comprehensive Technical Specification (<code className="text-[#0052CC]">/llms-full.txt</code>)
-              </label>
-              <textarea
-                rows={10}
-                value={config.llms?.fullContent || ''}
-                onChange={(e) => setConfig({ ...config, llms: { ...config.llms, fullContent: e.target.value } })}
-                className="w-full p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl focus:outline-none"
+                className="w-full p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl focus:outline-none leading-relaxed"
               />
             </div>
           </div>

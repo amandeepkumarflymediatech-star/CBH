@@ -67,7 +67,6 @@ export interface RobotsTxtConfig {
 
 export interface LlmsTxtConfig {
   content: string; // /llms.txt
-  fullContent: string; // /llms-full.txt
 }
 
 export interface SitemapUrlItem {
