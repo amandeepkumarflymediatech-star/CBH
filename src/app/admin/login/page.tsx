@@ -17,17 +17,19 @@ import {
   Zap,
   Eye,
   EyeOff,
-  RefreshCw,
   Server,
   ArrowLeft
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
+const DEFAULT_ADMIN_SECURITY_KEY =
+  process.env.NEXT_PUBLIC_ADMIN_SECURITY_KEY || 'CBH-HQ-OP-901';
+
 export default function AdminPortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [stationKey, setStationKey] = useState('');
+  const [stationKey, setStationKey] = useState(DEFAULT_ADMIN_SECURITY_KEY);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,13 +45,8 @@ export default function AdminPortalLoginPage() {
   const fillDemoAdmin = () => {
     setEmail('admin@cbh.store');
     setPassword('Admin@Fastener2025');
-    setStationKey('CBH-HQ-OP-901');
+    setStationKey(DEFAULT_ADMIN_SECURITY_KEY);
     setErrorMsg('');
-  };
-
-  const regenerateToken = () => {
-    const randomHex = Math.floor(1000 + Math.random() * 9000);
-    setStationKey(`CBH-HQ-OP-${randomHex}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +59,7 @@ export default function AdminPortalLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'admin' }),
+        body: JSON.stringify({ email, password, role: 'admin', securityKey: stationKey }),
       });
 
       const data = await res.json();
@@ -476,26 +473,18 @@ export default function AdminPortalLoginPage() {
                     <KeyRound size={13} color="#0052CC" />
                     <span>Station Token / Hardware Key</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={regenerateToken}
-                    title="Generate hardware handshake token"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0052CC',
-                      cursor: 'pointer',
-                      fontSize: '11px',
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <RefreshCw size={11} />
-                    <span>Rotate Key</span>
-                  </button>
+                  <span style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    color: '#059669',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontWeight: 700
+                  }}>
+                    ENV CONFIGURED
+                  </span>
                 </div>
                 <div style={{ position: 'relative' }}>
                   <input
