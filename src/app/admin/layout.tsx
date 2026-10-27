@@ -70,6 +70,18 @@ export default function AdminLayout({
   });
 
   useEffect(() => {
+    // Initialize dark mode from localStorage or system preference
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('cbh_admin_theme');
+      const isDark = savedTheme === 'dark';
+      setIsDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
     let user = getStoredUser();
     // In admin operations terminal, automatically grant DEMO_ADMIN access
     if (!user || user.role !== 'admin') {
@@ -102,6 +114,20 @@ export default function AdminLayout({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [pathname]);
+
+  const toggleDarkMode = () => {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cbh_admin_theme', next ? 'dark' : 'light');
+      if (next) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      window.dispatchEvent(new CustomEvent('cbh_theme_change', { detail: { dark: next } }));
+    }
+  };
 
   const fetchTelemetry = async () => {
     try {
@@ -225,59 +251,40 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F5F9] flex font-sans text-slate-800 antialiased">
+    <div className={`min-h-screen flex font-sans antialiased transition-colors duration-200 ${
+      isDarkMode ? 'dark bg-[#0B0F19] text-[#F1F5F9]' : 'bg-[#F4F5F9] text-slate-800'
+    }`}>
       {/* ================================================================ */}
       {/* DESKTOP SIDEBAR (Clean 260px matching Prodex mockup)             */}
       {/* ================================================================ */}
       <aside
-        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen shrink-0 bg-white border-r border-[#EAEAEA] transition-all duration-200 z-30 ${
-          isSidebarCollapsed ? 'w-[80px]' : 'w-[260px]'
-        }`}
+        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen shrink-0 border-r transition-all duration-200 z-30 ${
+          isDarkMode ? 'bg-[#0F172A] border-[#1E293B]' : 'bg-white border-[#EAEAEA]'
+        } ${isSidebarCollapsed ? 'w-[80px]' : 'w-[260px]'}`}
       >
         <div className="flex flex-col min-h-0 flex-1 overflow-y-auto px-4 py-5 space-y-6">
-          {/* Top Brand Logo & App Name */}
-          <div className="flex items-center justify-between px-2">
-            <Link href="/admin" className="flex items-center gap-2.5 no-underline">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm shrink-0">
+          {/* Top Brand Logo */}
+          <div className="flex items-center justify-start px-2 py-1">
+            <Link href="/admin" className="flex items-center no-underline" title="CBH Admin">
+              {isSidebarCollapsed ? (
                 <img
                   src="/assets/cbh-logo-icon.png"
-                  alt="CBH"
-                  className="w-full h-full object-contain brightness-0 invert"
+                  alt="CBH Fasteners"
+                  className="w-9 h-9 object-contain"
                 />
-              </div>
-              {!isSidebarCollapsed && (
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-[17px] text-[#0F172A] tracking-tight">Prodex</span>
-                  <span className="text-[10px] font-bold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded">CBH</span>
-                </div>
+              ) : (
+                <img
+                  src="/assets/cbh-logo-stacked.png"
+                  alt="CBH Fasteners"
+                  className={`h-12 w-auto max-w-[210px] object-contain transition-all ${
+                    isDarkMode ? 'brightness-0 invert' : ''
+                  }`}
+                />
               )}
             </Link>
-
-            <button
-              type="button"
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-            >
-              <SlidersHorizontal size={15} />
-            </button>
           </div>
 
-          {/* Plant / Workspace Selector Dropdown */}
-          {!isSidebarCollapsed && (
-            <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 transition-colors cursor-pointer group">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-[#0F172A] text-white flex items-center justify-center text-xs font-black shrink-0">
-                  W
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#0F172A] truncate">Uxerflow</div>
-                  <div className="text-[10px] text-slate-500 truncate">Ludhiana Central Works</div>
-                </div>
-              </div>
-              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 shrink-0" />
-            </div>
-          )}
+          
 
           {/* Navigation Stack */}
           <div className="space-y-6">
@@ -507,54 +514,46 @@ export default function AdminLayout({
           </div>
         </div>
 
-        {/* Bottom Section: Dark Mode Toggle & Upgrade / Clearance Promo Card */}
-        <div className="p-4 border-t border-slate-100 space-y-3 shrink-0">
+        {/* Bottom Section: Dark Mode Toggle */}
+        <div className={`p-4 border-t space-y-3 shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
           {/* Dark Mode Row */}
           {!isSidebarCollapsed ? (
-            <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-slate-600">
+            <div
+              onClick={toggleDarkMode}
+              className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                isDarkMode ? 'text-slate-200 hover:bg-slate-800/80' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
               <div className="flex items-center gap-2.5">
-                <Moon size={16} className="text-slate-500" />
-                <span>Dark Mode</span>
+                {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-500" />}
+                <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </div>
               <button
                 type="button"
-                onClick={() => setIsDarkMode(!isDarkMode)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDarkMode();
+                }}
                 className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
                   isDarkMode ? 'bg-[#5B4DF6]' : 'bg-slate-200'
                 }`}
               >
                 <div
-                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                  className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${
                     isDarkMode ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
               </button>
             </div>
           ) : (
-            <div className="flex justify-center">
-              <Moon size={16} className="text-slate-500" />
-            </div>
-          )}
-
-          {/* Upgrade to Premium / Terminal Clearance Card */}
-          {!isSidebarCollapsed && (
-            <div className="bg-[#F8FAFC] border border-slate-200/90 rounded-2xl p-3.5 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#EEF0FD] text-[#5B4DF6] flex items-center justify-center text-xs font-bold">
-                  💎
-                </div>
-                <div className="text-xs font-bold text-[#0F172A]">Upgrade to Premium</div>
-              </div>
-              <p className="text-[11px] text-slate-500 leading-tight">
-                Your Station Key <strong className="text-slate-700">#CBH-HQ-OP-901</strong> is active.
-              </p>
-              <Link
-                href="/admin/profile"
-                className="block w-full py-2 bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold text-center rounded-xl transition-colors no-underline shadow-xs"
-              >
-                Upgrade Now
-              </Link>
-            </div>
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              className="flex justify-center p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer mx-auto"
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-500" />}
+            </button>
           )}
         </div>
       </aside>
@@ -562,19 +561,23 @@ export default function AdminLayout({
       {/* ================================================================ */}
       {/* MAIN VIEWPORT CANVAS (Header + Body)                             */}
       {/* ================================================================ */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className={`flex-1 flex flex-col min-w-0 min-h-screen ${isDarkMode ? 'bg-[#0B0F19]' : 'bg-[#F4F5F9]'}`}>
         {/* Single Top Header Row (Matching exact Prodex mockup) */}
-        <header className="bg-white border-b border-[#EAEAEA] sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+        <header className={`border-b sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors ${
+          isDarkMode ? 'bg-[#0F172A] border-[#1E293B] text-white' : 'bg-white border-[#EAEAEA] text-slate-800'
+        }`}>
           {/* Left: Mobile hamburger + Page Title */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
-              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="md:hidden p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
             >
               <Menu size={20} />
             </button>
-            <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
+            <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${
+              isDarkMode ? 'text-white' : 'text-[#0F172A]'
+            }`}>
               {getPageTitle()}
             </h1>
           </div>
@@ -742,24 +745,18 @@ export default function AdminLayout({
             />
             <div className="fixed top-0 bottom-0 left-0 w-[280px] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200">
               <div className="space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm">
-                      <img
-                        src="/assets/cbh-logo-icon.png"
-                        alt="CBH"
-                        className="w-full h-full object-contain brightness-0 invert"
-                      />
-                    </div>
-                    <div>
-                      <div className="font-extrabold text-sm text-[#0F172A]">Prodex</div>
-                      <div className="text-[10px] text-slate-400">CBH Operations Console</div>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <Link href="/admin" onClick={() => setIsMobileNavOpen(false)} className="flex items-center no-underline" title="CBH Admin">
+                    <img
+                      src="/assets/cbh-logo-stacked.png"
+                      alt="CBH Fasteners"
+                      className={`h-10 w-auto object-contain ${isDarkMode ? 'brightness-0 invert' : ''}`}
+                    />
+                  </Link>
                   <button
                     type="button"
                     onClick={() => setIsMobileNavOpen(false)}
-                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     <X size={18} />
                   </button>

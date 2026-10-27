@@ -208,53 +208,53 @@ export default function AdminDashboardPage() {
       {/* ================================================================ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Total Products */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between hover:shadow-md transition-all">
           <div>
-            <div className="text-xs font-semibold text-slate-500">Total Products</div>
-            <div className="text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Products</div>
+            <div className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight mt-1">
               {productsCount.toLocaleString()}
             </div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-[#EEF0FD] text-[#5B4DF6] flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-[#EEF0FD] dark:bg-[#5B4DF6]/20 text-[#5B4DF6] flex items-center justify-center shrink-0">
             <Boxes size={22} />
           </div>
         </div>
 
         {/* Card 2: Total Sales */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between hover:shadow-md transition-all">
           <div>
-            <div className="text-xs font-semibold text-slate-500">Total Sales</div>
-            <div className="text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Sales</div>
+            <div className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight mt-1">
               {totalSalesCount.toLocaleString()}
             </div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-[#F3E8FF] text-[#9333EA] flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-[#F3E8FF] dark:bg-[#9333EA]/20 text-[#9333EA] flex items-center justify-center shrink-0">
             <DollarSign size={22} />
           </div>
         </div>
 
         {/* Card 3: Total Income */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between hover:shadow-md transition-all">
           <div>
-            <div className="text-xs font-semibold text-slate-500">Total Income</div>
-            <div className="text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Income</div>
+            <div className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight mt-1">
               ${totalIncome.toLocaleString()}
             </div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-[#ECFDF5] dark:bg-[#059669]/20 text-[#059669] flex items-center justify-center shrink-0">
             <ArrowDownLeft size={22} />
           </div>
         </div>
 
         {/* Card 4: Total Expenses */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between hover:shadow-md transition-all">
           <div>
-            <div className="text-xs font-semibold text-slate-500">Total Expenses</div>
-            <div className="text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Expenses</div>
+            <div className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight mt-1">
               ${totalExpenses.toLocaleString()}
             </div>
           </div>
-          <div className="w-11 h-11 rounded-2xl bg-[#FFF1F2] text-[#E11D48] flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-[#FFF1F2] dark:bg-[#E11D48]/20 text-[#E11D48] flex items-center justify-center shrink-0">
             <ArrowUpRight size={22} />
           </div>
         </div>
@@ -265,12 +265,12 @@ export default function AdminDashboardPage() {
       {/* ================================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Sales Revenue (approx 65% width = 8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
             <div>
-              <h2 className="text-base font-extrabold text-[#0F172A]">Sales Revenue</h2>
+              <h2 className="text-base font-extrabold text-[#0F172A] dark:text-white">Sales Revenue</h2>
               {/* Legend matching screenshot */}
-              <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mt-1">
+              <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#93C5FD]" />
                   <span>One-Time Revenue</span>
@@ -283,7 +283,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Timeframe pill tabs */}
-            <div className="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-500">
+            <div className="inline-flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400">
               {(['Monthly', 'Quarterly', 'Yearly'] as const).map((tab) => (
                 <button
                   key={tab}
@@ -291,8 +291,8 @@ export default function AdminDashboardPage() {
                   onClick={() => setRevenueTimeframe(tab)}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                     revenueTimeframe === tab
-                      ? 'bg-white text-[#0F172A] shadow-xs'
-                      : 'hover:text-slate-900'
+                      ? 'bg-white dark:bg-[#1F2937] text-[#0F172A] dark:text-white shadow-xs'
+                      : 'hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   {tab}
@@ -304,23 +304,23 @@ export default function AdminDashboardPage() {
           {/* Bar Chart Canvas */}
           <div className="relative pt-6 pb-2">
             {/* Horizontal Grid guidelines */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[11px] font-semibold text-slate-400 select-none">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[11px] font-semibold text-slate-400 dark:text-slate-500 select-none">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>150K</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>130K</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>100K</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>50K</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>10K</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-1">
                 <span>0</span>
               </div>
             </div>
@@ -337,18 +337,18 @@ export default function AdminDashboardPage() {
                   >
                     {/* Tooltip for Apr or selected month matching screenshot */}
                     {isSelected && (
-                      <div className="absolute -top-12 z-30 bg-white border border-slate-200/90 rounded-xl p-2.5 shadow-xl whitespace-nowrap text-left animate-in fade-in slide-in-from-bottom-2 duration-150">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                      <div className="absolute -top-12 z-30 bg-white dark:bg-[#1E293B] border border-slate-200/90 dark:border-slate-700 rounded-xl p-2.5 shadow-xl whitespace-nowrap text-left animate-in fade-in slide-in-from-bottom-2 duration-150">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#93C5FD]" />
                           <span>One-Time Revenue</span>
                         </div>
-                        <div className="text-xs font-extrabold text-[#0F172A] ml-3 mb-1">$6,000</div>
+                        <div className="text-xs font-extrabold text-[#0F172A] dark:text-white ml-3 mb-1">$6,000</div>
 
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5]" />
                           <span>Recurring Revenue</span>
                         </div>
-                        <div className="text-xs font-extrabold text-[#0F172A] ml-3">$25,000</div>
+                        <div className="text-xs font-extrabold text-[#0F172A] dark:text-white ml-3">$25,000</div>
                       </div>
                     )}
 
@@ -356,14 +356,14 @@ export default function AdminDashboardPage() {
                     <div
                       className={`w-full max-w-[42px] rounded-t-xl overflow-hidden flex flex-col justify-end transition-all ${
                         isSelected
-                          ? 'ring-2 ring-[#4F46E5] ring-offset-2 shadow-md'
+                          ? 'ring-2 ring-[#4F46E5] ring-offset-2 ring-offset-white dark:ring-offset-[#111827] shadow-md'
                           : 'group-hover:opacity-90'
                       }`}
                       style={{ height: `${(item.total / 150) * 100}%` }}
                     >
                       {/* Top segment: One-time (soft blue) */}
                       <div
-                        className="w-full bg-[#C7D2FE] transition-colors"
+                        className="w-full bg-[#C7D2FE] dark:bg-[#93C5FD] transition-colors"
                         style={{ height: `${(item.oneTime / item.total) * 100}%` }}
                       />
                       {/* Bottom segment: Recurring (darker blue) */}
@@ -374,7 +374,7 @@ export default function AdminDashboardPage() {
                     </div>
 
                     {/* Month Label */}
-                    <span className="text-xs font-bold text-slate-500 mt-3 group-hover:text-slate-900">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-3 group-hover:text-slate-900 dark:group-hover:text-slate-200">
                       {item.month}
                     </span>
                   </div>
@@ -385,12 +385,12 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Right: Top Categories Donut (approx 35% width = 4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white dark:bg-[#111827] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between pb-4">
-            <h2 className="text-base font-extrabold text-[#0F172A]">Top Categories</h2>
+            <h2 className="text-base font-extrabold text-[#0F172A] dark:text-white">Top Categories</h2>
             <Link
               href="/admin/categories"
-              className="text-xs font-bold text-slate-500 hover:text-[#5B4DF6] no-underline"
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-[#5B4DF6] no-underline"
             >
               See All
             </Link>
@@ -452,53 +452,53 @@ export default function AdminDashboardPage() {
             {/* Inner Donut Center Content matching screenshot */}
             <div className="absolute text-center flex flex-col items-center pointer-events-none">
               <span className="text-[11px] font-semibold text-slate-400">Total Sales</span>
-              <span className="text-xl font-black text-[#0F172A] tracking-tight mt-0.5">$125,000</span>
+              <span className="text-xl font-black text-[#0F172A] dark:text-white tracking-tight mt-0.5">$125,000</span>
             </div>
           </div>
 
           {/* Categories Legend with exact values matching screenshot */}
-          <div className="space-y-2.5 pt-2 text-xs font-semibold text-slate-600">
+          <div className="space-y-2.5 pt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]" />
-                <span className="text-[#0F172A]">Electronics</span>
+                <span className="text-[#0F172A] dark:text-slate-200">Electronics</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-normal">$85,000</span>
-                <span className="font-extrabold text-[#0F172A]">68%</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal">$85,000</span>
+                <span className="font-extrabold text-[#0F172A] dark:text-white">68%</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
-                <span className="text-[#0F172A]">Fashion</span>
+                <span className="text-[#0F172A] dark:text-slate-200">Fashion</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-normal">$25,000</span>
-                <span className="font-extrabold text-[#0F172A]">20%</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal">$25,000</span>
+                <span className="font-extrabold text-[#0F172A] dark:text-white">20%</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-                <span className="text-[#0F172A]">Health &amp; Wellness</span>
+                <span className="text-[#0F172A] dark:text-slate-200">Health &amp; Wellness</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-normal">$10,000</span>
-                <span className="font-extrabold text-[#0F172A]">8%</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal">$10,000</span>
+                <span className="font-extrabold text-[#0F172A] dark:text-white">8%</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#EC4899]" />
-                <span className="text-[#0F172A]">Home &amp; Living</span>
+                <span className="text-[#0F172A] dark:text-slate-200">Home &amp; Living</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 font-normal">$5,000</span>
-                <span className="font-extrabold text-[#0F172A]">4%</span>
+                <span className="text-slate-500 dark:text-slate-400 font-normal">$5,000</span>
+                <span className="font-extrabold text-[#0F172A] dark:text-white">4%</span>
               </div>
             </div>
           </div>
@@ -510,22 +510,22 @@ export default function AdminDashboardPage() {
       {/* ================================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Recent Activity (approx 40% width = 5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <h2 className="text-base font-extrabold text-[#0F172A] flex items-center gap-2">
+        <div className="lg:col-span-5 bg-white dark:bg-[#111827] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-extrabold text-[#0F172A] dark:text-white flex items-center gap-2">
               <Clock size={16} className="text-slate-400" />
               <span>Recent Activity</span>
             </h2>
             <Link
               href="/admin/orders"
-              className="text-xs font-bold text-slate-500 hover:text-[#5B4DF6] no-underline"
+              className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-[#5B4DF6] no-underline"
             >
               See All
             </Link>
           </div>
 
           {/* Activity List matching screenshot items */}
-          <div className="divide-y divide-slate-100 mt-2">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80 mt-2">
             {activities.map((item) => (
               <div key={item.id} className="py-3.5 flex items-center justify-between gap-3 group">
                 <div className="flex items-center gap-3 min-w-0">
@@ -533,12 +533,12 @@ export default function AdminDashboardPage() {
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                       item.iconType === 'order'
-                        ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                        ? 'bg-[#EEF0FD] dark:bg-[#5B4DF6]/20 text-[#5B4DF6]'
                         : item.iconType === 'alert'
-                        ? 'bg-[#FFF1F2] text-[#E11D48]'
+                        ? 'bg-[#FFF1F2] dark:bg-[#E11D48]/20 text-[#E11D48]'
                         : item.iconType === 'promo'
-                        ? 'bg-[#F3E8FF] text-[#9333EA]'
-                        : 'bg-slate-100 text-slate-600'
+                        ? 'bg-[#F3E8FF] dark:bg-[#9333EA]/20 text-[#9333EA]'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                     }`}
                   >
                     {item.iconType === 'order' && <Package size={16} />}
@@ -549,10 +549,10 @@ export default function AdminDashboardPage() {
 
                   {/* Title & Subtitle */}
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-[#0F172A] truncate group-hover:text-[#5B4DF6] transition-colors">
+                    <div className="text-xs font-bold text-[#0F172A] dark:text-slate-200 truncate group-hover:text-[#5B4DF6] transition-colors">
                       {item.title}
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate">{item.subtitle}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{item.subtitle}</div>
                   </div>
                 </div>
 
@@ -560,12 +560,12 @@ export default function AdminDashboardPage() {
                 <span
                   className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
                     item.badgeType === 'blue'
-                      ? 'bg-[#EEF0FD] text-[#5B4DF6]'
+                      ? 'bg-[#EEF0FD] dark:bg-[#5B4DF6]/20 text-[#5B4DF6]'
                       : item.badgeType === 'red'
-                      ? 'bg-[#FFF1F2] text-[#E11D48]'
+                      ? 'bg-[#FFF1F2] dark:bg-[#E11D48]/20 text-[#E11D48]'
                       : item.badgeType === 'purple'
-                      ? 'bg-[#F3E8FF] text-[#9333EA]'
-                      : 'bg-slate-100 text-slate-600'
+                      ? 'bg-[#F3E8FF] dark:bg-[#9333EA]/20 text-[#9333EA]'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   {item.badge}
@@ -574,7 +574,7 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          <div className="pt-3 border-t border-slate-100 text-center">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
             <Link
               href="/admin/orders"
               className="text-xs font-bold text-[#5B4DF6] hover:underline no-underline"
@@ -585,9 +585,9 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Right: Top Products Table (approx 60% width = 7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <h2 className="text-base font-extrabold text-[#0F172A] flex items-center gap-2">
+        <div className="lg:col-span-7 bg-white dark:bg-[#111827] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-extrabold text-[#0F172A] dark:text-white flex items-center gap-2">
               <Boxes size={16} className="text-slate-400" />
               <span>Top Products</span>
             </h2>
@@ -597,7 +597,7 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={handleSort}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1F2937] hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                 title="Sort Products"
               >
                 <ArrowUpDown size={13} />
@@ -608,7 +608,7 @@ export default function AdminDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1F2937] hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                   title="Filter by Category"
                 >
                   <Filter size={13} />
@@ -616,7 +616,7 @@ export default function AdminDashboardPage() {
                 </button>
 
                 {isFilterDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl border border-slate-200 shadow-xl p-2 z-30 text-xs font-medium">
+                  <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-[#1F2937] rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-2 z-30 text-xs font-medium">
                     {['All', 'High Tensile', 'Stainless', 'Anchors'].map((cat) => (
                       <button
                         key={cat}
@@ -625,8 +625,8 @@ export default function AdminDashboardPage() {
                           setCategoryFilter(cat);
                           setIsFilterDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 ${
-                          categoryFilter === cat ? 'font-bold text-[#5B4DF6] bg-[#EEF0FD]' : 'text-slate-600'
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                          categoryFilter === cat ? 'font-bold text-[#5B4DF6] bg-[#EEF0FD] dark:bg-[#5B4DF6]/20' : 'text-slate-600 dark:text-slate-300'
                         }`}
                       >
                         {cat}
@@ -642,7 +642,7 @@ export default function AdminDashboardPage() {
           <div className="overflow-x-auto mt-2">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-extrabold uppercase text-slate-400">
+                <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-extrabold uppercase text-slate-400 dark:text-slate-500">
                   <th className="py-3 px-2">Product</th>
                   <th className="py-3 px-2">Stocks</th>
                   <th className="py-3 px-2">Price</th>
@@ -650,9 +650,9 @@ export default function AdminDashboardPage() {
                   <th className="py-3 px-2 text-right">Earnings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
                 {productsList.map((prod) => (
-                  <tr key={prod.id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={prod.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                     {/* Product Name & Icon */}
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-2.5">
@@ -663,29 +663,29 @@ export default function AdminDashboardPage() {
                           <Boxes size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-[#0F172A]">{prod.name}</div>
-                          <div className="text-[10px] text-slate-400">{prod.category}</div>
+                          <div className="font-bold text-[#0F172A] dark:text-white">{prod.name}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500">{prod.category}</div>
                         </div>
                       </div>
                     </td>
 
                     {/* Stocks */}
-                    <td className="py-3 px-2 font-mono text-slate-600 font-semibold">
+                    <td className="py-3 px-2 font-mono text-slate-600 dark:text-slate-300 font-semibold">
                       {prod.stocks.toLocaleString()}
                     </td>
 
                     {/* Price */}
-                    <td className="py-3 px-2 font-mono text-slate-900 font-bold">
+                    <td className="py-3 px-2 font-mono text-slate-900 dark:text-white font-bold">
                       ${prod.price.toFixed(2)}
                     </td>
 
                     {/* Sales */}
-                    <td className="py-3 px-2 font-mono text-slate-600 font-semibold">
+                    <td className="py-3 px-2 font-mono text-slate-600 dark:text-slate-300 font-semibold">
                       {prod.sales.toLocaleString()}
                     </td>
 
                     {/* Earnings */}
-                    <td className="py-3 px-2 font-mono text-right font-black text-[#0F172A]">
+                    <td className="py-3 px-2 font-mono text-right font-black text-[#0F172A] dark:text-white">
                       ${prod.earnings.toLocaleString()}
                     </td>
                   </tr>
@@ -694,7 +694,7 @@ export default function AdminDashboardPage() {
             </table>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Showing top 5 commercial fast-moving SKUs</span>
             <Link
               href="/admin/products"
