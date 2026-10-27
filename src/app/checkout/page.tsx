@@ -19,6 +19,7 @@ import {
   HelpCircle,
   RefreshCw
 } from 'lucide-react';
+import PhonePeModal from '@/components/payment/PhonePeModal';
 import { RfqLineItem, GlobalUnit } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 
@@ -88,65 +89,41 @@ export default function CheckoutPage() {
     },
   ]);
 
+  const [isPhonePeModalOpen, setIsPhonePeModalOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState(`CBH-ORD-${Date.now()}`);
+
   const summary = calculateRfqSummary(items);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePhonePeCheckout = async () => {
-    try {
-      setIsSubmitting(true);
-      setErrorMessage(null);
+  const handlePhonePeCheckout = () => {
+    setErrorMessage(null);
 
-      // Validate Required Fields
-      if (!formData.fullName || !formData.phone || !formData.shippingAddress || !formData.pincode) {
-        setErrorMessage('Please fill in your Contact Name, Phone, Delivery Address, and Pincode.');
-        setIsSubmitting(false);
-        return;
+    // Validate Required Fields
+    if (!formData.fullName || !formData.phone || !formData.shippingAddress || !formData.pincode) {
+      setErrorMessage('Please fill in your Contact Name, Phone, Delivery Address, and Pincode.');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 120, behavior: 'smooth' });
       }
-
-      if (paymentMethod === 'NEFT_RTGS') {
-        // Direct Proforma Generation for NEFT
-        router.push(
-          `/order-success?orderNumber=CBH-ORD-${Date.now()}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
-            formData.companyName
-          )}`
-        );
-        return;
-      }
-
-      // Initiate PhonePe Payment Gateway
-      const orderId = `CBH-ORD-${Date.now()}`;
-      const res = await fetch('/api/payment/phonepe/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          amount: summary.netTotal,
-          customerName: formData.fullName,
-          companyName: formData.companyName,
-          customerPhone: formData.phone,
-          customerEmail: formData.email,
-          gstin: formData.gstin,
-          totalWeightKg: summary.totalWeightKg,
-          shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success && data.paymentUrl) {
-        // Redirect to PhonePe Gateway Checkout
-        window.location.href = data.paymentUrl;
-      } else {
-        setErrorMessage(data.error || 'Failed to connect to PhonePe gateway. Please try again.');
-        setIsSubmitting(false);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Payment initiation error.');
-      setIsSubmitting(false);
+      return;
     }
+
+    if (paymentMethod === 'NEFT_RTGS') {
+      // Direct Proforma Generation for NEFT
+      router.push(
+        `/order-success?orderNumber=${activeOrderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
+          formData.companyName
+        )}`
+      );
+      return;
+    }
+
+    // Open Interactive PhonePe Payment Modal (UPI, Cards, NetBanking)
+    const newOrderId = `CBH-ORD-${Date.now()}`;
+    setActiveOrderId(newOrderId);
+    setIsPhonePeModalOpen(true);
   };
 
   return (
@@ -489,6 +466,13 @@ export default function CheckoutPage() {
               </div>
 
               {/* Action Button */}
+              {errorMessage && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle size={15} className="flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handlePhonePeCheckout}
@@ -531,6 +515,26 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Interactive PhonePe Payment Modal (UPI, Cards, NetBanking, Wallets) */}
+      <PhonePeModal
+        isOpen={isPhonePeModalOpen}
+        onClose={() => setIsPhonePeModalOpen(false)}
+        amount={summary.netTotal}
+        orderNumber={activeOrderId}
+        customerName={formData.fullName}
+        customerPhone={formData.phone}
+        customerEmail={formData.email}
+        companyName={formData.companyName}
+        onSuccess={(data) => {
+          setIsPhonePeModalOpen(false);
+          router.push(
+            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
+              data.mode
+            )}`
+          );
+        }}
+      />
     </main>
   );
 }

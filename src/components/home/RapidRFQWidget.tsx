@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -16,13 +17,17 @@ import {
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
+import PhonePeModal from '@/components/payment/PhonePeModal';
 
 interface RapidRFQWidgetProps {
   hideHeader?: boolean;
 }
 
 export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetProps) {
+  const router = useRouter();
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState(`CBH-ORD-${Date.now()}`);
 
   // Initial line items matching the exact screenshot
   const [items, setItems] = useState<RfqLineItem[]>([
@@ -470,8 +475,12 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
 
             {/* Action Buttons */}
             <div className="rfq-action-buttons">
-              <Link
-                href="/checkout"
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveOrderId(`CBH-ORD-${Date.now()}`);
+                  setIsPayModalOpen(true);
+                }}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -484,22 +493,43 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  border: 'none',
                   boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
                 }}
               >
-                <span>Pay via PhonePe (Instant Order Dispatch)</span>
+                <span>⚡ Pay via PhonePe (Instant UPI / Cards Modal)</span>
                 <ArrowRight size={16} />
+              </button>
+
+              <Link
+                href="/checkout"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#0052CC',
+                  color: '#FFFFFF',
+                  borderRadius: '4px',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  textDecoration: 'none',
+                }}
+              >
+                <span>Commercial Checkout &amp; GST Invoicing</span>
               </Link>
 
               <button
                 type="button"
                 className="btn-primary"
-                style={{ width: '100%', padding: '12px' }}
+                style={{ width: '100%', padding: '10px' }}
                 onClick={handleGenerateQuote}
               >
                 <span>Generate Instant Bulk Quote</span>
-                <Send size={16} />
+                <Send size={15} />
               </button>
 
               <a
@@ -508,13 +538,33 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                 rel="noopener noreferrer"
                 className="btn-whatsapp-rfq"
               >
-                <MessageSquare size={16} />
+                <MessageSquare size={15} />
                 <span>Direct WhatsApp RFQ (+91 98880 21000)</span>
               </a>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Direct PhonePe Payment Modal for Rapid RFQ */}
+      <PhonePeModal
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        amount={summary.netTotal}
+        orderNumber={activeOrderId}
+        customerName="Commercial RFQ Buyer"
+        customerPhone="9888021000"
+        customerEmail="rfq@cbhfasteners.com"
+        companyName="Industrial Procurement Desk"
+        onSuccess={(data) => {
+          setIsPayModalOpen(false);
+          router.push(
+            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
+              data.mode
+            )}`
+          );
+        }}
+      />
     </section>
   );
 }
