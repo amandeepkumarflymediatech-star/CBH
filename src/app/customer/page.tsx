@@ -36,6 +36,7 @@ import {
 import { CustomerOrder, BulkQuotation } from '@/lib/types';
 import { INITIAL_ORDERS, INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
+import { getStoredUser, AuthUser } from '@/lib/auth';
 
 interface VendorItem {
   id: string;
@@ -166,12 +167,17 @@ export default function CustomerDashboardPage() {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
-  // Live dynamic order data
+  // Live dynamic order data & auth user
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [orders, setOrders] = useState<CustomerOrder[]>(INITIAL_ORDERS);
   const [quotes, setQuotes] = useState<BulkQuotation[]>(INITIAL_QUOTES);
   const [liveProductsCount, setLiveProductsCount] = useState(48);
 
   useEffect(() => {
+    setCurrentUser(getStoredUser());
+    const handleAuthChange = () => setCurrentUser(getStoredUser());
+    window.addEventListener('cbh_auth_change', handleAuthChange);
+
     Promise.allSettled([
       fetch('/api/orders').then((r) => r.json()),
       fetch('/api/rfq').then((r) => r.json()),
@@ -181,6 +187,8 @@ export default function CustomerDashboardPage() {
       if (rfqRes.status === 'fulfilled' && rfqRes.value?.data) setQuotes(rfqRes.value.data);
       if (prodRes.status === 'fulfilled' && prodRes.value?.data) setLiveProductsCount(prodRes.value.data.length);
     });
+
+    return () => window.removeEventListener('cbh_auth_change', handleAuthChange);
   }, []);
 
   const totalSpent = orders.reduce((sum, o) => sum + (o.netAmount || 0), 0);
@@ -367,9 +375,17 @@ export default function CustomerDashboardPage() {
             <span>Export</span>
           </button>
 
-          <Link href="/customer/settings" className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-xs cursor-pointer block">
+          <Link
+            href="/customer/profile"
+            className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-xs cursor-pointer block hover:ring-2 hover:ring-[#5B4DF6] transition-all"
+            title="View Profile"
+          >
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+              src={
+                currentUser?.avatar ||
+                (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'
+              }
               alt="Profile"
               className="w-full h-full object-cover"
             />

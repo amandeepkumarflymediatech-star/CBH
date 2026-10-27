@@ -22,19 +22,19 @@ import {
   Sparkles,
   ExternalLink
 } from 'lucide-react';
-import { getStoredUser, logout } from '@/lib/auth';
+import { getStoredUser, setStoredUser, logout, DEMO_CLIENT, AuthUser } from '@/lib/auth';
 
 export default function CustomerProfilePage() {
-  const user = getStoredUser();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   // Profile Form State
-  const [fullName, setFullName] = useState(user?.fullName || 'Rajesh Sharma');
+  const [fullName, setFullName] = useState('Rajesh Sharma');
   const [designation, setDesignation] = useState('Senior VP Procurement & Supply Chain');
-  const [email, setEmail] = useState(user?.email || 'procurement@apexinfra.com');
+  const [email, setEmail] = useState('procurement@apexinfra.com');
   const [phone, setPhone] = useState('+91 98140 22345');
   const [altPhone, setAltPhone] = useState('+91 11 4059 8800');
-  const [companyName, setCompanyName] = useState(user?.companyName || 'Apex Infrastructure Corp');
-  const [gstin, setGstin] = useState(user?.gstin || '07AAAAA0000A1Z5');
+  const [companyName, setCompanyName] = useState('Apex Infrastructure Corp');
+  const [gstin, setGstin] = useState('07AAAAA0000A1Z5');
   const [pan, setPan] = useState('AAACA1234D');
   const [tan, setTan] = useState('DELA98765E');
   const [msme, setMsme] = useState('UDYAM-DL-03-0019284');
@@ -47,23 +47,136 @@ export default function CustomerProfilePage() {
 
   // Notification / Toast
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Profile credentials and enterprise authorizations successfully updated!');
+  const [isUploading, setIsUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces');
+  const [customAvatarInput, setCustomAvatarInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setAvatarUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+  const PRESET_AVATARS = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop&crop=faces',
+  ];
+
+  React.useEffect(() => {
+    const u = getStoredUser();
+    setCurrentUser(u);
+    if (u) {
+      if (u.fullName) setFullName(u.fullName);
+      if (u.email) setEmail(u.email);
+      if (u.companyName) setCompanyName(u.companyName);
+      if (u.gstin) setGstin(u.gstin);
+      if (u.phone) setPhone(u.phone);
     }
+    const savedAvatar =
+      u?.avatar ||
+      (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces';
+    setAvatarUrl(savedAvatar);
+    setCustomAvatarInput(savedAvatar);
+  }, []);
+
+  const persistAvatar = (url: string, notifyMsg = 'Profile photo saved and updated across portal!') => {
+    setAvatarUrl(url);
+    setCustomAvatarInput(url);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cbh_customer_avatar', url);
+      } catch (err) {
+        console.warn('LocalStorage save failed:', err);
+      }
+    }
+    const current = getStoredUser() || DEMO_CLIENT;
+    const updated: AuthUser = {
+      ...current,
+      avatar: url,
+    };
+    setStoredUser(updated);
+    setCurrentUser(updated);
+    setSuccessMessage(notifyMsg);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3500);
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+
+      // Dynamically import or call compressImageToDataUrl
+      const { compressImageToDataUrl } = await import('@/lib/image-utils');
+      // Create clean, lightweight ~25KB compressed JPEG
+      const compressedDataUrl = await compressImageToDataUrl(file, 320, 0.85);
+
+      // Persist immediately so image is saved and doesn't rely on transient blob
+      persistAvatar(compressedDataUrl, 'Profile photo updated and saved!');
+
+      // Also upload file to server endpoint in background
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.url) {
+          // Upgrade to permanent static URL
+          persistAvatar(data.url, 'Profile photo saved permanently!');
+        }
+      } catch (uploadErr) {
+        console.warn('Server upload optional fallback active:', uploadErr);
+      }
+    } catch (err: any) {
+      console.error('Image processing failed:', err);
+      alert('Could not process image. Please try a different JPG or PNG file.');
+    } finally {
+      setIsUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleApplyCustomUrl = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customAvatarInput.trim()) return;
+    persistAvatar(customAvatarInput.trim(), 'Profile photo URL saved successfully!');
+    setShowUrlInput(false);
+  };
+
+  const handleResetAvatar = () => {
+    const defaultUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces';
+    persistAvatar(defaultUrl, 'Profile photo reset to default.');
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    const current = getStoredUser() || DEMO_CLIENT;
+    const finalAvatar = avatarUrl.startsWith('blob:') ? (current.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces') : avatarUrl;
+
+    const updated: AuthUser = {
+      ...current,
+      fullName,
+      companyName,
+      gstin,
+      phone,
+      avatar: finalAvatar,
+    };
+    setStoredUser(updated);
+    setCurrentUser(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cbh_customer_avatar', finalAvatar);
+      } catch (err) {
+        console.warn('LocalStorage save failed:', err);
+      }
+    }
+    setSuccessMessage('Profile credentials and authorized enterprise details saved!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3500);
   };
@@ -112,7 +225,7 @@ export default function CustomerProfilePage() {
       {saveSuccess && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold shadow-xs animate-in fade-in">
           <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          <span>Profile credentials and enterprise authorizations successfully updated!</span>
+          <span>{successMessage}</span>
         </div>
       )}
 
@@ -125,27 +238,122 @@ export default function CustomerProfilePage() {
             <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-r from-[#5B4DF6] to-[#7B73FF]" />
 
             <div className="relative pt-6">
-              {/* Avatar Upload with live preview */}
+              {/* Avatar Upload with live preview & click-to-upload */}
               <div className="relative inline-block mx-auto mb-3">
-                <img
-                  src={avatarUrl}
-                  alt={fullName}
-                  className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover"
-                />
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#5B4DF6] text-white flex items-center justify-center cursor-pointer shadow-md hover:bg-[#4D3FF0] transition-colors"
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative group block rounded-full focus:outline-none cursor-pointer"
+                  title="Click to Change Photo"
+                >
+                  <img
+                    src={avatarUrl}
+                    alt={fullName}
+                    className={`w-24 h-24 rounded-full border-4 border-white shadow-md object-cover transition-all group-hover:brightness-90 ${
+                      isUploading ? 'opacity-50' : 'opacity-100'
+                    }`}
+                  />
+                  <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold">
+                    Upload
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#5B4DF6] text-white flex items-center justify-center cursor-pointer shadow-md hover:bg-[#4D3FF0] transition-colors border-2 border-white"
                   title="Upload New Photo"
                 >
                   <Camera size={14} />
-                  <input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-                </label>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </div>
+
+              {isUploading && (
+                <div className="text-[11px] font-bold text-[#5B4DF6] animate-pulse mb-2">
+                  Optimizing and saving photo...
+                </div>
+              )}
+
+              {/* Avatar Control Buttons */}
+              <div className="flex items-center justify-center gap-1.5 mb-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors cursor-pointer"
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="px-2.5 py-1 rounded-lg bg-[#EEF0FD] hover:bg-[#E0E4FD] text-[#5B4DF6] text-[11px] font-bold transition-colors cursor-pointer"
+                >
+                  {showUrlInput ? 'Hide URL' : 'Paste Link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetAvatar}
+                  className="px-2 py-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 text-[11px] font-medium transition-colors cursor-pointer"
+                  title="Reset to default photo"
+                >
+                  Reset
+                </button>
+              </div>
+
+              {/* Optional Direct URL Input */}
+              {showUrlInput && (
+                <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-left animate-in fade-in">
+                  <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1">
+                    Image Link / CDN URL
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/photo.jpg"
+                      value={customAvatarInput}
+                      onChange={(e) => setCustomAvatarInput(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] bg-white focus:outline-none focus:border-[#5B4DF6]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCustomUrl()}
+                      className="px-3 py-1.5 rounded-lg bg-[#5B4DF6] text-white text-xs font-bold hover:bg-[#4D3FF0] cursor-pointer"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Preset Avatars Selection */}
+              <div className="mb-4 pt-3 border-t border-slate-100">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider mb-2">
+                  Or Pick Corporate Avatar
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  {PRESET_AVATARS.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => persistAvatar(url, 'Selected avatar applied and saved!')}
+                      className={`w-7 h-7 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 cursor-pointer ${
+                        avatarUrl === url ? 'border-[#5B4DF6] ring-2 ring-[#5B4DF6]/30 scale-105' : 'border-slate-200'
+                      }`}
+                      title={`Select preset ${idx + 1}`}
+                    >
+                      <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <h2 className="text-lg font-black text-[#0F172A]">{fullName}</h2>
@@ -270,6 +478,30 @@ export default function CustomerProfilePage() {
                     onChange={(e) => setAltPhone(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] font-mono focus:outline-none focus:border-[#5B4DF6]"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Officer Profile Photo URL</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Direct CDN or uploaded image link</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={avatarUrl}
+                      alt="Thumbnail"
+                      className="w-8 h-8 rounded-full border border-slate-200 object-cover shrink-0"
+                    />
+                    <input
+                      type="url"
+                      value={avatarUrl}
+                      onChange={(e) => {
+                        setAvatarUrl(e.target.value);
+                        setCustomAvatarInput(e.target.value);
+                      }}
+                      placeholder="https://..."
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] font-mono focus:outline-none focus:border-[#5B4DF6]"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

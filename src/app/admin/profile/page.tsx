@@ -24,15 +24,15 @@ import {
   Truck,
   FileCheck2
 } from 'lucide-react';
-import { getStoredUser, logout } from '@/lib/auth';
+import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 
 export default function AdminProfilePage() {
-  const user = getStoredUser();
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   // Operator State
-  const [fullName, setFullName] = useState(user?.fullName || 'Harpreet Singh');
+  const [fullName, setFullName] = useState('Harpreet Singh');
   const [roleTitle, setRoleTitle] = useState('Chief Operations Officer & Fastener Plant Master');
-  const [email, setEmail] = useState(user?.email || 'admin@cbh.store');
+  const [email, setEmail] = useState('admin@cbh.store');
   const [phone, setPhone] = useState('+91 98765 43210');
   const [stationKey, setStationKey] = useState('CBH-HQ-OP-901');
   const [plantLocation, setPlantLocation] = useState('Ludhiana Central Works • Factory Unit #1');
@@ -48,23 +48,130 @@ export default function AdminProfilePage() {
   const [inventoryDiscrepancyAlerts, setInventoryDiscrepancyAlerts] = useState(true);
 
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Operator credentials, station security protocols, and permissions successfully updated!');
+  const [isUploading, setIsUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces');
+  const [customAvatarInput, setCustomAvatarInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setAvatarUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+  const PRESET_AVATARS = [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&h=200&fit=crop&crop=faces',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=faces',
+  ];
+
+  React.useEffect(() => {
+    const u = getStoredUser();
+    setCurrentUser(u);
+    if (u) {
+      if (u.fullName) setFullName(u.fullName);
+      if (u.email) setEmail(u.email);
+      if (u.phone) setPhone(u.phone);
     }
+    const savedAvatar =
+      u?.avatar ||
+      (typeof window !== 'undefined' ? localStorage.getItem('cbh_admin_avatar') : null) ||
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces';
+    setAvatarUrl(savedAvatar);
+    setCustomAvatarInput(savedAvatar);
+  }, []);
+
+  const persistAvatar = (url: string, notifyMsg = 'Operator clearance photo saved and updated across terminal!') => {
+    setAvatarUrl(url);
+    setCustomAvatarInput(url);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cbh_admin_avatar', url);
+      } catch (err) {
+        console.warn('LocalStorage save failed:', err);
+      }
+    }
+    const current = getStoredUser() || DEMO_ADMIN;
+    const updated: AuthUser = {
+      ...current,
+      avatar: url,
+    };
+    setStoredUser(updated);
+    setCurrentUser(updated);
+    setSuccessMessage(notifyMsg);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3500);
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+
+      const { compressImageToDataUrl } = await import('@/lib/image-utils');
+      // Compress to lightweight, durable JPEG (< 25 KB)
+      const compressedDataUrl = await compressImageToDataUrl(file, 280, 0.85);
+
+      // Save instantly to avoid transient blob URL death
+      persistAvatar(compressedDataUrl, 'Operator photo updated and saved!');
+
+      // Background upload to server
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.url) {
+          persistAvatar(data.url, 'Operator photo saved permanently to server!');
+        }
+      } catch (uploadErr) {
+        console.warn('Server upload background fallback:', uploadErr);
+      }
+    } catch (err) {
+      console.error('Image compression failed:', err);
+      alert('Could not process image. Please try a different JPG or PNG file.');
+    } finally {
+      setIsUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleApplyCustomUrl = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customAvatarInput.trim()) return;
+    persistAvatar(customAvatarInput.trim(), 'Operator photo URL applied and saved!');
+    setShowUrlInput(false);
+  };
+
+  const handleResetAvatar = () => {
+    const defaultUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces';
+    persistAvatar(defaultUrl, 'Operator photo reset to default clearance portrait.');
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const current = getStoredUser() || DEMO_ADMIN;
+    const finalAvatar = avatarUrl.startsWith('blob:') ? (current.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces') : avatarUrl;
+
+    const updated: AuthUser = {
+      ...current,
+      fullName,
+      phone,
+      avatar: finalAvatar,
+    };
+    setStoredUser(updated);
+    setCurrentUser(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cbh_admin_avatar', finalAvatar);
+      } catch (err) {
+        console.warn('LocalStorage save failed:', err);
+      }
+    }
+    setSuccessMessage('Operator credentials and terminal security clearance saved!');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3500);
   };
@@ -139,7 +246,7 @@ export default function AdminProfilePage() {
           gap: '8px'
         }}>
           <CheckCircle2 size={16} color="#059669" />
-          <span>Operator credentials, station security protocols, and permissions successfully updated!</span>
+          <span>{successMessage}</span>
         </div>
       )}
 
@@ -157,22 +264,41 @@ export default function AdminProfilePage() {
             position: 'relative',
             boxShadow: '0 8px 25px rgba(15, 23, 42, 0.12)'
           }}>
-            {/* Avatar Upload */}
+            {/* Avatar Upload with Click to Change */}
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: '14px' }}>
-              <img
-                src={avatarUrl}
-                alt={fullName}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 style={{
-                  width: '90px',
-                  height: '90px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '3px solid #0052CC',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)'
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  position: 'relative',
+                  display: 'block',
+                  borderRadius: '50%'
                 }}
-              />
-              <label
-                htmlFor="admin-avatar-upload"
+                title="Click to Upload Local Photo"
+              >
+                <img
+                  src={avatarUrl}
+                  alt={fullName}
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '3px solid #0052CC',
+                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+                    opacity: isUploading ? 0.5 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 style={{
                   position: 'absolute',
                   bottom: 0,
@@ -188,17 +314,157 @@ export default function AdminProfilePage() {
                   cursor: 'pointer',
                   border: '2px solid #0F172A'
                 }}
-                title="Change Operator Photo"
+                title="Upload Photo from Computer"
               >
                 <Camera size={13} />
-                <input
-                  id="admin-avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                id="admin-avatar-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            {isUploading && (
+              <div style={{ fontSize: '11px', color: '#38BDF8', fontWeight: 700, marginBottom: '8px' }}>
+                Optimizing &amp; saving clearance photo...
+              </div>
+            )}
+
+            {/* Avatar Control Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '14px' }}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#FFFFFF',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Upload File
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                style={{
+                  background: 'rgba(0, 82, 204, 0.3)',
+                  border: '1px solid rgba(0, 82, 204, 0.5)',
+                  color: '#38BDF8',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                {showUrlInput ? 'Hide' : 'Paste Link'}
+              </button>
+              <button
+                type="button"
+                onClick={handleResetAvatar}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94A3B8',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '4px 6px',
+                  cursor: 'pointer'
+                }}
+                title="Reset to default photo"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Direct URL Input */}
+            {showUrlInput && (
+              <div style={{
+                marginBottom: '14px',
+                padding: '10px',
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '8px',
+                textAlign: 'left'
+              }}>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: 800, color: '#94A3B8', marginBottom: '4px' }}>
+                  IMAGE URL OR CDN LINK
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={customAvatarInput}
+                    onChange={(e) => setCustomAvatarInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #334155',
+                      background: '#0F172A',
+                      color: '#FFFFFF',
+                      fontSize: '11px',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCustomUrl()}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      background: '#0052CC',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Preset Avatars Selection */}
+            <div style={{ marginBottom: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                OR SELECT PRESET PORTRAIT
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {PRESET_AVATARS.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => persistAvatar(url, 'Clearance portrait applied and saved!')}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: avatarUrl === url ? '2px solid #38BDF8' : '2px solid rgba(255, 255, 255, 0.2)',
+                      padding: 0,
+                      cursor: 'pointer',
+                      transform: avatarUrl === url ? 'scale(1.1)' : 'scale(1)',
+                      transition: 'all 0.15s'
+                    }}
+                    title={`Preset portrait ${idx + 1}`}
+                  >
+                    <img src={url} alt={`Preset ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </button>
+                ))}
+              </div>
             </div>
 
             <h2 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.01em' }}>
@@ -393,6 +659,45 @@ export default function AdminProfilePage() {
                     outline: 'none'
                   }}
                 />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px' }}>
+                  OPERATOR CLEARANCE PHOTO URL / ASSET
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img
+                    src={avatarUrl}
+                    alt="Thumbnail"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid #0052CC',
+                      flexShrink: 0
+                    }}
+                  />
+                  <input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => {
+                      setAvatarUrl(e.target.value);
+                      setCustomAvatarInput(e.target.value);
+                    }}
+                    placeholder="https://..."
+                    style={{
+                      flex: 1,
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      color: '#0F172A',
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

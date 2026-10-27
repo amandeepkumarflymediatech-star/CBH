@@ -93,6 +93,10 @@ export default function CustomerLayout({
 
   const clientCompany = currentUser?.companyName || 'Apex Infrastructure Corp';
   const clientName = currentUser?.fullName || 'Rajesh Sharma';
+  const clientAvatar =
+    currentUser?.avatar ||
+    (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces';
 
   // Navigation Items
   const railNav = [
@@ -229,7 +233,7 @@ export default function CustomerLayout({
             title={`${clientName} (${clientCompany})`}
           >
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+              src={clientAvatar}
               alt={clientName}
               className="w-full h-full object-cover"
             />
@@ -349,7 +353,7 @@ export default function CustomerLayout({
             </button>
 
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+              src={clientAvatar}
               alt={clientName}
               className="w-8 h-8 rounded-full border border-slate-200 object-cover"
             />

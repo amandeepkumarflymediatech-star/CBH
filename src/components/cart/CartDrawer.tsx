@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { X, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
+import PhonePeModal from '@/components/payment/PhonePeModal';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -21,6 +23,9 @@ export default function CartDrawer({
   onUpdateQty,
   onRemoveItem,
 }: CartDrawerProps) {
+  const router = useRouter();
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [orderId, setOrderId] = useState(`CBH-ORD-${Date.now()}`);
   const summary = calculateRfqSummary(items);
 
   return (
@@ -169,14 +174,60 @@ export default function CartDrawer({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderId(`CBH-ORD-${Date.now()}`);
+                  setIsPayModalOpen(true);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#5f259f',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
+                  cursor: 'pointer',
+                  border: 'none',
+                }}
+              >
+                <span>⚡ Pay via PhonePe (UPI / QR / Cards)</span>
+                <ArrowRight size={16} />
+              </button>
+
+              <Link
+                href="/checkout"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#0052CC',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                }}
+                onClick={onClose}
+              >
+                <span>Full Commercial Checkout &amp; GST Details</span>
+              </Link>
+
               <Link
                 href="/bulk-order"
                 className="btn-primary"
-                style={{ width: '100%', padding: '12px' }}
+                style={{ width: '100%', padding: '9px', background: '#0F172A', fontSize: '11px', justifyContent: 'center' }}
                 onClick={onClose}
               >
-                <span>Complete Bulk Order Matrix</span>
-                <ArrowRight size={16} />
+                <span>Review Full RFQ Matrix &amp; Proforma</span>
               </Link>
             </div>
 
@@ -187,6 +238,27 @@ export default function CartDrawer({
           </div>
         )}
       </div>
+
+      {/* Interactive PhonePe Payment Modal for Direct Cart Settlement */}
+      <PhonePeModal
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        amount={summary.netTotal}
+        orderNumber={orderId}
+        customerName="Commercial Fastener Buyer"
+        customerPhone="9888021000"
+        customerEmail="procurement@buyer.in"
+        companyName="Verified Enterprise Client"
+        onSuccess={(data) => {
+          setIsPayModalOpen(false);
+          onClose();
+          router.push(
+            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
+              data.mode
+            )}`
+          );
+        }}
+      />
     </>
   );
 }

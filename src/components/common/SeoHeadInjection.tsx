@@ -1,5 +1,6 @@
 import React from 'react';
 import { getPageSeo, getFullSeoConfig } from '@/lib/seo-db';
+import CustomHeadInjector from './CustomHeadInjector';
 
 interface SeoHeadInjectionProps {
   pathname: string;
@@ -107,18 +108,12 @@ export default function SeoHeadInjection({ pathname }: SeoHeadInjectionProps) {
 
       {/* Global custom head tags (e.g. analytics, custom meta tags) */}
       {global.customHeadTags && (
-        <span
-          dangerouslySetInnerHTML={{ __html: global.customHeadTags }}
-          style={{ display: 'none' }}
-        />
+        <CustomHeadInjector html={global.customHeadTags} />
       )}
 
       {/* Page-level custom head code */}
       {seo.customHeadCode && (
-        <span
-          dangerouslySetInnerHTML={{ __html: seo.customHeadCode }}
-          style={{ display: 'none' }}
-        />
+        <CustomHeadInjector html={seo.customHeadCode} />
       )}
     </>
   );

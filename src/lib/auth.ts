@@ -11,6 +11,7 @@ export interface AuthUser {
   tier?: string;
   tierDiscountPct?: number;
   creditLimit?: number;
+  avatar?: string;
 }
 
 const STORAGE_KEY = 'cbh_auth_user';

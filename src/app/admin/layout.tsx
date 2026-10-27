@@ -20,7 +20,8 @@ import {
   Zap,
   BookOpen,
   Globe,
-  User
+  User,
+  CreditCard
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -199,6 +200,7 @@ export default function AdminLayout({
     { label: 'ERPNext Two-Way Sync', href: '/admin/erpnext', icon: Database, badge: 'SYNC' },
     { label: 'Technical Metallurgy Blog', href: '/admin/blogs', icon: BookOpen, badge: telemetry.blogsCount },
     { label: 'Dynamic SEO & Schemas', href: '/admin/seo', icon: Globe, badge: 'HEAD' },
+    { label: 'PhonePe PG & Payments', href: '/admin/payments', icon: CreditCard, badge: 'UPI', badgeColor: '#5f259f' },
     { label: 'Operator Clearance Profile', href: '/admin/profile', icon: User, badge: 'MASTER', badgeColor: '#5B4DF6' },
   ];
 
@@ -305,17 +307,32 @@ export default function AdminLayout({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
                 fontSize: '12px',
                 color: '#E2E8F0',
                 fontWeight: 700,
                 textDecoration: 'none',
                 background: 'rgba(255, 255, 255, 0.08)',
                 padding: '4px 10px',
-                borderRadius: '6px'
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
               }}
             >
-              <User size={13} color="#38BDF8" />
+              <img
+                src={
+                  currentUser?.avatar ||
+                  (typeof window !== 'undefined' ? localStorage.getItem('cbh_admin_avatar') : null) ||
+                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces'
+                }
+                alt="Admin"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '1.5px solid #38BDF8'
+                }}
+              />
               <span>{currentUser?.fullName?.split(' ')[0] || 'Harpreet'} (Admin)</span>
             </Link>
             <button
