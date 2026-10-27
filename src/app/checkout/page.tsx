@@ -98,7 +98,7 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePhonePeCheckout = () => {
+  const handlePhonePeCheckout = async () => {
     setErrorMessage(null);
 
     // Validate Required Fields
@@ -120,10 +120,42 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Open Interactive PhonePe Payment Modal (UPI, Cards, NetBanking)
+    // Direct redirection to official PhonePe Gateway
+    setIsSubmitting(true);
     const newOrderId = `CBH-ORD-${Date.now()}`;
     setActiveOrderId(newOrderId);
-    setIsPhonePeModalOpen(true);
+
+    try {
+      const res = await fetch('/api/payment/phonepe/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: summary.netTotal,
+          orderId: newOrderId,
+          customerName: formData.fullName,
+          customerPhone: formData.phone,
+          customerEmail: formData.email,
+          companyName: formData.companyName,
+          shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
+          totalWeightKg: summary.totalWeightKg,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        // Direct browser redirection to the official PhonePe Gateway
+        window.location.href = data.paymentUrl;
+      } else {
+        setIsSubmitting(false);
+        setErrorMessage(data.error || 'Failed to initiate PhonePe payment. Please check your credentials in the Admin Panel.');
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 120, behavior: 'smooth' });
+        }
+      }
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Error connecting to PhonePe Gateway.');
+    }
   };
 
   return (

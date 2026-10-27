@@ -2,31 +2,46 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Home,
-  BarChart2,
+  LayoutDashboard,
+  Boxes,
+  Truck,
   Users,
-  Calendar,
-  Zap,
-  Award,
-  Bell,
-  Settings,
+  TrendingUp,
+  Folder,
+  ArrowRight,
+  Database,
   LogOut,
+  ShieldAlert,
+  RefreshCw,
   Menu,
   X,
+  CheckCircle2,
+  Zap,
+  BookOpen,
+  Globe,
+  User,
   CreditCard,
-  Building2,
-  Truck,
-  FileText,
-  MapPin,
+  Bell,
+  Search,
+  ChevronDown,
+  Moon,
+  Sun,
+  SlidersHorizontal,
+  FileCheck2,
+  Sparkles,
   ExternalLink,
   ChevronRight,
+  Award,
+  Calendar,
+  Settings,
   ShieldCheck,
-  CheckCircle2,
-  User
+  Building2,
+  PackageCheck
 } from 'lucide-react';
-import { getStoredUser, logout, AuthUser } from '@/lib/auth';
+import { getStoredUser, setStoredUser, logout, DEMO_CLIENT, AuthUser } from '@/lib/auth';
+import { GlobalUnit } from '@/lib/types';
 
 export default function CustomerLayout({
   children,
@@ -34,41 +49,54 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const [isOrdersExpanded, setIsOrdersExpanded] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const notifRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Telemetry badge counts
+  const [telemetry, setTelemetry] = useState({
+    ordersCount: 3,
+    rfqsCount: 2,
+    certsCount: 5,
+    sitesCount: 4,
+    teamCount: 6,
+  });
 
   useEffect(() => {
-    const user = getStoredUser();
+    let user = getStoredUser();
+    if (!user) {
+      user = DEMO_CLIENT;
+      setStoredUser(DEMO_CLIENT);
+    }
     setCurrentUser(user);
     setHasLoadedAuth(true);
 
-    // If unauthenticated on /customer/* routes, immediately redirect to /
-    if (!user && typeof window !== 'undefined') {
-      window.location.replace('/');
-      return;
-    }
-
     const handleAuthChange = () => {
       const u = getStoredUser();
-      setCurrentUser(u);
-      if (!u && typeof window !== 'undefined') {
-        window.location.replace('/');
-      }
+      setCurrentUser(u || DEMO_CLIENT);
     };
     window.addEventListener('cbh_auth_change', handleAuthChange);
 
-    // Close popups when clicking outside
+    fetchTelemetry();
+
     const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotifOpen(false);
+      }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setIsUserMenuOpen(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setIsNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -77,125 +105,439 @@ export default function CustomerLayout({
       window.removeEventListener('cbh_auth_change', handleAuthChange);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [pathname]);
 
-  // Case 1: Unauthenticated -> Immediately redirect to home /
-  if (hasLoadedAuth && !currentUser) {
-    if (typeof window !== 'undefined') {
-      window.location.replace('/');
+  const fetchTelemetry = async () => {
+    try {
+      const [ordRes, rfqRes] = await Promise.allSettled([
+        fetch('/api/orders').then((r) => r.json()),
+        fetch('/api/rfq').then((r) => r.json()),
+      ]);
+
+      setTelemetry((prev) => ({
+        ...prev,
+        ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
+        rfqsCount: rfqRes.status === 'fulfilled' && rfqRes.value?.data ? rfqRes.value.data.length : prev.rfqsCount,
+      }));
+    } catch {
+      // background telemetry error ignored
     }
-    return (
-      <div style={{ background: '#F4F5F9', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#64748B', fontSize: '13px', fontWeight: 600 }}>Redirecting to home...</p>
-      </div>
-    );
-  }
-
-  const clientCompany = currentUser?.companyName || 'Apex Infrastructure Corp';
-  const clientName = currentUser?.fullName || 'Rajesh Sharma';
-  const clientAvatar =
-    currentUser?.avatar ||
-    (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces';
-
-  // Navigation Items
-  const railNav = [
-    { label: 'Overview', href: '/customer', icon: Home, exact: true },
-    { label: 'Purchase Orders', href: '/customer/orders', icon: BarChart2 },
-    { label: 'Procurement Team', href: '/customer/team', icon: Users },
-    { label: 'Project Sites', href: '/customer/sites', icon: Calendar },
-    { label: 'Bulk RFQs', href: '/customer/rfqs', icon: Zap },
-    { label: 'NABL Certificates', href: '/customer/certificates', icon: Award },
-    { label: 'Enterprise Profile', href: '/customer/profile', icon: User },
-  ];
+  };
 
   const isLinkActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + '/');
   };
 
+  const clientName = currentUser?.fullName || 'Rajesh Sharma';
+  const clientCompany = currentUser?.companyName || 'Apex Heavy Infra Ltd.';
+  const clientAvatar =
+    currentUser?.avatar ||
+    (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces';
+
+  // Get Page Title from Route
+  const getPageTitle = () => {
+    if (pathname === '/customer') return 'Dashboard';
+    if (pathname.startsWith('/customer/orders')) return 'Purchase Orders & Consignments';
+    if (pathname.startsWith('/customer/rfqs')) return 'Bulk RFQ Inquiries & Tenders';
+    if (pathname.startsWith('/customer/certificates')) return 'NABL Quality Certificates';
+    if (pathname.startsWith('/customer/sites')) return 'Project Sites & Delivery Yards';
+    if (pathname.startsWith('/customer/team')) return 'Procurement Team';
+    if (pathname.startsWith('/customer/profile')) return 'Enterprise Profile';
+    if (pathname.startsWith('/customer/settings')) return 'Account Settings';
+    return 'Dashboard';
+  };
+
   return (
-    <div style={{ background: '#F4F5F9', minHeight: '100vh', display: 'flex' }}>
+    <div className="min-h-screen bg-[#F4F5F9] flex font-sans text-slate-800 antialiased">
       {/* ================================================================ */}
-      {/* DESKTOP & TABLET SLIM ICON RAIL (width: 76px)                    */}
+      {/* DESKTOP SIDEBAR (Clean 260px matching Admin Panel design)         */}
       {/* ================================================================ */}
       <aside
-        className="hidden md:flex flex-col items-center justify-between py-6 sticky top-0 h-screen shrink-0 border-r border-[#E5E7EB] bg-white z-40"
-        style={{ width: '76px' }}
+        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen shrink-0 bg-white border-r border-[#EAEAEA] transition-all duration-200 z-30 ${
+          isSidebarCollapsed ? 'w-[80px]' : 'w-[260px]'
+        }`}
       >
-        {/* Top: CBH Logo (Square branded container with real logo icon) */}
-        <div className="flex flex-col items-center gap-7 w-full">
-          <Link
-            href="/customer"
-            className="w-12 h-12 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex items-center justify-center p-2 hover:scale-105 hover:shadow-md transition-all no-underline group"
-            title="CBH Fastener Procurement"
-          >
-            <img
-              src="/assets/cbh-logo-icon.png"
-              alt="CBH"
-              className="w-full h-full object-contain transition-transform group-hover:scale-110"
-            />
-          </Link>
+        <div className="flex flex-col min-h-0 flex-1 overflow-y-auto px-4 py-5 space-y-6">
+          {/* Top Brand Logo & App Name */}
+          <div className="flex items-center justify-between px-2">
+            <Link href="/customer" className="flex items-center gap-2.5 no-underline">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-sm shrink-0">
+                <img
+                  src="/assets/cbh-logo-icon.png"
+                  alt="CBH"
+                  className="w-full h-full object-contain brightness-0 invert"
+                />
+              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-[17px] text-[#0F172A] tracking-tight">Prodex</span>
+                  <span className="text-[10px] font-bold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.5 rounded">CLIENT</span>
+                </div>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <SlidersHorizontal size={15} />
+            </button>
+          </div>
+
+          {/* Enterprise Account / Client Entity Selector */}
+          {!isSidebarCollapsed && (
+            <Link
+              href="/customer/profile"
+              className="bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 transition-colors no-underline group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-[#0F172A] text-white flex items-center justify-center text-xs font-black shrink-0">
+                  {clientCompany.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-[#0F172A] truncate">{clientCompany}</div>
+                  <div className="text-[10px] text-slate-500 truncate">VIP Tier 1 • 8% Rebate</div>
+                </div>
+              </div>
+              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 shrink-0" />
+            </Link>
+          )}
 
           {/* Navigation Stack */}
-          <nav className="flex flex-col items-center gap-3 w-full px-3">
-            {railNav.map((item) => {
-              const active = isLinkActive(item.href, item.exact);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all group relative no-underline ${
-                    active
-                      ? 'bg-[#EBF3FC] text-[#0052CC] font-bold shadow-xs'
-                      : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
-                  }`}
-                  title={item.label}
-                >
-                  <Icon size={20} strokeWidth={active ? 2.4 : 1.9} />
-                  
-                  {/* Tooltip on hover */}
-                  <span className="absolute left-[70px] bg-[#0F172A] text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+          <div className="space-y-6">
+            {/* Group: MAIN */}
+            <div className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                  MAIN
+                </div>
+              )}
 
-            {/* Notification Bell with interactive popover */}
+              {/* 1. Dashboard */}
+              <Link
+                href="/customer"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer', true)
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Dashboard"
+              >
+                <LayoutDashboard size={18} strokeWidth={isLinkActive('/customer', true) ? 2.4 : 1.9} />
+                {!isSidebarCollapsed && <span>Dashboard</span>}
+              </Link>
+
+              {/* 2. Purchase Orders with Sub-Tree */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isLinkActive('/customer/orders')
+                      ? 'bg-slate-100 text-[#0F172A]'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                  title="Purchase Orders"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Truck size={18} strokeWidth={1.9} />
+                    {!isSidebarCollapsed && <span>Orders</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <ChevronDown
+                      size={14}
+                      className={`text-slate-400 transition-transform ${isOrdersExpanded ? 'rotate-180' : ''}`}
+                    />
+                  )}
+                </button>
+
+                {!isSidebarCollapsed && isOrdersExpanded && (
+                  <div className="mt-1 ml-6 pl-3 border-l border-slate-200 space-y-1 py-1">
+                    <Link
+                      href="/customer/orders"
+                      className={`block px-2.5 py-1.5 rounded-lg text-xs font-medium no-underline transition-colors ${
+                        pathname === '/customer/orders'
+                          ? 'text-[#5B4DF6] font-bold bg-[#EEF0FD]/60'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      All Orders ({telemetry.ordersCount})
+                    </Link>
+                    <Link
+                      href="/customer/orders?status=IN_TRANSIT"
+                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
+                    >
+                      In Transit (GPS)
+                    </Link>
+                    <Link
+                      href="/customer/orders?status=PROCESSING"
+                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
+                    >
+                      Under Fabrication
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Bulk RFQs / Quotations */}
+              <Link
+                href="/customer/rfqs"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/rfqs')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Bulk RFQs & Tenders"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Zap size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Bulk RFQs</span>}
+                </div>
+                {!isSidebarCollapsed && telemetry.rfqsCount > 0 && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                    {telemetry.rfqsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 4. NABL Mill Certificates */}
+              <Link
+                href="/customer/certificates"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/certificates')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="NABL Certificates"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Award size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>NABL 3.1 Vault</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                    ISO 9001
+                  </span>
+                )}
+              </Link>
+
+              {/* 5. Invoices & Revolving Credit */}
+              <Link
+                href="/customer?tab=invoices"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  pathname === '/customer' && typeof window !== 'undefined' && window.location.search.includes('tab=invoices')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Invoices & Credit Facility"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <CreditCard size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Invoices &amp; Credit</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    ₹37.5L
+                  </span>
+                )}
+              </Link>
+
+              {/* 6. Project Sites & Delivery Yards */}
+              <Link
+                href="/customer/sites"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/sites')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Project Sites"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Building2 size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Delivery Yards</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.sitesCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+
+            {/* Group: MANAGEMENT & ACCOUNT */}
+            <div className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                  ACCOUNT &amp; TEAM
+                </div>
+              )}
+
+              {/* Procurement Team */}
+              <Link
+                href="/customer/team"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/team')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Procurement Team"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Users size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Team Officers</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.teamCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Enterprise Profile */}
+              <Link
+                href="/customer/profile"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/profile')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Enterprise Profile"
+              >
+                <User size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Enterprise Profile</span>}
+              </Link>
+
+              {/* Account Settings */}
+              <Link
+                href="/customer/settings"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/customer/settings')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Account Settings"
+              >
+                <Settings size={18} strokeWidth={1.9} />
+                {!isSidebarCollapsed && <span>Account Settings</span>}
+              </Link>
+
+              {/* Fastener Catalog */}
+              <Link
+                href="/products"
+                target="_blank"
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all no-underline"
+                title="Open Fastener Catalog"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <ExternalLink size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Fastener Catalog</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-[#0052CC]">
+                    LIVE
+                  </span>
+                )}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section: Dark Mode Toggle & VIP Tier / Revolving Credit Card */}
+        <div className="p-4 border-t border-slate-100 space-y-3 shrink-0">
+          {/* Dark Mode Row */}
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center justify-between px-1 py-1 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2.5">
+                <Moon size={16} className="text-slate-500" />
+                <span>Dark Mode</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
+                  isDarkMode ? 'bg-[#5B4DF6]' : 'bg-slate-200'
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                    isDarkMode ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <Moon size={16} className="text-slate-500" />
+            </div>
+          )}
+
+         
+        </div>
+      </aside>
+
+      {/* ================================================================ */}
+      {/* MAIN VIEWPORT CANVAS (Header + Body)                             */}
+      {/* ================================================================ */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Top Header Row matching Admin Panel */}
+        <header className="bg-white border-b border-[#EAEAEA] sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+          {/* Left: Mobile hamburger + Page Title */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileNavOpen(true)}
+              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
+              {getPageTitle()}
+            </h1>
+          </div>
+
+          {/* Right: Team Stack + Notifications + Search + User Profile */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            
+
+            {/* Notification Bell with Badge (3) */}
             <div className="relative" ref={notifRef}>
               <button
                 type="button"
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors relative group ${
-                  isNotificationsOpen ? 'bg-[#EBF3FC] text-[#0052CC]' : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
-                }`}
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 title="Notifications"
               >
-                <Bell size={20} strokeWidth={1.9} />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#0052CC] ring-2 ring-white" />
+                <Bell size={19} />
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                  3
+                </span>
               </button>
 
-              {/* Notifications Popover */}
-              {isNotificationsOpen && (
-                <div className="absolute left-[74px] top-0 w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+              {/* Notification Popover */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-76 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <span className="font-bold text-xs text-[#0F172A]">Recent Activity &amp; Alerts</span>
-                    <span className="text-[10px] font-extrabold text-[#0052CC] bg-[#EBF3FC] px-2 py-0.5 rounded-full">3 New</span>
+                    <span className="text-xs font-bold text-[#0F172A]">Consignment Alerts</span>
+                    <span className="text-[10px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-2 py-0.5 rounded-full">
+                      3 New
+                    </span>
                   </div>
-                  <div className="divide-y divide-slate-100 text-xs mt-2 max-h-72 overflow-y-auto">
-                    <div className="py-2.5">
+                  <div className="divide-y divide-slate-100 text-xs mt-2 max-h-60 overflow-y-auto">
+                    <div className="py-2">
                       <div className="font-bold text-[#0F172A]">Consignment In Transit</div>
                       <div className="text-[11px] text-slate-500">TCI Express docket #782910 dispatched from Ludhiana Works.</div>
-                      <div className="text-[10px] text-[#0052CC] font-semibold mt-1">20 mins ago</div>
+                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">20m ago</div>
                     </div>
-                    <div className="py-2.5">
-                      <div className="font-bold text-[#0F172A]">MTC Certificate Ready</div>
+                    <div className="py-2">
+                      <div className="font-bold text-emerald-700">MTC Certificate Ready</div>
                       <div className="text-[11px] text-slate-500">NABL chemical test report issued for PO #CBH-2026-881.</div>
-                      <div className="text-[10px] text-[#0052CC] font-semibold mt-1">2 hours ago</div>
+                      <div className="text-[10px] text-slate-400 font-semibold mt-1">2h ago</div>
                     </div>
-                    <div className="py-2.5">
+                    <div className="py-2">
                       <div className="font-bold text-[#0F172A]">Credit Facility Active</div>
                       <div className="text-[11px] text-slate-500">Monthly revolving credit renewed: ₹37.5L available.</div>
                       <div className="text-[10px] text-slate-400 font-semibold mt-1">Yesterday</div>
@@ -204,163 +546,117 @@ export default function CustomerLayout({
                 </div>
               )}
             </div>
-          </nav>
-        </div>
 
-        {/* Bottom: Settings & User Profile Avatar */}
-        <div className="flex flex-col items-center gap-4 w-full relative" ref={userMenuRef}>
-          {/* Settings Icon (Links to /customer/settings) */}
-          <Link
-            href="/customer/settings"
-            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors group relative no-underline ${
-              pathname === '/customer/settings'
-                ? 'bg-[#EBF3FC] text-[#0052CC]'
-                : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
-            }`}
-            title="Account Settings"
-          >
-            <Settings size={20} strokeWidth={1.9} />
-            <span className="absolute left-[70px] bg-[#0F172A] text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-              Account Settings
-            </span>
-          </Link>
+            {/* Global Search Bar (with ⌘K) */}
+            <div className="relative hidden md:flex items-center">
+              <Search size={15} className="absolute left-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search orders, dockets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48 lg:w-60 pl-9 pr-9 py-2 rounded-xl bg-slate-100 border border-transparent text-xs text-[#0F172A] placeholder:text-slate-400 focus:bg-white focus:border-slate-300 focus:outline-none transition-all"
+              />
+              <span className="absolute right-2.5 text-[10px] font-bold text-slate-400 border border-slate-300 rounded px-1.5 py-0.5 bg-white">
+                ⌘K
+              </span>
+            </div>
 
-          {/* User Profile Avatar with Online Dot */}
-          <button
-            type="button"
-            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm hover:ring-2 hover:ring-[#0052CC] transition-all cursor-pointer focus:outline-none"
-            title={`${clientName} (${clientCompany})`}
-          >
-            <img
-              src={clientAvatar}
-              alt={clientName}
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
-          </button>
-
-          {/* User Account Popover Dropdown */}
-          {isUserMenuOpen && (
-            <div className="absolute left-[74px] bottom-2 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 z-50 text-left animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div className="p-2 border-b border-slate-100 mb-2">
-                <div className="text-xs font-bold text-[#0F172A] truncate">{clientCompany}</div>
-                <div className="text-[11px] text-slate-500 truncate">{clientName}</div>
-                <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                    VIP TIER • 8% REBATE
-                  </span>
+            {/* User Profile Avatar with Online Dot + Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200">
+                  <img
+                    src={clientAvatar}
+                    alt={clientName}
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
                 </div>
-              </div>
+                <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
+              </button>
 
-              <div className="space-y-1">
-                <Link
-                  href="/customer/profile"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#0052CC] bg-[#EBF3FC]/60 hover:bg-[#EBF3FC] no-underline"
-                >
-                  <User size={14} className="text-[#0052CC]" />
-                  <span>Enterprise Profile</span>
-                </Link>
-                <Link
-                  href="/customer/settings"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                >
-                  <Settings size={14} className="text-[#0052CC]" />
-                  <span>Account Settings</span>
-                </Link>
-                <Link
-                  href="/customer/orders"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                >
-                  <BarChart2 size={14} className="text-[#0052CC]" />
-                  <span>My Orders</span>
-                </Link>
-                <Link
-                  href="/products"
-                  target="_blank"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                >
-                  <ExternalLink size={14} className="text-[#0052CC]" />
-                  <span>Open Fastener Catalog</span>
-                </Link>
-                <Link
-                  href="/"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                >
-                  <Home size={14} className="text-[#0052CC]" />
-                  <span>Return to Storefront</span>
-                </Link>
-              </div>
+              {/* User Dropdown */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200 shadow-2xl p-3 z-50 text-left animate-in fade-in slide-in-from-top-2">
+                  <div className="p-2 border-b border-slate-100 mb-2">
+                    <div className="text-xs font-bold text-[#0F172A] truncate">{clientCompany}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{clientName}</div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-[9px] font-extrabold bg-[#EEF0FD] text-[#5B4DF6] px-2 py-0.5 rounded-full">
+                        CLIENT ACCOUNT
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="mt-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    logout('/');
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
-                >
-                  <LogOut size={14} />
-                  <span>Sign Out</span>
-                </button>
-              </div>
+                  <div className="space-y-1">
+                    <Link
+                      href="/customer/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <User size={14} className="text-slate-500" />
+                      <span>Enterprise Profile</span>
+                    </Link>
+                    <Link
+                      href="/customer/orders"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <Truck size={14} className="text-slate-500" />
+                      <span>Purchase Orders</span>
+                    </Link>
+                    <Link
+                      href="/customer/settings"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <CreditCard size={14} className="text-slate-500" />
+                      <span>Account Settings</span>
+                    </Link>
+                    <Link
+                      href="/products"
+                      target="_blank"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <ExternalLink size={14} className="text-slate-500" />
+                      <span>Fastener Catalog</span>
+                    </Link>
+                    <Link
+                      href="/"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
+                    >
+                      <Globe size={14} className="text-slate-500" />
+                      <span>Return to Storefront</span>
+                    </Link>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        logout('/');
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </aside>
-
-      {/* ================================================================ */}
-      {/* MOBILE TOP BAR (< 768px)                                         */}
-      {/* ================================================================ */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden bg-white border-b border-[#E5E7EB] px-4 py-3 sticky top-0 z-30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMobileNavOpen(true)}
-              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors"
-              title="Open Navigation Menu"
-            >
-              <Menu size={18} />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs">
-                <img
-                  src="/assets/cbh-logo-icon.png"
-                  alt="CBH"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="font-bold text-sm text-[#0F172A]">Customer Overview</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => logout('/')}
-              className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-red-200"
-              title="Sign Out"
-            >
-              <LogOut size={13} />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
-
-            <img
-              src={clientAvatar}
-              alt={clientName}
-              className="w-8 h-8 rounded-full border border-slate-200 object-cover"
-            />
           </div>
         </header>
 
-        {/* Mobile Slide-In Drawer Navigation */}
+        {/* Mobile Slide-In Navigation Drawer */}
         {isMobileNavOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
             <div
@@ -371,16 +667,16 @@ export default function CustomerLayout({
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 p-1.5 flex items-center justify-center shadow-xs">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5B4DF6] to-[#7B73FF] p-1.5 flex items-center justify-center shadow-xs">
                       <img
                         src="/assets/cbh-logo-icon.png"
                         alt="CBH"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain brightness-0 invert"
                       />
                     </div>
                     <div>
-                      <div className="font-bold text-sm text-[#0F172A]">CBH Fasteners</div>
-                      <div className="text-[10px] text-slate-500">{clientCompany}</div>
+                      <div className="font-bold text-sm text-[#0F172A]">Prodex Client</div>
+                      <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{clientCompany}</div>
                     </div>
                   </div>
                   <button
@@ -392,8 +688,18 @@ export default function CustomerLayout({
                   </button>
                 </div>
 
-                <nav className="mt-5 space-y-1.5">
-                  {railNav.map((item) => {
+                <nav className="mt-5 space-y-1">
+                  {[
+                    { label: 'Dashboard', href: '/customer', icon: LayoutDashboard, exact: true },
+                    { label: 'Orders & Dispatches', href: '/customer/orders', icon: Truck },
+                    { label: 'Bulk RFQs & Tenders', href: '/customer/rfqs', icon: Zap },
+                    { label: 'NABL 3.1 Vault', href: '/customer/certificates', icon: Award },
+                    { label: 'Invoices & Credit', href: '/customer?tab=invoices', icon: CreditCard },
+                    { label: 'Delivery Yards', href: '/customer/sites', icon: Building2 },
+                    { label: 'Procurement Team', href: '/customer/team', icon: Users },
+                    { label: 'Enterprise Profile', href: '/customer/profile', icon: User },
+                    { label: 'Account Settings', href: '/customer/settings', icon: Settings },
+                  ].map((item) => {
                     const active = isLinkActive(item.href, item.exact);
                     const Icon = item.icon;
                     return (
@@ -403,7 +709,7 @@ export default function CustomerLayout({
                         onClick={() => setIsMobileNavOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
                           active
-                            ? 'bg-[#EBF3FC] text-[#0052CC]'
+                            ? 'bg-[#0F172A] text-white'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
@@ -412,14 +718,6 @@ export default function CustomerLayout({
                       </Link>
                     );
                   })}
-                  <Link
-                    href="/customer/settings"
-                    onClick={() => setIsMobileNavOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all no-underline"
-                  >
-                    <Settings size={18} strokeWidth={1.9} />
-                    <span>Account Settings</span>
-                  </Link>
                 </nav>
               </div>
 
@@ -429,7 +727,7 @@ export default function CustomerLayout({
                   target="_blank"
                   className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 text-slate-700 text-xs font-semibold no-underline"
                 >
-                  <span>Procure Fasteners</span>
+                  <span>Fastener Catalog</span>
                   <ExternalLink size={14} className="text-slate-400" />
                 </Link>
                 <button
@@ -441,16 +739,14 @@ export default function CustomerLayout({
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 cursor-pointer"
                 >
                   <LogOut size={15} />
-                  <span>Sign Out of Portal</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ================================================================ */}
-        {/* MAIN BODY CANVAS                                                 */}
-        {/* ================================================================ */}
+        {/* Main Body Viewport */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
           {children}
         </main>

@@ -22,7 +22,7 @@ import { INITIAL_ORDERS } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 
 export default function CustomerOrdersPage() {
-  const [orders, setOrders] = useState<CustomerOrder[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,7 +34,7 @@ export default function CustomerOrdersPage() {
     fetch('/api/orders')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        if (data.success && Array.isArray(data.data)) {
           setOrders(data.data);
         }
       })

@@ -22,7 +22,7 @@ import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 
 export default function CustomerRfqsPage() {
-  const [quotes, setQuotes] = useState<BulkQuotation[]>(INITIAL_QUOTES);
+  const [quotes, setQuotes] = useState<BulkQuotation[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +35,7 @@ export default function CustomerRfqsPage() {
     fetch('/api/rfq')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        if (data.success && Array.isArray(data.data)) {
           setQuotes(data.data);
         }
       })

@@ -96,49 +96,11 @@ export default function PhonePeModal({
 
   const handlePayNow = async () => {
     setError(null);
-
-    // Validation per tab
-    if (activeTab === 'upi') {
-      if (!upiId && !confirm('Simulate QR Code scan and payment from PhonePe app?')) {
-        return;
-      }
-    } else if (activeTab === 'card') {
-      if (cardNumber.replace(/\s/g, '').length < 15) {
-        setError('Please enter a valid 16-digit Debit or Credit card number.');
-        return;
-      }
-      if (!cardExpiry || cardExpiry.length < 5) {
-        setError('Please enter card expiry as MM/YY.');
-        return;
-      }
-      if (!cardCvv || cardCvv.length < 3) {
-        setError('Please enter a valid 3-digit CVV.');
-        return;
-      }
-    }
-
     setProcessing(true);
-    setProcessingStep('Connecting to PhonePe Secure Switch...');
+    setProcessingStep('Connecting to PhonePe Secure Gateway...');
 
     try {
-      await new Promise((r) => setTimeout(r, 700));
-      setProcessingStep('Authorizing Banking Network & 2FA Token...');
-
-      await new Promise((r) => setTimeout(r, 800));
-      setProcessingStep('Payment Approved! Finalizing Order Settlement...');
-
-      const txnId = `TXN-${orderNumber}-${Date.now().toString().slice(-4)}`;
-      const mode =
-        activeTab === 'upi'
-          ? 'UPI / PhonePe'
-          : activeTab === 'card'
-          ? 'Credit/Debit Card'
-          : activeTab === 'netbanking'
-          ? `NetBanking (${selectedBank})`
-          : selectedWallet;
-
-      // Register the transaction in the backend
-      await fetch('/api/payment/phonepe/initiate', {
+      const res = await fetch('/api/payment/phonepe/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,18 +111,18 @@ export default function PhonePeModal({
           customerEmail,
           companyName,
         }),
-      }).catch(() => null);
-
-      await new Promise((r) => setTimeout(r, 600));
-
-      onSuccess({
-        txnId,
-        orderNumber,
-        amount,
-        mode,
       });
-    } catch {
-      setError('Payment authorization timed out. Please try again.');
+
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        setProcessingStep('Redirecting to official PhonePe Gateway...');
+        window.location.href = data.paymentUrl;
+      } else {
+        setError(data.error || 'Failed to connect to PhonePe Gateway. Please check your credentials in the Admin Panel.');
+        setProcessing(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Payment authorization timed out. Please try again.');
       setProcessing(false);
     }
   };
@@ -476,7 +438,7 @@ export default function PhonePeModal({
                 onClick={handlePayNow}
                 className="w-full py-3.5 rounded-xl bg-[#5f259f] hover:bg-[#4a1c7d] text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5f259f]/20 transition-all"
               >
-                <span>Authorize &amp; Pay {formatINR(amount)}</span>
+                <span>Redirect to PhonePe Gateway ({formatINR(amount)})</span>
                 <ArrowRight size={16} />
               </button>
 

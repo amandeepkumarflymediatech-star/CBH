@@ -1,9 +1,42 @@
 import { NextResponse } from 'next/server';
-import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { BulkQuotation } from '@/lib/types';
 import { pushRfqToErpNext } from '@/lib/erpnext';
+import { query } from '@/lib/db';
 
-let quotesDb: BulkQuotation[] = [...INITIAL_QUOTES];
+let quotesDb: BulkQuotation[] = [];
+
+async function getQuotes(): Promise<BulkQuotation[]> {
+  try {
+    const rows = await query<any>(`
+      SELECT r.*,
+             (SELECT COUNT(*) FROM rfq_items WHERE rfq_id = r.id) as items_count
+      FROM bulk_rfqs r
+      ORDER BY r.created_at DESC
+    `);
+    if (rows && rows.length > 0) {
+      return rows.map((r: any) => ({
+        id: String(r.id),
+        rfqNumber: r.rfq_number,
+        date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        customerName: r.contact_name,
+        companyName: r.company_name,
+        gstin: r.gstin,
+        shippingPincode: r.shipping_pincode || '',
+        itemsCount: Number(r.items_count) || 1,
+        totalWeightKg: parseFloat(r.total_weight_kg) || 0,
+        grossAmount: parseFloat(r.gross_amount) || 0,
+        discountPct: parseFloat(r.slab_discount_pct) || 0,
+        netTotal: parseFloat(r.net_total) || 0,
+        status: r.status || 'PENDING',
+        globalUnit: r.global_unit || 'PCS',
+        validUntil: r.validity_date ? new Date(r.validity_date).toISOString().split('T')[0] : '2026-12-31',
+      }));
+    }
+  } catch (err) {
+    console.warn('[RFQ API] MySQL query fallback:', err);
+  }
+  return quotesDb;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,7 +44,8 @@ export async function GET(request: Request) {
   const status = searchParams.get('status');
   const sortBy = searchParams.get('sortBy');
 
-  let results = [...quotesDb];
+  const allQuotes = await getQuotes();
+  let results = [...allQuotes];
 
   if (search) {
     results = results.filter(
@@ -38,7 +72,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     count: results.length,
-    total: quotesDb.length,
+    total: allQuotes.length,
     data: results,
   });
 }

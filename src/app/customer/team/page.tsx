@@ -21,11 +21,7 @@ interface TeamMember {
   status: string;
 }
 
-const DEFAULT_TEAM: TeamMember[] = [
-  { id: 'tm-1', name: 'Rajesh Sharma', role: 'Chief Procurement Officer', email: 'rajesh.sharma@apexinfra.in', access: 'Admin (Full PO & Credit Limit)', status: 'Active' },
-  { id: 'tm-2', name: 'Vikram Joshi', role: 'Site Lead Engineer', email: 'vikram.j@apexinfra.in', access: 'Inspection & MTC Download', status: 'Active' },
-  { id: 'tm-3', name: 'Pooja Verma', role: 'Accounts & Billing Lead', email: 'pooja.v@apexinfra.in', access: 'Invoices & Ledger Review', status: 'Active' },
-];
+const DEFAULT_TEAM: TeamMember[] = [];
 
 export default function CustomerTeamPage() {
   const [team, setTeam] = useState<TeamMember[]>(DEFAULT_TEAM);
@@ -73,8 +69,7 @@ export default function CustomerTeamPage() {
           onClick={() => setIsInviteModalOpen(true)}
           className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
         >
-          <Plus size={14} />
-          <span>+ Authorize Team Member</span>
+          <span> + Authorize Team Member</span>
         </button>
       </div>
 

@@ -3,8 +3,8 @@
   "saltKey": "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399",
   "saltIndex": "1",
   "environment": "SANDBOX",
-  "enableSimulator": true,
+  "enableSimulator": false,
   "defaultCallbackUrl": "https://cbh.store/api/payment/phonepe/callback",
-  "defaultRedirectUrl": "http://localhost:3000/order-success",
+  "defaultRedirectUrl": "http://localhost:3000/api/payment/phonepe/redirect",
   "autoConfirmOrders": true
 }

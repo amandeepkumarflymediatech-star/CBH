@@ -12,6 +12,9 @@ export interface AuthUser {
   tierDiscountPct?: number;
   creditLimit?: number;
   avatar?: string;
+  pan?: string;
+  msmeRegistrationNumber?: string;
+  address?: string;
 }
 
 const STORAGE_KEY = 'cbh_auth_user';

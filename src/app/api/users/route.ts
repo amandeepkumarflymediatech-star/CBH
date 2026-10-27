@@ -1,8 +1,40 @@
 import { NextResponse } from 'next/server';
-import { INITIAL_USERS } from '@/lib/mock-data';
 import { UserAccount } from '@/lib/types';
+import { query } from '@/lib/db';
 
-let usersDb: UserAccount[] = [...INITIAL_USERS];
+let usersDb: UserAccount[] = [];
+
+async function getUsers(): Promise<UserAccount[]> {
+  try {
+    const rows = await query<any>(`
+      SELECT u.*,
+             (SELECT COUNT(*) FROM orders WHERE customer_id = u.id) as orders_count
+      FROM users u
+      ORDER BY u.created_at DESC
+    `);
+    if (rows && rows.length > 0) {
+      return rows.map((r: any) => ({
+        id: Number(r.id),
+        fullName: r.full_name,
+        companyName: r.company_name || 'Enterprise Client',
+        email: r.email,
+        gstin: r.gstin || '',
+        phone: r.phone || '',
+        role: r.role || 'customer',
+        tier: r.tier || 'BRONZE',
+        tierDiscountPct: parseFloat(r.tier_discount_pct) || 0,
+        creditLimit: parseFloat(r.credit_limit) || 0,
+        isVerified: Boolean(r.is_verified),
+        joinedDate: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        createdAt: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        ordersCount: Number(r.orders_count) || 0,
+      }));
+    }
+  } catch (err) {
+    console.warn('[Users API] MySQL query fallback:', err);
+  }
+  return usersDb;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +44,8 @@ export async function GET(request: Request) {
   const verified = searchParams.get('verified');
   const sortBy = searchParams.get('sortBy');
 
-  let results = [...usersDb];
+  const allUsers = await getUsers();
+  let results = [...allUsers];
 
   if (search) {
     results = results.filter(
@@ -52,7 +85,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     count: results.length,
-    total: usersDb.length,
+    total: allUsers.length,
     data: results,
   });
 }
