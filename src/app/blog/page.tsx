@@ -18,7 +18,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import MainHeader from '@/components/header/MainHeader';
-import IndustrialFooter from '@/components/footer/IndustrialFooter';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { BlogPost, RfqLineItem } from '@/lib/types';
 import { INITIAL_BLOG_POSTS } from '@/lib/mock-data';
@@ -321,8 +320,6 @@ export default function BlogPage() {
         onUpdateQty={() => {}}
         onRemoveItem={() => {}}
       />
-
-      <IndustrialFooter />
     </div>
   );
 }

@@ -27,7 +27,6 @@ import {
   Sparkles
 } from 'lucide-react';
 import MainHeader from '@/components/header/MainHeader';
-import IndustrialFooter from '@/components/footer/IndustrialFooter';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { BlogPost, RfqLineItem } from '@/lib/types';
 
@@ -268,7 +267,6 @@ export default function BlogPostDetailPage() {
             <p style={{ color: '#64748B', fontSize: '14px', fontWeight: 600 }}>Loading Technical Fastener Article...</p>
           </div>
         </div>
-        <IndustrialFooter />
       </div>
     );
   }
@@ -308,7 +306,6 @@ export default function BlogPostDetailPage() {
             </Link>
           </div>
         </div>
-        <IndustrialFooter />
       </div>
     );
   }
@@ -728,8 +725,6 @@ export default function BlogPostDetailPage() {
         onUpdateQty={() => {}}
         onRemoveItem={() => {}}
       />
-
-      <IndustrialFooter />
     </div>
   );
 }
