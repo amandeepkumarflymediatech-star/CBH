@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { X, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { RfqLineItem } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
-import PhonePeModal from '@/components/payment/PhonePeModal';
+import { getStoredUser } from '@/lib/auth';
+import { setStoredCart } from '@/lib/cart';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -24,8 +25,8 @@ export default function CartDrawer({
   onRemoveItem,
 }: CartDrawerProps) {
   const router = useRouter();
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [orderId, setOrderId] = useState(`CBH-ORD-${Date.now()}`);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const summary = calculateRfqSummary(items);
 
   return (
@@ -92,23 +93,46 @@ export default function CartDrawer({
                     gap: '8px'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span className="badge badge-din" style={{ marginBottom: '4px' }}>
-                        {item.standard}
-                      </span>
-                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-dark-900)', lineHeight: 1.3 }}>
-                        {item.name}
-                      </h4>
-                      <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-subtle)' }}>
-                        SKU: {item.sku}
-                      </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '6px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid var(--color-surface-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '2px',
+                        flexShrink: 0
+                      }}>
+                        <img
+                          src={item.imageUrl || '/assets/bolt_zinc.jpg'}
+                          alt={item.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <span className="badge badge-din" style={{ marginBottom: '4px' }}>
+                          {item.standard}
+                        </span>
+                        <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-dark-900)', lineHeight: 1.3 }}>
+                          {item.name}
+                        </h4>
+                        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-subtle)' }}>
+                          SKU: {item.sku}
+                        </span>
+                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item.id)}
-                      style={{ color: 'var(--color-text-subtle)' }}
+                      style={{ color: 'var(--color-text-subtle)', flexShrink: 0 }}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -176,9 +200,45 @@ export default function CartDrawer({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => {
-                  setOrderId(`CBH-ORD-${Date.now()}`);
-                  setIsPayModalOpen(true);
+                disabled={isPaying}
+                onClick={async () => {
+                  try {
+                    setIsPaying(true);
+                    setPayError(null);
+                    setStoredCart(items);
+
+                    const user = getStoredUser();
+                    if (!user) {
+                      onClose();
+                      router.push('/login?redirect=/checkout');
+                      return;
+                    }
+
+                    const newOrderId = `CBH-ORD-${Date.now()}`;
+                    const res = await fetch('/api/payment/phonepe/initiate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        amount: summary.netTotal,
+                        orderId: newOrderId,
+                        customerName: user.fullName || 'Commercial Fastener Buyer',
+                        customerPhone: user.phone || '9888021000',
+                        customerEmail: user.email || 'procurement@buyer.in',
+                        companyName: user.companyName || 'Verified Enterprise Client',
+                        totalWeightKg: summary.totalWeightKg,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success && data.paymentUrl) {
+                      window.location.href = data.paymentUrl;
+                    } else {
+                      setIsPaying(false);
+                      setPayError(data.error || 'Failed to initiate PhonePe payment.');
+                    }
+                  } catch (err: any) {
+                    setIsPaying(false);
+                    setPayError(err.message || 'Payment connection error.');
+                  }
                 }}
                 style={{
                   width: '100%',
@@ -193,16 +253,23 @@ export default function CartDrawer({
                   justifyContent: 'center',
                   gap: '8px',
                   boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
-                  cursor: 'pointer',
+                  cursor: isPaying ? 'wait' : 'pointer',
                   border: 'none',
+                  opacity: isPaying ? 0.8 : 1,
                 }}
               >
-                <span>⚡ Pay via PhonePe (UPI / QR / Cards)</span>
+                <span>{isPaying ? 'Redirecting to PhonePe...' : '⚡ Pay via PhonePe Gateway'}</span>
                 <ArrowRight size={16} />
               </button>
 
-              <Link
-                href="/checkout"
+              {payError && (
+                <div style={{ color: '#DC2626', fontSize: '11px', textAlign: 'center', fontWeight: 700 }}>
+                  {payError}
+                </div>
+              )}
+
+              <button
+                type="button"
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -214,12 +281,22 @@ export default function CartDrawer({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  textDecoration: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
                 }}
-                onClick={onClose}
+                onClick={() => {
+                  setStoredCart(items);
+                  onClose();
+                  const user = getStoredUser();
+                  if (!user) {
+                    router.push('/login?redirect=/checkout');
+                  } else {
+                    router.push('/checkout');
+                  }
+                }}
               >
                 <span>Full Commercial Checkout &amp; GST Details</span>
-              </Link>
+              </button>
 
               <Link
                 href="/bulk-order"
@@ -238,27 +315,6 @@ export default function CartDrawer({
           </div>
         )}
       </div>
-
-      {/* Interactive PhonePe Payment Modal for Direct Cart Settlement */}
-      <PhonePeModal
-        isOpen={isPayModalOpen}
-        onClose={() => setIsPayModalOpen(false)}
-        amount={summary.netTotal}
-        orderNumber={orderId}
-        customerName="Commercial Fastener Buyer"
-        customerPhone="9888021000"
-        customerEmail="procurement@buyer.in"
-        companyName="Verified Enterprise Client"
-        onSuccess={(data) => {
-          setIsPayModalOpen(false);
-          onClose();
-          router.push(
-            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
-              data.mode
-            )}`
-          );
-        }}
-      />
     </>
   );
 }

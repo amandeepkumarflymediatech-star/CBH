@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed-dummy-data.js",
     "seed": "node scripts/seed-cbh-products.js",
     "fetch-products": "node scripts/seed-cbh-products.js"
   },

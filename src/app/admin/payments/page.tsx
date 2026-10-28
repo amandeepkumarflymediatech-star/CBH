@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import TablePagination from '@/components/common/TablePagination';
 import {
   CreditCard,
   ShieldCheck,
@@ -44,6 +45,15 @@ export default function AdminPaymentsPage() {
 
   const [transactions, setTransactions] = useState<PhonePeTransactionRecord[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return transactions.slice(start, start + itemsPerPage);
+  }, [transactions, currentPage, itemsPerPage]);
 
   useEffect(() => {
     fetchData();
@@ -406,7 +416,7 @@ export default function AdminPaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {transactions.map((txn) => (
+              {paginatedTransactions.map((txn) => (
                 <tr key={txn.transactionId} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-[#0F172A]">
                     <div>{txn.transactionId}</div>
@@ -458,6 +468,17 @@ export default function AdminPaymentsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Table Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={transactions.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          pageSizeOptions={[5, 10, 20, 50]}
+          itemLabel="settlement transactions"
+        />
       </div>
     </div>
   );

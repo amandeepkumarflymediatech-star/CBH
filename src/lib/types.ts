@@ -68,6 +68,7 @@ export interface RfqLineItem {
   weightPerPcKg: number;
   totalWeightKg: number;
   rowTotal: number;
+  imageUrl?: string;
 }
 
 export interface RfqSummary {
@@ -99,6 +100,8 @@ export interface CustomerOrder {
   mtcCertNumber: string;
   customerName?: string;
   companyName?: string;
+  erpnextSalesOrderId?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number; uom?: string }>;
 }
 
 export interface BulkQuotation {
@@ -115,8 +118,11 @@ export interface BulkQuotation {
   grossAmount: number;
   discountPct: number;
   netTotal: number;
-  status: 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED' | 'REJECTED';
+  status: 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'APPROVED' | 'PO_ISSUED' | 'CONVERTED_TO_PO' | 'REJECTED';
   validUntil: string;
+  erpnextQuoteId?: string;
+  erpnextSalesOrderId?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
 }
 
 export interface UserAccount {
@@ -133,6 +139,8 @@ export interface UserAccount {
   isVerified: boolean;
   city?: string;
   createdAt: string;
+  joinedDate?: string;
+  ordersCount?: number;
 }
 
 export interface SurplusLot {

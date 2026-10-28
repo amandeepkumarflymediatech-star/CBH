@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import TablePagination from '@/components/common/TablePagination';
 import { Product } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -58,6 +59,10 @@ export default function AdminErpNextSection({
   const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Webhook URL
   const webhookUrl = typeof window !== 'undefined'
@@ -211,13 +216,29 @@ export default function AdminErpNextSection({
     setTimeout(() => setCopiedWebhook(false), 3000);
   };
 
+  // Reset to page 1 on search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   // Filter products by search
-  const filteredProducts = products.filter(
-    (p) =>
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.standard.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
+    const q = searchTerm.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.sku.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.standard.toLowerCase().includes(q) ||
+        p.grade.toLowerCase().includes(q)
+    );
+  }, [products, searchTerm]);
+
+  // Paginated slice
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage, itemsPerPage]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -670,60 +691,79 @@ export default function AdminErpNextSection({
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.slice(0, 15).map((p) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>
-                    {p.sku}
-                  </td>
-                  <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0F172A' }}>
-                    {p.name}
-                  </td>
-                  <td style={{ padding: '10px 12px', color: '#475569' }}>
-                    <span style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '11px' }}>
-                      {p.standard}
-                    </span>
-                    <span style={{ marginLeft: '6px', color: '#059669', fontWeight: 700 }}>
-                      Gr {p.grade}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>
-                    {p.weightPerPcKg} Kg
-                  </td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0F172A' }}>
-                    ₹{p.pricePerPiece.toFixed(2)}
-                  </td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#059669' }}>
-                    ₹{p.pricePerKg.toFixed(2)}
-                  </td>
-                  <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>
-                    <span style={{
-                      color: p.stockPcs > 10000 ? '#059669' : p.stockPcs > 0 ? '#D97706' : '#DC2626',
-                      fontWeight: 800
-                    }}>
-                      {p.stockPcs.toLocaleString()} Pcs
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{
-                      background: '#ECFDF5',
-                      color: '#047857',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <ShieldCheck size={11} />
-                      <span>ERP Dynamic</span>
-                    </span>
+              {paginatedProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                    No synchronized fastener items match "{searchTerm}".
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginatedProducts.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>
+                      {p.sku}
+                    </td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0F172A' }}>
+                      {p.name}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#475569' }}>
+                      <span style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '11px' }}>
+                        {p.standard}
+                      </span>
+                      <span style={{ marginLeft: '6px', color: '#059669', fontWeight: 700 }}>
+                        Gr {p.grade}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>
+                      {p.weightPerPcKg} Kg
+                    </td>
+                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0F172A' }}>
+                      ₹{p.pricePerPiece.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#059669' }}>
+                      ₹{p.pricePerKg.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{
+                        color: p.stockPcs > 10000 ? '#059669' : p.stockPcs > 0 ? '#D97706' : '#DC2626',
+                        fontWeight: 800
+                      }}>
+                        {p.stockPcs.toLocaleString()} Pcs
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{
+                        background: '#ECFDF5',
+                        color: '#047857',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <ShieldCheck size={11} />
+                        <span>ERP Dynamic</span>
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Table Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredProducts.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          pageSizeOptions={[10, 20, 50, 100]}
+          itemLabel="synced items"
+        />
       </div>
     </div>
   );

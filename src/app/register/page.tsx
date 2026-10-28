@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Building2,
   User,
@@ -25,8 +25,9 @@ import {
 } from 'lucide-react';
 import { setStoredUser, AuthUser } from '@/lib/auth';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [gstin, setGstin] = useState('');
@@ -41,6 +42,13 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, [searchParams]);
 
   const fillSampleEnterprise = () => {
     setFullName('Rajeshwar Singh');
@@ -107,7 +115,12 @@ export default function RegisterPage() {
 
       setSuccessMsg('Enterprise account approved! Preparing your customized procurement portal...');
       setTimeout(() => {
-        router.push('/customer');
+        const redirectParam = searchParams.get('redirect');
+        if (redirectParam) {
+          router.push(redirectParam);
+        } else {
+          router.push('/customer');
+        }
       }, 800);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error creating account. Please verify input.');
@@ -394,7 +407,7 @@ export default function RegisterPage() {
                   </h1>
                 </div>
 
-                <button
+                {/* <button
                   type="button"
                   onClick={fillSampleEnterprise}
                   title="Automatically fill verified sample enterprise details"
@@ -423,12 +436,32 @@ export default function RegisterPage() {
                 >
                   <Zap size={13} color="#FF6B00" />
                   <span>Sample Data</span>
-                </button>
+                </button> */}
               </div>
 
               <p style={{ fontSize: '13px', color: '#64748B', marginTop: '-6px', marginBottom: '20px', lineHeight: 1.5 }}>
                 Enter your industrial enterprise details to activate your custom rate contract and digital PO portal.
               </p>
+
+              {/* Informative notice if redirected from login */}
+              {searchParams.get('email') && (
+                <div style={{
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  color: '#1E40AF',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  marginBottom: '18px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <CheckCircle2 size={16} color="#0052CC" style={{ flexShrink: 0 }} />
+                  <span>No existing account was found for <strong>{searchParams.get('email')}</strong>. Please complete registration below to create your corporate account.</span>
+                </div>
+              )}
 
               {/* Alerts */}
               {errorMsg && (
@@ -895,5 +928,17 @@ export default function RegisterPage() {
         <Link href="/contact" style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 700 }}>Contact Support</Link>
       </footer>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}>
+        <p style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>Loading Registration Portal...</p>
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

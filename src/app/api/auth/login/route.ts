@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, role } = body;
+    const { email, password, role, securityKey } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -14,6 +14,21 @@ export async function POST(request: Request) {
 
     // Admin shortcut or standard client authentication simulation
     const isAdmin = email.includes('admin') || role === 'admin';
+
+    // Validate Admin Hardware Security Key against Environment Variable
+    if (isAdmin) {
+      const configuredEnvKey =
+        process.env.ADMIN_SECURITY_KEY ||
+        process.env.NEXT_PUBLIC_ADMIN_SECURITY_KEY ||
+        'CBH-HQ-OP-901';
+
+      if (securityKey && securityKey.trim() !== configuredEnvKey.trim()) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid Station Hardware Security Key. Clearance denied.' },
+          { status: 401 }
+        );
+      }
+    }
 
     const user = {
       id: isAdmin ? 1 : 101,
@@ -27,13 +42,21 @@ export async function POST(request: Request) {
       tierDiscountPct: isAdmin ? 25 : 18,
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Authentication successful. Secure session initialized.',
       user,
       token: 'cbh_token_' + Date.now(),
       redirectTo: isAdmin ? '/admin' : '/customer',
     });
+
+    response.cookies.set('cbh_role', user.role, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || 'Authentication failed' },

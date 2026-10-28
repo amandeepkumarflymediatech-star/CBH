@@ -304,12 +304,12 @@ export default function MainHeader({
                         </div>
 
                         <Link
-                          href="/customer"
+                          href={currentUser.role === 'admin' ? '/admin' : '/customer'}
                           onClick={() => setIsUserMenuOpen(false)}
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#0F172A', textDecoration: 'none', background: '#F8FAFC' }}
                         >
-                          <Building2 size={15} color="#0052CC" />
-                          <span>Client Portal &amp; Orders</span>
+                          <Building2 size={15} color={currentUser.role === 'admin' ? '#0052CC' : '#FF6B00'} />
+                          <span>{currentUser.role === 'admin' ? 'Admin Dashboard' : 'Client Dashboard'}</span>
                         </Link>
                         <Link
                           href="/bulk-order"
@@ -558,12 +558,12 @@ export default function MainHeader({
                     </div>
 
                     <Link
-                      href="/customer"
+                      href={currentUser.role === 'admin' ? '/admin' : '/customer'}
                       className="drawer-nav-item"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <Building2 size={18} color="#FF6B00" />
-                      <span>Client Portal &amp; Order History</span>
+                      <Building2 size={18} color={currentUser.role === 'admin' ? '#0052CC' : '#FF6B00'} />
+                      <span>{currentUser.role === 'admin' ? 'Admin Operations Terminal' : 'Client Portal & Order History'}</span>
                     </Link>
 
 

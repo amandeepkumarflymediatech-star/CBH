@@ -64,7 +64,7 @@ export default function AdminLayout({
     productsCount: 48,
     rfqsCount: 3,
     ordersCount: 8,
-    usersCount: 5,
+    usersCount: 2,
     surplusCount: 6,
     blogsCount: 5,
   });
@@ -82,20 +82,57 @@ export default function AdminLayout({
       }
     }
 
-    let user = getStoredUser();
-    // In admin operations terminal, automatically grant DEMO_ADMIN access
-    if (!user || user.role !== 'admin') {
-      user = DEMO_ADMIN;
-      setStoredUser(DEMO_ADMIN);
+    if (pathname === '/admin/login') {
+      setHasLoadedAuth(true);
+      return;
     }
+
+    const user = getStoredUser();
+    if (!user) {
+      setCurrentUser(null);
+      setHasLoadedAuth(true);
+      router.replace('/admin/login');
+      return;
+    }
+
+    if (user.role === 'customer') {
+      setCurrentUser(user);
+      setHasLoadedAuth(true);
+      router.replace('/customer');
+      return;
+    }
+
+    if (user.role !== 'admin') {
+      setCurrentUser(user);
+      setHasLoadedAuth(true);
+      router.replace('/admin/login');
+      return;
+    }
+
     setCurrentUser(user);
     setHasLoadedAuth(true);
 
     const handleAuthChange = () => {
       const u = getStoredUser();
-      setCurrentUser(u && u.role === 'admin' ? u : DEMO_ADMIN);
+      if (!u) {
+        setCurrentUser(null);
+        router.replace('/admin/login');
+      } else if (u.role === 'customer') {
+        setCurrentUser(u);
+        router.replace('/customer');
+      } else if (u.role !== 'admin') {
+        setCurrentUser(u);
+        router.replace('/admin/login');
+      } else {
+        setCurrentUser(u);
+      }
     };
     window.addEventListener('cbh_auth_change', handleAuthChange);
+
+    const handleTelemetryRefresh = () => {
+      fetchTelemetry();
+    };
+    window.addEventListener('cbh_telemetry_refresh', handleTelemetryRefresh);
 
     fetchTelemetry();
 
@@ -111,6 +148,7 @@ export default function AdminLayout({
 
     return () => {
       window.removeEventListener('cbh_auth_change', handleAuthChange);
+      window.removeEventListener('cbh_telemetry_refresh', handleTelemetryRefresh);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [pathname]);
@@ -131,10 +169,11 @@ export default function AdminLayout({
 
   const fetchTelemetry = async () => {
     try {
-      const [prodRes, rfqRes, ordRes] = await Promise.allSettled([
+      const [prodRes, rfqRes, ordRes, usersRes] = await Promise.allSettled([
         fetch('/api/products').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
         fetch('/api/orders').then((r) => r.json()),
+        fetch('/api/users').then((r) => r.json()),
       ]);
 
       setTelemetry((prev) => ({
@@ -142,6 +181,7 @@ export default function AdminLayout({
         productsCount: prodRes.status === 'fulfilled' && prodRes.value?.data ? prodRes.value.data.length : prev.productsCount,
         rfqsCount: rfqRes.status === 'fulfilled' && rfqRes.value?.data ? rfqRes.value.data.filter((q: any) => q.status === 'PENDING').length : prev.rfqsCount,
         ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
+        usersCount: usersRes.status === 'fulfilled' && usersRes.value?.data ? usersRes.value.data.length : prev.usersCount,
       }));
     } catch {
       // ignore background telemetry errors
@@ -153,72 +193,38 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // Case 1: Unauthenticated -> Immediately redirect to home /
-  if (hasLoadedAuth && !currentUser) {
-    if (typeof window !== 'undefined') {
-      window.location.replace('/');
-    }
+  // Case 0: Still checking authentication on client
+  if (!hasLoadedAuth) {
     return (
-      <div className="bg-[#0F172A] min-h-screen flex items-center justify-center">
-        <p className="text-slate-400 text-xs font-semibold">Redirecting to home...</p>
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#FF6B00] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Verifying Administrator Clearance...</p>
       </div>
     );
   }
 
-  // Case 2: Logged in as Customer -> Access Denied / 403 Forbidden Gate
-  if (hasLoadedAuth && currentUser && currentUser.role !== 'admin') {
+  // Case 1: Unauthenticated -> Immediately redirect to /admin/login
+  if (!currentUser) {
+    if (typeof window !== 'undefined') {
+      router.replace('/admin/login');
+    }
     return (
-      <div className="bg-[#F8FAFC] min-h-screen flex flex-col">
-        <header className="bg-[#0F172A] px-6 py-3.5 flex items-center justify-between border-b border-white/10">
-          <Link href="/" className="no-underline flex items-center gap-2">
-            <span className="text-lg font-black text-white">CBH<span className="text-[#FF6B00]">.</span></span>
-            <span className="text-[11px] font-extrabold bg-red-600 text-white px-2 py-0.5 rounded">RESTRICTED ACCESS</span>
-          </Link>
-          <Link href="/customer" className="text-slate-400 text-xs font-semibold no-underline hover:text-white">
-            &larr; Back to Client Portal
-          </Link>
-        </header>
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-white border border-red-200 rounded-2xl max-w-lg w-full p-8 text-center shadow-xl border-t-4 border-t-red-600">
-            <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
-              <ShieldAlert size={30} />
-            </div>
-            <div className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-extrabold mb-2">
-              403 FORBIDDEN • PRIVILEGE RESTRICTED
-            </div>
-            <h2 className="text-xl font-black text-[#0F172A] mb-2">
-              Administrative Privileges Required
-            </h2>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              You are currently logged in as <strong>{currentUser.companyName}</strong> ({currentUser.fullName}) with <strong>Client/Buyer</strong> privileges. This terminal is strictly reserved for CBH operations and management.
-            </p>
-            <div className="flex flex-col gap-2.5">
-              <Link
-                href="/customer"
-                className="w-full py-2.5 rounded-xl bg-[#5B4DF6] text-white text-xs font-bold no-underline hover:bg-[#4D3FF0]"
-              >
-                Return to Enterprise Client Dashboard
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setStoredUser(DEMO_ADMIN);
-                  setCurrentUser(DEMO_ADMIN);
-                }}
-                className="w-full py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
-              >
-                One-Click Super Admin Clearance
-              </button>
-              <button
-                type="button"
-                onClick={() => logout('/admin/login')}
-                className="w-full py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                Sign Out &amp; Go to Admin Login
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#FF6B00] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold">Redirecting to Administrator Sign In...</p>
+      </div>
+    );
+  }
+
+  // Case 2: Logged in as Customer -> Redirect to /customer
+  if (currentUser.role === 'customer' || currentUser.role !== 'admin') {
+    if (typeof window !== 'undefined') {
+      router.replace('/customer');
+    }
+    return (
+      <div className="bg-[#0F172A] min-h-screen flex flex-col items-center justify-center text-white gap-3">
+        <RefreshCw className="w-8 h-8 text-[#5B4DF6] animate-spin" />
+        <p className="text-slate-400 text-xs font-semibold">Redirecting to Enterprise Client Dashboard...</p>
       </div>
     );
   }
@@ -238,7 +244,7 @@ export default function AdminLayout({
     if (pathname === '/admin') return 'Dashboard';
     if (pathname.startsWith('/admin/products')) return 'Products';
     if (pathname.startsWith('/admin/orders')) return 'Orders & Dispatch';
-    if (pathname.startsWith('/admin/rfqs')) return 'Reports & RFQs';
+    if (pathname.startsWith('/admin/rfqs')) return 'RFQs';
     if (pathname.startsWith('/admin/users')) return 'Customers';
     if (pathname.startsWith('/admin/categories')) return 'Categories';
     if (pathname.startsWith('/admin/surplus')) return 'Surplus Stock';
@@ -263,25 +269,41 @@ export default function AdminLayout({
         } ${isSidebarCollapsed ? 'w-[80px]' : 'w-[260px]'}`}
       >
         <div className="flex flex-col min-h-0 flex-1 overflow-y-auto px-4 py-5 space-y-6">
-          {/* Top Brand Logo */}
-          <div className="flex items-center justify-start px-2 py-1">
-            <Link href="/admin" className="flex items-center no-underline" title="CBH Admin">
+          {/* Top Brand Logo & Sidebar Slider Toggle */}
+          <div className="flex items-center justify-around px-2">
+            <Link href="/admin" className="flex items-center gap-2 no-underline" title="CBH Admin Portal">
               {isSidebarCollapsed ? (
                 <img
                   src="/assets/cbh-logo-icon.png"
                   alt="CBH Fasteners"
-                  className="w-9 h-9 object-contain"
+                  className="w-8 h-8 object-contain"
                 />
               ) : (
-                <img
-                  src="/assets/cbh-logo-stacked.png"
-                  alt="CBH Fasteners"
-                  className={`h-12 w-auto max-w-[210px] object-contain transition-all ${
-                    isDarkMode ? 'brightness-0 invert' : ''
-                  }`}
-                />
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/assets/cbh-logo-stacked.png"
+                    alt="CBH Fasteners"
+                    className={`h-10 w-auto max-w-[150px] object-contain transition-all ${
+                      isDarkMode ? 'brightness-0 invert' : ''
+                    }`}
+                  />
+                  <span className="text-[9px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] dark:bg-[#5B4DF6]/20 px-1.5 py-0.5 rounded tracking-wider">
+                    ADMIN
+                  </span>
+                </div>
               )}
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={`p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer ${
+                isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-100'
+              }`}
+              title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <SlidersHorizontal size={15} />
+            </button>
           </div>
 
           
@@ -418,7 +440,7 @@ export default function AdminLayout({
                 )}
               </Link>
 
-              {/* 6. Reports / RFQs */}
+              {/* 6. RFQs */}
               <Link
                 href="/admin/rfqs"
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
@@ -426,11 +448,11 @@ export default function AdminLayout({
                     ? 'bg-[#0F172A] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
-                title="Reports"
+                title="RFQs"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <FileCheck2 size={18} strokeWidth={1.9} />
-                  {!isSidebarCollapsed && <span>Reports</span>}
+                  {!isSidebarCollapsed && <span>RFQs</span>}
                 </div>
                 {!isSidebarCollapsed && telemetry.rfqsCount > 0 && (
                   <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
@@ -513,49 +535,6 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
-
-        {/* Bottom Section: Dark Mode Toggle */}
-        <div className={`p-4 border-t space-y-3 shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-          {/* Dark Mode Row */}
-          {!isSidebarCollapsed ? (
-            <div
-              onClick={toggleDarkMode}
-              className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
-                isDarkMode ? 'text-slate-200 hover:bg-slate-800/80' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-500" />}
-                <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleDarkMode();
-                }}
-                className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
-                  isDarkMode ? 'bg-[#5B4DF6]' : 'bg-slate-200'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${
-                    isDarkMode ? 'translate-x-4' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              className="flex justify-center p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer mx-auto"
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-500" />}
-            </button>
-          )}
-        </div>
       </aside>
 
       {/* ================================================================ */}
@@ -584,80 +563,10 @@ export default function AdminLayout({
 
           {/* Right: Team Stack + Notifications + Search + User Profile */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Active Team Stack (+2) */}
-            <div className="hidden sm:flex items-center -space-x-2">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop&crop=faces"
-                alt="Member"
-                className="w-7 h-7 rounded-full border-2 border-white object-cover"
-              />
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=faces"
-                alt="Member"
-                className="w-7 h-7 rounded-full border-2 border-white object-cover"
-              />
-              <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white text-slate-700 text-[10px] font-extrabold flex items-center justify-center">
-                +2
-              </div>
-            </div>
+           
 
             {/* Notification Bell with Badge (24) */}
-            <div className="relative" ref={notifRef}>
-              <button
-                type="button"
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                title="Notifications"
-              >
-                <Bell size={19} />
-                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                  24
-                </span>
-              </button>
-
-              {/* Notification Popover */}
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <span className="text-xs font-bold text-[#0F172A]">Console Alerts</span>
-                    <span className="text-[10px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-2 py-0.5 rounded-full">
-                      24 New
-                    </span>
-                  </div>
-                  <div className="divide-y divide-slate-100 text-xs mt-2 max-h-60 overflow-y-auto">
-                    <div className="py-2">
-                      <div className="font-bold text-[#0F172A]">High Tensile Order #2048</div>
-                      <div className="text-[11px] text-slate-500">John Doe placed order for ₹99,900.</div>
-                      <div className="text-[10px] text-[#5B4DF6] font-semibold mt-1">5m ago</div>
-                    </div>
-                    <div className="py-2">
-                      <div className="font-bold text-red-600">Low Stock Alert: DIN 933 M16</div>
-                      <div className="text-[11px] text-slate-500">Only 240 pcs remaining in Ludhiana Unit.</div>
-                      <div className="text-[10px] text-slate-400 font-semibold mt-1">20m ago</div>
-                    </div>
-                    <div className="py-2">
-                      <div className="font-bold text-[#0F172A]">Payment Verified: PhonePe UPI</div>
-                      <div className="text-[11px] text-slate-500">Transaction TXN-9981 confirmed.</div>
-                      <div className="text-[10px] text-slate-400 font-semibold mt-1">1h ago</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Global Search Bar (Prodex style with ⌘K) */}
-            <div className="relative hidden md:flex items-center">
-              <Search size={15} className="absolute left-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search anything"
-                className="w-48 xl:w-64 pl-9 pr-10 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6] focus:bg-white transition-all"
-              />
-              <div className="absolute right-2.5 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-bold text-slate-400 flex items-center gap-0.5">
-                <span>⌘</span>
-                <span>K</span>
-              </div>
-            </div>
+            
 
             {/* User Profile Avatar with dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -705,14 +614,7 @@ export default function AdminLayout({
                       <ExternalLink size={14} className="text-[#5B4DF6]" />
                       <span>View Live Storefront</span>
                     </Link>
-                    <Link
-                      href="/customer"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 no-underline"
-                    >
-                      <LayoutDashboard size={14} className="text-[#5B4DF6]" />
-                      <span>Switch to Customer Portal</span>
-                    </Link>
+                    
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-slate-100">
@@ -720,7 +622,7 @@ export default function AdminLayout({
                       type="button"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        logout('/');
+                        logout('/admin/login');
                       }}
                       className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 cursor-pointer"
                     >
@@ -801,7 +703,7 @@ export default function AdminLayout({
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
                   >
                     <FileCheck2 size={16} />
-                    <span>Reports</span>
+                    <span>RFQs</span>
                   </Link>
                   <Link
                     href="/admin/payments"
@@ -827,7 +729,7 @@ export default function AdminLayout({
                   type="button"
                   onClick={() => {
                     setIsMobileNavOpen(false);
-                    logout('/');
+                    logout('/admin/login');
                   }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 cursor-pointer"
                 >

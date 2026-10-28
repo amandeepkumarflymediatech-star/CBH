@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -18,27 +18,85 @@ import {
   Zap,
   Phone,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  RefreshCw,
+  Edit2
 } from 'lucide-react';
-import { setStoredUser, DEMO_CLIENT, AuthUser } from '@/lib/auth';
+import { getStoredUser, setStoredUser, DEMO_CLIENT, AuthUser } from '@/lib/auth';
 
-export default function ClientLoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get('redirect') || '';
+
+  const [step, setStep] = useState<'email' | 'password'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [linkedUser, setLinkedUser] = useState<any | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const fillDemoBuyer = () => {
-    setEmail('procurement@apexinfra.com');
-    setPassword('Password@123');
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user) {
+      if (redirectParam) {
+        router.replace(redirectParam);
+      } else if (user.role === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/customer');
+      }
+    }
+  }, [router, redirectParam]);
+
+  // Step 1: Check Email
+  const handleEmailProceed = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid company email address.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Unable to check email. Please try again.');
+      }
+
+      if (data.exists) {
+        // Linked with us -> proceed to password step
+        setLinkedUser(data.user || null);
+        setStep('password');
+      } else {
+        // Not linked with us -> go to signup page with email pre-filled and redirect preserved
+        const targetUrl = `/register?email=${encodeURIComponent(cleanEmail)}${
+          redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ''
+        }`;
+        router.push(targetUrl);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error checking account credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 2: Sign in with Password
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
@@ -48,7 +106,11 @@ export default function ClientLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'customer' }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          role: linkedUser?.role || 'customer',
+        }),
       });
 
       const data = await res.json();
@@ -61,12 +123,18 @@ export default function ClientLoginPage() {
       const authUser: AuthUser = data.user || DEMO_CLIENT;
       setStoredUser(authUser, data.token);
 
-      setSuccessMsg(`Welcome back, ${authUser.companyName}! Loading your procurement dashboard...`);
+      setSuccessMsg(`Welcome back, ${authUser.companyName}! Loading your session...`);
       setTimeout(() => {
-        router.push('/customer');
+        if (redirectParam) {
+          router.push(redirectParam);
+        } else if (authUser.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/customer');
+        }
       }, 700);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error signing in. Please verify your credentials.');
+      setErrorMsg(err.message || 'Invalid password. Please check your credentials or reset password.');
     } finally {
       setIsLoading(false);
     }
@@ -346,7 +414,7 @@ export default function ClientLoginPage() {
                 </div>
 
                 {/* Quick Demo Test Button */}
-                <button
+                {/* <button
                   type="button"
                   onClick={fillDemoBuyer}
                   title="Click to automatically fill verified demo buyer credentials"
@@ -375,7 +443,7 @@ export default function ClientLoginPage() {
                 >
                   <Zap size={13} color="#FF6B00" />
                   <span>Demo Buyer</span>
-                </button>
+                </button> */}
               </div>
 
               <p style={{ fontSize: '13px', color: '#64748B', marginTop: '-8px', marginBottom: '22px', lineHeight: 1.5 }}>
@@ -421,171 +489,263 @@ export default function ClientLoginPage() {
                 </div>
               )}
 
-              {/* Sign In Form */}
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {/* Email Field */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '7px' }}>
-                    Registered Company Email / GSTIN
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748B', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                      <Mail size={16} color="#0052CC" />
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. procurement@apexinfra.com"
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px 12px 42px',
-                        background: '#F8FAFC',
-                        border: '1.5px solid #E2E8F0',
-                        borderRadius: '10px',
-                        fontSize: '13px',
-                        color: '#0F172A',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#0052CC';
-                        e.target.style.background = '#FFFFFF';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E2E8F0';
-                        e.target.style.background = '#F8FAFC';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Password
+              {/* Sign In Form: Step 1 (Email) or Step 2 (Password) */}
+              {step === 'email' ? (
+                <form onSubmit={handleEmailProceed} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {/* Email Field */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '7px' }}>
+                      Registered Company Email / GSTIN
                     </label>
-                    <Link
-                      href="/forgot-password"
-                      style={{ fontSize: '12px', color: '#0052CC', fontWeight: 700, textDecoration: 'none' }}
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748B', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                      <Lock size={16} color="#0052CC" />
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748B', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                        <Mail size={16} color="#0052CC" />
+                      </div>
+                      <input
+                        type="email"
+                        required
+                        autoFocus
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="e.g. procurement@apexinfra.com"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px 12px 42px',
+                          background: '#F8FAFC',
+                          border: '1.5px solid #E2E8F0',
+                          borderRadius: '10px',
+                          fontSize: '13px',
+                          color: '#0F172A',
+                          outline: 'none',
+                          transition: 'border-color 0.2s, box-shadow 0.2s'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#0052CC';
+                          e.target.style.background = '#FFFFFF';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E2E8F0';
+                          e.target.style.background = '#F8FAFC';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
                     </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter account password"
-                      style={{
-                        width: '100%',
-                        padding: '12px 44px 12px 42px',
-                        background: '#F8FAFC',
-                        border: '1.5px solid #E2E8F0',
-                        borderRadius: '10px',
-                        fontSize: '13px',
-                        color: '#0F172A',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#0052CC';
-                        e.target.style.background = '#FFFFFF';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E2E8F0';
-                        e.target.style.background = '#F8FAFC';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: '#64748B',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '4px'
-                      }}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
                   </div>
-                </div>
 
-                {/* Session Persistence & OTP Help */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#475569', userSelect: 'none' }}>
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      style={{ width: '16px', height: '16px', accentColor: '#0052CC', cursor: 'pointer' }}
-                    />
-                    <span>Keep me signed in</span>
-                  </label>
-
-                  <Link href="/resend-verification" style={{ color: '#64748B', textDecoration: 'none', fontSize: '12px' }}>
-                    Need OTP access?
-                  </Link>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  style={{
-                    width: '100%',
-                    padding: '13px 20px',
-                    background: 'linear-gradient(135deg, #0052CC 0%, #0040A1 100%)',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                  {/* Proceed Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '13px 20px',
+                      background: 'linear-gradient(135deg, #0052CC 0%, #0040A1 100%)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      boxShadow: '0 8px 20px rgba(0, 82, 204, 0.28)',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      marginTop: '4px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 82, 204, 0.35)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 82, 204, 0.28)';
+                      }
+                    }}
+                  >
+                    <span>{isLoading ? 'Checking Clearance...' : 'Proceed'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {/* Verified Email Summary Card */}
+                  <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    boxShadow: '0 8px 20px rgba(0, 82, 204, 0.28)',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                    marginTop: '4px'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 82, 204, 0.35)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 82, 204, 0.28)';
-                    }
-                  }}
-                >
-                  <span>{isLoading ? 'Verifying Buyer Account...' : 'Sign In to Client Portal'}</span>
-                  <ArrowRight size={16} />
-                </button>
-              </form>
+                    justifyContent: 'space-between',
+                    padding: '11px 14px',
+                    background: '#F8FAFC',
+                    borderRadius: '10px',
+                    border: '1.5px solid #E2E8F0',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <CheckCircle2 size={16} color="#0052CC" />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {email}
+                        </span>
+                        {linkedUser?.companyName && (
+                          <span style={{ fontSize: '11px', color: '#64748B', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {linkedUser.companyName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep('email');
+                        setErrorMsg('');
+                      }}
+                      style={{
+                        background: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        color: '#0052CC',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        borderRadius: '6px',
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  {/* Password Field */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Password
+                      </label>
+                      <Link
+                        href="/forgot-password"
+                        style={{ fontSize: '12px', color: '#0052CC', fontWeight: 700, textDecoration: 'none' }}
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748B', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                        <Lock size={16} color="#0052CC" />
+                      </div>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        autoFocus
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter account password"
+                        style={{
+                          width: '100%',
+                          padding: '12px 44px 12px 42px',
+                          background: '#F8FAFC',
+                          border: '1.5px solid #E2E8F0',
+                          borderRadius: '10px',
+                          fontSize: '13px',
+                          color: '#0F172A',
+                          outline: 'none',
+                          transition: 'border-color 0.2s, box-shadow 0.2s'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#0052CC';
+                          e.target.style.background = '#FFFFFF';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E2E8F0';
+                          e.target.style.background = '#F8FAFC';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748B',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '4px'
+                        }}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Session Persistence & OTP Help */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#475569', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        style={{ width: '16px', height: '16px', accentColor: '#0052CC', cursor: 'pointer' }}
+                      />
+                      <span>Keep me signed in</span>
+                    </label>
+
+                    <Link href="/resend-verification" style={{ color: '#64748B', textDecoration: 'none', fontSize: '12px' }}>
+                      Need OTP access?
+                    </Link>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '13px 20px',
+                      background: 'linear-gradient(135deg, #0052CC 0%, #0040A1 100%)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      boxShadow: '0 8px 20px rgba(0, 82, 204, 0.28)',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      marginTop: '4px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 82, 204, 0.35)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 82, 204, 0.28)';
+                      }
+                    }}
+                  >
+                    <span>{isLoading ? 'Verifying Buyer Account...' : 'Sign In to Client Portal'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* Bottom Register Banner & Security Footer */}
@@ -661,5 +821,17 @@ export default function ClientLoginPage() {
         <Link href="/contact" style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 700 }}>Contact Support</Link>
       </footer>
     </main>
+  );
+}
+
+export default function ClientLoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}>
+        <p style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>Loading Sign In Portal...</p>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

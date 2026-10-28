@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const redirectUrl = `${protocol}://${host}/order-success`;
+    const redirectUrl = `${protocol}://${host}/api/payment/phonepe/redirect`;
     const callbackUrl = `${protocol}://${host}/api/payment/phonepe/callback`;
 
     const result = await initiatePhonePePayment({
@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
       customerName: body.customerName || 'Procurement In-Charge',
       customerPhone: body.customerPhone || '9888021000',
       customerEmail: body.customerEmail || 'orders@cbh.store',
+      companyName: body.companyName,
+      shippingAddress: body.shippingAddress,
+      items: body.items,
       redirectUrl,
       callbackUrl,
       notes: {

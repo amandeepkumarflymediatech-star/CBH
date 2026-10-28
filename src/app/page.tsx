@@ -13,6 +13,7 @@ import ConsultationBar from '@/components/home/ConsultationBar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit, Product, RfqLineItem } from '@/lib/types';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
 
 export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
@@ -50,6 +51,21 @@ export default function HomePage() {
     },
   ]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Sync cart items with localStorage and listen for updates
+  useEffect(() => {
+    const saved = getStoredCart();
+    if (saved && saved.length > 0) {
+      setCartItems(saved);
+    }
+    const handleCartChange = (e: any) => {
+      if (e.detail?.items) {
+        setCartItems(e.detail.items);
+      }
+    };
+    window.addEventListener('cbh_cart_change', handleCartChange);
+    return () => window.removeEventListener('cbh_cart_change', handleCartChange);
+  }, []);
 
   // Filter Handler
   const handleFilterChange = (filters: FastenerFilters) => {
@@ -128,6 +144,7 @@ export default function HomePage() {
         updated[existingIndex].quantity = nextQty;
         updated[existingIndex].totalWeightKg = unit === 'PCS' ? nextQty * product.weightPerPcKg : nextQty;
         updated[existingIndex].rowTotal = nextQty * rate;
+        setStoredCart(updated);
         return updated;
       });
     } else {
@@ -144,15 +161,19 @@ export default function HomePage() {
         totalWeightKg: weight,
         rowTotal: qty * rate,
       };
-      setCartItems((prev) => [...prev, newItem]);
+      setCartItems((prev) => {
+        const updated = [...prev, newItem];
+        setStoredCart(updated);
+        return updated;
+      });
     }
 
     setIsCartOpen(true);
   };
 
   const handleUpdateCartQty = (id: string | number, qty: number) => {
-    setCartItems((prev) =>
-      prev.map((item) => {
+    setCartItems((prev) => {
+      const updated = prev.map((item) => {
         if (item.id === id) {
           const totalWeight = item.unit === 'PCS' ? qty * item.weightPerPcKg : qty;
           return {
@@ -163,12 +184,18 @@ export default function HomePage() {
           };
         }
         return item;
-      })
-    );
+      });
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   const handleRemoveCartItem = (id: string | number) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+    setCartItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      setStoredCart(updated);
+      return updated;
+    });
   };
 
   return (

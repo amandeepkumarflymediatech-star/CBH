@@ -23,6 +23,9 @@ export interface PhonePePaymentRequest {
   redirectUrl: string;
   callbackUrl?: string;
   notes?: Record<string, string>;
+  companyName?: string;
+  shippingAddress?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
 }
 
 export interface PhonePeTransactionRecord {
@@ -38,6 +41,10 @@ export interface PhonePeTransactionRecord {
   createdAt: string;
   updatedAt: string;
   responseMessage?: string;
+  companyName?: string;
+  shippingAddress?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
+  erpnextSalesOrderId?: string;
 }
 
 const CONFIG_FILE = path.join(process.cwd(), 'src', 'data', 'phonepe-config.json');
@@ -47,36 +54,69 @@ let memoryConfig: PhonePeConfig | null = null;
 let memoryTxns: PhonePeTransactionRecord[] | null = null;
 
 // Default configuration
+function resolveSaltKey(rawKey: string): string {
+  const trimmed = (rawKey || '').trim();
+  // If user pasted base64-encoded UUID (44 characters base64), decode it
+  if (/^[A-Za-z0-9+/=]{44}$/.test(trimmed)) {
+    try {
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf-8');
+      if (/^[0-9a-fA-F-]{36}$/.test(decoded)) {
+        return decoded;
+      }
+    } catch {
+      // keep trimmed
+    }
+  }
+  return trimmed;
+}
+
+// Default configuration
+const rawEnv = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase();
 const DEFAULT_CONFIG: PhonePeConfig = {
   merchantId: process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT',
-  saltKey: process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399',
+  saltKey: resolveSaltKey(process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399'),
   saltIndex: process.env.PHONEPE_SALT_INDEX || '1',
-  environment: (process.env.PHONEPE_ENV as 'SANDBOX' | 'PRODUCTION') || 'SANDBOX',
-  enableSimulator: true,
+  environment: rawEnv === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX',
+  enableSimulator: process.env.PHONEPE_ENABLE_SIMULATOR === 'true',
   defaultCallbackUrl: process.env.NEXT_PUBLIC_APP_URL
     ? `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/phonepe/callback`
     : 'https://cbh.store/api/payment/phonepe/callback',
   defaultRedirectUrl: process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/order-success`
-    : 'http://localhost:3000/order-success',
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/phonepe/redirect`
+    : 'http://localhost:3000/api/payment/phonepe/redirect',
   autoConfirmOrders: true,
 };
 
 export function getPhonePeConfig(): PhonePeConfig {
   if (memoryConfig) return memoryConfig;
 
+  let fileConfig: Partial<PhonePeConfig> = {};
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      memoryConfig = { ...DEFAULT_CONFIG, ...parsed };
-      return memoryConfig!;
+      fileConfig = JSON.parse(raw);
     }
   } catch (err) {
     console.warn('[PhonePe] Failed to read phonepe-config.json:', err);
   }
 
-  memoryConfig = { ...DEFAULT_CONFIG };
+  // Environment variables take precedence if explicitly defined
+  const envOverrides: Partial<PhonePeConfig> = {};
+  if (process.env.PHONEPE_MERCHANT_ID) envOverrides.merchantId = process.env.PHONEPE_MERCHANT_ID.trim();
+  if (process.env.PHONEPE_SALT_KEY) envOverrides.saltKey = resolveSaltKey(process.env.PHONEPE_SALT_KEY);
+  if (process.env.PHONEPE_SALT_INDEX) envOverrides.saltIndex = process.env.PHONEPE_SALT_INDEX.trim();
+  if (process.env.PHONEPE_ENV) {
+    envOverrides.environment = process.env.PHONEPE_ENV.trim().toUpperCase() === 'PRODUCTION' ? 'PRODUCTION' : 'SANDBOX';
+  }
+  if (process.env.PHONEPE_ENABLE_SIMULATOR !== undefined) {
+    envOverrides.enableSimulator = process.env.PHONEPE_ENABLE_SIMULATOR === 'true';
+  }
+
+  memoryConfig = {
+    ...DEFAULT_CONFIG,
+    ...fileConfig,
+    ...envOverrides,
+  };
   return memoryConfig;
 }
 
@@ -183,6 +223,9 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
     customerName: req.customerName,
     customerPhone: req.customerPhone,
     customerEmail: req.customerEmail,
+    companyName: req.companyName,
+    shippingAddress: req.shippingAddress,
+    items: req.items,
     status: 'PENDING',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -196,15 +239,18 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
   const redirectUrl = req.redirectUrl || config.defaultRedirectUrl;
   const callbackUrl = req.callbackUrl || config.defaultCallbackUrl;
 
+  const cleanUserId = (req.merchantUserId || `USER-${req.customerPhone || 'GUEST'}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 36) || 'CUST_DEFAULT';
+  const cleanPhone = (req.customerPhone || '9999999999').replace(/[^0-9]/g, '').slice(-10) || '9999999999';
+
   const normalPayload = {
     merchantId: config.merchantId,
     merchantTransactionId: transactionId,
-    merchantUserId: req.merchantUserId || `USER-${req.customerPhone || 'GUEST'}`,
+    merchantUserId: cleanUserId,
     amount: amountInPaise,
     redirectUrl: `${redirectUrl}?txnId=${transactionId}&orderNumber=${orderNumber}&amount=${req.amount}`,
     redirectMode: 'REDIRECT',
     callbackUrl,
-    mobileNumber: req.customerPhone.replace(/[^0-9]/g, '').slice(-10),
+    mobileNumber: cleanPhone,
     paymentInstrument: {
       type: 'PAY_PAGE',
     },
@@ -238,8 +284,17 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
       };
     }
 
-    // If sandbox / preprod API is unreachable or returned error in development, use Sandbox Simulator
-    if (config.enableSimulator || config.environment === 'SANDBOX') {
+    console.warn('[PhonePe API Non-Success Response]', {
+      status: response.status,
+      code: resJson?.code,
+      message: resJson?.message,
+      environment: config.environment,
+      merchantId: config.merchantId,
+    });
+
+    // Only fallback to simulator if explicitly enabled in configuration
+    if (config.enableSimulator) {
+      console.warn('[PhonePe] Using simulator fallback because enableSimulator is true');
       const simulatedUrl = `${redirectUrl}?txnId=${transactionId}&orderNumber=${orderNumber}&amount=${req.amount}&status=SUCCESS&mode=UPI&simulated=true`;
       
       savePhonePeTransaction({
@@ -270,10 +325,12 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
       success: false,
       transactionId,
       orderNumber,
-      error: resJson?.message || `PhonePe responded with status ${response.status}`,
+      error: resJson?.message || resJson?.code || `PhonePe PG responded with status ${response.status}`,
     };
   } catch (err: any) {
-    if (config.enableSimulator || config.environment === 'SANDBOX') {
+    console.error('[PhonePe Connection Exception]', err);
+
+    if (config.enableSimulator) {
       const simulatedUrl = `${redirectUrl}?txnId=${transactionId}&orderNumber=${orderNumber}&amount=${req.amount}&status=SUCCESS&mode=UPI&simulated=true`;
       return {
         success: true,
@@ -288,7 +345,7 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
       success: false,
       transactionId,
       orderNumber,
-      error: err.message || 'Network error connecting to PhonePe API',
+      error: err.message || 'Network error connecting to PhonePe Gateway',
     };
   }
 }

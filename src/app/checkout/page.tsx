@@ -19,9 +19,10 @@ import {
   HelpCircle,
   RefreshCw
 } from 'lucide-react';
-import PhonePeModal from '@/components/payment/PhonePeModal';
 import { RfqLineItem, GlobalUnit } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
+import { getStoredCart } from '@/lib/cart';
+import { getStoredUser } from '@/lib/auth';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -89,8 +90,26 @@ export default function CheckoutPage() {
     },
   ]);
 
-  const [isPhonePeModalOpen, setIsPhonePeModalOpen] = useState(false);
-  const [activeOrderId, setActiveOrderId] = useState(`CBH-ORD-${Date.now()}`);
+  // Load persisted cart from home page and populate customer info if logged in
+  useEffect(() => {
+    const savedCart = getStoredCart();
+    if (savedCart && savedCart.length > 0) {
+      setItems(savedCart);
+    }
+
+    const user = getStoredUser();
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: user.fullName || prev.fullName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        companyName: user.companyName || prev.companyName,
+        gstin: user.gstin || prev.gstin,
+        shippingAddress: user.address || prev.shippingAddress,
+      }));
+    }
+  }, []);
 
   const summary = calculateRfqSummary(items);
 
@@ -98,7 +117,7 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePhonePeCheckout = () => {
+  const handlePhonePeCheckout = async () => {
     setErrorMessage(null);
 
     // Validate Required Fields
@@ -110,20 +129,86 @@ export default function CheckoutPage() {
       return;
     }
 
+    const orderId = `CBH-ORD-${Date.now()}`;
+    const checkoutItems = items.map((it) => ({
+      sku: it.sku,
+      name: it.name,
+      quantity: it.quantity,
+      rate: it.unitRate,
+      weightKg: it.weightPerPcKg,
+    }));
+
     if (paymentMethod === 'NEFT_RTGS') {
-      // Direct Proforma Generation for NEFT
-      router.push(
-        `/order-success?orderNumber=${activeOrderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
-          formData.companyName
-        )}`
-      );
+      setIsSubmitting(true);
+      try {
+        const orderRes = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber: orderId,
+            customerName: formData.fullName,
+            companyName: formData.companyName,
+            email: formData.email,
+            phone: formData.phone,
+            shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
+            netAmount: summary.netTotal,
+            totalWeightKg: summary.totalWeightKg,
+            itemsCount: items.length,
+            status: 'PROCESSING',
+            carrier: 'TCI Freight Express',
+            items: checkoutItems,
+          }),
+        });
+        const orderData = await orderRes.json();
+        const erpId = orderData.data?.erpnextSalesOrderId || '';
+
+        router.push(
+          `/order-success?orderNumber=${orderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
+            formData.companyName
+          )}${erpId ? `&erpId=${encodeURIComponent(erpId)}` : ''}`
+        );
+      } catch (err: any) {
+        setIsSubmitting(false);
+        setErrorMessage(err.message || 'Error processing NEFT commercial proforma.');
+      }
       return;
     }
 
-    // Open Interactive PhonePe Payment Modal (UPI, Cards, NetBanking)
-    const newOrderId = `CBH-ORD-${Date.now()}`;
-    setActiveOrderId(newOrderId);
-    setIsPhonePeModalOpen(true);
+    // Direct redirection to official PhonePe Gateway
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/payment/phonepe/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: summary.netTotal,
+          orderId: orderId,
+          customerName: formData.fullName,
+          customerPhone: formData.phone,
+          customerEmail: formData.email,
+          companyName: formData.companyName,
+          shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
+          totalWeightKg: summary.totalWeightKg,
+          items: checkoutItems,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        // Direct browser redirection to the official PhonePe Gateway
+        window.location.href = data.paymentUrl;
+      } else {
+        setIsSubmitting(false);
+        setErrorMessage(data.error || 'Failed to initiate PhonePe payment. Please check your credentials in the Admin Panel.');
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 120, behavior: 'smooth' });
+        }
+      }
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Error connecting to PhonePe Gateway.');
+    }
   };
 
   return (
@@ -416,14 +501,26 @@ export default function CheckoutPage() {
               {/* Items List */}
               <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                 {items.map((item) => (
-                  <div key={item.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-[#0F172A] block line-clamp-1">{item.name}</span>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        {item.quantity.toLocaleString()} {item.unit} • ₹{item.unitRate}/{item.unit}
-                      </span>
+                  <div key={item.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={item.imageUrl || '/assets/bolt_zinc.jpg'}
+                          alt={item.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                          }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-[#0F172A] block line-clamp-1">{item.name}</span>
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          {item.quantity.toLocaleString()} {item.unit} • ₹{item.unitRate}/{item.unit}
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-extrabold font-mono text-[#0052CC]">
+                    <span className="font-extrabold font-mono text-[#0052CC] flex-shrink-0">
                       {formatINR(item.rowTotal)}
                     </span>
                   </div>
@@ -515,26 +612,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-
-      {/* Interactive PhonePe Payment Modal (UPI, Cards, NetBanking, Wallets) */}
-      <PhonePeModal
-        isOpen={isPhonePeModalOpen}
-        onClose={() => setIsPhonePeModalOpen(false)}
-        amount={summary.netTotal}
-        orderNumber={activeOrderId}
-        customerName={formData.fullName}
-        customerPhone={formData.phone}
-        customerEmail={formData.email}
-        companyName={formData.companyName}
-        onSuccess={(data) => {
-          setIsPhonePeModalOpen(false);
-          router.push(
-            `/order-success?txnId=${data.txnId}&orderNumber=${data.orderNumber}&amount=${data.amount}&mode=${encodeURIComponent(
-              data.mode
-            )}`
-          );
-        }}
-      />
     </main>
   );
 }

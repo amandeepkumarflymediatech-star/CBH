@@ -1,8 +1,43 @@
 import { NextResponse } from 'next/server';
-import { INITIAL_ORDERS } from '@/lib/mock-data';
 import { CustomerOrder } from '@/lib/types';
+import { query } from '@/lib/db';
+import { pushSalesOrderToErpNext } from '@/lib/erpnext';
 
-let ordersDb: CustomerOrder[] = [...INITIAL_ORDERS];
+let ordersDb: CustomerOrder[] = [];
+
+async function getOrders(): Promise<CustomerOrder[]> {
+  try {
+    const rows = await query<any>(`
+      SELECT o.*, u.full_name as customer_name, u.company_name,
+             (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count
+      FROM orders o
+      LEFT JOIN users u ON o.customer_id = u.id
+      ORDER BY o.created_at DESC
+    `);
+    if (rows && rows.length > 0) {
+      return rows.map((r: any) => ({
+        id: String(r.id),
+        orderNumber: r.order_number,
+        date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        customerName: r.customer_name || 'Procurement In-Charge',
+        companyName: r.company_name || 'Enterprise Client',
+        itemsCount: Number(r.items_count) || 1,
+        totalWeightKg: parseFloat(r.total_weight_kg) || 0,
+        netAmount: parseFloat(r.net_amount) || 0,
+        status: r.order_status || 'PROCESSING',
+        carrier: r.carrier_name || 'Blue Dart Express',
+        trackingNumber: r.tracking_number || '',
+        dispatchDate: r.dispatch_date ? new Date(r.dispatch_date).toISOString().split('T')[0] : '',
+        shippingAddress: r.shipping_address || '',
+        mtcCertNumber: r.mtc_document_url || 'MTC-CBH-2025-NABL',
+        erpnextSalesOrderId: r.erpnext_order_id || undefined,
+      }));
+    }
+  } catch (err) {
+    console.warn('[Orders API] MySQL query fallback:', err);
+  }
+  return ordersDb;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,7 +46,8 @@ export async function GET(request: Request) {
   const carrier = searchParams.get('carrier');
   const sortBy = searchParams.get('sortBy');
 
-  let results = [...ordersDb];
+  const allOrders = await getOrders();
+  let results = [...allOrders];
 
   if (search) {
     results = results.filter(
@@ -20,7 +56,8 @@ export async function GET(request: Request) {
         ord.trackingNumber?.toLowerCase().includes(search) ||
         ord.customerName?.toLowerCase().includes(search) ||
         ord.companyName?.toLowerCase().includes(search) ||
-        ord.shippingAddress?.toLowerCase().includes(search)
+        ord.shippingAddress?.toLowerCase().includes(search) ||
+        (ord.erpnextSalesOrderId && ord.erpnextSalesOrderId.toLowerCase().includes(search))
     );
   }
 
@@ -43,7 +80,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     count: results.length,
-    total: ordersDb.length,
+    total: allOrders.length,
     data: results,
   });
 }
@@ -59,7 +96,7 @@ export async function POST(request: Request) {
       date: body.date || new Date().toISOString().split('T')[0],
       customerName: body.customerName || 'Procurement In-Charge',
       companyName: body.companyName || 'Enterprise Fastener Buyer',
-      itemsCount: parseInt(body.itemsCount) || 3,
+      itemsCount: parseInt(body.itemsCount) || (body.items?.length || 1),
       totalWeightKg: parseFloat(body.totalWeightKg) || 250.0,
       netAmount: parseFloat(body.netAmount) || 45000.0,
       status: body.status || 'CONFIRMED',
@@ -68,14 +105,46 @@ export async function POST(request: Request) {
       dispatchDate: body.dispatchDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
       shippingAddress: body.shippingAddress || 'Plot 12, Industrial Area, Sector 5, Pune, MH',
       mtcCertNumber: body.mtcCertNumber || `MTC-CBH-2025-${Math.floor(1000 + Math.random() * 9000)}-NABL`,
+      items: body.items,
     };
+
+    // Push to ERPNext Sales Order & trigger stock reservation / deduction
+    try {
+      const erpResult = await pushSalesOrderToErpNext({
+        orderNumber: newOrder.orderNumber,
+        customerName: newOrder.customerName || 'Procurement In-Charge',
+        companyName: newOrder.companyName,
+        email: body.email,
+        phone: body.phone,
+        shippingAddress: newOrder.shippingAddress,
+        totalAmount: newOrder.netAmount,
+        items: body.items || [
+          {
+            sku: 'CBH-125A-M10-HDG',
+            name: 'Plain Flat Washer DIN 125A M10',
+            quantity: Math.max(10, Math.round(newOrder.totalWeightKg / 0.05)),
+            rate: parseFloat((newOrder.netAmount / Math.max(1, newOrder.itemsCount)).toFixed(2)),
+          },
+        ],
+        submitOrder: true,
+        deductStockImmediately: true,
+      });
+
+      if (erpResult.success && erpResult.erpnextSalesOrderId) {
+        newOrder.erpnextSalesOrderId = erpResult.erpnextSalesOrderId;
+      }
+    } catch (erpErr) {
+      console.warn('[Orders API] Background ERPNext push notice:', erpErr);
+    }
 
     ordersDb.unshift(newOrder);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Order ${newOrder.orderNumber} dispatched into logistics tracking.`,
+        message: `Order ${newOrder.orderNumber} dispatched into logistics tracking.${
+          newOrder.erpnextSalesOrderId ? ` Created ERPNext Sales Order: ${newOrder.erpnextSalesOrderId}` : ''
+        }`,
         data: newOrder,
       },
       { status: 201 }

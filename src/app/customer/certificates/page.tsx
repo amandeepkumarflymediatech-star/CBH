@@ -34,62 +34,7 @@ interface CertificateRecord {
   saltSprayHrs: string;
 }
 
-const SAMPLE_CERTS: CertificateRecord[] = [
-  {
-    id: 'cert-1',
-    certNumber: 'MTC-CBH-2026-9812',
-    orderNumber: 'CBH-ORD-2026-8842',
-    heatNumber: 'HT-78421-B',
-    standard: 'DIN 933 (ISO 4017)',
-    grade: 'Grade 8.8 (High Tensile)',
-    itemsCovered: 'Hex Screws Full Thread M10x1.5x100mm Grade 8.8 BP',
-    issueDate: '24 Feb 2026',
-    labAccreditation: 'NABL TC-8842 / TÜV Rheinland ISO 9001',
-    carbonPct: '0.34%',
-    manganesePct: '0.78%',
-    chromiumPct: '0.22%',
-    tensileMpa: '865 MPa (Min 800)',
-    yieldMpa: '690 MPa (Min 640)',
-    hardnessHrc: '28.5 HRC (22-32 range)',
-    saltSprayHrs: '480 Hours ASTM B117'
-  },
-  {
-    id: 'cert-2',
-    certNumber: 'MTC-CBH-2026-9804',
-    orderNumber: 'CBH-ORD-2026-8839',
-    heatNumber: 'HT-91204-SS',
-    standard: 'DIN 912 (ISO 4762)',
-    grade: 'SS 316 (A4-80 Marine)',
-    itemsCovered: 'Socket Head Cap Screws M12x1.75x50mm SS 316',
-    issueDate: '20 Feb 2026',
-    labAccreditation: 'NABL TC-8842 / Bureau of Indian Standards',
-    carbonPct: '0.04%',
-    manganesePct: '1.45%',
-    chromiumPct: '17.20%',
-    tensileMpa: '815 MPa (Min 800)',
-    yieldMpa: '620 MPa (Min 600)',
-    hardnessHrc: '26.0 HRC',
-    saltSprayHrs: '1000 Hours (Zero Red Rust)'
-  },
-  {
-    id: 'cert-3',
-    certNumber: 'MTC-CBH-2026-9791',
-    orderNumber: 'CBH-ORD-2026-8820',
-    heatNumber: 'HT-55410-HDG',
-    standard: 'DIN 931 (ISO 4014)',
-    grade: 'Grade 10.9 (Structural Heavy)',
-    itemsCovered: 'Heavy Hex Bolts Half Thread M20x2.5x120mm HDG',
-    issueDate: '15 Feb 2026',
-    labAccreditation: 'NABL TC-8842 Certified Testing Cell',
-    carbonPct: '0.39%',
-    manganesePct: '0.82%',
-    chromiumPct: '0.95%',
-    tensileMpa: '1080 MPa (Min 1040)',
-    yieldMpa: '960 MPa (Min 940)',
-    hardnessHrc: '34.0 HRC (32-39 range)',
-    saltSprayHrs: '720 Hours ASTM B117'
-  }
-];
+const SAMPLE_CERTS: CertificateRecord[] = [];
 
 export default function CustomerCertificatesPage() {
   const [certs, setCerts] = useState<CertificateRecord[]>(SAMPLE_CERTS);

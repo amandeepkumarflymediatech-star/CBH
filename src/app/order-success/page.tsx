@@ -25,6 +25,7 @@ function OrderSuccessContent() {
   const amountStr = searchParams.get('amount') || '56935';
   const amount = parseFloat(amountStr) || 56935;
   const isSimulated = searchParams.get('simulated') === 'true';
+  const erpId = searchParams.get('erpId');
 
   const [copied, setCopied] = useState(false);
 
@@ -55,17 +56,24 @@ function OrderSuccessContent() {
         </h1>
 
         <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
-          Your payment has been settled via PhonePe Gateway. Chemical and tensile metallurgical calibration for your order has begun at CBH Works (Ludhiana).
+          Your payment has been settled. Chemical and tensile metallurgical calibration for your order has begun at CBH Works (Ludhiana).
         </p>
 
-        {isSimulated && (
+        {erpId && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold max-w-md mx-auto flex items-center justify-center gap-2 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>ERPNext Synced: Sales Order <strong>{erpId}</strong> confirmed &amp; inventory allocated.</span>
+          </div>
+        )}
+
+        {isSimulated && !erpId && (
           <div className="mt-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium max-w-md mx-auto">
             ⚡ PhonePe Sandbox Simulation Active: Test payment verified without debiting live bank account.
           </div>
         )}
 
         {/* Transaction Telemetry Pill */}
-        <div className="mt-8 p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4 text-left text-xs">
+        <div className={`mt-8 p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-xl mx-auto grid grid-cols-2 ${erpId ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-4 text-left text-xs`}>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Order ID</span>
             <span className="font-mono font-bold text-[#0F172A] break-all">{orderNumber}</span>
@@ -90,6 +98,13 @@ function OrderSuccessContent() {
               </button>
             </div>
           </div>
+
+          {erpId && (
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">ERPNext Order</span>
+              <span className="font-mono font-black text-emerald-700 break-all">{erpId}</span>
+            </div>
+          )}
         </div>
 
         {/* 5-Stage Freight Tracker */}

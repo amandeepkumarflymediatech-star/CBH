@@ -1,8 +1,34 @@
 import { NextResponse } from 'next/server';
 import { INITIAL_SURPLUS_LOTS } from '@/lib/mock-data';
 import { SurplusLot } from '@/lib/types';
+import { query } from '@/lib/db';
 
 let surplusDb: SurplusLot[] = [...INITIAL_SURPLUS_LOTS];
+
+async function getSurplusLots(): Promise<SurplusLot[]> {
+  try {
+    const rows = await query<any>(`SELECT * FROM surplus_lots ORDER BY created_at DESC`);
+    if (rows && rows.length > 0) {
+      return rows.map((r: any) => ({
+        id: r.id,
+        sku: r.lot_number,
+        name: r.title,
+        standard: r.spec_standard,
+        grade: r.spec_standard.includes('8.8') ? '8.8 HT' : r.spec_standard.includes('12.9') ? '12.9 Alloy' : r.spec_standard.includes('SS316') || r.spec_standard.includes('SS 316') ? 'SS 316' : 'B7 Alloy',
+        excessQtyPcs: Math.round(parseFloat(r.total_weight_tonnes) * 1000 / 0.08),
+        excessQtyKg: parseFloat(r.total_weight_tonnes) * 1000,
+        regularPriceKg: parseFloat(r.market_price_per_kg),
+        clearanceDiscountPct: r.discount_pct,
+        clearancePriceKg: parseFloat(r.clearance_price_per_kg),
+        locationHub: r.depot_location,
+        isActive: r.status === 'AVAILABLE',
+      }));
+    }
+  } catch (err) {
+    console.warn('[Surplus API] MySQL query fallback:', err);
+  }
+  return surplusDb;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +38,8 @@ export async function GET(request: Request) {
   const active = searchParams.get('active');
   const sortBy = searchParams.get('sortBy');
 
-  let results = [...surplusDb];
+  const allLots = await getSurplusLots();
+  let results = [...allLots];
 
   if (search) {
     results = results.filter(
@@ -49,7 +76,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     count: results.length,
-    total: surplusDb.length,
+    total: allLots.length,
     data: results,
   });
 }

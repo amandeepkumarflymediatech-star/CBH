@@ -22,11 +22,7 @@ interface DeliverySite {
   activeDeliveries: number;
 }
 
-const DEFAULT_SITES: DeliverySite[] = [
-  { id: 'site-1', name: 'Delhi Metro Rail Project (DMRC Package 4)', address: 'Gate 2, Anand Vihar Depot, New Delhi - 110092', incharge: 'Vikram Joshi (Site Engineer)', phone: '+91 98112 45890', activeDeliveries: 2 },
-  { id: 'site-2', name: 'Jamnagar Petrochem Expansion Unit', address: 'Plot 104, GIDC Estate Phase 3, Jamnagar, GJ - 361004', incharge: 'Karan Patel (Materials Manager)', phone: '+91 98250 88123', activeDeliveries: 1 },
-  { id: 'site-3', name: 'Bengaluru Highway Elevated Corridor', address: 'NH-44 Flyover Works, Peenya, Bengaluru, KA - 560058', incharge: 'S. N. Rao (Project Head)', phone: '+91 98450 11994', activeDeliveries: 0 },
-];
+const DEFAULT_SITES: DeliverySite[] = []
 
 export default function CustomerSitesPage() {
   const [sites, setSites] = useState<DeliverySite[]>(DEFAULT_SITES);
@@ -74,7 +70,6 @@ export default function CustomerSitesPage() {
           onClick={() => setIsNewSiteModalOpen(true)}
           className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
         >
-          <Plus size={14} />
           <span>+ Add Project Delivery Site</span>
         </button>
       </div>

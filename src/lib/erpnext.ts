@@ -13,6 +13,7 @@ export interface ErpNextConfig {
   erpnextUrl: string;
   apiKey: string;
   apiSecret: string;
+  company?: string;
   defaultPriceList?: string;
   defaultWarehouse?: string;
   autoSync?: boolean;
@@ -40,8 +41,9 @@ export function getErpNextConfig(): ErpNextConfig {
     erpnextUrl: fileConfig.erpnextUrl || process.env.ERPNEXT_URL || '',
     apiKey: fileConfig.apiKey || process.env.ERPNEXT_API_KEY || '',
     apiSecret: fileConfig.apiSecret || process.env.ERPNEXT_API_SECRET || '',
+    company: fileConfig.company || process.env.ERPNEXT_COMPANY || 'CBC Technologies Private Limited',
     defaultPriceList: fileConfig.defaultPriceList || process.env.ERPNEXT_DEFAULT_PRICE_LIST || 'Standard Selling',
-    defaultWarehouse: fileConfig.defaultWarehouse || process.env.ERPNEXT_DEFAULT_WAREHOUSE || 'Stores - CBH',
+    defaultWarehouse: fileConfig.defaultWarehouse || process.env.ERPNEXT_DEFAULT_WAREHOUSE || 'Stores - CTPL',
     autoSync: fileConfig.autoSync ?? true,
     lastSyncTime: fileConfig.lastSyncTime || null,
     lastSyncStatus: fileConfig.lastSyncStatus || (fileConfig.erpnextUrl ? 'STANDBY' : 'STANDBY'),
@@ -392,6 +394,280 @@ export async function fetchErpNextProducts(): Promise<{
   }
 }
 
+// Ensure Customer Record exists in ERPNext
+export async function ensureCustomerInErpNext(params: {
+  customerName: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  gstin?: string;
+}): Promise<string> {
+  const config = getErpNextConfig();
+  const baseUrl = cleanUrl(config.erpnextUrl);
+  const headers = getErpNextHeaders(config);
+
+  const desiredName = (params.companyName || params.customerName || 'CBH Online Customers').trim();
+  const fallbackCustomer = 'CBH Online Customers';
+
+  try {
+    // 1. Check if Customer already exists
+    const checkRes = await fetch(`${baseUrl}/api/resource/Customer/${encodeURIComponent(desiredName)}`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+
+    if (checkRes.ok) {
+      const data = await checkRes.json();
+      return data.data?.name || desiredName;
+    }
+
+    // 2. Try to create new Customer
+    const createRes = await fetch(`${baseUrl}/api/resource/Customer`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        customer_name: desiredName,
+        customer_type: params.companyName ? 'Company' : 'Individual',
+        customer_group: 'Commercial',
+        territory: 'India',
+        mobile_no: params.phone || '',
+        email_id: params.email || '',
+        gstin: params.gstin || '',
+      }),
+    });
+
+    if (createRes.ok) {
+      const createdData = await createRes.json();
+      return createdData.data?.name || desiredName;
+    }
+  } catch (err) {
+    console.warn('[ERPNext] Customer lookup/creation fallback:', err);
+  }
+
+  return fallbackCustomer;
+}
+
+// Ensure Fastener Item exists in ERPNext Item Master
+export async function ensureItemInErpNext(item: {
+  sku: string;
+  name?: string;
+  rate?: number;
+  weightPerPcKg?: number;
+}): Promise<string> {
+  const config = getErpNextConfig();
+  const baseUrl = cleanUrl(config.erpnextUrl);
+  const headers = getErpNextHeaders(config);
+  const sku = (item.sku || 'CBH-125A-M10-HDG').trim();
+
+  try {
+    const checkRes = await fetch(`${baseUrl}/api/resource/Item/${encodeURIComponent(sku)}`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+
+    if (checkRes.ok) {
+      return sku;
+    }
+
+    // Auto-create item in ERPNext with required HSN 73181500 (Industrial Screws/Fasteners)
+    const createRes = await fetch(`${baseUrl}/api/resource/Item`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        item_code: sku,
+        item_name: item.name || sku,
+        item_group: 'Products',
+        stock_uom: 'Nos',
+        is_stock_item: 1,
+        is_sales_item: 1,
+        standard_rate: item.rate || 14.5,
+        weight_per_unit: item.weightPerPcKg || 0.05,
+        weight_uom: 'Kg',
+        gst_hsn_code: '73181500',
+      }),
+    });
+
+    if (createRes.ok) {
+      const created = await createRes.json();
+      return created.data?.name || sku;
+    }
+  } catch (err) {
+    console.warn('[ERPNext] Item lookup/create fallback:', err);
+  }
+
+  return sku;
+}
+
+// Push Customer Single or Bulk Order to ERPNext as a Sales Order & Deduct Stock
+export async function pushSalesOrderToErpNext(order: {
+  orderNumber: string;
+  customerName: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  shippingAddress?: string;
+  totalAmount: number;
+  items: Array<{
+    sku: string;
+    name?: string;
+    quantity: number;
+    rate: number;
+    weightKg?: number;
+  }>;
+  submitOrder?: boolean;
+  deductStockImmediately?: boolean;
+}): Promise<{
+  success: boolean;
+  erpnextSalesOrderId?: string;
+  deliveryNoteId?: string;
+  error?: string;
+}> {
+  const config = getErpNextConfig();
+  if (!config.erpnextUrl || !config.apiKey || !config.apiSecret) {
+    return { success: false, error: 'ERPNext credentials not configured in settings' };
+  }
+
+  try {
+    const baseUrl = cleanUrl(config.erpnextUrl);
+    const headers = getErpNextHeaders(config);
+    const warehouse = config.defaultWarehouse || 'Stores - CTPL';
+    const company = config.company || 'CBC Technologies Private Limited';
+
+    // 1. Resolve / Ensure Customer
+    const customer = await ensureCustomerInErpNext({
+      customerName: order.customerName,
+      companyName: order.companyName,
+      email: order.email,
+      phone: order.phone,
+    });
+
+    // 2. Resolve / Ensure Items
+    const orderItems = order.items && order.items.length > 0
+      ? order.items
+      : [{ sku: 'CBH-125A-M10-HDG', name: 'Plain Flat Washer DIN 125A M10', quantity: 100, rate: 14.5 }];
+
+    const validatedItems = await Promise.all(
+      orderItems.map(async (it) => {
+        const itemCode = await ensureItemInErpNext({
+          sku: it.sku,
+          name: it.name,
+          rate: it.rate,
+          weightPerPcKg: it.weightKg,
+        });
+        return {
+          item_code: itemCode,
+          qty: Math.max(1, it.quantity || 1),
+          rate: it.rate > 0 ? it.rate : 14.5,
+          warehouse,
+        };
+      })
+    );
+
+    const today = new Date().toISOString().split('T')[0];
+    const deliveryDate = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+
+    // 3. Create Sales Order in ERPNext
+    const salesOrderPayload = {
+      doctype: 'Sales Order',
+      customer,
+      company,
+      transaction_date: today,
+      delivery_date: deliveryDate,
+      order_type: 'Sales',
+      po_no: order.orderNumber,
+      items: validatedItems,
+    };
+
+    const soRes = await fetch(`${baseUrl}/api/resource/Sales%20Order`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(salesOrderPayload),
+    });
+
+    if (!soRes.ok) {
+      const errText = await soRes.text();
+      return {
+        success: false,
+        error: `ERPNext Sales Order creation failed (HTTP ${soRes.status}): ${errText.slice(0, 300)}`,
+      };
+    }
+
+    const soData = await soRes.json();
+    const salesOrderId = soData.data?.name;
+    const itemsCreated = soData.data?.items || [];
+
+    // 4. Submit Sales Order if requested (docstatus: 1 reserves stock and enables billing)
+    const shouldSubmit = order.submitOrder !== false;
+    if (shouldSubmit && salesOrderId) {
+      try {
+        await fetch(`${baseUrl}/api/resource/Sales%20Order/${encodeURIComponent(salesOrderId)}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ docstatus: 1 }),
+        });
+      } catch (submitErr) {
+        console.warn('[ERPNext] Could not submit Sales Order:', submitErr);
+      }
+    }
+
+    // 5. Stock Deduction via Delivery Note
+    let deliveryNoteId: string | undefined;
+    const shouldDeductStock = order.deductStockImmediately !== false;
+    if (shouldDeductStock && salesOrderId && itemsCreated.length > 0) {
+      try {
+        const dnItems = itemsCreated.map((it: any) => ({
+          item_code: it.item_code,
+          qty: it.qty,
+          rate: it.rate,
+          against_sales_order: salesOrderId,
+          so_detail: it.name,
+          warehouse,
+        }));
+
+        const dnRes = await fetch(`${baseUrl}/api/resource/Delivery%20Note`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            doctype: 'Delivery Note',
+            customer,
+            company,
+            posting_date: today,
+            items: dnItems,
+          }),
+        });
+
+        if (dnRes.ok) {
+          const dnData = await dnRes.json();
+          deliveryNoteId = dnData.data?.name;
+          if (deliveryNoteId) {
+            // Submit Delivery Note to permanently adjust actual_qty stock in warehouse
+            await fetch(`${baseUrl}/api/resource/Delivery%20Note/${encodeURIComponent(deliveryNoteId)}`, {
+              method: 'PUT',
+              headers,
+              body: JSON.stringify({ docstatus: 1 }),
+            }).catch(() => {});
+          }
+        }
+      } catch (dnErr) {
+        console.warn('[ERPNext] Stock Delivery Note adjustment notice:', dnErr);
+      }
+    }
+
+    return {
+      success: true,
+      erpnextSalesOrderId: salesOrderId,
+      deliveryNoteId,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Failed connecting to ERPNext Sales Order API',
+    };
+  }
+}
+
 // Push Customer RFQ / Quotation to ERPNext
 export async function pushRfqToErpNext(rfq: {
   rfqNumber: string;
@@ -399,9 +675,10 @@ export async function pushRfqToErpNext(rfq: {
   companyName: string;
   email?: string;
   phone?: string;
+  gstin?: string;
   totalWeightKg: number;
   grossAmount: number;
-  items?: Array<{ sku: string; quantity: number; rate: number }>;
+  items?: Array<{ sku: string; name?: string; quantity: number; rate: number }>;
 }): Promise<{ success: boolean; erpnextQuoteId?: string; error?: string }> {
   const config = getErpNextConfig();
   if (!config.erpnextUrl || !config.apiKey || !config.apiSecret) {
@@ -412,28 +689,44 @@ export async function pushRfqToErpNext(rfq: {
     const baseUrl = cleanUrl(config.erpnextUrl);
     const headers = getErpNextHeaders(config);
 
+    // Resolve or create Customer in ERPNext
+    const customer = await ensureCustomerInErpNext({
+      customerName: rfq.customerName,
+      companyName: rfq.companyName,
+      email: rfq.email,
+      phone: rfq.phone,
+      gstin: rfq.gstin,
+    });
+
+    // Ensure items exist
+    const rawItems = rfq.items && rfq.items.length > 0
+      ? rfq.items
+      : [{ sku: 'CBH-125A-M10-HDG', name: 'Hexagon Fastener Screw DIN 933', quantity: 1000, rate: 14.5 }];
+
+    const quotationItems = await Promise.all(
+      rawItems.map(async (it) => {
+        const itemCode = await ensureItemInErpNext({
+          sku: it.sku,
+          name: it.name,
+          rate: it.rate,
+        });
+        return {
+          item_code: itemCode,
+          qty: it.quantity || 1000,
+          rate: it.rate || 14.5,
+        };
+      })
+    );
+
     const quotationPayload = {
       doctype: 'Quotation',
       quotation_to: 'Customer',
-      party_name: rfq.companyName || rfq.customerName || 'CBH Online Buyer',
+      party_name: customer,
       transaction_date: new Date().toISOString().split('T')[0],
-      valid_till: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      valid_till: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
       order_type: 'Sales',
       custom_cbh_rfq_reference: rfq.rfqNumber,
-      items: (rfq.items && rfq.items.length > 0)
-        ? rfq.items.map((it) => ({
-            item_code: it.sku,
-            qty: it.quantity || 1000,
-            rate: it.rate || 14.5,
-          }))
-        : [
-            {
-              item_code: 'CBH-HEX-M10-100',
-              item_name: 'Hexagon Head Screw DIN 933 Gr 8.8',
-              qty: Math.max(100, Math.round(rfq.totalWeightKg / 0.06)),
-              rate: 14.5,
-            },
-          ],
+      items: quotationItems,
     };
 
     const res = await fetch(`${baseUrl}/api/resource/Quotation`, {
@@ -456,3 +749,27 @@ export async function pushRfqToErpNext(rfq: {
     return { success: false, error: err.message };
   }
 }
+
+// Convert Accepted Bulk RFQ into Official ERPNext Sales Order
+export async function convertRfqToSalesOrder(rfq: {
+  rfqNumber: string;
+  customerName: string;
+  companyName: string;
+  email?: string;
+  phone?: string;
+  netTotal: number;
+  items?: Array<{ sku: string; name?: string; quantity: number; rate: number }>;
+}): Promise<{ success: boolean; erpnextSalesOrderId?: string; deliveryNoteId?: string; error?: string }> {
+  return pushSalesOrderToErpNext({
+    orderNumber: `SO-${rfq.rfqNumber}`,
+    customerName: rfq.customerName,
+    companyName: rfq.companyName,
+    email: rfq.email,
+    phone: rfq.phone,
+    totalAmount: rfq.netTotal,
+    items: rfq.items || [],
+    submitOrder: true,
+    deductStockImmediately: true,
+  });
+}
+

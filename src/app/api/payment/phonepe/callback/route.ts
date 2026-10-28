@@ -23,6 +23,37 @@ export async function POST(req: NextRequest) {
       const paymentMode = txnData.paymentInstrument?.type || 'UPI';
 
       const existing = getPhonePeTransactions().find((t) => t.transactionId === transactionId);
+      let erpnextOrderId = existing?.erpnextSalesOrderId;
+
+      if (!erpnextOrderId) {
+        try {
+          const { pushSalesOrderToErpNext } = await import('@/lib/erpnext');
+          const erpRes = await pushSalesOrderToErpNext({
+            orderNumber: existing?.orderNumber || transactionId,
+            customerName: existing?.customerName || 'Enterprise Buyer',
+            companyName: existing?.companyName,
+            email: existing?.customerEmail,
+            phone: existing?.customerPhone,
+            shippingAddress: existing?.shippingAddress,
+            totalAmount: amount,
+            items: existing?.items || [
+              {
+                sku: 'CBH-125A-M10-HDG',
+                name: 'Plain Flat Washer DIN 125A M10',
+                quantity: 100,
+                rate: 14.5,
+              },
+            ],
+            submitOrder: true,
+            deductStockImmediately: true,
+          });
+          if (erpRes.success && erpRes.erpnextSalesOrderId) {
+            erpnextOrderId = erpRes.erpnextSalesOrderId;
+          }
+        } catch (erpErr) {
+          console.warn('[PhonePe Callback] ERPNext push notice:', erpErr);
+        }
+      }
 
       savePhonePeTransaction({
         transactionId,
@@ -31,15 +62,23 @@ export async function POST(req: NextRequest) {
         customerName: existing?.customerName || 'Enterprise Buyer',
         customerPhone: existing?.customerPhone || '',
         customerEmail: existing?.customerEmail,
+        companyName: existing?.companyName,
+        shippingAddress: existing?.shippingAddress,
+        items: existing?.items,
         status: 'SUCCESS',
         paymentMode,
         phonepeReferenceId: txnData.transactionId,
+        erpnextSalesOrderId: erpnextOrderId,
         responseMessage: 'PhonePe Callback Payment Verified',
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
-      return NextResponse.json({ success: true, message: 'Callback processed successfully' });
+      return NextResponse.json({
+        success: true,
+        message: 'Callback processed successfully',
+        erpnextSalesOrderId: erpnextOrderId,
+      });
     }
 
     return NextResponse.json({ success: true, message: 'Callback received with non-success state' });
