@@ -32,32 +32,63 @@ CREATE TABLE IF NOT EXISTS categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Fastener Product Inventory with Dual Pricing & Technical Metallurgy
+-- 3. Fastener Product Inventory with Dual Pricing, Excel Master Specs & Technical Metallurgy
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sku VARCHAR(100) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     
-    -- Technical Specifications
-    standard VARCHAR(50) NOT NULL,       -- DIN 933, DIN 912, DIN 934, DIN 931, ISO 4017, ASTM A193
-    grade VARCHAR(50) NOT NULL,          -- 4.6, 5.8, 8.8, 10.9, 12.9, SS304 (A2-70), SS316 (A4-80), B7
-    finish VARCHAR(100) NOT NULL,        -- Black Phosphate (BP), Black Zinc (Blkzp), Hot Dip Galv (HDG), Clear Zinc
-    thread_type VARCHAR(50) NOT NULL,    -- Full Thread, Half Thread, Fine Pitch, Continuous
-    diameter VARCHAR(20) NOT NULL,       -- M6, M8, M10, M12, M16, M20, M24, M36
-    length_mm INTEGER NOT NULL,          -- 12, 25, 50, 100, 110, 120, 125, 130, 140, 150, 3000
-    pitch_mm DECIMAL(4, 2) NOT NULL,     -- 1.0, 1.25, 1.5, 1.75, 2.0, 3.0
-    weight_per_pc_kg DECIMAL(8, 4) NOT NULL, -- Exact unit weight for PCS <-> KGS conversion
+    -- Excel Master Classification & Hierarchy
+    sub_group VARCHAR(100) DEFAULT NULL,        -- SCREW, BOLTS, NUTS, FASTENERS
+    category VARCHAR(100) DEFAULT NULL,         -- SOCKET HEAD, HEX BOLTS, etc.
+    sub_category VARCHAR(150) DEFAULT NULL,     -- BUTTON COLLAR SCREWS, ALLEN GRUB SCREWS
     
-    -- Dual Unit Pricing (PCS & KGS)
+    -- Standards & Specifications
+    standard VARCHAR(50) NOT NULL,              -- DIN 933, DIN 916, ISO 4017, ISO 7380-2, ASTM A193
+    din VARCHAR(50) DEFAULT NULL,               -- DIN 913, DIN 916, DIN 933
+    iso_standard VARCHAR(50) DEFAULT NULL,      -- ISO 4017, ISO 4029, ISO 7380-2
+    bs_standard VARCHAR(50) DEFAULT NULL,       -- BS 2470, BS 4168
+    asme_standard VARCHAR(50) DEFAULT NULL,     -- ASME B18.3
+    
+    -- Technical Metallurgy & Surface Coating
+    grade VARCHAR(50) NOT NULL,                 -- 4.6, 5.8, 8.8, 10.9, 12.9, 45H, SS304, SS316
+    finish VARCHAR(100) NOT NULL,               -- Black Passivated (BP), WZP, YZP, HDG, Self Natural
+    
+    -- Thread & Dimensional Engineering
+    thread_type VARCHAR(50) NOT NULL,           -- Metric Coarse, Metric Fine, UNC, Full Thread
+    thread_length VARCHAR(50) DEFAULT NULL,     -- FULL THREAD, HALF THREAD
+    diameter VARCHAR(20) NOT NULL,              -- M3, M4, M5, M6, M8, M10, M12, M16, M20, M24, 1/2"
+    length_mm INTEGER NOT NULL,                 -- Length in mm
+    pitch_mm DECIMAL(4, 2) NOT NULL,            -- 0.5, 0.7, 1.0, 1.25, 1.5, 1.75, 2.0
+    size_formatted VARCHAR(100) DEFAULT NULL,   -- M10X1.5X100
+    
+    -- Unit Weights (PCS <-> KGS & 1000 Pcs)
+    weight_per_pc_kg DECIMAL(8, 4) NOT NULL,    -- Exact unit weight in kg
+    weight_per_1000_pcs_kg DECIMAL(10, 4) DEFAULT NULL, -- Weight for 1000 pcs in kg
+    
+    -- Dual Unit Pricing (PCS & KGS) & Volume Tiers
     price_per_piece DECIMAL(10, 2) NOT NULL,
     original_price_per_piece DECIMAL(10, 2),
     price_per_kg DECIMAL(10, 2) NOT NULL,
     original_price_per_kg DECIMAL(10, 2),
+    price_100_pcs DECIMAL(10, 2) DEFAULT NULL,
+    price_1000_pcs DECIMAL(10, 2) DEFAULT NULL,
+    
+    -- Packaging & Logistics
+    pcs_per_box VARCHAR(50) DEFAULT NULL,       -- Small box piece count (e.g. 500 pcs)
+    small_box_weight_kg DECIMAL(6, 2) DEFAULT 2.50,
+    pcs_per_master_ctn VARCHAR(50) DEFAULT NULL,-- Master carton count (e.g. 4000 pcs)
+    master_ctn_weight_kg DECIMAL(6, 2) DEFAULT 20.00,
+    moq VARCHAR(50) DEFAULT '25 KGS',           -- Minimum Order Quantity
+    lead_time_days INT DEFAULT 10,              -- Total lead time
+    production_days INT DEFAULT 7,              -- Production duration
+    packing_days INT DEFAULT 3,                 -- Packing duration
     
     -- Inventory Levels
     stock_pcs INTEGER NOT NULL DEFAULT 0,
     stock_kg DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    stock_uom VARCHAR(20) DEFAULT 'Nos',
     min_order_pcs INTEGER DEFAULT 100,
     min_order_kg DECIMAL(8, 2) DEFAULT 5.00,
     
@@ -66,13 +97,22 @@ CREATE TABLE IF NOT EXISTS products (
     is_surplus BOOLEAN DEFAULT FALSE,
     surplus_discount_pct INTEGER DEFAULT 0,
     
-    -- Documentation
+    -- Compliance & Traceability
+    brand VARCHAR(100) DEFAULT 'CBH',
+    hsn_code VARCHAR(20) DEFAULT '73181500',
+    
+    -- Media, Technical Drawings & Documentation
     image_url TEXT,
+    drawing_url TEXT,                           -- AutoCAD 2D/3D Drawing URL
+    gdrive_image_url TEXT,                      -- Google Drive high-res photo URL
     cad_step_url TEXT,
     mtc_report_number VARCHAR(100),
     bis_cert_number VARCHAR(100),
+    description_html LONGTEXT DEFAULT NULL,     -- Rich ERPNext HTML specification table
+    description TEXT,
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 4. Wholesale Volume Tier Rebate Settings
@@ -107,7 +147,9 @@ CREATE TABLE IF NOT EXISTS bulk_rfqs (
     net_total DECIMAL(12, 2) NOT NULL,
     total_weight_kg DECIMAL(10, 2) NOT NULL,
     
-    -- Status & Workflow
+    -- ERPNext Integration & Status
+    erpnext_quote_id VARCHAR(100) DEFAULT NULL,
+    erpnext_sales_order_id VARCHAR(100) DEFAULT NULL,
     status VARCHAR(30) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'IN_REVIEW', 'QUOTED', 'APPROVED', 'CONVERTED_TO_PO', 'DECLINED')),
     admin_notes TEXT,
     validity_date DATE,
@@ -136,6 +178,9 @@ CREATE TABLE IF NOT EXISTS orders (
     order_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. CBH-ORD-2025-8842
     customer_id INTEGER REFERENCES users(id),
     rfq_id INTEGER REFERENCES bulk_rfqs(id),
+    company_name VARCHAR(200) DEFAULT NULL,
+    customer_name VARCHAR(150) DEFAULT NULL,
+    erpnext_sales_order_id VARCHAR(100) DEFAULT NULL,
     
     -- Commercial Summary
     gross_amount DECIMAL(12, 2) NOT NULL,

@@ -20,6 +20,7 @@ import TablePagination from '@/components/common/TablePagination';
 import { CustomerOrder } from '@/lib/types';
 import { INITIAL_ORDERS } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
+import { showToast } from '@/lib/swal';
 
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -315,7 +316,7 @@ export default function CustomerOrdersPage() {
               </button>
               <button
                 type="button"
-                onClick={() => alert('MTC PDF downloaded.')}
+                onClick={() => showToast('MTC 3.1 PDF Certificate downloaded.', 'success')}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
               >
                 <Download size={14} /> Download Verified PDF

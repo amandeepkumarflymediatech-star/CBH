@@ -23,6 +23,7 @@ import {
   Edit2
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, DEMO_CLIENT, AuthUser } from '@/lib/auth';
+import { showErrorAlert, showToast, showWarningAlert } from '@/lib/swal';
 
 function LoginForm() {
   const router = useRouter();
@@ -60,7 +61,9 @@ function LoginForm() {
 
     const cleanEmail = email.trim();
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMsg('Please enter a valid company email address.');
+      const msg = 'Please enter a valid company email address.';
+      setErrorMsg(msg);
+      showWarningAlert('Invalid Email', msg);
       return;
     }
 
@@ -81,15 +84,19 @@ function LoginForm() {
         // Linked with us -> proceed to password step
         setLinkedUser(data.user || null);
         setStep('password');
+        showToast('Account found! Please enter your password.', 'info', 2000);
       } else {
         // Not linked with us -> go to signup page with email pre-filled and redirect preserved
+        showToast('No existing account found. Directing to registration...', 'info', 2500);
         const targetUrl = `/register?email=${encodeURIComponent(cleanEmail)}${
           redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : ''
         }`;
         router.push(targetUrl);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error checking account credentials.');
+      const msg = err.message || 'Error checking account credentials.';
+      setErrorMsg(msg);
+      showErrorAlert('Account Verification Failed', msg);
     } finally {
       setIsLoading(false);
     }
@@ -123,6 +130,7 @@ function LoginForm() {
       const authUser: AuthUser = data.user || DEMO_CLIENT;
       setStoredUser(authUser, data.token);
 
+      showToast(`Welcome back, ${authUser.companyName || authUser.fullName}!`, 'success', 2500);
       setSuccessMsg(`Welcome back, ${authUser.companyName}! Loading your session...`);
       setTimeout(() => {
         if (redirectParam) {
@@ -134,7 +142,9 @@ function LoginForm() {
         }
       }, 700);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Invalid password. Please check your credentials or reset password.');
+      const msg = err.message || 'Invalid password. Please check your credentials or reset password.';
+      setErrorMsg(msg);
+      showErrorAlert('Authentication Denied', msg);
     } finally {
       setIsLoading(false);
     }

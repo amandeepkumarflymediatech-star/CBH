@@ -33,27 +33,62 @@ export interface Product {
   sku: string;
   name: string;
   category: string;
+  subGroup?: string;
+  subCategory?: string;
   standard: string;
+  din?: string;
+  isoStandard?: string;
+  bsStandard?: string;
+  asmeStandard?: string;
   grade: string;
   finish: string;
   threadType: string;
+  threadLength?: string;
   diameter: string;
   lengthMm: number;
   pitchMm: number;
+  sizeFormatted?: string;
   weightPerPcKg: number; // e.g. 0.0601 kg
+  weightPer1000PcsKg?: number;
   
   // Dual Pricing
   pricePerPiece: number;
   originalPricePerPiece?: number;
   pricePerKg: number;
   originalPricePerKg?: number;
+  price100Pcs?: number;
+  price1000Pcs?: number;
   
+  // Stock & Inventory
   stockPcs: number;
   stockKg: number;
+  stockUom?: string;
   isInStock: boolean;
   isSurplus?: boolean;
   surplusDiscountPct?: number;
+  moq?: string;
+  leadTimeDays?: number;
+  productionDays?: number;
+  packingDays?: number;
+  minStockLevel?: string | number;
+  maxStockLevel?: string | number;
+
+  // Packaging
+  pcsPerBox?: number | string;
+  smallBoxWeightKg?: number;
+  pcsPerMasterCtn?: number | string;
+  masterCtnWeightKg?: number;
+
+  // Commercial & Compliance
+  brand?: string;
+  hsnCode?: string;
+
+  // Media
   imageUrl: string;
+  drawingUrl?: string;
+  gdriveImageUrl?: string;
+  descriptionHtml?: string;
+  description?: string;
 }
 
 export interface RfqLineItem {

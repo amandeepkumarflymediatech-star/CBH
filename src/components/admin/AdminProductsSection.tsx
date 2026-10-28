@@ -20,7 +20,17 @@ import {
   UploadCloud,
   ImageIcon,
   Loader2,
-  Check
+  Check,
+  FileSpreadsheet,
+  Layers,
+  ExternalLink,
+  Eye,
+  SlidersHorizontal,
+  Package,
+  Boxes,
+  LayoutGrid,
+  ZoomIn,
+  ArrowUpDown
 } from 'lucide-react';
 
 const FASTENER_IMAGE_PRESETS = [
@@ -273,8 +283,14 @@ export default function AdminProductsSection({
   onToggleSurplus,
   showToast,
 }: AdminProductsSectionProps) {
+  // Table View Mode: 'excel' (Full Excel Sheet columns) vs 'compact' (Standard view) vs 'grid' (Mobile/Tablet Card Grid)
+  const [viewMode, setViewMode] = useState<'excel' | 'compact' | 'grid'>('excel');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+
   // Search & Filter state
   const [search, setSearch] = useState('');
+  const [selectedSubGroup, setSelectedSubGroup] = useState('all');
   const [selectedStandard, setSelectedStandard] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
   const [selectedStock, setSelectedStock] = useState('all');
@@ -287,29 +303,114 @@ export default function AdminProductsSection({
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addModalTab, setAddModalTab] = useState<'basic' | 'standards' | 'dimensions' | 'metallurgy' | 'pricing' | 'packaging' | 'media'>('basic');
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editModalTab, setEditModalTab] = useState<'basic' | 'standards' | 'dimensions' | 'metallurgy' | 'pricing' | 'packaging' | 'media'>('basic');
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
+  const [inspectProduct, setInspectProduct] = useState<Product | null>(null);
 
-  // Add form fields
-  const [addForm, setAddForm] = useState({
+  // Live Telemetry KPI Metrics
+  const stats = useMemo(() => {
+    const total = products.length;
+    const inStock = products.filter((p) => p.stockPcs > 0).length;
+    const surplusCount = products.filter((p) => p.isSurplus).length;
+    const erpSynced = products.filter((p) => p.imageUrl && p.imageUrl.includes('frappe.cloud')).length;
+    const screwsCount = products.filter((p) => (p.subGroup || '').toUpperCase().includes('SCREW')).length;
+    const boltsCount = products.filter((p) => (p.subGroup || '').toUpperCase().includes('BOLT')).length;
+    return { total, inStock, surplusCount, erpSynced, screwsCount, boltsCount };
+  }, [products]);
+
+  // Live Sync trigger with ERPNext
+  const handleSyncErpNext = async () => {
+    try {
+      setIsSyncing(true);
+      showToast('Fetching latest items & dynamic images from ERPNext Frappe Cloud...');
+      const res = await fetch('/api/erpnext/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Successfully synced ${data.count} items from ERPNext with dynamic images!`);
+        window.location.reload();
+      } else {
+        showToast(`ERPNext sync failed: ${data.error || 'Server error'}`);
+      }
+    } catch (err: any) {
+      showToast(`Sync error: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Default Add Form containing ALL Excel Sheet Attributes
+  const DEFAULT_ADD_FORM = {
     sku: '',
     name: '',
+    subGroup: 'SCREW',
     category: 'Hex Screws',
+    subCategory: 'SOCKET SET SCREWS',
     standard: 'DIN 933',
+    din: 'DIN 933',
+    isoStandard: 'ISO 4017',
+    bsStandard: '',
+    asmeStandard: '',
+    threadType: 'Full Thread',
+    threadLength: 'FULL THREAD',
+    diameter: 'M10',
+    pitchMm: '1.5',
+    lengthMm: '100',
+    sizeFormatted: 'M10X1.5X100',
     grade: '8.8',
     finish: 'Black Passivated (BP)',
-    threadType: 'Full Thread',
-    diameter: 'M10',
-    lengthMm: '100',
-    pitchMm: '1.5',
     weightPerPcKg: '0.0601',
+    weightPer1000PcsKg: '60.1',
     pricePerPiece: '6.50',
     pricePerKg: '108.00',
+    price100Pcs: '650.00',
+    price1000Pcs: '6500.00',
+    pcsPerBox: '500',
+    smallBoxWeightKg: '2.5',
+    pcsPerMasterCtn: '4000',
+    masterCtnWeightKg: '20.0',
+    moq: '25 KGS',
+    leadTimeDays: '10',
+    productionDays: '7',
+    packingDays: '3',
     stockPcs: '15000',
     isSurplus: false,
     surplusDiscountPct: '35',
+    brand: 'CBH',
+    hsnCode: '73181500',
+    drawingUrl: '',
+    gdriveImageUrl: '',
     imageUrl: '/assets/bolt_zinc.jpg',
-  });
+    descriptionHtml: '',
+  };
+
+  const [addForm, setAddForm] = useState(DEFAULT_ADD_FORM);
+
+  // Dynamic filter lists from data
+  const { subGroups, standards, grades } = useMemo(() => {
+    const sGroups = new Set<string>();
+    const stds = new Set<string>();
+    const grds = new Set<string>();
+
+    products.forEach((p) => {
+      if (p.subGroup) sGroups.add(p.subGroup);
+      if (p.standard) stds.add(p.standard);
+      if (p.din) stds.add(p.din);
+      if (p.isoStandard) stds.add(p.isoStandard);
+      if (p.grade) grds.add(p.grade);
+    });
+
+    return {
+      subGroups: Array.from(sGroups).sort(),
+      standards: Array.from(stds).sort(),
+      grades: Array.from(grds).sort(),
+    };
+  }, [products]);
 
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
@@ -322,16 +423,35 @@ export default function AdminProductsSection({
           p.sku.toLowerCase().includes(q) ||
           p.name.toLowerCase().includes(q) ||
           p.diameter?.toLowerCase().includes(q) ||
-          p.standard.toLowerCase().includes(q)
+          p.standard?.toLowerCase().includes(q) ||
+          p.din?.toLowerCase().includes(q) ||
+          p.isoStandard?.toLowerCase().includes(q) ||
+          p.subGroup?.toLowerCase().includes(q) ||
+          p.subCategory?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
+          p.grade?.toLowerCase().includes(q) ||
+          p.finish?.toLowerCase().includes(q) ||
+          p.sizeFormatted?.toLowerCase().includes(q) ||
+          p.hsnCode?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q)
       );
     }
 
+    if (selectedSubGroup !== 'all') {
+      list = list.filter((p) => (p.subGroup || '').toLowerCase() === selectedSubGroup.toLowerCase());
+    }
+
     if (selectedStandard !== 'all') {
-      list = list.filter((p) => p.standard.toLowerCase().includes(selectedStandard.toLowerCase()));
+      list = list.filter(
+        (p) =>
+          (p.standard || '').toLowerCase().includes(selectedStandard.toLowerCase()) ||
+          (p.din || '').toLowerCase().includes(selectedStandard.toLowerCase()) ||
+          (p.isoStandard || '').toLowerCase().includes(selectedStandard.toLowerCase())
+      );
     }
 
     if (selectedGrade !== 'all') {
-      list = list.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
+      list = list.filter((p) => (p.grade || '').toLowerCase().includes(selectedGrade.toLowerCase()));
     }
 
     if (selectedStock === 'in_stock') {
@@ -359,12 +479,12 @@ export default function AdminProductsSection({
     }
 
     return list;
-  }, [products, search, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
+  }, [products, search, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
 
   // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
+  }, [search, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
 
   // Sliced paginated products
   const paginatedProducts = useMemo(() => {
@@ -374,6 +494,7 @@ export default function AdminProductsSection({
 
   const handleResetFilters = () => {
     setSearch('');
+    setSelectedSubGroup('all');
     setSelectedStandard('all');
     setSelectedGrade('all');
     setSelectedStock('all');
@@ -382,17 +503,62 @@ export default function AdminProductsSection({
     setCurrentPage(1);
   };
 
+  // Full 100% Excel Column Export
   const handleExportCSV = () => {
-    const headers = ['SKU', 'Name', 'Standard', 'Grade', 'Rate/Pc (INR)', 'Rate/Kg (INR)', 'Stock Pcs', 'Stock Kg', 'Surplus'];
+    const headers = [
+      'SKU', 'Item Name', 'Sub-Group', 'Category', 'Sub-Category',
+      'Standard', 'DIN', 'ISO Standard', 'BS Standard', 'ASME Standard',
+      'Diameter (DIA)', 'Pitch (mm)', 'Length (mm)', 'Size Formatted',
+      'Thread Length', 'Thread Type', 'Property Class / Grade', 'Finish / Coating',
+      'Weight Per Pc (kg)', 'Weight Per 1000 Pcs (kg)',
+      'Rate Per Pc (INR)', 'Rate Per Kg (INR)', 'Price 100 Pcs (INR)', 'Price 1000 Pcs (INR)',
+      'Small Box Packaging (Pcs)', 'Small Box Weight (kg)',
+      'Master Carton Packaging (Pcs)', 'Master Carton Weight (kg)',
+      'MOQ', 'Lead Time Days', 'Production Days', 'Packing Days',
+      'Stock Pcs', 'Stock Kg', 'Stock UOM',
+      'Brand', 'GST HSN Code', 'Drawing CAD URL', 'GDrive Image URL', 'Surplus Deal'
+    ];
+
     const rows = filteredProducts.map((p) => [
       `"${p.sku}"`,
-      `"${p.name}"`,
-      `"${p.standard}"`,
-      `"${p.grade}"`,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${p.subGroup || ''}"`,
+      `"${p.category || ''}"`,
+      `"${p.subCategory || ''}"`,
+      `"${p.standard || ''}"`,
+      `"${p.din || ''}"`,
+      `"${p.isoStandard || ''}"`,
+      `"${p.bsStandard || ''}"`,
+      `"${p.asmeStandard || ''}"`,
+      `"${p.diameter || ''}"`,
+      p.pitchMm,
+      p.lengthMm,
+      `"${p.sizeFormatted || ''}"`,
+      `"${p.threadLength || ''}"`,
+      `"${p.threadType || ''}"`,
+      `"${p.grade || ''}"`,
+      `"${p.finish || ''}"`,
+      p.weightPerPcKg,
+      p.weightPer1000PcsKg || (p.weightPerPcKg * 1000).toFixed(3),
       p.pricePerPiece,
       p.pricePerKg,
+      p.price100Pcs || (p.pricePerPiece * 100).toFixed(2),
+      p.price1000Pcs || (p.pricePerPiece * 1000).toFixed(2),
+      `"${p.pcsPerBox || ''}"`,
+      p.smallBoxWeightKg || 2.5,
+      `"${p.pcsPerMasterCtn || ''}"`,
+      p.masterCtnWeightKg || 20,
+      `"${p.moq || ''}"`,
+      p.leadTimeDays || 10,
+      p.productionDays || 7,
+      p.packingDays || 3,
       p.stockPcs,
       p.stockKg.toFixed(2),
+      `"${p.stockUom || 'Nos'}"`,
+      `"${p.brand || 'CBH'}"`,
+      `"${p.hsnCode || '73181500'}"`,
+      `"${p.drawingUrl || ''}"`,
+      `"${p.gdriveImageUrl || ''}"`,
       p.isSurplus ? `Yes (-${p.surplusDiscountPct}%)` : 'No',
     ]);
 
@@ -400,11 +566,11 @@ export default function AdminProductsSection({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `cbh_fastener_catalog_${Date.now()}.csv`);
+    link.setAttribute('download', `cbh_master_fastener_excel_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Exported ${filteredProducts.length} fastener SKUs to CSV`);
+    showToast(`Exported all Excel columns for ${filteredProducts.length} fastener SKUs`);
   };
 
   const submitAddForm = async (e: React.FormEvent) => {
@@ -413,51 +579,64 @@ export default function AdminProductsSection({
     const stockPcs = parseInt(addForm.stockPcs) || 10000;
     const pricePc = parseFloat(addForm.pricePerPiece) || 5.0;
     const priceKg = parseFloat(addForm.pricePerKg) || 100.0;
+    const prodDays = parseInt(addForm.productionDays) || 7;
+    const packDays = parseInt(addForm.packingDays) || 3;
+    const leadTime = parseInt(addForm.leadTimeDays) || (prodDays + packDays);
+
+    const generatedSku = addForm.sku.trim() || `CBH-${(addForm.din || addForm.standard || 'STD').replace(/\s+/g, '')}-${addForm.diameter}-${addForm.lengthMm}-${Math.floor(100 + Math.random() * 900)}`;
+    const formattedSize = addForm.sizeFormatted.trim() || `${addForm.diameter}X${addForm.pitchMm}X${addForm.lengthMm}`;
 
     await onAdd({
-      sku: addForm.sku || `CBH-${addForm.standard.replace(/\s+/g, '')}-${addForm.diameter}-${Math.floor(100 + Math.random() * 900)}`,
-      name: addForm.name || `${addForm.standard} Metric Fastener ${addForm.diameter}x${addForm.lengthMm}mm Grade ${addForm.grade}`,
+      sku: generatedSku.toUpperCase(),
+      name: addForm.name.trim() || `${addForm.standard} ${addForm.diameter}x${addForm.lengthMm}mm Grade ${addForm.grade} ${addForm.finish}`,
+      subGroup: addForm.subGroup,
       category: addForm.category,
+      subCategory: addForm.subCategory,
       standard: addForm.standard,
+      din: addForm.din,
+      isoStandard: addForm.isoStandard,
+      bsStandard: addForm.bsStandard,
+      asmeStandard: addForm.asmeStandard,
       grade: addForm.grade,
       finish: addForm.finish,
       threadType: addForm.threadType,
+      threadLength: addForm.threadLength,
       diameter: addForm.diameter,
       lengthMm: parseInt(addForm.lengthMm) || 100,
       pitchMm: parseFloat(addForm.pitchMm) || 1.5,
+      sizeFormatted: formattedSize,
       weightPerPcKg: weight,
+      weightPer1000PcsKg: parseFloat(addForm.weightPer1000PcsKg) || +(weight * 1000).toFixed(3),
       pricePerPiece: pricePc,
-      originalPricePerPiece: pricePc * 1.15,
+      originalPricePerPiece: +(pricePc * 1.15).toFixed(2),
       pricePerKg: priceKg,
-      originalPricePerKg: priceKg * 1.15,
+      originalPricePerKg: +(priceKg * 1.15).toFixed(2),
+      price100Pcs: parseFloat(addForm.price100Pcs) || +(pricePc * 100).toFixed(2),
+      price1000Pcs: parseFloat(addForm.price1000Pcs) || +(pricePc * 1000).toFixed(2),
       stockPcs: stockPcs,
-      stockKg: stockPcs * weight,
+      stockKg: +(stockPcs * weight).toFixed(2),
+      stockUom: 'Nos',
       isInStock: stockPcs > 0,
       isSurplus: addForm.isSurplus,
       surplusDiscountPct: addForm.isSurplus ? (parseInt(addForm.surplusDiscountPct) || 35) : 0,
+      pcsPerBox: addForm.pcsPerBox,
+      smallBoxWeightKg: parseFloat(addForm.smallBoxWeightKg) || 2.5,
+      pcsPerMasterCtn: addForm.pcsPerMasterCtn,
+      masterCtnWeightKg: parseFloat(addForm.masterCtnWeightKg) || 20.0,
+      moq: addForm.moq || '25 KGS',
+      leadTimeDays: leadTime,
+      productionDays: prodDays,
+      packingDays: packDays,
+      brand: addForm.brand || 'CBH',
+      hsnCode: addForm.hsnCode || '73181500',
+      drawingUrl: addForm.drawingUrl,
+      gdriveImageUrl: addForm.gdriveImageUrl,
       imageUrl: addForm.imageUrl || '/assets/bolt_zinc.jpg',
     });
 
     setIsAddOpen(false);
-    setAddForm({
-      sku: '',
-      name: '',
-      category: 'Hex Screws',
-      standard: 'DIN 933',
-      grade: '8.8',
-      finish: 'Black Passivated (BP)',
-      threadType: 'Full Thread',
-      diameter: 'M10',
-      lengthMm: '100',
-      pitchMm: '1.5',
-      weightPerPcKg: '0.0601',
-      pricePerPiece: '6.50',
-      pricePerKg: '108.00',
-      stockPcs: '15000',
-      isSurplus: false,
-      surplusDiscountPct: '35',
-      imageUrl: '/assets/bolt_zinc.jpg',
-    });
+    setAddForm(DEFAULT_ADD_FORM);
+    setAddModalTab('basic');
   };
 
   const submitEditForm = async (e: React.FormEvent) => {
@@ -474,158 +653,667 @@ export default function AdminProductsSection({
   };
 
   return (
-    <div className="portal-main-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>
-            Fastener Inventory Catalog ({products.length} Registered SKUs)
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
-            Live bidirectional synchronization with storefront matrix, RFQ calculator, and surplus liquidation
-          </p>
+    <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 1. TOP METRIC TELEMETRY CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Total Fasteners</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0052CC' }}>
+              <Boxes size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
+            {stats.total.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+            {stats.screwsCount} Screws • {stats.boltsCount} Bolts
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            type="button"
-            className="btn-outline"
-            style={{ padding: '8px 14px', fontSize: '12px' }}
-            onClick={handleExportCSV}
-          >
-            <Download size={14} />
-            <span>Export CSV</span>
-          </button>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>ERPNext Cloud Synced</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+              <CheckCircle2 size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 900, color: '#059669', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
+            {stats.erpSynced.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '11px', color: '#059669', marginTop: '4px', fontWeight: 600 }}>
+            Dynamic Frappe Cloud Images
+          </div>
+        </div>
 
-          <button
-            type="button"
-            className="btn-primary"
-            style={{ padding: '8px 16px', fontSize: '13px' }}
-            onClick={() => setIsAddOpen(true)}
-          >
-            <Plus size={15} />
-            <span>Add Fastener SKU</span>
-          </button>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Ready Inventory</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
+              <Package size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
+            {stats.inStock.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+            Available for immediate dispatch
+          </div>
+        </div>
+
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Surplus Lots</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}>
+              <Flame size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
+            {stats.surplusCount}
+          </div>
+          <div style={{ fontSize: '11px', color: '#D97706', marginTop: '4px', fontWeight: 600 }}>
+            Up to -35% OEM Clearance
+          </div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="admin-filter-bar">
-        <div className="admin-filter-group">
-          <div className="admin-search-wrap">
-            <Search size={15} className="admin-search-icon" />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search SKU, name, diameter..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* 2. MAIN WORKSPACE CARD */}
+      <div className="portal-main-card max-w-7xl mx-auto w-full">
+        {/* Header bar with Excel view switch */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>
+                Fastener Master Inventory ({products.length} Items)
+              </h3>
+              <span className="badge badge-din" style={{ fontSize: '11px' }}>
+                Excel Synced
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+              Full dimensional engineering, packaging, weights, pricing, and ERPNext live inventory telemetry
+            </p>
           </div>
 
-          <select
-            className="admin-select"
-            value={selectedStandard}
-            onChange={(e) => setSelectedStandard(e.target.value)}
-          >
-            <option value="all">Standard: All</option>
-            <option value="DIN 933">DIN 933 (Hex Set Screw)</option>
-            <option value="DIN 931">DIN 931 (Hex Bolt)</option>
-            <option value="DIN 912">DIN 912 (Socket Cap)</option>
-            <option value="DIN 934">DIN 934 (Hex Nut)</option>
-            <option value="ISO 4017">ISO 4017</option>
-            <option value="ETA Option 7">ETA Option 7 (Anchors)</option>
-          </select>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Table / Cards View Switcher */}
+            <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('excel')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'excel' ? '#0052CC' : 'transparent',
+                  color: viewMode === 'excel' ? '#FFFFFF' : '#475569',
+                  fontWeight: viewMode === 'excel' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Display all 30+ columns present in the Excel file"
+              >
+                <FileSpreadsheet size={14} />
+                <span>Excel Master</span>
+              </button>
 
-          <select
-            className="admin-select"
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-          >
-            <option value="all">Grade: All</option>
-            <option value="5.8">Class 5.8</option>
-            <option value="8.8">Class 8.8 (High Tensile)</option>
-            <option value="10.9">Class 10.9 (Alloy)</option>
-            <option value="12.9">Class 12.9 (Extreme)</option>
-            <option value="SS 304">SS 304 (A2-70)</option>
-            <option value="SS 316">SS 316 (A4-80)</option>
-          </select>
+              <button
+                type="button"
+                onClick={() => setViewMode('compact')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'compact' ? '#0052CC' : 'transparent',
+                  color: viewMode === 'compact' ? '#FFFFFF' : '#475569',
+                  fontWeight: viewMode === 'compact' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Compact commercial table view"
+              >
+                <Layers size={14} />
+                <span>Compact</span>
+              </button>
 
-          <select
-            className="admin-select"
-            value={selectedStock}
-            onChange={(e) => setSelectedStock(e.target.value)}
-          >
-            <option value="all">Stock: All</option>
-            <option value="in_stock">In Stock (&gt;5k pcs)</option>
-            <option value="low_stock">Low Stock (1-5k pcs)</option>
-            <option value="out_of_stock">Out of Stock (0)</option>
-          </select>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'grid' ? '#0052CC' : 'transparent',
+                  color: viewMode === 'grid' ? '#FFFFFF' : '#475569',
+                  fontWeight: viewMode === 'grid' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Card grid view (Optimized for all screen sizes & mobile)"
+              >
+                <LayoutGrid size={14} />
+                <span>Cards Grid</span>
+              </button>
+            </div>
 
-          <select
-            className="admin-select"
-            value={selectedCatalog}
-            onChange={(e) => setSelectedCatalog(e.target.value)}
-          >
-            <option value="all">Catalog: Standard + Surplus</option>
-            <option value="standard">Standard Catalog Only</option>
-            <option value="surplus">Surplus Lots Only</option>
-          </select>
-
-          <select
-            className="admin-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="default">Sort: Default</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-            <option value="stock_desc">Stock: High to Low</option>
-            <option value="sku_asc">SKU: A to Z</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span className="admin-filter-count">
-            Showing {filteredProducts.length} of {products.length} SKUs
-          </span>
-          {(search || selectedStandard !== 'all' || selectedGrade !== 'all' || selectedStock !== 'all' || selectedCatalog !== 'all' || sortBy !== 'default') && (
+            {/* Quick ERPNext Sync */}
             <button
               type="button"
               className="btn-outline"
-              style={{ padding: '4px 8px', fontSize: '11px' }}
-              onClick={handleResetFilters}
+              style={{ padding: '8px 14px', fontSize: '12px' }}
+              onClick={handleSyncErpNext}
+              disabled={isSyncing}
+              title="Pull latest live item images & prices directly from Frappe Cloud"
             >
-              <RefreshCw size={11} />
-              <span>Reset</span>
+              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync ERPNext'}</span>
             </button>
-          )}
-        </div>
-      </div>
 
-      {/* Table */}
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ padding: '8px 14px', fontSize: '12px' }}
+              onClick={handleExportCSV}
+              title="Download full CSV with every Excel attribute"
+            >
+              <Download size={14} />
+              <span>Export CSV</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ padding: '8px 16px', fontSize: '13px' }}
+              onClick={() => {
+                setAddForm(DEFAULT_ADD_FORM);
+                setAddModalTab('basic');
+                setIsAddOpen(true);
+              }}
+            >
+              <Plus size={15} />
+              <span>Add Fastener</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Filter Category Pills */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {[
+            { id: 'all', label: `All Fasteners (${products.length})` },
+            { id: 'screws', label: `Grub & Collar Screws (${stats.screwsCount})`, subGroup: 'SCREW' },
+            { id: 'bolts', label: `Bolts & Structural (${stats.boltsCount})`, subGroup: 'BOLTS' },
+            { id: 'in_stock', label: `In Stock Ready (${stats.inStock})`, stock: 'in_stock' },
+            { id: 'surplus', label: `Surplus Deals (${stats.surplusCount})`, catalog: 'surplus' },
+          ].map((pill) => {
+            const isActive =
+              (pill.id === 'all' && selectedSubGroup === 'all' && selectedStock === 'all' && selectedCatalog === 'all') ||
+              (pill.subGroup && selectedSubGroup === pill.subGroup) ||
+              (pill.stock && selectedStock === pill.stock) ||
+              (pill.catalog && selectedCatalog === pill.catalog);
+
+            return (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => {
+                  if (pill.id === 'all') {
+                    handleResetFilters();
+                  } else if (pill.subGroup) {
+                    setSelectedSubGroup(pill.subGroup);
+                  } else if (pill.stock) {
+                    setSelectedStock(pill.stock);
+                  } else if (pill.catalog) {
+                    setSelectedCatalog(pill.catalog);
+                  }
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '999px',
+                  border: isActive ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                  background: isActive ? '#EFF6FF' : '#FFFFFF',
+                  color: isActive ? '#0052CC' : '#475569',
+                  fontSize: '11px',
+                  fontWeight: isActive ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Filter Toolbar */}
+        <div className="admin-filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: '100%', alignItems: 'center' }}>
+            <div className="admin-search-wrap" style={{ flex: '1 1 300px', minWidth: '240px' }}>
+              <Search size={15} className="admin-search-icon" />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search SKU, Name, Standard (DIN/ISO), DIA, Grade, HSN, Size..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', flex: '2 1 500px' }}>
+              <select
+                className="admin-select"
+                value={selectedSubGroup}
+                onChange={(e) => setSelectedSubGroup(e.target.value)}
+              >
+                <option value="all">Sub-Group: All</option>
+                {subGroups.map((sg) => (
+                  <option key={sg} value={sg}>{sg}</option>
+                ))}
+              </select>
+
+              <select
+                className="admin-select"
+                value={selectedStandard}
+                onChange={(e) => setSelectedStandard(e.target.value)}
+              >
+                <option value="all">Standard: All</option>
+                {standards.slice(0, 15).map((std) => (
+                  <option key={std} value={std}>{std}</option>
+                ))}
+              </select>
+
+              <select
+                className="admin-select"
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+              >
+                <option value="all">Grade: All</option>
+                {grades.map((grd) => (
+                  <option key={grd} value={grd}>{grd}</option>
+                ))}
+              </select>
+
+              <select
+                className="admin-select"
+                value={selectedStock}
+                onChange={(e) => setSelectedStock(e.target.value)}
+              >
+                <option value="all">Stock: All</option>
+                <option value="in_stock">In Stock (&gt;5k pcs)</option>
+                <option value="low_stock">Low Stock (1-5k pcs)</option>
+                <option value="out_of_stock">Out of Stock (0)</option>
+              </select>
+
+              <select
+                className="admin-select"
+                value={selectedCatalog}
+                onChange={(e) => setSelectedCatalog(e.target.value)}
+              >
+                <option value="all">Catalog: All</option>
+                <option value="standard">Standard Catalog</option>
+                <option value="surplus">Surplus Lots Only</option>
+              </select>
+
+              <select
+                className="admin-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="default">Sort: Default</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="stock_desc">Stock: High to Low</option>
+                <option value="sku_asc">SKU: A to Z</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <span className="admin-filter-count" style={{ fontSize: '12px' }}>
+              Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> SKUs
+              {viewMode === 'excel' && <span style={{ color: '#0052CC', marginLeft: '6px', fontWeight: 600 }}>• Showing all 30+ Excel engineering attributes</span>}
+              {viewMode === 'grid' && <span style={{ color: '#059669', marginLeft: '6px', fontWeight: 600 }}>• Card grid responsive layout</span>}
+            </span>
+            {(search || selectedSubGroup !== 'all' || selectedStandard !== 'all' || selectedGrade !== 'all' || selectedStock !== 'all' || selectedCatalog !== 'all' || sortBy !== 'default') && (
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ padding: '4px 10px', fontSize: '11px' }}
+                onClick={handleResetFilters}
+              >
+                <RefreshCw size={11} />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* VIEW MODE 1: RESPONSIVE CARD GRID (FOR PHONES, TABLETS & MODERN BROWSING) */}
+        {viewMode === 'grid' ? (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              {filteredProducts.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
+                  <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
+                  <button type="button" className="btn-outline" onClick={handleResetFilters}>
+                    Clear All Filters
+                  </button>
+                </div>
+              ) : (
+                paginatedProducts.map((p) => {
+                  const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
+                  const isOutOfStock = p.stockPcs === 0;
+
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        background: '#FFFFFF',
+                        borderRadius: '12px',
+                        border: p.isSurplus ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        transition: 'all 0.2s ease',
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Top Badges & Image */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontFamily: 'var(--font-mono)',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#EFF6FF',
+                            color: '#0052CC',
+                            border: '1px solid #BFDBFE'
+                          }}>
+                            {p.standard || 'DIN'}
+                          </span>
+                          {p.isSurplus ? (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: '#FEF3C7',
+                              color: '#B45309',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              <Flame size={11} /> SURPLUS (-{p.surplusDiscountPct}%)
+                            </span>
+                          ) : (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: isOutOfStock ? '#FEE2E2' : isLowStock ? '#FEF3C7' : '#ECFDF5',
+                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#059669',
+                            }}>
+                              {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Ready Stock'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Image Thumbnail Container */}
+                        <div
+                          style={{
+                            height: '140px',
+                            background: '#F8FAFC',
+                            borderRadius: '8px',
+                            border: '1px solid #E2E8F0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            marginBottom: '12px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setPreviewProduct(p)}
+                          title="Click to preview photo"
+                        >
+                          <img
+                            src={p.imageUrl || '/assets/bolt_zinc.jpg'}
+                            alt={p.sku}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                            }}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            bottom: '6px',
+                            right: '6px',
+                            background: 'rgba(15, 23, 42, 0.7)',
+                            color: '#FFFFFF',
+                            borderRadius: '4px',
+                            padding: '3px 6px',
+                            fontSize: '10px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            <ZoomIn size={11} /> Zoom
+                          </span>
+                        </div>
+
+                        {/* Title & SKU */}
+                        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#64748B', fontWeight: 600 }}>
+                          {p.sku}
+                        </div>
+                        <h4 style={{
+                          margin: '4px 0 8px',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: '#0F172A',
+                          lineHeight: '1.3',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {p.name}
+                        </h4>
+
+                        {/* Size & Grade Tags */}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            {p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}
+                          </span>
+                          <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            Gr. {p.grade}
+                          </span>
+                          {p.finish && (
+                            <span style={{ fontSize: '10px', background: '#F1F5F9', color: '#475569', padding: '2px 6px', borderRadius: '4px' }}>
+                              {p.finish.split(' ')[0]}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                          padding: '10px',
+                          background: '#F8FAFC',
+                          borderRadius: '8px',
+                          border: '1px solid #E2E8F0',
+                          marginBottom: '12px',
+                          fontSize: '11px'
+                        }}>
+                          <div>
+                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Rate / Pc:</span>
+                            <strong style={{ color: '#0052CC', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                              {formatINR(p.pricePerPiece)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Rate / Kg:</span>
+                            <strong style={{ color: '#059669', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                              {formatINR(p.pricePerKg)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Stock:</span>
+                            <strong style={{ fontFamily: 'var(--font-mono)' }}>
+                              {p.stockPcs.toLocaleString()} pcs
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Weight:</span>
+                            <span style={{ fontFamily: 'var(--font-mono)' }}>
+                              {p.weightPerPcKg} kg/pc
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions Bar */}
+                      <div style={{ display: 'flex', gap: '6px', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
+                        <button
+                          type="button"
+                          onClick={() => setInspectProduct(p)}
+                          className="btn-outline"
+                          style={{ flex: 1, padding: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          title="Inspect full Excel row"
+                        >
+                          <Eye size={12} />
+                          <span>Inspect</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditProduct({ ...p });
+                            setEditModalTab('basic');
+                          }}
+                          className="btn-outline"
+                          style={{ flex: 1, padding: '6px', fontSize: '11px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          title="Edit fastener"
+                        >
+                          <Edit size={12} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onToggleSurplus(p.id)}
+                          className="btn-outline"
+                          style={{ padding: '6px 8px', color: p.isSurplus ? '#B45309' : '#64748B' }}
+                          title="Toggle surplus deal"
+                        >
+                          <Flame size={13} color={p.isSurplus ? '#F59E0B' : '#94A3B8'} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteProduct(p)}
+                          className="btn-outline"
+                          style={{ padding: '6px 8px', color: '#DC2626' }}
+                          title="Delete SKU"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredProducts.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              itemLabel="fastener SKUs"
+              pageSizeOptions={[10, 20, 50, 100]}
+            />
+          </div>
+        ) : (
+          /* VIEW MODE 2 & 3: EXCEL MASTER TABLE & COMPACT TABLE */
+          <div className="admin-table-wrap" style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+            <table className="admin-table" style={{ fontSize: '12px', minWidth: viewMode === 'excel' ? '1800px' : '1000px' }}>
           <thead>
-            <tr>
-              <th>SKU & Product Details</th>
-              <th>Standard</th>
-              <th>Grade</th>
-              <th>Rate / Pc</th>
-              <th>Rate / Kg</th>
-              <th>Stock Telemetry</th>
-              <th>Status</th>
-              <th>Surplus Deal</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
-            </tr>
+            {viewMode === 'excel' ? (
+              <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #CBD5E1' }}>
+                <th style={{ minWidth: '220px', position: 'sticky', left: 0, background: '#F8FAFC', zIndex: 2 }}>SKU & Name</th>
+                <th style={{ minWidth: '130px' }}>Sub-Group / Cat</th>
+                <th style={{ minWidth: '120px' }}>Sub-Category</th>
+                <th style={{ minWidth: '130px' }}>Standards (DIN/ISO)</th>
+                <th style={{ minWidth: '110px' }}>Size Formatted</th>
+                <th style={{ minWidth: '110px' }}>DIA x Length</th>
+                <th style={{ minWidth: '90px' }}>Pitch</th>
+                <th style={{ minWidth: '110px' }}>Thread Length</th>
+                <th style={{ minWidth: '110px' }}>Grade</th>
+                <th style={{ minWidth: '110px' }}>Finish</th>
+                <th style={{ minWidth: '100px' }}>Wt/Pc (kg)</th>
+                <th style={{ minWidth: '110px' }}>Wt/1000 Pcs</th>
+                <th style={{ minWidth: '100px' }}>Rate/Pc (₹)</th>
+                <th style={{ minWidth: '100px' }}>Rate/Kg (₹)</th>
+                <th style={{ minWidth: '110px' }}>Price 100/1000</th>
+                <th style={{ minWidth: '140px' }}>Box Pack (pcs/kg)</th>
+                <th style={{ minWidth: '140px' }}>Carton Pack (pcs/kg)</th>
+                <th style={{ minWidth: '100px' }}>MOQ</th>
+                <th style={{ minWidth: '110px' }}>Lead Time</th>
+                <th style={{ minWidth: '120px' }}>Stock Telemetry</th>
+                <th style={{ minWidth: '100px' }}>Brand / HSN</th>
+                <th style={{ minWidth: '100px' }}>CAD / Image</th>
+                <th style={{ minWidth: '90px' }}>Surplus</th>
+                <th style={{ minWidth: '120px', textAlign: 'right', position: 'sticky', right: 0, background: '#F8FAFC', zIndex: 2 }}>Actions</th>
+              </tr>
+            ) : (
+              <tr>
+                <th>SKU & Product Details</th>
+                <th>Standard</th>
+                <th>Grade</th>
+                <th>Rate / Pc</th>
+                <th>Rate / Kg</th>
+                <th>Packaging</th>
+                <th>Stock Telemetry</th>
+                <th>Status</th>
+                <th>Surplus Deal</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={9}>
-                  <div className="admin-empty-state">
-                    <AlertTriangle size={32} color="#D97706" style={{ margin: '0 auto' }} />
-                    <h4>No Fastener SKUs Matched</h4>
-                    <p>No products match your current search and filter combination.</p>
+                <td colSpan={viewMode === 'excel' ? 24 : 10}>
+                  <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
+                    <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
+                    <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
                     <button type="button" className="btn-outline" onClick={handleResetFilters}>
                       Clear All Filters
                     </button>
@@ -637,6 +1325,259 @@ export default function AdminProductsSection({
                 const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
                 const isOutOfStock = p.stockPcs === 0;
 
+                if (viewMode === 'excel') {
+                  return (
+                    <tr key={p.id} className={p.isSurplus ? 'surplus-row' : ''} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      {/* Sticky SKU & Name */}
+                      <td style={{ position: 'sticky', left: 0, background: '#FFFFFF', zIndex: 1, boxShadow: '2px 0 5px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '4px',
+                            border: '1px solid #E2E8F0',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            background: '#F8FAFC',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <img
+                              src={p.imageUrl || '/assets/bolt_zinc.jpg'}
+                              alt={p.sku}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
+                            />
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => setInspectProduct(p)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                color: '#0052CC',
+                                fontWeight: 700,
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                textDecoration: 'underline'
+                              }}
+                              title="Click to view full Excel card"
+                            >
+                              {p.sku}
+                            </button>
+                            <div style={{ fontSize: '11px', color: '#64748B', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.name}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Sub-Group / Category */}
+                      <td>
+                        <span style={{ fontWeight: 600, color: '#1E293B' }}>{p.subGroup || 'SCREW'}</span>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{p.category}</div>
+                      </td>
+
+                      {/* Sub-Category */}
+                      <td>
+                        <span style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#334155', fontWeight: 600 }}>
+                          {p.subCategory || 'ALLEN SCREWS'}
+                        </span>
+                      </td>
+
+                      {/* Standards */}
+                      <td>
+                        <span className="badge badge-din" style={{ padding: '2px 6px', fontSize: '10px' }}>
+                          {p.din || p.standard}
+                        </span>
+                        {p.isoStandard && (
+                          <div style={{ fontSize: '10px', color: '#059669', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                            {p.isoStandard}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Size Formatted */}
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0F172A' }}>
+                        {p.sizeFormatted || `${p.diameter}X${p.pitchMm}X${p.lengthMm}`}
+                      </td>
+
+                      {/* DIA x Length */}
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>
+                        {p.diameter} × {p.lengthMm}mm
+                      </td>
+
+                      {/* Pitch */}
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>
+                        {p.pitchMm} mm
+                      </td>
+
+                      {/* Thread Length */}
+                      <td>
+                        <span style={{ fontSize: '11px', color: '#475569' }}>
+                          {p.threadLength || p.threadType}
+                        </span>
+                      </td>
+
+                      {/* Grade */}
+                      <td>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#1E293B' }}>
+                          {p.grade}
+                        </span>
+                      </td>
+
+                      {/* Finish */}
+                      <td>
+                        <span style={{ fontSize: '11px', color: '#334155' }}>
+                          {p.finish}
+                        </span>
+                      </td>
+
+                      {/* Wt/Pc */}
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>
+                        {p.weightPerPcKg} kg
+                      </td>
+
+                      {/* Wt/1000 Pcs */}
+                      <td style={{ fontFamily: 'var(--font-mono)' }}>
+                        {p.weightPer1000PcsKg || (p.weightPerPcKg * 1000).toFixed(2)} kg
+                      </td>
+
+                      {/* Rate/Pc */}
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC' }}>
+                        {formatINR(p.pricePerPiece)}
+                      </td>
+
+                      {/* Rate/Kg */}
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#059669' }}>
+                        {formatINR(p.pricePerKg)}
+                      </td>
+
+                      {/* Price 100 / 1000 */}
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#475569' }}>
+                        <div>100: {formatINR(p.price100Pcs || p.pricePerPiece * 100)}</div>
+                        <div>1k: {formatINR(p.price1000Pcs || p.pricePerPiece * 1000)}</div>
+                      </td>
+
+                      {/* Box Pack */}
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{p.pcsPerBox || '500'} pcs</div>
+                        <div style={{ fontSize: '10px', color: '#64748B' }}>{p.smallBoxWeightKg || 2.5} kg box</div>
+                      </td>
+
+                      {/* Carton Pack */}
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{p.pcsPerMasterCtn || '4000'} pcs</div>
+                        <div style={{ fontSize: '10px', color: '#64748B' }}>{p.masterCtnWeightKg || 20} kg ctn</div>
+                      </td>
+
+                      {/* MOQ */}
+                      <td style={{ fontWeight: 600, color: '#0F172A' }}>
+                        {p.moq || '25 KGS'}
+                      </td>
+
+                      {/* Lead Time */}
+                      <td>
+                        <span style={{ fontWeight: 600 }}>{p.leadTimeDays || 10}d</span>
+                        <div style={{ fontSize: '10px', color: '#64748B' }}>
+                          ({p.productionDays || 7}d + {p.packingDays || 3}d)
+                        </div>
+                      </td>
+
+                      {/* Stock Telemetry */}
+                      <td>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                          {p.stockPcs.toLocaleString()} pcs
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
+                          {p.stockKg.toFixed(1)} Kg
+                        </div>
+                      </td>
+
+                      {/* Brand & HSN */}
+                      <td>
+                        <span style={{ fontWeight: 700 }}>{p.brand || 'CBH'}</span>
+                        <div style={{ fontSize: '10px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
+                          HSN: {p.hsnCode || '73181500'}
+                        </div>
+                      </td>
+
+                      {/* CAD & Photo */}
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {p.drawingUrl ? (
+                            <a href={p.drawingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0052CC', padding: '2px 4px', fontSize: '10px', border: '1px solid #CBD5E1', borderRadius: '4px', textDecoration: 'none' }}>
+                              CAD
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: '10px', color: '#94A3B8' }}>CAD</span>
+                          )}
+                          {p.gdriveImageUrl ? (
+                            <a href={p.gdriveImageUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#059669', padding: '2px 4px', fontSize: '10px', border: '1px solid #CBD5E1', borderRadius: '4px', textDecoration: 'none' }}>
+                              Drive
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: '10px', color: '#94A3B8' }}>IMG</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Surplus */}
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => onToggleSurplus(p.id)}
+                          className={`badge ${p.isSurplus ? 'badge-surplus' : 'badge-certified'}`}
+                          style={{ cursor: 'pointer', border: 'none', padding: '2px 6px', fontSize: '10px' }}
+                          title="Click to toggle surplus liquidation deal"
+                        >
+                          {p.isSurplus ? `-${p.surplusDiscountPct}%` : 'STD'}
+                        </button>
+                      </td>
+
+                      {/* Sticky Actions */}
+                      <td style={{ position: 'sticky', right: 0, background: '#FFFFFF', zIndex: 1, boxShadow: '-2px 0 5px rgba(0,0,0,0.03)' }}>
+                        <div className="admin-action-btn-group" style={{ justifyContent: 'flex-end', gap: '4px' }}>
+                          <button
+                            type="button"
+                            className="admin-btn-action"
+                            style={{ background: '#F1F5F9', color: '#334155' }}
+                            onClick={() => setInspectProduct(p)}
+                            title="Inspect complete Excel row"
+                          >
+                            <Eye size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-btn-action admin-btn-edit"
+                            onClick={() => {
+                              setEditProduct({ ...p });
+                              setEditModalTab('basic');
+                            }}
+                            title="Edit fastener parameters"
+                          >
+                            <Edit size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-btn-action admin-btn-delete"
+                            onClick={() => setDeleteProduct(p)}
+                            title="Delete SKU from catalog"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // Compact view
                 return (
                   <tr key={p.id} className={p.isSurplus ? 'surplus-row' : ''}>
                     <td>
@@ -669,13 +1610,14 @@ export default function AdminProductsSection({
                             {p.name}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                            {p.diameter} × {p.lengthMm}mm | Pitch {p.pitchMm}mm | {p.finish}
+                            {p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`} | {p.finish}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="badge badge-din">{p.standard}</span>
+                      <span className="badge badge-din">{p.standard || p.din}</span>
+                      {p.isoStandard && <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px' }}>{p.isoStandard}</div>}
                     </td>
                     <td>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{p.grade}</span>
@@ -685,6 +1627,10 @@ export default function AdminProductsSection({
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {formatINR(p.pricePerKg)}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '11px', fontWeight: 600 }}>Box: {p.pcsPerBox || '500'} pcs</div>
+                      <div style={{ fontSize: '10px', color: '#64748B' }}>Ctn: {p.pcsPerMasterCtn || '4000'} pcs</div>
                     </td>
                     <td>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
@@ -730,8 +1676,20 @@ export default function AdminProductsSection({
                       <div className="admin-action-btn-group" style={{ justifyContent: 'flex-end' }}>
                         <button
                           type="button"
+                          className="admin-btn-action"
+                          style={{ background: '#F1F5F9', color: '#334155' }}
+                          onClick={() => setInspectProduct(p)}
+                          title="Inspect complete Excel row"
+                        >
+                          <Eye size={12} />
+                        </button>
+                        <button
+                          type="button"
                           className="admin-btn-action admin-btn-edit"
-                          onClick={() => setEditProduct({ ...p })}
+                          onClick={() => {
+                            setEditProduct({ ...p });
+                            setEditModalTab('basic');
+                          }}
                           title="Edit fastener SKU parameters"
                         >
                           <Edit size={12} />
@@ -753,234 +1711,608 @@ export default function AdminProductsSection({
             )}
           </tbody>
         </table>
-        <TablePagination
-          currentPage={currentPage}
-          totalItems={filteredProducts.length}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
-          itemLabel="fastener SKUs"
-          pageSizeOptions={[10, 20, 50, 100]}
-        />
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={filteredProducts.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="fastener SKUs"
+            pageSizeOptions={[10, 20, 50, 100]}
+          />
+        </div>
+      )}
       </div>
 
-      {/* Add Fastener Modal */}
+      {/* MODAL 1: ADD FASTENER MODAL WITH ALL EXCEL INPUT FIELDS */}
       {isAddOpen && (
         <div className="modal-overlay active" onClick={() => setIsAddOpen(false)}>
-          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '640px' }}>
+          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '24px', maxWidth: '780px', width: '95%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)', margin: 0 }}>
-                Register New Fastener SKU
-              </h3>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)', margin: 0 }}>
+                  Register New Fastener (Excel Master Fields)
+                </h3>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>
+                  Enter complete dimensional, standards, packaging, and commercial fields
+                </span>
+              </div>
               <button type="button" onClick={() => setIsAddOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
 
+            {/* Modal Tabs */}
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '16px', borderBottom: '1px solid #E2E8F0' }}>
+              {[
+                { id: 'basic', label: '1. Classification & Brand' },
+                { id: 'standards', label: '2. Standards (DIN/ISO)' },
+                { id: 'dimensions', label: '3. Dimensions & Size' },
+                { id: 'metallurgy', label: '4. Grade & Finish' },
+                { id: 'pricing', label: '5. Weights & Pricing' },
+                { id: 'packaging', label: '6. Packaging & Supply' },
+                { id: 'media', label: '7. Photo & CAD' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setAddModalTab(tab.id as any)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: addModalTab === tab.id ? '#0052CC' : '#F1F5F9',
+                    color: addModalTab === tab.id ? '#FFFFFF' : '#475569',
+                    fontSize: '11px',
+                    fontWeight: addModalTab === tab.id ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={submitAddForm}>
-              <div className="admin-modal-grid">
-                <div className="admin-form-group">
-                  <label>SKU Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CBH-933-M12-100-8.8"
-                    value={addForm.sku}
-                    onChange={(e) => setAddForm({ ...addForm, sku: e.target.value })}
-                  />
-                  <span className="hint">Auto-generated if left blank</span>
-                </div>
+              {/* TAB 1: CLASSIFICATION */}
+              {addModalTab === 'basic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>SKU Code</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. CBH-933-M10-100-8.8"
+                        value={addForm.sku}
+                        onChange={(e) => setAddForm({ ...addForm, sku: e.target.value })}
+                      />
+                      <span className="hint">Auto-generated if left blank</span>
+                    </div>
 
-                <div className="admin-form-group">
-                  <label>Category</label>
-                  <select
-                    value={addForm.category}
-                    onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
-                  >
-                    <option value="Hex Screws">Hex Screws</option>
-                    <option value="Hex Bolts">Heavy Hex Bolts</option>
-                    <option value="Socket Head Cap">Socket Head Cap Screws</option>
-                    <option value="Hex Nuts">Hex Nuts</option>
-                    <option value="Plain Washers">Plain Washers</option>
-                    <option value="Anchors">Concrete Anchors</option>
-                    <option value="Threaded Rods">Threaded Rods</option>
-                  </select>
-                </div>
-              </div>
+                    <div className="admin-form-group">
+                      <label>Sub-Group (Excel Col 1)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SCREW, BOLTS, NUTS"
+                        value={addForm.subGroup}
+                        onChange={(e) => setAddForm({ ...addForm, subGroup: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-              <div className="admin-form-group" style={{ marginTop: '12px' }}>
-                <label>Official Product Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Hex Screws-(Din 933)-Full Thread-M12X1.75X100-Grade 8.8 BZP"
-                  value={addForm.name}
-                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                />
-              </div>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Category (Excel Col 2)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SOCKET HEAD, HEX BOLTS"
+                        value={addForm.category}
+                        onChange={(e) => setAddForm({ ...addForm, category: e.target.value })}
+                      />
+                    </div>
 
-              <FastenerImageUploader
-                currentUrl={addForm.imageUrl}
-                onUrlChange={(url) => setAddForm({ ...addForm, imageUrl: url })}
-                label="Fastener Product Photo (New SKU)"
-              />
+                    <div className="admin-form-group">
+                      <label>Sub-Category (Excel Col 3)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. BUTTON COLLAR SCREWS, GRUB SCREWS"
+                        value={addForm.subCategory}
+                        onChange={(e) => setAddForm({ ...addForm, subCategory: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-              <div className="admin-modal-grid" style={{ marginTop: '12px' }}>
-                <div className="admin-form-group">
-                  <label>Standard Spec</label>
-                  <select
-                    value={addForm.standard}
-                    onChange={(e) => setAddForm({ ...addForm, standard: e.target.value })}
-                  >
-                    <option value="DIN 933">DIN 933 (Full Thread)</option>
-                    <option value="DIN 931">DIN 931 (Partial Thread)</option>
-                    <option value="DIN 912">DIN 912 (Socket Cap)</option>
-                    <option value="DIN 934">DIN 934 (Hex Nut)</option>
-                    <option value="ISO 4017">ISO 4017</option>
-                    <option value="ASTM A193">ASTM A193 (B7)</option>
-                    <option value="ETA Option 7">ETA Option 7</option>
-                  </select>
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Property Class / Grade</label>
-                  <select
-                    value={addForm.grade}
-                    onChange={(e) => setAddForm({ ...addForm, grade: e.target.value })}
-                  >
-                    <option value="4.6">Class 4.6</option>
-                    <option value="5.8">Class 5.8 BP</option>
-                    <option value="8.8">Class 8.8 HT</option>
-                    <option value="10.9">Class 10.9 Alloy</option>
-                    <option value="12.9">Class 12.9 High Tensile</option>
-                    <option value="SS 304">SS 304 (A2-70)</option>
-                    <option value="SS 316">SS 316 (A4-80)</option>
-                  </select>
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Diameter</label>
-                  <select
-                    value={addForm.diameter}
-                    onChange={(e) => setAddForm({ ...addForm, diameter: e.target.value })}
-                  >
-                    <option value="M6">M6</option>
-                    <option value="M8">M8</option>
-                    <option value="M10">M10</option>
-                    <option value="M12">M12</option>
-                    <option value="M14">M14</option>
-                    <option value="M16">M16</option>
-                    <option value="M20">M20</option>
-                    <option value="M24">M24</option>
-                  </select>
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Length (mm)</label>
-                  <input
-                    type="number"
-                    value={addForm.lengthMm}
-                    onChange={(e) => setAddForm({ ...addForm, lengthMm: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Surface Finish</label>
-                  <input
-                    type="text"
-                    value={addForm.finish}
-                    onChange={(e) => setAddForm({ ...addForm, finish: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Unit Weight (Kg/Pc)</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={addForm.weightPerPcKg}
-                    onChange={(e) => setAddForm({ ...addForm, weightPerPcKg: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Rate / Piece (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={addForm.pricePerPiece}
-                    onChange={(e) => setAddForm({ ...addForm, pricePerPiece: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Rate / Kg (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={addForm.pricePerKg}
-                    onChange={(e) => setAddForm({ ...addForm, pricePerKg: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Inventory Stock (Pcs)</label>
-                  <input
-                    type="number"
-                    value={addForm.stockPcs}
-                    onChange={(e) => setAddForm({ ...addForm, stockPcs: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Surplus Clearance Lot</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '40px' }}>
+                  <div className="admin-form-group">
+                    <label>Official Fastener Item Name (Excel Col 8)</label>
                     <input
-                      type="checkbox"
-                      id="addSurplusCheck"
-                      checked={addForm.isSurplus}
-                      onChange={(e) => setAddForm({ ...addForm, isSurplus: e.target.checked })}
-                      style={{ width: '18px', height: '18px' }}
+                      type="text"
+                      placeholder="e.g. Socket Button Head Screw With Collar ISO 7380-2 M10X1.5X100 Grade 10.9 WZP"
+                      value={addForm.name}
+                      onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
                     />
-                    <label htmlFor="addSurplusCheck" style={{ margin: 0, textTransform: 'none', cursor: 'pointer' }}>
-                      Mark as Surplus Clearance (-{addForm.surplusDiscountPct}%)
-                    </label>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Brand</label>
+                      <input
+                        type="text"
+                        value={addForm.brand}
+                        onChange={(e) => setAddForm({ ...addForm, brand: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>GST HSN Code</label>
+                      <input
+                        type="text"
+                        placeholder="73181500"
+                        value={addForm.hsnCode}
+                        onChange={(e) => setAddForm({ ...addForm, hsnCode: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => setIsAddOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                >
-                  <Plus size={15} />
-                  <span>Register Fastener SKU</span>
-                </button>
+              {/* TAB 2: STANDARDS */}
+              {addModalTab === 'standards' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Primary Standard Spec</label>
+                      <input
+                        type="text"
+                        placeholder="DIN 933 or ISO 7380"
+                        value={addForm.standard}
+                        onChange={(e) => setAddForm({ ...addForm, standard: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>DIN Standard (Excel Col 8)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. DIN 913, DIN 916, DIN 933"
+                        value={addForm.din}
+                        onChange={(e) => setAddForm({ ...addForm, din: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>ISO Standard (Excel Col 9)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. ISO 4017, ISO 4029, ISO 7380-2"
+                        value={addForm.isoStandard}
+                        onChange={(e) => setAddForm({ ...addForm, isoStandard: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>BS Standard (Excel Col 17) / ASME</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. BS 4168 or ASME B18.3"
+                        value={addForm.bsStandard}
+                        onChange={(e) => setAddForm({ ...addForm, bsStandard: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Thread Length (Excel Col 4)</label>
+                      <select
+                        value={addForm.threadLength}
+                        onChange={(e) => setAddForm({ ...addForm, threadLength: e.target.value, threadType: e.target.value })}
+                      >
+                        <option value="FULL THREAD">FULL THREAD</option>
+                        <option value="HALF THREAD">HALF THREAD / PARTIAL</option>
+                        <option value="COARSE THREAD">COARSE THREAD</option>
+                        <option value="FINE THREAD">FINE THREAD</option>
+                      </select>
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Thread Pitch Type</label>
+                      <select
+                        value={addForm.threadType}
+                        onChange={(e) => setAddForm({ ...addForm, threadType: e.target.value })}
+                      >
+                        <option value="Metric Coarse">Metric Coarse</option>
+                        <option value="Metric Fine">Metric Fine</option>
+                        <option value="UNC">UNC (Inch)</option>
+                        <option value="UNF">UNF (Inch)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: DIMENSIONS */}
+              {addModalTab === 'dimensions' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Diameter (DIA) (Excel Col 22)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. M3, M4, M6, M8, M10, M12"
+                        value={addForm.diameter}
+                        onChange={(e) => {
+                          const dia = e.target.value;
+                          setAddForm({
+                            ...addForm,
+                            diameter: dia,
+                            sizeFormatted: `${dia}X${addForm.pitchMm}X${addForm.lengthMm}`
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Pitch / TPI (Excel Col 23)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 1.5, 1.25, 1.0, 0.5"
+                        value={addForm.pitchMm}
+                        onChange={(e) => {
+                          const pitch = e.target.value;
+                          setAddForm({
+                            ...addForm,
+                            pitchMm: pitch,
+                            sizeFormatted: `${addForm.diameter}X${pitch}X${addForm.lengthMm}`
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Length (mm) (Excel Col 24)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 100, 50, 25, 10"
+                        value={addForm.lengthMm}
+                        onChange={(e) => {
+                          const len = e.target.value;
+                          setAddForm({
+                            ...addForm,
+                            lengthMm: len,
+                            sizeFormatted: `${addForm.diameter}X${addForm.pitchMm}X${len}`
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Formatted Size (Excel Col 99)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. M10X1.5X100"
+                        value={addForm.sizeFormatted}
+                        onChange={(e) => setAddForm({ ...addForm, sizeFormatted: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: METALLURGY */}
+              {addModalTab === 'metallurgy' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Property Class / Grade (Excel Col 26)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 8.8, 10.9, 12.9, 45H, SS 304, SS 316"
+                        value={addForm.grade}
+                        onChange={(e) => setAddForm({ ...addForm, grade: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Surface Finish / Coating (Excel Col 31)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Black Passivated (BP), White Zinc (WZP), HDG"
+                        value={addForm.finish}
+                        onChange={(e) => setAddForm({ ...addForm, finish: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: PRICING & WEIGHTS */}
+              {addModalTab === 'pricing' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Unit Weight (Kg/Pc) (Excel Col 30)</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={addForm.weightPerPcKg}
+                        onChange={(e) => {
+                          const w = parseFloat(e.target.value) || 0;
+                          setAddForm({
+                            ...addForm,
+                            weightPerPcKg: e.target.value,
+                            weightPer1000PcsKg: (w * 1000).toFixed(3)
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Weight / 1000 Pcs (Kg) (Excel Col 77)</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={addForm.weightPer1000PcsKg}
+                        onChange={(e) => setAddForm({ ...addForm, weightPer1000PcsKg: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Rate / Piece (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={addForm.pricePerPiece}
+                        onChange={(e) => {
+                          const pc = parseFloat(e.target.value) || 0;
+                          setAddForm({
+                            ...addForm,
+                            pricePerPiece: e.target.value,
+                            price100Pcs: (pc * 100).toFixed(2),
+                            price1000Pcs: (pc * 1000).toFixed(2)
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Rate / Kg (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={addForm.pricePerKg}
+                        onChange={(e) => setAddForm({ ...addForm, pricePerKg: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Price 100 Pcs (₹) (Excel Col 136)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={addForm.price100Pcs}
+                        onChange={(e) => setAddForm({ ...addForm, price100Pcs: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Price 1000 Pcs (₹) (Excel Col 137)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={addForm.price1000Pcs}
+                        onChange={(e) => setAddForm({ ...addForm, price1000Pcs: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: PACKAGING & LOGISTICS */}
+              {addModalTab === 'packaging' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Pcs Per Small Box (Excel Col 60)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 500 or 1000"
+                        value={addForm.pcsPerBox}
+                        onChange={(e) => setAddForm({ ...addForm, pcsPerBox: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Small Box Weight (Kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={addForm.smallBoxWeightKg}
+                        onChange={(e) => setAddForm({ ...addForm, smallBoxWeightKg: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Pcs Per Master Carton (Excel Col 63)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 4000 or 8000"
+                        value={addForm.pcsPerMasterCtn}
+                        onChange={(e) => setAddForm({ ...addForm, pcsPerMasterCtn: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Master Carton Weight (Kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={addForm.masterCtnWeightKg}
+                        onChange={(e) => setAddForm({ ...addForm, masterCtnWeightKg: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>MOQ (Excel Col 69)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 25 KGS or 1000 Pcs"
+                        value={addForm.moq}
+                        onChange={(e) => setAddForm({ ...addForm, moq: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Lead Time (Days) [Prod: 7d + Pack: 3d = 10d]</label>
+                      <input
+                        type="number"
+                        value={addForm.leadTimeDays}
+                        onChange={(e) => setAddForm({ ...addForm, leadTimeDays: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Inventory Warehouse Stock (Pcs)</label>
+                      <input
+                        type="number"
+                        value={addForm.stockPcs}
+                        onChange={(e) => setAddForm({ ...addForm, stockPcs: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Surplus Clearance Lot</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '40px' }}>
+                        <input
+                          type="checkbox"
+                          id="addSurplusCheck"
+                          checked={addForm.isSurplus}
+                          onChange={(e) => setAddForm({ ...addForm, isSurplus: e.target.checked })}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        <label htmlFor="addSurplusCheck" style={{ margin: 0, textTransform: 'none', cursor: 'pointer', fontSize: '13px' }}>
+                          Mark as Surplus (-{addForm.surplusDiscountPct}%)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 7: MEDIA & ATTACHMENTS */}
+              {addModalTab === 'media' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <FastenerImageUploader
+                    currentUrl={addForm.imageUrl}
+                    onUrlChange={(url) => setAddForm({ ...addForm, imageUrl: url })}
+                    label="Fastener Product Photo (New SKU)"
+                  />
+
+                  <div className="admin-form-group">
+                    <label>AutoCAD 2D / 3D Drawing Link (Excel Col 74)</label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/file/... or /cad/drawing.dwg"
+                      value={addForm.drawingUrl}
+                      onChange={(e) => setAddForm({ ...addForm, drawingUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label>Original Google Drive Image Link (Excel Col 73)</label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/file/... or direct photo link"
+                      value={addForm.gdriveImageUrl}
+                      onChange={(e) => setAddForm({ ...addForm, gdriveImageUrl: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {addModalTab !== 'basic' && (
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        const tabs = ['basic', 'standards', 'dimensions', 'metallurgy', 'pricing', 'packaging', 'media'];
+                        const idx = tabs.indexOf(addModalTab);
+                        if (idx > 0) setAddModalTab(tabs[idx - 1] as any);
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                  )}
+                  {addModalTab !== 'media' && (
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        const tabs = ['basic', 'standards', 'dimensions', 'metallurgy', 'pricing', 'packaging', 'media'];
+                        const idx = tabs.indexOf(addModalTab);
+                        if (idx < tabs.length - 1) setAddModalTab(tabs[idx + 1] as any);
+                      }}
+                    >
+                      Next Step →
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => setIsAddOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                  >
+                    <Plus size={15} />
+                    <span>Save New Fastener SKU</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Fastener Modal */}
+      {/* MODAL 2: EDIT FASTENER MODAL WITH ALL EXCEL INPUT FIELDS */}
       {editProduct && (
         <div className="modal-overlay active" onClick={() => setEditProduct(null)}>
-          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '640px' }}>
+          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '24px', maxWidth: '780px', width: '95%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-dark-900)', margin: 0 }}>
                   Edit Fastener: {editProduct.sku}
                 </h3>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  Update rate margins, warehouse stock levels, or specifications
+                <span style={{ fontSize: '12px', color: '#64748B' }}>
+                  Update engineering specifications, packaging counts, rates, or drawing attachments
                 </span>
               </div>
               <button type="button" onClick={() => setEditProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -988,128 +2320,602 @@ export default function AdminProductsSection({
               </button>
             </div>
 
+            {/* Modal Tabs */}
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '16px', borderBottom: '1px solid #E2E8F0' }}>
+              {[
+                { id: 'basic', label: '1. Classification & Brand' },
+                { id: 'standards', label: '2. Standards (DIN/ISO)' },
+                { id: 'dimensions', label: '3. Dimensions & Size' },
+                { id: 'metallurgy', label: '4. Grade & Finish' },
+                { id: 'pricing', label: '5. Weights & Pricing' },
+                { id: 'packaging', label: '6. Packaging & Supply' },
+                { id: 'media', label: '7. Photo & CAD' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setEditModalTab(tab.id as any)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: editModalTab === tab.id ? '#0052CC' : '#F1F5F9',
+                    color: editModalTab === tab.id ? '#FFFFFF' : '#475569',
+                    fontSize: '11px',
+                    fontWeight: editModalTab === tab.id ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={submitEditForm}>
-              <div className="admin-form-group">
-                <label>Product Name</label>
-                <input
-                  type="text"
-                  value={editProduct.name}
-                  onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
-                />
-              </div>
-
-              <FastenerImageUploader
-                currentUrl={editProduct.imageUrl || '/assets/bolt_zinc.jpg'}
-                onUrlChange={(url) => setEditProduct({ ...editProduct, imageUrl: url })}
-                label="Fastener Product Photo (Update SKU)"
-              />
-
-              <div className="admin-modal-grid" style={{ marginTop: '12px' }}>
-                <div className="admin-form-group">
-                  <label>Standard</label>
-                  <input
-                    type="text"
-                    value={editProduct.standard}
-                    onChange={(e) => setEditProduct({ ...editProduct, standard: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Property Class / Grade</label>
-                  <input
-                    type="text"
-                    value={editProduct.grade}
-                    onChange={(e) => setEditProduct({ ...editProduct, grade: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Rate / Piece (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editProduct.pricePerPiece}
-                    onChange={(e) => setEditProduct({ ...editProduct, pricePerPiece: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Rate / Kg (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editProduct.pricePerKg}
-                    onChange={(e) => setEditProduct({ ...editProduct, pricePerKg: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Unit Weight (Kg/Pc)</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={editProduct.weightPerPcKg}
-                    onChange={(e) => setEditProduct({ ...editProduct, weightPerPcKg: parseFloat(e.target.value) || 0.06 })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Inventory Stock (Pcs)</label>
-                  <input
-                    type="number"
-                    value={editProduct.stockPcs}
-                    onChange={(e) => setEditProduct({ ...editProduct, stockPcs: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Surface Finish</label>
-                  <input
-                    type="text"
-                    value={editProduct.finish}
-                    onChange={(e) => setEditProduct({ ...editProduct, finish: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label>Surplus Status</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '40px' }}>
+              {/* TAB 1: BASIC & HIERARCHY */}
+              {editModalTab === 'basic' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-form-group">
+                    <label>Official Product Name (Excel Col 8)</label>
                     <input
-                      type="checkbox"
-                      id="editSurplusCheck"
-                      checked={Boolean(editProduct.isSurplus)}
-                      onChange={(e) => setEditProduct({ ...editProduct, isSurplus: e.target.checked, surplusDiscountPct: e.target.checked ? 35 : 0 })}
-                      style={{ width: '18px', height: '18px' }}
+                      type="text"
+                      value={editProduct.name}
+                      onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
                     />
-                    <label htmlFor="editSurplusCheck" style={{ margin: 0, textTransform: 'none', cursor: 'pointer' }}>
-                      Mark as Surplus Clearance (-{editProduct.surplusDiscountPct || 35}%)
-                    </label>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Sub-Group (Excel Col 1)</label>
+                      <input
+                        type="text"
+                        value={editProduct.subGroup || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, subGroup: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Category (Excel Col 2)</label>
+                      <input
+                        type="text"
+                        value={editProduct.category}
+                        onChange={(e) => setEditProduct({ ...editProduct, category: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Sub-Category (Excel Col 3)</label>
+                      <input
+                        type="text"
+                        value={editProduct.subCategory || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, subCategory: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>GST HSN Code</label>
+                      <input
+                        type="text"
+                        value={editProduct.hsnCode || '73181500'}
+                        onChange={(e) => setEditProduct({ ...editProduct, hsnCode: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => setEditProduct(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                >
-                  <CheckCircle2 size={15} />
-                  <span>Save SKU Changes</span>
-                </button>
+              {/* TAB 2: STANDARDS */}
+              {editModalTab === 'standards' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Primary Standard</label>
+                      <input
+                        type="text"
+                        value={editProduct.standard}
+                        onChange={(e) => setEditProduct({ ...editProduct, standard: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>DIN Standard (Excel Col 8)</label>
+                      <input
+                        type="text"
+                        value={editProduct.din || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, din: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>ISO Standard (Excel Col 9)</label>
+                      <input
+                        type="text"
+                        value={editProduct.isoStandard || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, isoStandard: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>BS Standard (Excel Col 17)</label>
+                      <input
+                        type="text"
+                        value={editProduct.bsStandard || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, bsStandard: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Thread Length (Excel Col 4)</label>
+                      <input
+                        type="text"
+                        value={editProduct.threadLength || editProduct.threadType}
+                        onChange={(e) => setEditProduct({ ...editProduct, threadLength: e.target.value, threadType: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Thread Pitch Standard</label>
+                      <input
+                        type="text"
+                        value={editProduct.threadType}
+                        onChange={(e) => setEditProduct({ ...editProduct, threadType: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: DIMENSIONS */}
+              {editModalTab === 'dimensions' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Diameter (DIA) (Excel Col 22)</label>
+                      <input
+                        type="text"
+                        value={editProduct.diameter}
+                        onChange={(e) => setEditProduct({ ...editProduct, diameter: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Pitch (mm) (Excel Col 23)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editProduct.pitchMm}
+                        onChange={(e) => setEditProduct({ ...editProduct, pitchMm: parseFloat(e.target.value) || 1.5 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Length (mm) (Excel Col 24)</label>
+                      <input
+                        type="number"
+                        value={editProduct.lengthMm}
+                        onChange={(e) => setEditProduct({ ...editProduct, lengthMm: parseInt(e.target.value) || 100 })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Formatted Size (Excel Col 99)</label>
+                      <input
+                        type="text"
+                        value={editProduct.sizeFormatted || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, sizeFormatted: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: METALLURGY */}
+              {editModalTab === 'metallurgy' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Property Class / Grade (Excel Col 26)</label>
+                      <input
+                        type="text"
+                        value={editProduct.grade}
+                        onChange={(e) => setEditProduct({ ...editProduct, grade: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Surface Finish / Coating (Excel Col 31)</label>
+                      <input
+                        type="text"
+                        value={editProduct.finish}
+                        onChange={(e) => setEditProduct({ ...editProduct, finish: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: PRICING & WEIGHTS */}
+              {editModalTab === 'pricing' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Rate / Piece (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editProduct.pricePerPiece}
+                        onChange={(e) => {
+                          const pc = parseFloat(e.target.value) || 0;
+                          setEditProduct({
+                            ...editProduct,
+                            pricePerPiece: pc,
+                            price100Pcs: +(pc * 100).toFixed(2),
+                            price1000Pcs: +(pc * 1000).toFixed(2)
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Rate / Kg (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editProduct.pricePerKg}
+                        onChange={(e) => setEditProduct({ ...editProduct, pricePerKg: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Unit Weight (Kg/Pc) (Excel Col 30)</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={editProduct.weightPerPcKg}
+                        onChange={(e) => {
+                          const w = parseFloat(e.target.value) || 0;
+                          setEditProduct({
+                            ...editProduct,
+                            weightPerPcKg: w,
+                            weightPer1000PcsKg: +(w * 1000).toFixed(3)
+                          });
+                        }}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Weight / 1000 Pcs (Kg) (Excel Col 77)</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={editProduct.weightPer1000PcsKg || (editProduct.weightPerPcKg * 1000).toFixed(3)}
+                        onChange={(e) => setEditProduct({ ...editProduct, weightPer1000PcsKg: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Price 100 Pcs (₹) (Excel Col 136)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editProduct.price100Pcs || (editProduct.pricePerPiece * 100).toFixed(2)}
+                        onChange={(e) => setEditProduct({ ...editProduct, price100Pcs: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Price 1000 Pcs (₹) (Excel Col 137)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editProduct.price1000Pcs || (editProduct.pricePerPiece * 1000).toFixed(2)}
+                        onChange={(e) => setEditProduct({ ...editProduct, price1000Pcs: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: PACKAGING & LOGISTICS */}
+              {editModalTab === 'packaging' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Pcs Per Small Box (Excel Col 60)</label>
+                      <input
+                        type="text"
+                        value={editProduct.pcsPerBox || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, pcsPerBox: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Small Box Weight (Kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={editProduct.smallBoxWeightKg || 2.5}
+                        onChange={(e) => setEditProduct({ ...editProduct, smallBoxWeightKg: parseFloat(e.target.value) || 2.5 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Pcs Per Master Carton (Excel Col 63)</label>
+                      <input
+                        type="text"
+                        value={editProduct.pcsPerMasterCtn || ''}
+                        onChange={(e) => setEditProduct({ ...editProduct, pcsPerMasterCtn: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Master Carton Weight (Kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={editProduct.masterCtnWeightKg || 20}
+                        onChange={(e) => setEditProduct({ ...editProduct, masterCtnWeightKg: parseFloat(e.target.value) || 20 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>MOQ (Excel Col 69)</label>
+                      <input
+                        type="text"
+                        value={editProduct.moq || '25 KGS'}
+                        onChange={(e) => setEditProduct({ ...editProduct, moq: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Lead Time (Days)</label>
+                      <input
+                        type="number"
+                        value={editProduct.leadTimeDays || 10}
+                        onChange={(e) => setEditProduct({ ...editProduct, leadTimeDays: parseInt(e.target.value) || 10 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-modal-grid">
+                    <div className="admin-form-group">
+                      <label>Inventory Stock (Pcs)</label>
+                      <input
+                        type="number"
+                        value={editProduct.stockPcs}
+                        onChange={(e) => setEditProduct({ ...editProduct, stockPcs: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+
+                    <div className="admin-form-group">
+                      <label>Surplus Status</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '40px' }}>
+                        <input
+                          type="checkbox"
+                          id="editSurplusCheck"
+                          checked={Boolean(editProduct.isSurplus)}
+                          onChange={(e) => setEditProduct({ ...editProduct, isSurplus: e.target.checked, surplusDiscountPct: e.target.checked ? 35 : 0 })}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        <label htmlFor="editSurplusCheck" style={{ margin: 0, textTransform: 'none', cursor: 'pointer', fontSize: '13px' }}>
+                          Mark as Surplus Clearance (-{editProduct.surplusDiscountPct || 35}%)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 7: MEDIA & ATTACHMENTS */}
+              {editModalTab === 'media' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <FastenerImageUploader
+                    currentUrl={editProduct.imageUrl || '/assets/bolt_zinc.jpg'}
+                    onUrlChange={(url) => setEditProduct({ ...editProduct, imageUrl: url })}
+                    label="Fastener Product Photo (Update SKU)"
+                  />
+
+                  <div className="admin-form-group">
+                    <label>AutoCAD 2D/3D Drawing URL (Excel Col 74)</label>
+                    <input
+                      type="text"
+                      value={editProduct.drawingUrl || ''}
+                      onChange={(e) => setEditProduct({ ...editProduct, drawingUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label>Google Drive High-Res Photo URL (Excel Col 73)</label>
+                    <input
+                      type="text"
+                      value={editProduct.gdriveImageUrl || ''}
+                      onChange={(e) => setEditProduct({ ...editProduct, gdriveImageUrl: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {editModalTab !== 'basic' && (
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        const tabs = ['basic', 'standards', 'dimensions', 'metallurgy', 'pricing', 'packaging', 'media'];
+                        const idx = tabs.indexOf(editModalTab);
+                        if (idx > 0) setEditModalTab(tabs[idx - 1] as any);
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                  )}
+                  {editModalTab !== 'media' && (
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        const tabs = ['basic', 'standards', 'dimensions', 'metallurgy', 'pricing', 'packaging', 'media'];
+                        const idx = tabs.indexOf(editModalTab);
+                        if (idx < tabs.length - 1) setEditModalTab(tabs[idx + 1] as any);
+                      }}
+                    >
+                      Next Step →
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => setEditProduct(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                  >
+                    <CheckCircle2 size={15} />
+                    <span>Save SKU Changes</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* MODAL 3: FULL EXCEL MASTER ROW INSPECTOR */}
+      {/* {inspectProduct && (
+        <div className="modal-overlay active" onClick={() => setInspectProduct(null)}>
+          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '24px', maxWidth: '820px', width: '95%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #CBD5E1', background: '#F8FAFC' }}>
+                  <img src={inspectProduct.imageUrl || '/assets/bolt_zinc.jpg'} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                    {inspectProduct.sku}
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748B' }}>
+                    {inspectProduct.name}
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={() => setInspectProduct(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <tbody>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', width: '35%', fontWeight: 700 }}>Sub-Group (Col 1)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.subGroup || 'SCREW'}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Category (Col 2)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.category}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Sub-Category (Col 3)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.subCategory || 'ALLEN GRUB SCREWS'}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Thread Length (Col 4)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.threadLength || inspectProduct.threadType}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>DIN Standard (Col 8)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.din || inspectProduct.standard}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>ISO Standard (Col 9)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.isoStandard || '—'}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>BS / ASME Standard (Col 16-17)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.bsStandard || inspectProduct.asmeStandard || '—'}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Diameter (DIA) (Col 22)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.diameter}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Pitch (Col 23)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.pitchMm} mm</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Length (Col 24)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.lengthMm} mm</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Formatted Size (Col 99)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{inspectProduct.sizeFormatted || `${inspectProduct.diameter}X${inspectProduct.pitchMm}X${inspectProduct.lengthMm}`}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Material Grade (Col 26)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>{inspectProduct.grade}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Surface Finish (Col 31)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.finish}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Per Piece Weight (Col 30)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.weightPerPcKg} kg</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Weight / 1000 Pcs (Col 77)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.weightPer1000PcsKg || (inspectProduct.weightPerPcKg * 1000).toFixed(3)} kg</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Rate / Piece</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC' }}>{formatINR(inspectProduct.pricePerPiece)}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Rate / Kg</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#059669' }}>{formatINR(inspectProduct.pricePerKg)}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Price 100 Pcs (Col 136)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price100Pcs || inspectProduct.pricePerPiece * 100)}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Price 1000 Pcs (Col 137)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price1000Pcs || inspectProduct.pricePerPiece * 1000)}</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Small Box Packaging (Col 60)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.pcsPerBox || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg box)</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Master Carton Packaging (Col 63)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.pcsPerMasterCtn || '4000'} pcs ({inspectProduct.masterCtnWeightKg || 20} kg carton)</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>MOQ (Col 69)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>{inspectProduct.moq || '25 KGS'}</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Lead Time (Col 33/35)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.leadTimeDays || 10} Days (Production: {inspectProduct.productionDays || 7}d, Packing: {inspectProduct.packingDays || 3}d)</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Warehouse Stock</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{inspectProduct.stockPcs.toLocaleString()} pcs ({inspectProduct.stockKg.toFixed(2)} Kg)</td></tr>
+                  <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Brand & GST HSN Code</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.brand || 'CBH'} • HSN {inspectProduct.hsnCode || '73181500'}</td></tr>
+                  <tr>
+                    <td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>CAD Drawing (Col 74)</td>
+                    <td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>
+                      {inspectProduct.drawingUrl ? (
+                        <a href={inspectProduct.drawingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0052CC', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          Open Drawing CAD <ExternalLink size={12} />
+                        </a>
+                      ) : 'No drawing link attached'}
+                    </td>
+                  </tr>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Google Drive Photo (Col 73)</td>
+                    <td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>
+                      {inspectProduct.gdriveImageUrl ? (
+                        <a href={inspectProduct.gdriveImageUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          View High-Res Photo <ExternalLink size={12} />
+                        </a>
+                      ) : 'No external photo link attached'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {inspectProduct.descriptionHtml && (
+                <div style={{ marginTop: '16px', padding: '12px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                  <strong style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: '#334155' }}>Raw HTML Technical Specification Sheet:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: inspectProduct.descriptionHtml }} />
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #E2E8F0' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => setInspectProduct(null)}
+              >
+                Close Inspector
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  const target = inspectProduct;
+                  setInspectProduct(null);
+                  setEditProduct({ ...target });
+                  setEditModalTab('basic');
+                }}
+              >
+                <Edit size={14} />
+                <span>Edit this SKU</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )} */}
+
+      {/* MODAL 4: DELETE CONFIRMATION */}
       {deleteProduct && (
         <div className="modal-overlay active" onClick={() => setDeleteProduct(null)}>
           <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '24px', maxWidth: '440px' }}>
@@ -1152,6 +2958,123 @@ export default function AdminProductsSection({
                 onClick={confirmDelete}
               >
                 Yes, Delete SKU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: DYNAMIC IMAGE & CAD BLUEPRINT PREVIEW LIGHTBOX */}
+      {previewProduct && (
+        <div className="modal-overlay active" onClick={() => setPreviewProduct(null)}>
+          <div className="modal-window" onClick={(e) => e.stopPropagation()} style={{ padding: '24px', maxWidth: '640px', width: '95%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#0052CC', fontWeight: 700, padding: '2px 8px', background: '#EFF6FF', borderRadius: '4px', border: '1px solid #BFDBFE' }}>
+                  {previewProduct.sku}
+                </span>
+                <h3 style={{ margin: '8px 0 2px', fontSize: '16px', fontWeight: 800, color: '#0F172A', lineHeight: '1.4' }}>
+                  {previewProduct.name}
+                </h3>
+                <div style={{ fontSize: '12px', color: '#64748B' }}>
+                  {previewProduct.category} • {previewProduct.standard}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewProduct(null)}
+                style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Main High-Res Image Display */}
+            <div style={{
+              background: '#F8FAFC',
+              borderRadius: '12px',
+              border: '1px solid #E2E8F0',
+              padding: '20px',
+              textAlign: 'center',
+              minHeight: '260px',
+              maxHeight: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              marginBottom: '16px',
+              position: 'relative'
+            }}>
+              <img
+                src={previewProduct.imageUrl || '/assets/bolt_zinc.jpg'}
+                alt={previewProduct.sku}
+                style={{ maxWidth: '100%', maxHeight: '360px', objectFit: 'contain' }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                }}
+              />
+            </div>
+
+            {/* Live Image Source Indicator */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F1F5F9', padding: '8px 12px', borderRadius: '8px', marginBottom: '16px', fontSize: '11px', color: '#475569' }}>
+              <span style={{ fontWeight: 600 }}>Image Location:</span>
+              <span style={{ fontFamily: 'var(--font-mono)', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {previewProduct.imageUrl || 'Default Local Asset'}
+              </span>
+            </div>
+
+            {/* Quick Specs Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', padding: '12px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', marginBottom: '16px', fontSize: '11px' }}>
+              <div>
+                <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Size:</span>
+                <strong>{previewProduct.sizeFormatted || `${previewProduct.diameter}x${previewProduct.lengthMm}`}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Grade:</span>
+                <strong>{previewProduct.grade}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Rate / Pc:</span>
+                <strong style={{ color: '#0052CC', fontFamily: 'var(--font-mono)' }}>{formatINR(previewProduct.pricePerPiece)}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Stock:</span>
+                <strong style={{ color: '#059669', fontFamily: 'var(--font-mono)' }}>{previewProduct.stockPcs.toLocaleString()} pcs</strong>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {previewProduct.drawingUrl && (
+                <a
+                  href={previewProduct.drawingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', textDecoration: 'none' }}
+                >
+                  <ExternalLink size={13} />
+                  <span>Technical CAD Drawing</span>
+                </a>
+              )}
+              {previewProduct.gdriveImageUrl && (
+                <a
+                  href={previewProduct.gdriveImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', textDecoration: 'none' }}
+                >
+                  <ExternalLink size={13} />
+                  <span>High-Res Drive Photo</span>
+                </a>
+              )}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setPreviewProduct(null)}
+              >
+                Close Preview
               </button>
             </div>
           </div>

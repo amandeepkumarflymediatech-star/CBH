@@ -22,9 +22,10 @@ import {
   Boxes,
   Database,
   Truck,
-  FileCheck2
+  FileCheck2,
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
+import { showErrorAlert, showToast, showSuccessAlert } from '@/lib/swal';
 
 export default function AdminProfilePage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -132,7 +133,7 @@ export default function AdminProfilePage() {
       }
     } catch (err) {
       console.error('Image compression failed:', err);
-      alert('Could not process image. Please try a different JPG or PNG file.');
+      showErrorAlert('Image Processing Failed', 'Could not process image. Please try a different JPG or PNG file.');
     } finally {
       setIsUploading(false);
       if (e.target) e.target.value = '';

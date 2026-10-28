@@ -151,6 +151,7 @@ export interface ErpNextItem {
   item_code: string;
   item_name: string;
   item_group?: string;
+  brand?: string;
   description?: string;
   stock_uom?: string;
   standard_rate?: number;
@@ -159,6 +160,10 @@ export interface ErpNextItem {
   image?: string;
   disabled?: number;
   is_sales_item?: number;
+  lead_time_days?: number;
+  min_order_qty?: number;
+  safety_stock?: number;
+  gst_hsn_code?: string;
   custom_standard?: string;
   custom_grade?: string;
   custom_finish?: string;
@@ -180,6 +185,21 @@ export interface ErpNextPrice {
   currency: string;
 }
 
+// Helper to extract table cell value from HTML description
+function extractCell(html: string, label: string): string {
+  if (!html) return '';
+  const regex = new RegExp(`<strong>${label}[^<]*<\\/strong><\\/td>\\s*<td[^>]*>(.*?)<\\/td>`, 'i');
+  const m = html.match(regex);
+  return m && m[1] ? m[1].replace(/<[^>]+>/g, '').trim() : '';
+}
+
+function extractLink(html: string, linkText: string): string {
+  if (!html) return '';
+  const regex = new RegExp(`<a\\s+href="([^"]+)"[^>]*>.*?${linkText}.*?<\\/a>`, 'i');
+  const m = html.match(regex);
+  return m && m[1] ? m[1] : '';
+}
+
 // Normalize ERPNext Item to CBH Product Model
 export function normalizeErpNextItemToProduct(
   item: ErpNextItem,
@@ -191,32 +211,81 @@ export function normalizeErpNextItemToProduct(
   const name = item.item_name || item.name || sku;
   const description = item.description || '';
 
-  // Extract or parse Fastener Attributes (from custom fields or description)
-  let standard = item.custom_standard || 'DIN 933';
-  let grade = item.custom_grade || '8.8';
-  let finish = item.custom_finish || 'Black Passivated (BP)';
-  let diameter = item.custom_diameter || 'M10';
-  let lengthMm = item.custom_length || 100;
+  // Extract from HTML specification table if present
+  const descSubGroup = extractCell(description, 'Sub-Group');
+  const descCategory = extractCell(description, 'Category');
+  const descStandard = extractCell(description, 'Standard');
+  const descThreadLen = extractCell(description, 'Thread Length');
+  const descDia = extractCell(description, 'Diameter');
+  const descPitch = extractCell(description, 'Pitch');
+  const descLen = extractCell(description, 'Length');
+  const descSize = extractCell(description, 'Size');
+  const descGrade = extractCell(description, 'Material Grade');
+  const descFinish = extractCell(description, 'Finish');
+  const descSmallBox = extractCell(description, 'Small Box');
+  const descMasterCtn = extractCell(description, 'Master Carton');
+  const descMoq = extractCell(description, 'MOQ');
+  const descLeadTime = extractCell(description, 'Lead Time');
+  const drawingUrl = extractLink(description, 'Drawing');
+  const gdriveImageUrl = extractLink(description, 'Photo');
 
-  // Smart regex extraction from name/description if custom fields are not present
-  const standardMatch = (name + ' ' + description).match(/DIN\s*\d+|ISO\s*\d+|ASTM\s*[A-Z0-9]+/i);
-  if (standardMatch) standard = standardMatch[0].toUpperCase();
+  // Fastener Standards
+  let standard = descStandard || item.custom_standard || 'DIN 933';
+  const dinMatch = (name + ' ' + description).match(/DIN\s*(\d+)/i);
+  const isoMatch = (name + ' ' + description).match(/ISO\s*([0-9-]+)/i);
+  const bsMatch = (name + ' ' + description).match(/BS\s*(\d+)/i);
+  const asmeMatch = (name + ' ' + description).match(/ASME\s*([A-Z0-9.]+)/i);
 
-  const gradeMatch = (name + ' ' + description).match(/\b(4\.6|5\.8|8\.8|10\.9|12\.9|SS\s*304|SS\s*316|A2-70|A4-80)\b/i);
-  if (gradeMatch) grade = gradeMatch[0].toUpperCase();
+  if (!descStandard) {
+    const stdMatch = (name + ' ' + description).match(/DIN\s*\d+|ISO\s*[0-9-]+|BS\s*\d+|ASME\s*[A-Z0-9.]+|IS\s*\d+/i);
+    if (stdMatch) standard = stdMatch[0].toUpperCase();
+  }
 
-  const diaMatch = (name + ' ' + description).match(/\bM(\d{1,2})\b/i);
-  if (diaMatch) diameter = `M${diaMatch[1]}`;
+  // Grade
+  let grade = descGrade || item.custom_grade || '8.8';
+  if (!descGrade) {
+    const gradeMatch = (name + ' ' + description).match(/\b(4\.6|4\.8|5\.6|5\.8|8\.8|10\.9|12\.9|45H|SS\s*304|SS\s*316|A2-70|A4-80)\b/i);
+    if (gradeMatch) grade = gradeMatch[0].toUpperCase();
+  }
 
-  const lenMatch = (name + ' ' + description).match(/x\s*(\d{2,3})\b/i);
-  if (lenMatch) lengthMm = parseInt(lenMatch[1]);
+  // Diameter
+  let diameter = descDia || item.custom_diameter || 'M10';
+  if (!descDia) {
+    const diaMatch = (name + ' ' + description).match(/\bM(\d{1,2})\b/i);
+    const inchDiaMatch = (name + ' ' + description).match(/\b(\d\/\d+)"|\b(\d+)"/);
+    if (diaMatch) diameter = `M${diaMatch[1]}`;
+    else if (inchDiaMatch) diameter = inchDiaMatch[0];
+  }
 
-  const finishMatch = (name + ' ' + description).match(/Zinc|HDG|Galvanized|Passivated|Black|Natural/i);
-  if (finishMatch) {
-    const f = finishMatch[0].toLowerCase();
-    if (f.includes('hdg') || f.includes('galv')) finish = 'Hot Dip Galvanized (HDG)';
-    else if (f.includes('zinc')) finish = 'Clear Zinc';
-    else if (f.includes('black')) finish = 'Black Passivated (BP)';
+  // Length
+  let lengthMm = 100;
+  if (descLen) {
+    const num = parseInt(descLen);
+    if (!isNaN(num)) lengthMm = num;
+  } else {
+    const lenMatch = (name + ' ' + description).match(/x\s*(\d{1,3})M?\b/i);
+    if (lenMatch) lengthMm = parseInt(lenMatch[1]);
+  }
+
+  // Pitch
+  let pitchMm = 1.5;
+  if (descPitch) {
+    const pNum = parseFloat(descPitch);
+    if (!isNaN(pNum)) pitchMm = pNum;
+  }
+
+  // Finish
+  let finish = descFinish || item.custom_finish || 'Black Passivated (BP)';
+  if (!descFinish) {
+    const finishMatch = (name + ' ' + description).match(/Zinc|HDG|Galvanized|Passivated|Black|Natural|SELF|WZP|YZP|BP/i);
+    if (finishMatch) {
+      const f = finishMatch[0].toUpperCase();
+      if (f.includes('HDG') || f.includes('GALV')) finish = 'Hot Dip Galvanized (HDG)';
+      else if (f === 'WZP' || f.includes('ZINC')) finish = 'White Zinc Plated (WZP)';
+      else if (f === 'YZP') finish = 'Yellow Zinc Plated (YZP)';
+      else if (f === 'BP' || f.includes('BLACK')) finish = 'Black Passivated (BP)';
+      else if (f === 'SELF') finish = 'Self Natural / Plain';
+    }
   }
 
   // Dual Weight & Pricing
@@ -234,39 +303,105 @@ export function normalizeErpNextItemToProduct(
   const stockKg = parseFloat((stockPcs * weightPerPcKg).toFixed(2));
 
   // Category
-  const category = item.item_group || 'Hex Screws';
+  const category = descCategory || item.item_group || 'Hex Screws';
+  const subGroup = descSubGroup || (category.includes('SCREW') ? 'SCREW' : 'BOLTS');
 
-  // Image
+  // Image URL - 100% Dynamic from ERPNext Cloud / Google Drive
   let imageUrl = '/assets/bolt_zinc.jpg';
-  if (item.image) {
-    imageUrl = item.image.startsWith('http') 
-      ? item.image 
-      : `${cleanUrl(getErpNextConfig().erpnextUrl)}${item.image}`;
+  const server = (process.env.ERPNEXT_URL || 'https://cbhtest.m.frappe.cloud').replace(/\/$/, '');
+
+  const rawImage = (item.image || '').trim();
+  if (rawImage) {
+    if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+      const driveMatch = rawImage.match(/\/d\/([a-zA-Z0-9_-]+)/) || rawImage.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+      } else {
+        imageUrl = rawImage;
+      }
+    } else if (rawImage.startsWith('/files/') || rawImage.startsWith('/private/files/')) {
+      imageUrl = `${server}${encodeURI(rawImage)}`;
+    } else if (rawImage.startsWith('/assets/')) {
+      imageUrl = rawImage;
+    } else {
+      imageUrl = `${server}/files/${encodeURIComponent(rawImage.replace(/^\//, ''))}`;
+    }
+  } else if (gdriveImageUrl) {
+    const driveMatch = gdriveImageUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || gdriveImageUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      imageUrl = `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    } else {
+      imageUrl = gdriveImageUrl;
+    }
   }
+
+  // Parse Box / Master Carton quantities
+  let pcsPerBox: number | string | undefined;
+  if (descSmallBox) {
+    const boxMatch = descSmallBox.match(/(\d+)\s*pcs/i);
+    if (boxMatch) pcsPerBox = parseInt(boxMatch[1]);
+    else pcsPerBox = descSmallBox;
+  }
+  let pcsPerMasterCtn: number | string | undefined;
+  if (descMasterCtn) {
+    const ctnMatch = descMasterCtn.match(/(\d+)\s*pcs/i);
+    if (ctnMatch) pcsPerMasterCtn = parseInt(ctnMatch[1]);
+    else pcsPerMasterCtn = descMasterCtn;
+  }
+
+  // Lead Time & MOQ
+  const leadTimeDays = item.lead_time_days || (descLeadTime ? parseInt(descLeadTime) || 10 : 10);
+  const moq = descMoq || (item.min_order_qty ? `${item.min_order_qty} ${item.stock_uom || 'Nos'}` : '25 KGS');
 
   return {
     id: 1000 + idIndex,
     sku,
     name,
     category,
+    subGroup,
+    subCategory: extractCell(description, 'Category') ? extractCell(description, 'Category').split('(')[1]?.replace(')', '').trim() : undefined,
     standard,
+    din: dinMatch ? `DIN ${dinMatch[1]}` : undefined,
+    isoStandard: isoMatch ? `ISO ${isoMatch[1]}` : undefined,
+    bsStandard: bsMatch ? `BS ${bsMatch[1]}` : undefined,
+    asmeStandard: asmeMatch ? `ASME ${asmeMatch[1]}` : undefined,
     grade,
     finish,
-    threadType: lengthMm <= 120 ? 'Full Thread' : 'Partial Thread',
+    threadType: descThreadLen || (lengthMm <= 120 ? 'Full Thread' : 'Partial Thread'),
+    threadLength: descThreadLen,
     diameter,
     lengthMm,
-    pitchMm: 1.5,
+    pitchMm,
+    sizeFormatted: descSize || `${diameter}x${lengthMm}`,
     weightPerPcKg,
+    weightPer1000PcsKg: +(weightPerPcKg * 1000).toFixed(3),
     pricePerPiece,
     originalPricePerPiece: parseFloat((pricePerPiece * 1.15).toFixed(2)),
     pricePerKg,
     originalPricePerKg: parseFloat((pricePerKg * 1.15).toFixed(2)),
+    price100Pcs: +(pricePerPiece * 100).toFixed(2),
+    price1000Pcs: +(pricePerPiece * 1000).toFixed(2),
     stockPcs,
     stockKg,
+    stockUom: item.stock_uom || 'Nos',
     isInStock: stockPcs > 0,
     isSurplus: false,
     surplusDiscountPct: 0,
+    moq,
+    leadTimeDays,
+    productionDays: 7,
+    packingDays: 3,
+    pcsPerBox,
+    smallBoxWeightKg: 2.5,
+    pcsPerMasterCtn,
+    masterCtnWeightKg: 20,
+    brand: item.brand || 'CBH',
+    hsnCode: item.gst_hsn_code || '73181500',
     imageUrl,
+    drawingUrl: drawingUrl || undefined,
+    gdriveImageUrl: gdriveImageUrl || undefined,
+    descriptionHtml: description.includes('<table') ? description : undefined,
+    description: description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || name,
   };
 }
 
@@ -308,52 +443,73 @@ export async function fetchErpNextProducts(): Promise<{
         'image',
         'disabled',
         'is_sales_item',
+        'brand',
+        'lead_time_days',
+        'min_order_qty',
+        'safety_stock',
+        'gst_hsn_code',
       ])
     );
+    // 1. Fetch All Items with pagination
     const itemFilters = encodeURIComponent(JSON.stringify([['disabled', '=', 0], ['is_sales_item', '=', 1]]));
-    const itemsUrl = `${baseUrl}/api/resource/Item?fields=${itemFields}&filters=${itemFilters}&limit_page_length=200`;
-    
-    const itemsRes = await fetch(itemsUrl, { method: 'GET', headers, cache: 'no-store' });
-    if (!itemsRes.ok) {
-      throw new Error(`Failed to fetch items from ERPNext: HTTP ${itemsRes.status}`);
+    const rawItems: ErpNextItem[] = [];
+    let itemStart = 0;
+    while (true) {
+      const itemsUrl = `${baseUrl}/api/resource/Item?fields=${itemFields}&filters=${itemFilters}&limit_page_length=500&limit_start=${itemStart}`;
+      const itemsRes = await fetch(itemsUrl, { method: 'GET', headers, cache: 'no-store' });
+      if (!itemsRes.ok) break;
+      const itemsData = await itemsRes.json();
+      const batch: ErpNextItem[] = itemsData.data || [];
+      if (!batch.length) break;
+      rawItems.push(...batch);
+      if (batch.length < 500) break;
+      itemStart += 500;
     }
-    const itemsData = await itemsRes.json();
-    const rawItems: ErpNextItem[] = itemsData.data || [];
 
-    // 2. Fetch Stock Bins
+    // 2. Fetch Stock Bins with pagination
     const binStockMap = new Map<string, number>();
     try {
       const binFields = encodeURIComponent(JSON.stringify(['item_code', 'actual_qty', 'warehouse']));
-      const binUrl = `${baseUrl}/api/resource/Bin?fields=${binFields}&limit_page_length=500`;
-      const binRes = await fetch(binUrl, { method: 'GET', headers, cache: 'no-store' });
-      if (binRes.ok) {
+      let binStart = 0;
+      while (true) {
+        const binUrl = `${baseUrl}/api/resource/Bin?fields=${binFields}&limit_page_length=500&limit_start=${binStart}`;
+        const binRes = await fetch(binUrl, { method: 'GET', headers, cache: 'no-store' });
+        if (!binRes.ok) break;
         const binData = await binRes.json();
         const bins: ErpNextBin[] = binData.data || [];
+        if (!bins.length) break;
         for (const b of bins) {
           const current = binStockMap.get(b.item_code) || 0;
           binStockMap.set(b.item_code, current + (b.actual_qty || 0));
         }
+        if (bins.length < 500) break;
+        binStart += 500;
       }
     } catch (e) {
       console.warn('Could not fetch ERPNext Bin stock, using defaults:', e);
     }
 
-    // 3. Fetch Item Prices
+    // 3. Fetch Item Prices with pagination
     const priceMap = new Map<string, number>();
     try {
       const priceList = config.defaultPriceList || 'Standard Selling';
       const priceFields = encodeURIComponent(JSON.stringify(['item_code', 'price_list_rate', 'currency']));
       const priceFilters = encodeURIComponent(JSON.stringify([['price_list', '=', priceList]]));
-      const priceUrl = `${baseUrl}/api/resource/Item%20Price?fields=${priceFields}&filters=${priceFilters}&limit_page_length=500`;
-      const priceRes = await fetch(priceUrl, { method: 'GET', headers, cache: 'no-store' });
-      if (priceRes.ok) {
+      let priceStart = 0;
+      while (true) {
+        const priceUrl = `${baseUrl}/api/resource/Item%20Price?fields=${priceFields}&filters=${priceFilters}&limit_page_length=500&limit_start=${priceStart}`;
+        const priceRes = await fetch(priceUrl, { method: 'GET', headers, cache: 'no-store' });
+        if (!priceRes.ok) break;
         const priceData = await priceRes.json();
         const prices: ErpNextPrice[] = priceData.data || [];
+        if (!prices.length) break;
         for (const p of prices) {
           if (p.price_list_rate) {
             priceMap.set(p.item_code, p.price_list_rate);
           }
         }
+        if (prices.length < 500) break;
+        priceStart += 500;
       }
     } catch (e) {
       console.warn('Could not fetch ERPNext Item Price list:', e);

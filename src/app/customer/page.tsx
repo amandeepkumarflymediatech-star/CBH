@@ -52,6 +52,7 @@ import { CustomerOrder, BulkQuotation } from '@/lib/types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 import { getStoredUser, AuthUser } from '@/lib/auth';
+import { showErrorAlert, showInfoAlert, showLoadingAlert } from '@/lib/swal';
 
 export type CustomerDashboardTab =
   | 'Overview'
@@ -367,10 +368,10 @@ export default function CustomerDashboardPage() {
       if (data.success && data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
-        alert(data.error || 'Failed to initiate PhonePe payment session. Please check credentials in Admin Panel.');
+        showErrorAlert('Payment Initiation Failed', data.error || 'Failed to initiate PhonePe payment session. Please check credentials in Admin Panel.');
       }
     } catch (err: any) {
-      alert(err.message || 'Error connecting to PhonePe Gateway');
+      showErrorAlert('Gateway Connection Error', err.message || 'Error connecting to PhonePe Gateway');
     }
   };
 
@@ -1412,7 +1413,7 @@ export default function CustomerDashboardPage() {
               </p>
               <button
                 type="button"
-                onClick={() => alert('Delivery site registration: Please contact your dedicated relationship manager or update your account coordinates.')}
+                onClick={() => showInfoAlert('Project Site Registration', 'To register a new delivery yard, warehouse coordinate, or weighbridge, please contact your dedicated relationship manager or update your account coordinates.')}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0F172A] text-white text-xs font-bold shadow-xs hover:bg-slate-800 cursor-pointer"
               >
                 <Plus size={14} />
@@ -1733,11 +1734,11 @@ export default function CustomerDashboardPage() {
                           window.location.href = data.paymentUrl;
                         } else {
                           setIsToppingUpCredit(false);
-                          alert(data.error || 'Failed to initiate PhonePe payment.');
+                          showErrorAlert('Payment Initiation Failed', data.error || 'Failed to initiate PhonePe payment.');
                         }
                       } catch (err: any) {
                         setIsToppingUpCredit(false);
-                        alert(err.message || 'Connection error to PhonePe.');
+                        showErrorAlert('Connection Error', err.message || 'Connection error to PhonePe.');
                       }
                     }}
                     className="w-full py-2.5 rounded-xl bg-[#5f259f] hover:bg-[#4a1c7d] text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-70"

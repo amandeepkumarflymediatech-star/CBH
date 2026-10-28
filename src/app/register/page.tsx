@@ -24,6 +24,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { setStoredUser, AuthUser } from '@/lib/auth';
+import { showErrorAlert, showSuccessAlert, showWarningAlert, showToast } from '@/lib/swal';
 
 function RegisterForm() {
   const router = useRouter();
@@ -68,12 +69,23 @@ function RegisterForm() {
     setSuccessMsg('');
 
     if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match. Please verify your entries.');
+      const msg = 'Passwords do not match. Please verify your entries.';
+      setErrorMsg(msg);
+      showWarningAlert('Password Mismatch', msg);
+      return;
+    }
+
+    if (password.length < 6) {
+      const msg = 'Password must be at least 6 characters long.';
+      setErrorMsg(msg);
+      showWarningAlert('Password Too Short', msg);
       return;
     }
 
     if (gstin && gstin.length !== 15) {
-      setErrorMsg('GSTIN must be exactly 15 characters (e.g. 03AABCL9876E1Z4).');
+      const msg = 'GSTIN must be exactly 15 characters (e.g. 03AABCL9876E1Z4).';
+      setErrorMsg(msg);
+      showWarningAlert('Invalid GSTIN', msg);
       return;
     }
 
@@ -114,6 +126,12 @@ function RegisterForm() {
       setStoredUser(registeredUser);
 
       setSuccessMsg('Enterprise account approved! Preparing your customized procurement portal...');
+      await showSuccessAlert(
+        'Account Registered!',
+        `Welcome to CBH Fasteners, ${companyName || fullName}! Your enterprise account is now active.`,
+        1800
+      );
+
       setTimeout(() => {
         const redirectParam = searchParams.get('redirect');
         if (redirectParam) {
@@ -121,9 +139,11 @@ function RegisterForm() {
         } else {
           router.push('/customer');
         }
-      }, 800);
+      }, 300);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error creating account. Please verify input.');
+      const msg = err.message || 'Error creating account. Please verify input.';
+      setErrorMsg(msg);
+      showErrorAlert('Registration Error', msg);
     } finally {
       setIsLoading(false);
     }

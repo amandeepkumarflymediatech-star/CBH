@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Share2
 } from 'lucide-react';
+import { showWarningAlert, showSuccessAlert, showConfirmDialog } from '@/lib/swal';
 import { BlogPost } from '@/lib/types';
 import TablePagination from '@/components/common/TablePagination';
 
@@ -139,7 +140,7 @@ export default function AdminBlogSection({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formExcerpt.trim() || !formContent.trim()) {
-      alert('Please fill in title, excerpt, and content fields.');
+      showWarningAlert('Incomplete Blog Post', 'Please fill in the title, excerpt, and content fields.');
       return;
     }
 

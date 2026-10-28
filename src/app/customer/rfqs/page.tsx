@@ -20,6 +20,7 @@ import TablePagination from '@/components/common/TablePagination';
 import { BulkQuotation } from '@/lib/types';
 import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
+import { showSuccessAlert, showToast } from '@/lib/swal';
 
 export default function CustomerRfqsPage() {
   const [quotes, setQuotes] = useState<BulkQuotation[]>([]);
@@ -80,7 +81,10 @@ export default function CustomerRfqsPage() {
     setTimeout(() => {
       setIsUploading(false);
       setIsBOMModalOpen(false);
-      alert('Your Bill of Materials (BOM) has been submitted! Our chief metallurgist and pricing engine will review the index rates within 30 minutes.');
+      showSuccessAlert(
+        'BOM Submitted Successfully',
+        'Your Bill of Materials (BOM) has been submitted! Our chief metallurgist and pricing engine will review the index rates within 30 minutes.'
+      );
     }, 1200);
   };
 
@@ -354,15 +358,15 @@ export default function CustomerRfqsPage() {
                         });
                         const data = await res.json();
                         const soId = data.data?.erpnextSalesOrderId;
-                        alert(
-                          `Quotation ${activeQuoteModal.rfqNumber} accepted!\n` +
-                          (soId
+                        showSuccessAlert(
+                          'Quotation Accepted!',
+                          soId
                             ? `ERPNext Sales Order ${soId} generated and stock allocated in warehouse.`
-                            : `Purchase Order registered successfully into system.`)
+                            : `Purchase Order registered successfully into system.`
                         );
                         loadQuotes();
                       } catch {
-                        alert(`Quotation ${activeQuoteModal.rfqNumber} accepted and marked as PO.`);
+                        showSuccessAlert('Quotation Accepted', `Quotation ${activeQuoteModal.rfqNumber} accepted and marked as PO.`);
                       }
                       setActiveQuoteModal(null);
                     }}

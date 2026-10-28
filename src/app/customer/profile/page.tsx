@@ -23,6 +23,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_CLIENT, AuthUser } from '@/lib/auth';
+import { showErrorAlert, showToast, showSuccessAlert } from '@/lib/swal';
 
 export default function CustomerProfilePage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -135,7 +136,7 @@ export default function CustomerProfilePage() {
       }
     } catch (err: any) {
       console.error('Image processing failed:', err);
-      alert('Could not process image. Please try a different JPG or PNG file.');
+      showErrorAlert('Image Processing Failed', 'Could not process image. Please try a different JPG or PNG file.');
     } finally {
       setIsUploading(false);
       if (e.target) e.target.value = '';

@@ -2,12 +2,12 @@
   "erpnextUrl": "https://cbhtest.m.frappe.cloud",
   "apiKey": "d2141a328e0411a",
   "apiSecret": "7311220ffb3e4cd",
+  "company": "CBC Technologies Private Limited",
   "defaultPriceList": "Standard Selling",
   "defaultWarehouse": "Stores - CTPL",
-  "company": "CBC Technologies Private Limited",
   "autoSync": true,
-  "lastSyncTime": "2026-10-26T09:09:45.941Z",
+  "lastSyncTime": "2026-10-28T12:08:44.490Z",
   "lastSyncStatus": "CONNECTED",
   "lastError": null,
-  "syncedItemsCount": 1
+  "syncedItemsCount": 142
 }

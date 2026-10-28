@@ -20,6 +20,7 @@ import {
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { RfqLineItem } from '@/lib/types';
+import { showSuccessAlert, showWarningAlert } from '@/lib/swal';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -38,11 +39,20 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name || !formData.email || !formData.message) {
+      showWarningAlert('Incomplete Inquiry', 'Please fill in your Name, Email, and Message before submitting.');
+      return;
+    }
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
-    }, 800);
+      showSuccessAlert(
+        'Inquiry Submitted Successfully',
+        `Thank you ${formData.name}! Your enterprise fastener request has been routed to our Ludhiana depot desk. We will reach out within 15 minutes.`,
+        3000
+      );
+    }, 600);
   };
 
   return (

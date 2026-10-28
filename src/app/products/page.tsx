@@ -791,14 +791,14 @@ export default function ProductsPage() {
                       </Link>
 
                       {/* Specs Matrix Strip */}
-                      <div className="grid grid-cols-3 text-center bg-slate-50 rounded-lg p-2 text-[10px] font-mono border border-slate-100 mb-2.5">
+                      <div className="grid grid-cols-3 text-center bg-slate-50 rounded-lg p-2 text-[10px] font-mono border border-slate-100 mb-2">
                         <div>
                           <span className="text-slate-400 block text-[9px] uppercase">GRADE</span>
                           <strong className="text-slate-900 truncate block">{p.grade}</strong>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[9px] uppercase">SIZE</span>
-                          <strong className="text-slate-900 truncate block">{p.diameter}x{p.lengthMm}</strong>
+                          <strong className="text-slate-900 truncate block">{p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}</strong>
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[9px] uppercase">PITCH</span>
@@ -813,8 +813,21 @@ export default function ProductsPage() {
                         </Link>
                       </h3>
 
+                      {/* Excel Logistics & Packaging Meta */}
+                      <div className="flex flex-wrap gap-1 mb-2.5 text-[10px]">
+                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                          Box: {p.pcsPerBox || '500'} pcs
+                        </span>
+                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                          MOQ: {p.moq || '25 KGS'}
+                        </span>
+                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+                          Lead: {p.leadTimeDays || 10}d
+                        </span>
+                      </div>
+
                       {/* Finish */}
-                      <div className="text-[11px] text-slate-500 mb-3 truncate">
+                      <div className="text-[11px] text-slate-500 mb-2 truncate">
                         Finish: <strong className="text-slate-700">{p.finish}</strong>
                       </div>
                     </div>

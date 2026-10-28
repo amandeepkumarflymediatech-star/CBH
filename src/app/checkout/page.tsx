@@ -23,6 +23,7 @@ import { RfqLineItem, GlobalUnit } from '@/lib/types';
 import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 import { getStoredCart } from '@/lib/cart';
 import { getStoredUser } from '@/lib/auth';
+import { showErrorAlert, showWarningAlert, showLoadingAlert } from '@/lib/swal';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -122,7 +123,9 @@ export default function CheckoutPage() {
 
     // Validate Required Fields
     if (!formData.fullName || !formData.phone || !formData.shippingAddress || !formData.pincode) {
-      setErrorMessage('Please fill in your Contact Name, Phone, Delivery Address, and Pincode.');
+      const msg = 'Please fill in your Contact Name, Phone, Delivery Address, and Pincode.';
+      setErrorMessage(msg);
+      showWarningAlert('Incomplete Delivery Coordinates', msg);
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 120, behavior: 'smooth' });
       }
@@ -140,6 +143,7 @@ export default function CheckoutPage() {
 
     if (paymentMethod === 'NEFT_RTGS') {
       setIsSubmitting(true);
+      showLoadingAlert('Generating Commercial Proforma', 'Dispatching order parameters into ERPNext...');
       try {
         const orderRes = await fetch('/api/orders', {
           method: 'POST',
@@ -169,13 +173,16 @@ export default function CheckoutPage() {
         );
       } catch (err: any) {
         setIsSubmitting(false);
-        setErrorMessage(err.message || 'Error processing NEFT commercial proforma.');
+        const msg = err.message || 'Error processing NEFT commercial proforma.';
+        setErrorMessage(msg);
+        showErrorAlert('Order Dispatch Failed', msg);
       }
       return;
     }
 
     // Direct redirection to official PhonePe Gateway
     setIsSubmitting(true);
+    showLoadingAlert('Redirecting to Payment Gateway', 'Initializing encrypted PhonePe checkout session...');
 
     try {
       const res = await fetch('/api/payment/phonepe/initiate', {
@@ -200,14 +207,18 @@ export default function CheckoutPage() {
         window.location.href = data.paymentUrl;
       } else {
         setIsSubmitting(false);
-        setErrorMessage(data.error || 'Failed to initiate PhonePe payment. Please check your credentials in the Admin Panel.');
+        const msg = data.error || 'Failed to initiate PhonePe payment. Please check your credentials in the Admin Panel.';
+        setErrorMessage(msg);
+        showErrorAlert('Payment Initiation Failed', msg);
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 120, behavior: 'smooth' });
         }
       }
     } catch (err: any) {
       setIsSubmitting(false);
-      setErrorMessage(err.message || 'Error connecting to PhonePe Gateway.');
+      const msg = err.message || 'Error connecting to PhonePe Gateway.';
+      setErrorMessage(msg);
+      showErrorAlert('Gateway Error', msg);
     }
   };
 

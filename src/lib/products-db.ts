@@ -6,28 +6,21 @@ import { ALL_STATIC_PRODUCTS } from './catalog-products-all';
 const CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'erpnext-cached-products.json');
 
 export function loadCombinedProducts(): Product[] {
-  let erpItems: Product[] = [];
   try {
     if (fs.existsSync(CACHE_FILE)) {
-      erpItems = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
+      const erpItems: Product[] = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
+      if (Array.isArray(erpItems) && erpItems.length > 0) {
+        // ERPNext is the authoritative source of truth:
+        // Items deleted from ERPNext will not be re-added from old static seed files.
+        return erpItems;
+      }
     }
-  } catch {
-    // fallback
+  } catch (err) {
+    console.error('Failed reading ERPNext cache:', err);
   }
 
-  const map = new Map<string, Product>();
-
-  // 1. All real scraped & baseline products
-  for (const p of ALL_STATIC_PRODUCTS) {
-    map.set(p.sku.toUpperCase(), p);
-  }
-
-  // 2. Live ERPNext Synced items take precedence
-  for (const p of erpItems) {
-    map.set(p.sku.toUpperCase(), p);
-  }
-
-  return Array.from(map.values());
+  // Fallback to static seed data only if ERPNext has never been synced yet
+  return [...ALL_STATIC_PRODUCTS];
 }
 
 // In-memory collection shared at runtime

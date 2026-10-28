@@ -14,6 +14,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import TablePagination from '@/components/common/TablePagination';
+import { showToast } from '@/lib/swal';
 
 interface CertificateRecord {
   id: string;
@@ -139,7 +140,7 @@ export default function CustomerCertificatesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => alert(`Downloading signed MTC PDF for ${c.certNumber}`)}
+                        onClick={() => showToast(`Downloading signed MTC PDF (${c.certNumber})...`, 'info')}
                         className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition-colors flex items-center gap-1"
                       >
                         <Download size={12} /> PDF

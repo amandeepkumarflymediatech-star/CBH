@@ -19,6 +19,7 @@ import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
 import { getStoredUser } from '@/lib/auth';
+import { showToast, showSuccessAlert, showErrorAlert } from '@/lib/swal';
 
 interface RapidRFQWidgetProps {
   hideHeader?: boolean;
@@ -463,7 +464,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   <button
                     type="button"
                     className="btn-outline"
-                    onClick={() => alert('Downloaded CBH_BOM_Template.xlsx with DIN standard column schemas.')}
+                    onClick={() => showToast('Downloaded CBH_BOM_Template.xlsx (DIN Standard)', 'info')}
                   >
                     <FileDown size={14} />
                     <span>Download BOM Template</span>
@@ -472,7 +473,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                     type="button"
                     className="btn-dark"
                     style={{ fontSize: '13px' }}
-                    onClick={() => alert('CSV file parsed! 14 standard fastener items added to your RFQ matrix.')}
+                    onClick={() => showSuccessAlert('BOM File Parsed', '14 standard fastener items have been imported to your RFQ matrix with dual-unit live pricing.')}
                   >
                     <Upload size={14} />
                     <span>Browse File</span>

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { verifyPassword, hashPassword, needsRehash } from '@/lib/auth-utils';
 
 export async function POST(request: Request) {
   try {
@@ -12,10 +14,71 @@ export async function POST(request: Request) {
       );
     }
 
-    // Admin shortcut or standard client authentication simulation
-    const isAdmin = email.includes('admin') || role === 'admin';
+    const cleanEmail = email.trim().toLowerCase();
 
-    // Validate Admin Hardware Security Key against Environment Variable
+    // 1. Query user from MySQL database
+    let dbUser: any = null;
+    try {
+      const rows = await query<any>(
+        'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+        [cleanEmail]
+      );
+      if (rows && rows.length > 0) {
+        dbUser = rows[0];
+      }
+    } catch (dbErr: any) {
+      console.warn('[Login API] MySQL query notice:', dbErr.message);
+    }
+
+    // 2. Fallback check for simulated developer admin if DB is uninitialized
+    if (!dbUser) {
+      if (cleanEmail === 'admin@cbh.store' && password === 'Admin@Fastener2025') {
+        dbUser = {
+          id: 1,
+          email: 'admin@cbh.store',
+          password_hash: 'Admin@Fastener2025',
+          full_name: 'Harpreet Singh (Chief Operations)',
+          company_name: 'CBH Fasteners Tech Pvt. Ltd.',
+          gstin: '03AABCC1234F1Z0',
+          phone: '+91 98880 21000',
+          role: 'admin',
+          tier: 'VIP',
+          tier_discount_pct: 25.0,
+          credit_limit: 1000000.0,
+          is_verified: 1,
+        };
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+    }
+
+    // 3. Cryptographic password verification (bcrypt with backward compatibility)
+    const isValidPassword = await verifyPassword(password, dbUser.password_hash);
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    // 4. Auto-upgrade legacy plain-text passwords to secure bcrypt hashes
+    if (needsRehash(dbUser.password_hash)) {
+      try {
+        const newHash = await hashPassword(password);
+        await query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, dbUser.id]);
+        console.log(`[Login API] Successfully upgraded password to bcrypt hash for user: ${dbUser.email}`);
+      } catch (upgradeErr) {
+        console.warn('[Login API] Could not auto-upgrade password hash:', upgradeErr);
+      }
+    }
+
+    const userRole = dbUser.role || (cleanEmail.includes('admin') || role === 'admin' ? 'admin' : 'customer');
+    const isAdmin = userRole === 'admin';
+
+    // 5. Validate Admin Hardware Security Key if admin
     if (isAdmin) {
       const configuredEnvKey =
         process.env.ADMIN_SECURITY_KEY ||
@@ -30,16 +93,19 @@ export async function POST(request: Request) {
       }
     }
 
+    // 6. Construct authenticated user session payload
     const user = {
-      id: isAdmin ? 1 : 101,
-      email,
-      fullName: isAdmin ? 'Harpreet Singh (Chief Operations)' : 'Rajesh Sharma',
-      companyName: isAdmin ? 'CBH Fasteners Tech Pvt. Ltd.' : 'Apex Heavy Infrastructure Ltd.',
-      gstin: isAdmin ? '03AABCC1234F1Z0' : '29AABCA1234F1Z5',
-      phone: '+91 98880 21000',
-      role: isAdmin ? 'admin' : 'customer',
-      tier: isAdmin ? 'VIP' : 'DIAMOND',
-      tierDiscountPct: isAdmin ? 25 : 18,
+      id: dbUser.id,
+      email: dbUser.email,
+      fullName: dbUser.full_name,
+      companyName: dbUser.company_name,
+      gstin: dbUser.gstin,
+      phone: dbUser.phone,
+      role: userRole,
+      tier: dbUser.tier || 'GOLD',
+      tierDiscountPct: parseFloat(dbUser.tier_discount_pct) || (isAdmin ? 25 : 10),
+      creditLimit: parseFloat(dbUser.credit_limit) || 250000,
+      isVerified: Boolean(dbUser.is_verified),
     };
 
     const response = NextResponse.json({
@@ -51,6 +117,12 @@ export async function POST(request: Request) {
     });
 
     response.cookies.set('cbh_role', user.role, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    response.cookies.set('cbh_session', user.email, {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',

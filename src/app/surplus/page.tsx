@@ -8,9 +8,26 @@ import { GlobalUnit } from '@/lib/types';
 import { Flame, CheckCircle2, ShieldCheck, MapPin } from 'lucide-react';
 import { formatINR } from '@/lib/rfq-calculator';
 
+import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
+
 export default function SurplusPage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const handleClaimLot = async (lotId: string, title: string) => {
+    const confirmed = await showConfirmDialog(
+      `Claim Surplus Lot ${lotId}?`,
+      `Are you sure you want to reserve ${title}? Our depot manager will generate and lock in your factory clearance tariff.`,
+      'Confirm Allocation'
+    );
+    if (confirmed) {
+      showSuccessAlert(
+        'Allocation Request Confirmed',
+        `Allocation Request registered for Lot ${lotId}. Proforma invoice will be delivered to your portal within 15 minutes.`,
+        3000
+      );
+    }
+  };
 
   const surplusLots = [
     {
@@ -132,7 +149,7 @@ export default function SurplusPage() {
                   type="button"
                   className="btn-primary"
                   style={{ flex: 1, padding: '10px' }}
-                  onClick={() => alert(`Allocation Request submitted for Lot ${lot.id}. Our depot manager will issue proforma within 15 minutes.`)}
+                  onClick={() => handleClaimLot(lot.id, lot.title)}
                 >
                   <span>Claim Lot Allocation</span>
                 </button>

@@ -6033,6 +6033,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Mobile Sticky Bottom Commerce Bar */
 .pdp-mobile-sticky-dock {
+  display: none !important;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -6041,11 +6042,23 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 1px solid var(--color-surface-border);
   box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   z-index: 1400;
+}
+
+.show-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .pdp-mobile-sticky-dock {
+    display: flex !important;
+  }
+  .show-mobile-only {
+    display: flex !important;
+  }
 }
 
 /* Media Queries */
@@ -6507,6 +6520,10 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-md);
   padding: 24px;
   box-shadow: var(--shadow-sm);
+  max-width: 80rem; /* max-w-7xl (1280px) */
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .admin-kpi-grid {
@@ -6728,4 +6745,72 @@ body.dark {
 .dark .admin-table-row:hover {
   background-color: rgba(30, 41, 59, 0.6) !important;
 }
+
+/* ==========================================================================
+   SWEETALERT2 CUSTOM CBH INDUSTRIAL THEME
+   ========================================================================== */
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+.swal-cbh-popup {
+  border-radius: 14px !important;
+  padding: 24px 28px !important;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.15) !important;
+  border: 1px solid #E2E8F0 !important;
+  font-family: inherit !important;
+}
+
+.swal-cbh-title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #0F172A !important;
+  padding: 8px 0 4px !important;
+}
+
+.swal-cbh-html {
+  font-size: 14px !important;
+  color: #475569 !important;
+  line-height: 1.6 !important;
+  margin: 10px 0 16px !important;
+}
+
+.swal-btn-confirm {
+  background-color: #0052CC !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 82, 204, 0.25) !important;
+  margin: 0 6px !important;
+}
+
+.swal-btn-confirm:hover {
+  background-color: #0747A6 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 82, 204, 0.35) !important;
+}
+
+.swal-btn-cancel {
+  background-color: #F1F5F9 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 10px 22px !important;
+  border-radius: 8px !important;
+  border: 1px solid #CBD5E1 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  margin: 0 6px !important;
+}
+
+.swal-btn-cancel:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
 
