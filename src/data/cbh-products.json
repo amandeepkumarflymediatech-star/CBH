@@ -1,6 +1,6 @@
 {
   "source": "https://cbh.store/products",
-  "timestamp": "2026-10-26T10:12:21.307Z",
+  "timestamp": "2026-10-28T04:46:41.030Z",
   "totalVariations": 49,
   "totalBaseProducts": 8,
   "parentProducts": [
@@ -59,6 +59,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -99,6 +100,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -139,6 +141,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -179,6 +182,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -219,6 +223,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -259,6 +264,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -320,6 +326,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -360,6 +367,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -400,6 +408,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -440,6 +449,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -480,6 +490,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -520,6 +531,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -560,6 +572,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -621,6 +634,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -661,6 +675,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -701,6 +716,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -741,6 +757,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -781,6 +798,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -821,6 +839,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -861,6 +880,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -922,6 +942,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -962,6 +983,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -1002,6 +1024,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -1042,6 +1065,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -1082,6 +1106,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -1122,6 +1147,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -1162,6 +1188,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -1223,6 +1250,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -1263,6 +1291,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -1303,6 +1332,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -1343,6 +1373,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -1383,6 +1414,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -1423,6 +1455,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -1463,6 +1496,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -1524,6 +1558,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -1564,6 +1599,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -1604,6 +1640,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -1644,6 +1681,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -1684,6 +1722,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -1724,6 +1763,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -1764,6 +1804,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -1825,6 +1866,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
           "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
           "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -1865,6 +1907,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -1905,6 +1948,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
           "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
           "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -1945,6 +1989,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
           "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
           "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -1985,6 +2030,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
           "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
           "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -2025,6 +2071,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
           "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
           "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -2065,6 +2112,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
           "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
           "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -2126,6 +2174,7 @@
           "manufacturingStandard": "DIN 933 / IS 1364",
           "tensileStrength": "500 N/mm²",
           "yieldStrength": "400 N/mm²",
+          "gst_hsn_code": "73181500",
           "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
           "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
           "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -2133,7 +2182,7 @@
       ]
     }
   ],
-  "products": [
+  "allVariations": [
     {
       "id": "6a1186f4e386d4c91f048957",
       "variationId": "6a1186f6e386d4c91f04895b",
@@ -2170,6 +2219,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -2210,6 +2260,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -2250,6 +2301,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -2290,6 +2342,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -2330,6 +2383,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -2370,6 +2424,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -2410,6 +2465,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -2450,6 +2506,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -2490,6 +2547,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -2530,6 +2588,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -2570,6 +2629,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -2610,6 +2670,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -2650,6 +2711,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -2690,6 +2752,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -2730,6 +2793,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -2770,6 +2834,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -2810,6 +2875,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -2850,6 +2916,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -2890,6 +2957,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -2930,6 +2998,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -2970,6 +3039,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -3010,6 +3080,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -3050,6 +3121,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -3090,6 +3162,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -3130,6 +3203,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -3170,6 +3244,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -3210,6 +3285,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -3250,6 +3326,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -3290,6 +3367,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -3330,6 +3408,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -3370,6 +3449,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -3410,6 +3490,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -3450,6 +3531,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -3490,6 +3572,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -3530,6 +3613,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -3570,6 +3654,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -3610,6 +3695,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -3650,6 +3736,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -3690,6 +3777,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -3730,6 +3818,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -3770,6 +3859,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -3810,6 +3900,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1xoARCrX5FDowBN1x0iWXiMICR_vefwSu",
       "localImage": "/assets/products/1xoARCrX5FDowBN1x0iWXiMICR_vefwSu.png",
       "driveId": "1xoARCrX5FDowBN1x0iWXiMICR_vefwSu"
@@ -3850,6 +3941,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"
@@ -3890,6 +3982,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw",
       "localImage": "/assets/products/1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw.png",
       "driveId": "1o1GqbWxaGX4DCFWvhYSVO1HVwOOXpCgw"
@@ -3930,6 +4023,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g",
       "localImage": "/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png",
       "driveId": "1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g"
@@ -3970,6 +4064,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE",
       "localImage": "/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png",
       "driveId": "1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE"
@@ -4010,6 +4105,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1B3YPhv4meudo8NQZMwBf_v98rARQxJlM",
       "localImage": "/assets/products/1B3YPhv4meudo8NQZMwBf_v98rARQxJlM.png",
       "driveId": "1B3YPhv4meudo8NQZMwBf_v98rARQxJlM"
@@ -4050,6 +4146,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY",
       "localImage": "/assets/products/13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY.png",
       "driveId": "13HRW3hq2RbTFB-gMmEZuvPDxL4hItUrY"
@@ -4090,6 +4187,7 @@
       "manufacturingStandard": "DIN 933 / IS 1364",
       "tensileStrength": "500 N/mm²",
       "yieldStrength": "400 N/mm²",
+      "gst_hsn_code": "73181500",
       "imageUrl": "https://drive.google.com/thumbnail?id=1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT",
       "localImage": "/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png",
       "driveId": "1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT"

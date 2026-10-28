@@ -5,8 +5,8 @@
   "defaultPriceList": "Standard Selling",
   "defaultWarehouse": "Stores - CBH",
   "autoSync": true,
-  "lastSyncTime": "2026-10-26T09:09:45.941Z",
+  "lastSyncTime": "2026-10-28T04:46:58.711Z",
   "lastSyncStatus": "CONNECTED",
   "lastError": null,
-  "syncedItemsCount": 1
+  "syncedItemsCount": 84
 }
