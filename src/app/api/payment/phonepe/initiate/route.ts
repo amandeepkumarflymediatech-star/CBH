@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
       customerName: body.customerName || 'Procurement In-Charge',
       customerPhone: body.customerPhone || '9888021000',
       customerEmail: body.customerEmail || 'orders@cbh.store',
+      companyName: body.companyName,
+      shippingAddress: body.shippingAddress,
+      items: body.items,
       redirectUrl,
       callbackUrl,
       notes: {

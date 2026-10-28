@@ -3,10 +3,11 @@
   "apiKey": "d2141a328e0411a",
   "apiSecret": "7311220ffb3e4cd",
   "defaultPriceList": "Standard Selling",
-  "defaultWarehouse": "Stores - CBH",
+  "defaultWarehouse": "Stores - CTPL",
+  "company": "CBC Technologies Private Limited",
   "autoSync": true,
-  "lastSyncTime": "2026-10-26T09:09:45.941Z",
+  "lastSyncTime": "2026-10-28T10:19:34.000Z",
   "lastSyncStatus": "CONNECTED",
   "lastError": null,
-  "syncedItemsCount": 1
+  "syncedItemsCount": 5
 }

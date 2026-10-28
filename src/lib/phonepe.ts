@@ -23,6 +23,9 @@ export interface PhonePePaymentRequest {
   redirectUrl: string;
   callbackUrl?: string;
   notes?: Record<string, string>;
+  companyName?: string;
+  shippingAddress?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
 }
 
 export interface PhonePeTransactionRecord {
@@ -38,6 +41,10 @@ export interface PhonePeTransactionRecord {
   createdAt: string;
   updatedAt: string;
   responseMessage?: string;
+  companyName?: string;
+  shippingAddress?: string;
+  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
+  erpnextSalesOrderId?: string;
 }
 
 const CONFIG_FILE = path.join(process.cwd(), 'src', 'data', 'phonepe-config.json');
@@ -216,6 +223,9 @@ export async function initiatePhonePePayment(req: PhonePePaymentRequest): Promis
     customerName: req.customerName,
     customerPhone: req.customerPhone,
     customerEmail: req.customerEmail,
+    companyName: req.companyName,
+    shippingAddress: req.shippingAddress,
+    items: req.items,
     status: 'PENDING',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

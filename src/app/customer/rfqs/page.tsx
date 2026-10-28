@@ -31,7 +31,7 @@ export default function CustomerRfqsPage() {
   const [activeQuoteModal, setActiveQuoteModal] = useState<BulkQuotation | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
+  const loadQuotes = () => {
     fetch('/api/rfq')
       .then((res) => res.json())
       .then((data) => {
@@ -40,6 +40,10 @@ export default function CustomerRfqsPage() {
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadQuotes();
   }, []);
 
   const filteredQuotes = useMemo(() => {
@@ -338,8 +342,28 @@ export default function CustomerRfqsPage() {
                 {activeQuoteModal.status === 'QUOTED' ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      alert(`Quotation ${activeQuoteModal.rfqNumber} accepted! Converted into Purchase Order PO-CBH-2026-8841.`);
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/rfq', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            id: activeQuoteModal.id,
+                            status: 'CONVERTED_TO_PO',
+                          }),
+                        });
+                        const data = await res.json();
+                        const soId = data.data?.erpnextSalesOrderId;
+                        alert(
+                          `Quotation ${activeQuoteModal.rfqNumber} accepted!\n` +
+                          (soId
+                            ? `ERPNext Sales Order ${soId} generated and stock allocated in warehouse.`
+                            : `Purchase Order registered successfully into system.`)
+                        );
+                        loadQuotes();
+                      } catch {
+                        alert(`Quotation ${activeQuoteModal.rfqNumber} accepted and marked as PO.`);
+                      }
                       setActiveQuoteModal(null);
                     }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"

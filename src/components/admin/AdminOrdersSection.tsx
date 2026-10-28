@@ -365,6 +365,13 @@ export default function AdminOrdersSection({
                       <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
                         Date: {o.date}
                       </div>
+                      {o.erpnextSalesOrderId ? (
+                        <div style={{ marginTop: '2px' }}>
+                          <span style={{ fontSize: '10px', color: '#065f46', backgroundColor: '#d1fae5', border: '1px solid #a7f3d0', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                            ERPNext: {o.erpnextSalesOrderId}
+                          </span>
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <div style={{ fontWeight: 700, color: 'var(--color-dark-900)' }}>

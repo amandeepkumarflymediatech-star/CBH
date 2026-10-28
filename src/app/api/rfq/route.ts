@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { BulkQuotation } from '@/lib/types';
-import { pushRfqToErpNext } from '@/lib/erpnext';
+import { pushRfqToErpNext, convertRfqToSalesOrder } from '@/lib/erpnext';
 import { query } from '@/lib/db';
 
 let quotesDb: BulkQuotation[] = [];
@@ -53,7 +53,9 @@ export async function GET(request: Request) {
         q.rfqNumber.toLowerCase().includes(search) ||
         q.customerName?.toLowerCase().includes(search) ||
         q.companyName?.toLowerCase().includes(search) ||
-        q.gstin?.toLowerCase().includes(search)
+        q.gstin?.toLowerCase().includes(search) ||
+        (q.erpnextQuoteId && q.erpnextQuoteId.toLowerCase().includes(search)) ||
+        (q.erpnextSalesOrderId && q.erpnextSalesOrderId.toLowerCase().includes(search))
     );
   }
 
@@ -96,35 +98,43 @@ export async function POST(request: Request) {
       email: body.email || 'procurement@client.com',
       date: body.date || new Date().toISOString().split('T')[0],
       validUntil: body.validUntil || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      itemsCount: parseInt(body.itemsCount) || 3,
+      itemsCount: parseInt(body.itemsCount) || (body.items?.length || 3),
       totalWeightKg: parseFloat(body.totalWeightKg) || 350.0,
       grossAmount: gross,
       discountPct: discountPct,
       netTotal: netTotal,
       status: body.status || 'QUOTED',
+      items: body.items,
     };
 
-    quotesDb.unshift(newQuotation);
-
-    // Asynchronously push to ERPNext Quotation doctype if configured
+    // Push to ERPNext Quotation doctype
     try {
-      pushRfqToErpNext({
+      const erpRes = await pushRfqToErpNext({
         rfqNumber: newQuotation.rfqNumber,
         customerName: newQuotation.customerName,
         companyName: newQuotation.companyName,
         email: newQuotation.email,
         phone: newQuotation.phone,
+        gstin: newQuotation.gstin,
         totalWeightKg: newQuotation.totalWeightKg,
         grossAmount: newQuotation.grossAmount,
-      }).catch((e) => console.log('ERPNext Quotation push background notice:', e.message));
-    } catch {
-      // Ignore if ERPNext not connected
+        items: body.items,
+      });
+      if (erpRes.success && erpRes.erpnextQuoteId) {
+        newQuotation.erpnextQuoteId = erpRes.erpnextQuoteId;
+      }
+    } catch (e: any) {
+      console.warn('[RFQ API] ERPNext Quotation push background notice:', e.message);
     }
+
+    quotesDb.unshift(newQuotation);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Bulk RFQ ${newQuotation.rfqNumber} registered successfully.`,
+        message: `Bulk RFQ ${newQuotation.rfqNumber} registered successfully.${
+          newQuotation.erpnextQuoteId ? ` Created ERPNext Quotation: ${newQuotation.erpnextQuoteId}` : ''
+        }`,
         data: newQuotation,
       },
       { status: 201 }
@@ -153,19 +163,47 @@ export async function PUT(request: Request) {
     const discountPct = updates.discountPct !== undefined ? parseFloat(updates.discountPct) : current.discountPct;
     const netTotal = gross * (1 - discountPct / 100);
 
+    let erpnextSalesOrderId = current.erpnextSalesOrderId;
+
+    // If quotation is converted into a Purchase Order, auto-create ERPNext Sales Order & deduct stock
+    if (
+      (updates.status === 'CONVERTED_TO_PO' || updates.status === 'PO_ISSUED' || updates.status === 'APPROVED') &&
+      !erpnextSalesOrderId
+    ) {
+      try {
+        const erpSoRes = await convertRfqToSalesOrder({
+          rfqNumber: current.rfqNumber,
+          customerName: current.customerName || 'Procurement Executive',
+          companyName: current.companyName || 'Industrial Heavy Corp',
+          email: current.email,
+          phone: current.phone,
+          netTotal,
+          items: current.items,
+        });
+        if (erpSoRes.success && erpSoRes.erpnextSalesOrderId) {
+          erpnextSalesOrderId = erpSoRes.erpnextSalesOrderId;
+        }
+      } catch (err: any) {
+        console.warn('[RFQ API] Error converting quote to ERPNext Sales Order:', err.message);
+      }
+    }
+
     const updated: BulkQuotation = {
       ...current,
       ...updates,
       grossAmount: gross,
       discountPct: discountPct,
       netTotal: netTotal,
+      erpnextSalesOrderId,
     };
 
     quotesDb[index] = updated;
 
     return NextResponse.json({
       success: true,
-      message: `Quotation ${updated.rfqNumber} updated successfully.`,
+      message: `Quotation ${updated.rfqNumber} updated successfully.${
+        erpnextSalesOrderId ? ` ERPNext Sales Order Generated: ${erpnextSalesOrderId}` : ''
+      }`,
       data: updated,
     });
   } catch (error: any) {

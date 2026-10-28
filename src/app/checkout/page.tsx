@@ -130,14 +130,47 @@ export default function CheckoutPage() {
     }
 
     const orderId = `CBH-ORD-${Date.now()}`;
+    const checkoutItems = items.map((it) => ({
+      sku: it.sku,
+      name: it.name,
+      quantity: it.quantity,
+      rate: it.unitRate,
+      weightKg: it.weightPerPcKg,
+    }));
 
     if (paymentMethod === 'NEFT_RTGS') {
-      // Direct Proforma Generation for NEFT
-      router.push(
-        `/order-success?orderNumber=${orderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
-          formData.companyName
-        )}`
-      );
+      setIsSubmitting(true);
+      try {
+        const orderRes = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber: orderId,
+            customerName: formData.fullName,
+            companyName: formData.companyName,
+            email: formData.email,
+            phone: formData.phone,
+            shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
+            netAmount: summary.netTotal,
+            totalWeightKg: summary.totalWeightKg,
+            itemsCount: items.length,
+            status: 'PROCESSING',
+            carrier: 'TCI Freight Express',
+            items: checkoutItems,
+          }),
+        });
+        const orderData = await orderRes.json();
+        const erpId = orderData.data?.erpnextSalesOrderId || '';
+
+        router.push(
+          `/order-success?orderNumber=${orderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
+            formData.companyName
+          )}${erpId ? `&erpId=${encodeURIComponent(erpId)}` : ''}`
+        );
+      } catch (err: any) {
+        setIsSubmitting(false);
+        setErrorMessage(err.message || 'Error processing NEFT commercial proforma.');
+      }
       return;
     }
 
@@ -157,6 +190,7 @@ export default function CheckoutPage() {
           companyName: formData.companyName,
           shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
           totalWeightKg: summary.totalWeightKg,
+          items: checkoutItems,
         }),
       });
 
