@@ -30,7 +30,10 @@ import {
   Boxes,
   LayoutGrid,
   ZoomIn,
-  ArrowUpDown
+  ArrowUpDown,
+  Copy,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 const FASTENER_IMAGE_PRESETS = [
@@ -283,8 +286,8 @@ export default function AdminProductsSection({
   onToggleSurplus,
   showToast,
 }: AdminProductsSectionProps) {
-  // Table View Mode: 'excel' (Full Excel Sheet columns) vs 'compact' (Standard view) vs 'grid' (Mobile/Tablet Card Grid)
-  const [viewMode, setViewMode] = useState<'excel' | 'compact' | 'grid'>('excel');
+  // Table View Mode: 'table' (Clean commercial table) vs 'grid' (Mobile/Tablet Card Grid)
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isSyncing, setIsSyncing] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
 
@@ -308,6 +311,8 @@ export default function AdminProductsSection({
   const [editModalTab, setEditModalTab] = useState<'basic' | 'standards' | 'dimensions' | 'metallurgy' | 'pricing' | 'packaging' | 'media'>('basic');
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
   const [inspectProduct, setInspectProduct] = useState<Product | null>(null);
+  const [inspectTab, setInspectTab] = useState<'overview' | 'dimensions' | 'pricing' | 'inventory'>('overview');
+  const [copiedSku, setCopiedSku] = useState(false);
 
   // Live Telemetry KPI Metrics
   const stats = useMemo(() => {
@@ -726,9 +731,7 @@ export default function AdminProductsSection({
               <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>
                 Fastener Master Inventory ({products.length} Items)
               </h3>
-              <span className="badge badge-din" style={{ fontSize: '11px' }}>
-                Excel Synced
-              </span>
+             
             </div>
             <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
               Full dimensional engineering, packaging, weights, pricing, and ERPNext live inventory telemetry
@@ -740,48 +743,25 @@ export default function AdminProductsSection({
             <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
               <button
                 type="button"
-                onClick={() => setViewMode('excel')}
+                onClick={() => setViewMode('table')}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '6px 12px',
+                  padding: '6px 14px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: viewMode === 'excel' ? '#0052CC' : 'transparent',
-                  color: viewMode === 'excel' ? '#FFFFFF' : '#475569',
-                  fontWeight: viewMode === 'excel' ? 700 : 500,
+                  background: viewMode === 'table' ? '#0052CC' : 'transparent',
+                  color: viewMode === 'table' ? '#FFFFFF' : '#475569',
+                  fontWeight: viewMode === 'table' ? 700 : 500,
                   fontSize: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
-                title="Display all 30+ columns present in the Excel file"
-              >
-                <FileSpreadsheet size={14} />
-                <span>Excel Master</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('compact')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: viewMode === 'compact' ? '#0052CC' : 'transparent',
-                  color: viewMode === 'compact' ? '#FFFFFF' : '#475569',
-                  fontWeight: viewMode === 'compact' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Compact commercial table view"
+                title="Commercial table view"
               >
                 <Layers size={14} />
-                <span>Compact</span>
+                <span>Table View</span>
               </button>
 
               <button
@@ -791,7 +771,7 @@ export default function AdminProductsSection({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '6px 12px',
+                  padding: '6px 14px',
                   borderRadius: '6px',
                   border: 'none',
                   background: viewMode === 'grid' ? '#0052CC' : 'transparent',
@@ -991,7 +971,6 @@ export default function AdminProductsSection({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <span className="admin-filter-count" style={{ fontSize: '12px' }}>
               Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> SKUs
-              {viewMode === 'excel' && <span style={{ color: '#0052CC', marginLeft: '6px', fontWeight: 600 }}>• Showing all 30+ Excel engineering attributes</span>}
               {viewMode === 'grid' && <span style={{ color: '#059669', marginLeft: '6px', fontWeight: 600 }}>• Card grid responsive layout</span>}
             </span>
             {(search || selectedSubGroup !== 'all' || selectedStandard !== 'all' || selectedGrade !== 'all' || selectedStock !== 'all' || selectedCatalog !== 'all' || sortBy !== 'default') && (
@@ -1128,23 +1107,33 @@ export default function AdminProductsSection({
                           </span>
                         </div>
 
-                        {/* Title & SKU */}
-                        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#64748B', fontWeight: 600 }}>
-                          {p.sku}
+                        {/* Title & SKU (Clickable to open pop-up bar) */}
+                        <div
+                          onClick={() => {
+                            setInspectProduct(p);
+                            setInspectTab('overview');
+                          }}
+                          style={{ cursor: 'pointer' }}
+                          title="Click to view full product specs in pop-up bar"
+                        >
+                          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#0052CC', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <span>{p.sku}</span>
+                            <ChevronRight size={11} />
+                          </div>
+                          <h4 style={{
+                            margin: '4px 0 8px',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            color: '#0F172A',
+                            lineHeight: '1.3',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {p.name}
+                          </h4>
                         </div>
-                        <h4 style={{
-                          margin: '4px 0 8px',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          color: '#0F172A',
-                          lineHeight: '1.3',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {p.name}
-                        </h4>
 
                         {/* Size & Grade Tags */}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -1204,13 +1193,16 @@ export default function AdminProductsSection({
                       <div style={{ display: 'flex', gap: '6px', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
                         <button
                           type="button"
-                          onClick={() => setInspectProduct(p)}
+                          onClick={() => {
+                            setInspectProduct(p);
+                            setInspectTab('overview');
+                          }}
                           className="btn-outline"
                           style={{ flex: 1, padding: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          title="Inspect full Excel row"
+                          title="Open Product Details Pop-up Bar"
                         >
                           <Eye size={12} />
-                          <span>Inspect</span>
+                          <span>Specs</span>
                         </button>
                         <button
                           type="button"
@@ -1260,468 +1252,297 @@ export default function AdminProductsSection({
             />
           </div>
         ) : (
-          /* VIEW MODE 2 & 3: EXCEL MASTER TABLE & COMPACT TABLE */
-          <div className="admin-table-wrap" style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-            <table className="admin-table" style={{ fontSize: '12px', minWidth: viewMode === 'excel' ? '1800px' : '1000px' }}>
-          <thead>
-            {viewMode === 'excel' ? (
-              <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #CBD5E1' }}>
-                <th style={{ minWidth: '220px', position: 'sticky', left: 0, background: '#F8FAFC', zIndex: 2 }}>SKU & Name</th>
-                <th style={{ minWidth: '130px' }}>Sub-Group / Cat</th>
-                <th style={{ minWidth: '120px' }}>Sub-Category</th>
-                <th style={{ minWidth: '130px' }}>Standards (DIN/ISO)</th>
-                <th style={{ minWidth: '110px' }}>Size Formatted</th>
-                <th style={{ minWidth: '110px' }}>DIA x Length</th>
-                <th style={{ minWidth: '90px' }}>Pitch</th>
-                <th style={{ minWidth: '110px' }}>Thread Length</th>
-                <th style={{ minWidth: '110px' }}>Grade</th>
-                <th style={{ minWidth: '110px' }}>Finish</th>
-                <th style={{ minWidth: '100px' }}>Wt/Pc (kg)</th>
-                <th style={{ minWidth: '110px' }}>Wt/1000 Pcs</th>
-                <th style={{ minWidth: '100px' }}>Rate/Pc (₹)</th>
-                <th style={{ minWidth: '100px' }}>Rate/Kg (₹)</th>
-                <th style={{ minWidth: '110px' }}>Price 100/1000</th>
-                <th style={{ minWidth: '140px' }}>Box Pack (pcs/kg)</th>
-                <th style={{ minWidth: '140px' }}>Carton Pack (pcs/kg)</th>
-                <th style={{ minWidth: '100px' }}>MOQ</th>
-                <th style={{ minWidth: '110px' }}>Lead Time</th>
-                <th style={{ minWidth: '120px' }}>Stock Telemetry</th>
-                <th style={{ minWidth: '100px' }}>Brand / HSN</th>
-                <th style={{ minWidth: '100px' }}>CAD / Image</th>
-                <th style={{ minWidth: '90px' }}>Surplus</th>
-                <th style={{ minWidth: '120px', textAlign: 'right', position: 'sticky', right: 0, background: '#F8FAFC', zIndex: 2 }}>Actions</th>
-              </tr>
-            ) : (
-              <tr>
-                <th>SKU & Product Details</th>
-                <th>Standard</th>
-                <th>Grade</th>
-                <th>Rate / Pc</th>
-                <th>Rate / Kg</th>
-                <th>Packaging</th>
-                <th>Stock Telemetry</th>
-                <th>Status</th>
-                <th>Surplus Deal</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            )}
-          </thead>
-          <tbody>
-            {filteredProducts.length === 0 ? (
-              <tr>
-                <td colSpan={viewMode === 'excel' ? 24 : 10}>
-                  <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                    <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
-                    <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
-                    <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
-                    <button type="button" className="btn-outline" onClick={handleResetFilters}>
-                      Clear All Filters
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              paginatedProducts.map((p) => {
-                const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
-                const isOutOfStock = p.stockPcs === 0;
-
-                if (viewMode === 'excel') {
-                  return (
-                    <tr key={p.id} className={p.isSurplus ? 'surplus-row' : ''} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      {/* Sticky SKU & Name */}
-                      <td style={{ position: 'sticky', left: 0, background: '#FFFFFF', zIndex: 1, boxShadow: '2px 0 5px rgba(0,0,0,0.03)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '4px',
-                            border: '1px solid #E2E8F0',
-                            overflow: 'hidden',
-                            flexShrink: 0,
-                            background: '#F8FAFC',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            <img
-                              src={p.imageUrl || '/assets/bolt_zinc.jpg'}
-                              alt={p.sku}
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                              onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
-                            />
-                          </div>
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => setInspectProduct(p)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: 0,
-                                color: '#0052CC',
-                                fontWeight: 700,
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                textDecoration: 'underline'
-                              }}
-                              title="Click to view full Excel card"
-                            >
-                              {p.sku}
-                            </button>
-                            <div style={{ fontSize: '11px', color: '#64748B', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {p.name}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Sub-Group / Category */}
-                      <td>
-                        <span style={{ fontWeight: 600, color: '#1E293B' }}>{p.subGroup || 'SCREW'}</span>
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>{p.category}</div>
-                      </td>
-
-                      {/* Sub-Category */}
-                      <td>
-                        <span style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#334155', fontWeight: 600 }}>
-                          {p.subCategory || 'ALLEN SCREWS'}
-                        </span>
-                      </td>
-
-                      {/* Standards */}
-                      <td>
-                        <span className="badge badge-din" style={{ padding: '2px 6px', fontSize: '10px' }}>
-                          {p.din || p.standard}
-                        </span>
-                        {p.isoStandard && (
-                          <div style={{ fontSize: '10px', color: '#059669', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
-                            {p.isoStandard}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Size Formatted */}
-                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0F172A' }}>
-                        {p.sizeFormatted || `${p.diameter}X${p.pitchMm}X${p.lengthMm}`}
-                      </td>
-
-                      {/* DIA x Length */}
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
-                        {p.diameter} × {p.lengthMm}mm
-                      </td>
-
-                      {/* Pitch */}
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
-                        {p.pitchMm} mm
-                      </td>
-
-                      {/* Thread Length */}
-                      <td>
-                        <span style={{ fontSize: '11px', color: '#475569' }}>
-                          {p.threadLength || p.threadType}
-                        </span>
-                      </td>
-
-                      {/* Grade */}
-                      <td>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#1E293B' }}>
-                          {p.grade}
-                        </span>
-                      </td>
-
-                      {/* Finish */}
-                      <td>
-                        <span style={{ fontSize: '11px', color: '#334155' }}>
-                          {p.finish}
-                        </span>
-                      </td>
-
-                      {/* Wt/Pc */}
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
-                        {p.weightPerPcKg} kg
-                      </td>
-
-                      {/* Wt/1000 Pcs */}
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
-                        {p.weightPer1000PcsKg || (p.weightPerPcKg * 1000).toFixed(2)} kg
-                      </td>
-
-                      {/* Rate/Pc */}
-                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC' }}>
-                        {formatINR(p.pricePerPiece)}
-                      </td>
-
-                      {/* Rate/Kg */}
-                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#059669' }}>
-                        {formatINR(p.pricePerKg)}
-                      </td>
-
-                      {/* Price 100 / 1000 */}
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#475569' }}>
-                        <div>100: {formatINR(p.price100Pcs || p.pricePerPiece * 100)}</div>
-                        <div>1k: {formatINR(p.price1000Pcs || p.pricePerPiece * 1000)}</div>
-                      </td>
-
-                      {/* Box Pack */}
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{p.pcsPerBox || '500'} pcs</div>
-                        <div style={{ fontSize: '10px', color: '#64748B' }}>{p.smallBoxWeightKg || 2.5} kg box</div>
-                      </td>
-
-                      {/* Carton Pack */}
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{p.pcsPerMasterCtn || '4000'} pcs</div>
-                        <div style={{ fontSize: '10px', color: '#64748B' }}>{p.masterCtnWeightKg || 20} kg ctn</div>
-                      </td>
-
-                      {/* MOQ */}
-                      <td style={{ fontWeight: 600, color: '#0F172A' }}>
-                        {p.moq || '25 KGS'}
-                      </td>
-
-                      {/* Lead Time */}
-                      <td>
-                        <span style={{ fontWeight: 600 }}>{p.leadTimeDays || 10}d</span>
-                        <div style={{ fontSize: '10px', color: '#64748B' }}>
-                          ({p.productionDays || 7}d + {p.packingDays || 3}d)
-                        </div>
-                      </td>
-
-                      {/* Stock Telemetry */}
-                      <td>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                          {p.stockPcs.toLocaleString()} pcs
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                          {p.stockKg.toFixed(1)} Kg
-                        </div>
-                      </td>
-
-                      {/* Brand & HSN */}
-                      <td>
-                        <span style={{ fontWeight: 700 }}>{p.brand || 'CBH'}</span>
-                        <div style={{ fontSize: '10px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                          HSN: {p.hsnCode || '73181500'}
-                        </div>
-                      </td>
-
-                      {/* CAD & Photo */}
-                      <td>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          {p.drawingUrl ? (
-                            <a href={p.drawingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0052CC', padding: '2px 4px', fontSize: '10px', border: '1px solid #CBD5E1', borderRadius: '4px', textDecoration: 'none' }}>
-                              CAD
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: '10px', color: '#94A3B8' }}>CAD</span>
-                          )}
-                          {p.gdriveImageUrl ? (
-                            <a href={p.gdriveImageUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#059669', padding: '2px 4px', fontSize: '10px', border: '1px solid #CBD5E1', borderRadius: '4px', textDecoration: 'none' }}>
-                              Drive
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: '10px', color: '#94A3B8' }}>IMG</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Surplus */}
-                      <td>
-                        <button
-                          type="button"
-                          onClick={() => onToggleSurplus(p.id)}
-                          className={`badge ${p.isSurplus ? 'badge-surplus' : 'badge-certified'}`}
-                          style={{ cursor: 'pointer', border: 'none', padding: '2px 6px', fontSize: '10px' }}
-                          title="Click to toggle surplus liquidation deal"
-                        >
-                          {p.isSurplus ? `-${p.surplusDiscountPct}%` : 'STD'}
-                        </button>
-                      </td>
-
-                      {/* Sticky Actions */}
-                      <td style={{ position: 'sticky', right: 0, background: '#FFFFFF', zIndex: 1, boxShadow: '-2px 0 5px rgba(0,0,0,0.03)' }}>
-                        <div className="admin-action-btn-group" style={{ justifyContent: 'flex-end', gap: '4px' }}>
-                          <button
-                            type="button"
-                            className="admin-btn-action"
-                            style={{ background: '#F1F5F9', color: '#334155' }}
-                            onClick={() => setInspectProduct(p)}
-                            title="Inspect complete Excel row"
-                          >
-                            <Eye size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-btn-action admin-btn-edit"
-                            onClick={() => {
-                              setEditProduct({ ...p });
-                              setEditModalTab('basic');
-                            }}
-                            title="Edit fastener parameters"
-                          >
-                            <Edit size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-btn-action admin-btn-delete"
-                            onClick={() => setDeleteProduct(p)}
-                            title="Delete SKU from catalog"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-
-                // Compact view
-                return (
-                  <tr key={p.id} className={p.isSurplus ? 'surplus-row' : ''}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '4px',
-                          border: '1px solid var(--color-surface-border)',
-                          overflow: 'hidden',
-                          flexShrink: 0,
-                          background: '#F8FAFC',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <Image
-                            src={p.imageUrl || '/assets/bolt_zinc.jpg'}
-                            alt={p.sku}
-                            width={36}
-                            height={36}
-                            style={{ objectFit: 'contain' }}
-                          />
-                        </div>
-                        <div>
-                          <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-dark-900)' }}>
-                            {p.sku}
-                          </strong>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', maxWidth: '320px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {p.name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                            {p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`} | {p.finish}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-din">{p.standard || p.din}</span>
-                      {p.isoStandard && <div style={{ fontSize: '10px', color: '#059669', marginTop: '2px' }}>{p.isoStandard}</div>}
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{p.grade}</span>
-                    </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                      {formatINR(p.pricePerPiece)}
-                    </td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary)' }}>
-                      {formatINR(p.pricePerKg)}
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '11px', fontWeight: 600 }}>Box: {p.pcsPerBox || '500'} pcs</div>
-                      <div style={{ fontSize: '10px', color: '#64748B' }}>Ctn: {p.pcsPerMasterCtn || '4000'} pcs</div>
-                    </td>
-                    <td>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-                        <strong>{p.stockPcs.toLocaleString()}</strong> pcs
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {p.stockKg.toFixed(1)} Kg
-                      </div>
-                    </td>
-                    <td>
-                      {isOutOfStock ? (
-                        <span className="badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>
-                          Out of Stock
-                        </span>
-                      ) : isLowStock ? (
-                        <span className="badge" style={{ background: '#FEF3C7', color: '#D97706' }}>
-                          Low Stock
-                        </span>
-                      ) : (
-                        <span className="badge badge-certified">
-                          Ready Stock
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => onToggleSurplus(p.id)}
-                        className={`badge ${p.isSurplus ? 'badge-surplus' : 'badge-certified'}`}
-                        style={{ cursor: 'pointer', border: 'none' }}
-                        title="Click to toggle surplus liquidation deal"
-                      >
-                        {p.isSurplus ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            <Flame size={11} /> SURPLUS (-{p.surplusDiscountPct}%)
-                          </span>
-                        ) : (
-                          'STANDARD'
-                        )}
-                      </button>
-                    </td>
-                    <td>
-                      <div className="admin-action-btn-group" style={{ justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="admin-btn-action"
-                          style={{ background: '#F1F5F9', color: '#334155' }}
-                          onClick={() => setInspectProduct(p)}
-                          title="Inspect complete Excel row"
-                        >
-                          <Eye size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-action admin-btn-edit"
-                          onClick={() => {
-                            setEditProduct({ ...p });
-                            setEditModalTab('basic');
-                          }}
-                          title="Edit fastener SKU parameters"
-                        >
-                          <Edit size={12} />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-action admin-btn-delete"
-                          onClick={() => setDeleteProduct(p)}
-                          title="Delete SKU from catalog"
-                        >
-                          <Trash2 size={12} />
+          /* VIEW MODE: RESPONSIVE TABLE (NO HORIZONTAL SCROLL) */
+          <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '42%' }}>SKU & Product Details</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Grade & Coating</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Rate (Pc / Kg)</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '14%' }}>Stock & Status</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '12%', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                        <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
+                        <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
+                        <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
+                        <button type="button" className="btn-outline" onClick={handleResetFilters}>
+                          Clear All Filters
                         </button>
                       </div>
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-          <TablePagination
-            currentPage={currentPage}
-            totalItems={filteredProducts.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-            itemLabel="fastener SKUs"
-            pageSizeOptions={[10, 20, 50, 100]}
-          />
-        </div>
-      )}
+                ) : (
+                  paginatedProducts.map((p) => {
+                    const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
+                    const isOutOfStock = p.stockPcs === 0;
+
+                    return (
+                      <tr
+                        key={p.id}
+                        className={p.isSurplus ? 'surplus-row' : ''}
+                        style={{
+                          borderBottom: '1px solid #F1F5F9',
+                          transition: 'background 0.15s ease'
+                        }}
+                      >
+                        {/* 1. SKU & Product Details (Clickable Tab to open Pop up bar) */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <div
+                            onClick={() => {
+                              setInspectProduct(p);
+                              setInspectTab('overview');
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            title="Click to view full product details & specs in pop up bar"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <div style={{
+                              width: '42px',
+                              height: '42px',
+                              borderRadius: '6px',
+                              border: '1px solid #E2E8F0',
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              background: '#F8FAFC',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              position: 'relative'
+                            }}>
+                              <Image
+                                src={p.imageUrl || '/assets/bolt_zinc.jpg'}
+                                alt={p.sku}
+                                width={38}
+                                height={38}
+                                style={{ objectFit: 'contain' }}
+                              />
+                            </div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  background: '#EFF6FF',
+                                  color: '#0052CC',
+                                  fontWeight: 700,
+                                  fontSize: '11px',
+                                  fontFamily: 'var(--font-mono)',
+                                  border: '1px solid #BFDBFE'
+                                }}>
+                                  {p.sku}
+                                  <ChevronRight size={11} />
+                                </span>
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '1px 6px',
+                                  borderRadius: '3px',
+                                  background: '#F1F5F9',
+                                  color: '#475569',
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  fontFamily: 'var(--font-mono)'
+                                }}>
+                                  {p.standard || p.din || 'DIN'}
+                                </span>
+                                {p.isSurplus && (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    background: '#FEF3C7',
+                                    color: '#B45309',
+                                    fontSize: '9px',
+                                    fontWeight: 700
+                                  }}>
+                                    <Flame size={10} /> -{p.surplusDiscountPct}%
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{
+                                fontWeight: 600,
+                                fontSize: '13px',
+                                color: '#0F172A',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: '340px'
+                              }}>
+                                {p.name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '8px', marginTop: '2px' }}>
+                                <span>{p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`}</span>
+                                <span>•</span>
+                                <span>{p.subGroup || p.category || 'Fastener'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Grade & Coating */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{
+                              fontWeight: 700,
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '12px',
+                              color: '#1E293B'
+                            }}>
+                              {p.grade || 'Grade 8.8'}
+                            </span>
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#64748B',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {p.finish || 'Zinc Plated'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 3. Rate (Pc / Kg) */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              color: '#0052CC'
+                            }}>
+                              {formatINR(p.pricePerPiece)} <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 500 }}>/ pc</span>
+                            </span>
+                            <span style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '11px',
+                              color: '#059669',
+                              fontWeight: 600
+                            }}>
+                              {formatINR(p.pricePerKg)} <span style={{ fontSize: '10px', color: '#64748B' }}>/ kg</span>
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 4. Stock & Status */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#0F172A'
+                            }}>
+                              {p.stockPcs.toLocaleString()} <span style={{ fontSize: '10px', fontWeight: 500, color: '#64748B' }}>pcs</span>
+                            </span>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              width: 'fit-content',
+                              background: isOutOfStock ? '#FEE2E2' : isLowStock ? '#FEF3C7' : '#ECFDF5',
+                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#059669'
+                            }}>
+                              {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Ready Stock'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 5. Actions */}
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectProduct(p);
+                                setInspectTab('overview');
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '5px',
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#0052CC',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title="Open Product Details Pop-up Bar"
+                            >
+                              <Eye size={12} />
+                              <span>Specs</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn-action admin-btn-edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditProduct({ ...p });
+                                setEditModalTab('basic');
+                              }}
+                              title="Edit fastener SKU parameters"
+                            >
+                              <Edit size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn-action admin-btn-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteProduct(p);
+                              }}
+                              title="Delete SKU from catalog"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredProducts.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              itemLabel="fastener SKUs"
+              pageSizeOptions={[10, 20, 50, 100]}
+            />
+          </div>
+        )}
       </div>
 
       {/* MODAL 1: ADD FASTENER MODAL WITH ALL EXCEL INPUT FIELDS */}
@@ -3076,6 +2897,535 @@ export default function AdminProductsSection({
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: PRODUCT DETAILS POP-UP BAR / SLIDE-OVER DRAWER */}
+      {inspectProduct && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            transition: 'all 0.25s ease'
+          }}
+          onClick={() => setInspectProduct(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '600px',
+              height: '100%',
+              background: '#FFFFFF',
+              boxShadow: '-8px 0 32px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Pop-up Bar Header */}
+            <div style={{
+              padding: '18px 20px',
+              borderBottom: '1px solid #E2E8F0',
+              background: '#F8FAFC',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#0052CC',
+                    background: '#EFF6FF',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid #BFDBFE',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    {inspectProduct.sku}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inspectProduct.sku);
+                        setCopiedSku(true);
+                        setTimeout(() => setCopiedSku(false), 2000);
+                      }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#0052CC', display: 'flex', alignItems: 'center' }}
+                      title="Copy SKU code"
+                    >
+                      {copiedSku ? <Check size={12} color="#059669" /> : <Copy size={12} />}
+                    </button>
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    background: '#F1F5F9',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    color: '#475569'
+                  }}>
+                    {inspectProduct.standard || inspectProduct.din || 'DIN'}
+                  </span>
+                  {inspectProduct.isSurplus && (
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      background: '#FEF3C7',
+                      color: '#B45309',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px'
+                    }}>
+                      <Flame size={11} /> -{inspectProduct.surplusDiscountPct}% SURPLUS
+                    </span>
+                  )}
+                </div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0F172A', lineHeight: '1.3' }}>
+                  {inspectProduct.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectProduct(null)}
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748B'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Pop-up Bar Tabs */}
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid #E2E8F0',
+              background: '#FFFFFF',
+              padding: '0 16px',
+              flexShrink: 0,
+              gap: '4px',
+              overflowX: 'auto'
+            }}>
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'dimensions', label: 'Dimensions & Specs' },
+                { id: 'pricing', label: 'Pricing & Packaging' },
+                { id: 'inventory', label: 'Stock Telemetry' },
+              ].map((tab) => {
+                const isActive = inspectTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setInspectTab(tab.id as any)}
+                    style={{
+                      padding: '10px 14px',
+                      border: 'none',
+                      borderBottom: isActive ? '2px solid #0052CC' : '2px solid transparent',
+                      background: 'none',
+                      color: isActive ? '#0052CC' : '#64748B',
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pop-up Bar Scrollable Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+              {inspectTab === 'overview' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Photo & CAD preview */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    padding: '14px',
+                    background: '#F8FAFC',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <Image
+                        src={inspectProduct.imageUrl || '/assets/bolt_zinc.jpg'}
+                        alt={inspectProduct.sku}
+                        width={72}
+                        height={72}
+                        style={{ objectFit: 'contain' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>
+                        {inspectProduct.category} • {inspectProduct.subGroup || 'Standard Fastener'}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '14px', color: '#0F172A', marginBottom: '8px' }}>
+                        {inspectProduct.sizeFormatted || `${inspectProduct.diameter} × ${inspectProduct.lengthMm}mm`}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {inspectProduct.drawingUrl ? (
+                          <a
+                            href={inspectProduct.drawingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              background: '#EDE9FE',
+                              color: '#6D28D9',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <ExternalLink size={12} />
+                            <span>CAD Blueprint</span>
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#94A3B8' }}>No CAD uploaded</span>
+                        )}
+                        {inspectProduct.imageUrl && inspectProduct.imageUrl.includes('frappe.cloud') && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            background: '#ECFDF5',
+                            color: '#059669',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}>
+                            <CheckCircle2 size={12} /> Frappe Cloud Synced
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Overview Data Table */}
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: '#F8FAFC', fontWeight: 700, fontSize: '12px', borderBottom: '1px solid #E2E8F0', color: '#334155' }}>
+                      Fastener Identification
+                    </div>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B', width: '40%' }}>Product SKU</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{inspectProduct.sku}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Sub-Group / Family</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.subGroup || inspectProduct.category}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Sub-Category</td>
+                          <td style={{ padding: '8px 14px' }}>{inspectProduct.subCategory || 'ALLEN SCREWS / FASTENERS'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Primary Standard</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, color: '#0052CC', fontFamily: 'var(--font-mono)' }}>
+                            {inspectProduct.din || inspectProduct.standard || 'DIN'}
+                          </td>
+                        </tr>
+                        {inspectProduct.isoStandard && (
+                          <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                            <td style={{ padding: '8px 14px', color: '#64748B' }}>ISO Standard</td>
+                            <td style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)' }}>{inspectProduct.isoStandard}</td>
+                          </tr>
+                        )}
+                        {inspectProduct.bsStandard && (
+                          <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                            <td style={{ padding: '8px 14px', color: '#64748B' }}>BS / ASME Standard</td>
+                            <td style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)' }}>{inspectProduct.bsStandard}</td>
+                          </tr>
+                        )}
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Property Class / Grade</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{inspectProduct.grade}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Surface Coating / Finish</td>
+                          <td style={{ padding: '8px 14px' }}>{inspectProduct.finish}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {inspectTab === 'dimensions' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: '#F8FAFC', fontWeight: 700, fontSize: '12px', borderBottom: '1px solid #E2E8F0', color: '#334155' }}>
+                      Engineering Dimensions & Geometry
+                    </div>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B', width: '45%' }}>Formatted Size</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
+                            {inspectProduct.sizeFormatted || `${inspectProduct.diameter}X${inspectProduct.pitchMm}X${inspectProduct.lengthMm}`}
+                          </td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Nominal Diameter (DIA)</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{inspectProduct.diameter}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Nominal Length</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{inspectProduct.lengthMm} mm</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Thread Pitch</td>
+                          <td style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)' }}>{inspectProduct.pitchMm} mm</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Thread Length</td>
+                          <td style={{ padding: '8px 14px' }}>{inspectProduct.threadLength || 'FULL THREAD'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Thread Type / Pitch Spec</td>
+                          <td style={{ padding: '8px 14px' }}>{inspectProduct.threadType || 'Metric Coarse'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Weight Per Piece</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{inspectProduct.weightPerPcKg} kg</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Weight Per 1,000 Pcs</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, color: '#059669', fontFamily: 'var(--font-mono)' }}>
+                            {inspectProduct.weightPer1000PcsKg || (inspectProduct.weightPerPcKg * 1000).toFixed(2)} kg
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {inspectTab === 'pricing' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Highlight pricing cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                    <div style={{ padding: '14px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                      <div style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600, marginBottom: '2px' }}>RATE PER PIECE</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: '#0052CC', fontFamily: 'var(--font-mono)' }}>
+                        {formatINR(inspectProduct.pricePerPiece)}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B', marginTop: '4px' }}>Ex-factory bulk price</div>
+                    </div>
+                    <div style={{ padding: '14px', borderRadius: '8px', background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                      <div style={{ fontSize: '11px', color: '#047857', fontWeight: 600, marginBottom: '2px' }}>RATE PER KG</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: '#059669', fontFamily: 'var(--font-mono)' }}>
+                        {formatINR(inspectProduct.pricePerKg)}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B', marginTop: '4px' }}>Industrial weight tier</div>
+                    </div>
+                  </div>
+
+                  {/* Packaging breakdown */}
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: '#F8FAFC', fontWeight: 700, fontSize: '12px', borderBottom: '1px solid #E2E8F0', color: '#334155' }}>
+                      Industrial B2B Packaging & Order Limits
+                    </div>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B', width: '45%' }}>Small Box Pack</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.pcsPerBox || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg)</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Master Carton Pack</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.pcsPerMasterCtn || '4000'} pcs ({inspectProduct.masterCtnWeightKg || 20} kg)</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Minimum Order (MOQ)</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, color: '#0F172A' }}>{inspectProduct.moq || '25 KGS'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Total Lead Time</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.leadTimeDays || 10} Days ({inspectProduct.productionDays || 7}d prod + {inspectProduct.packingDays || 3}d pack)</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>100 Pcs Rate</td>
+                          <td style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price100Pcs || inspectProduct.pricePerPiece * 100)}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>1,000 Pcs Rate</td>
+                          <td style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price1000Pcs || inspectProduct.pricePerPiece * 1000)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {inspectTab === 'inventory' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                    <div style={{ padding: '14px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, marginBottom: '2px' }}>STOCK PIECES</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
+                        {inspectProduct.stockPcs.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B', marginTop: '4px' }}>Units on hand</div>
+                    </div>
+                    <div style={{ padding: '14px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, marginBottom: '2px' }}>STOCK WEIGHT</div>
+                      <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
+                        {inspectProduct.stockKg.toFixed(1)} <span style={{ fontSize: '13px' }}>Kg</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B', marginTop: '4px' }}>Total mass in warehouse</div>
+                    </div>
+                  </div>
+
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: '#F8FAFC', fontWeight: 700, fontSize: '12px', borderBottom: '1px solid #E2E8F0', color: '#334155' }}>
+                      Inventory Telemetry & Tax Compliance
+                    </div>
+                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B', width: '45%' }}>Stock Health Status</td>
+                          <td style={{ padding: '8px 14px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: inspectProduct.stockPcs === 0 ? '#FEE2E2' : inspectProduct.stockPcs <= 5000 ? '#FEF3C7' : '#ECFDF5',
+                              color: inspectProduct.stockPcs === 0 ? '#DC2626' : inspectProduct.stockPcs <= 5000 ? '#D97706' : '#059669'
+                            }}>
+                              {inspectProduct.stockPcs === 0 ? 'Out of Stock' : inspectProduct.stockPcs <= 5000 ? 'Low Stock Alert' : 'Ready Stock In Warehouse'}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>GST HSN Code</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{inspectProduct.hsnCode || '73181500'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Manufacturer / Brand</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.brand || 'CBH'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Surplus Liquidation Deal</td>
+                          <td style={{ padding: '8px 14px' }}>
+                            {inspectProduct.isSurplus ? (
+                              <span style={{ color: '#B45309', fontWeight: 700 }}>
+                                Active (-{inspectProduct.surplusDiscountPct}% off)
+                              </span>
+                            ) : (
+                              <span style={{ color: '#64748B' }}>Standard Catalog Rate</span>
+                            )}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 14px', color: '#64748B' }}>Unit of Measure (UOM)</td>
+                          <td style={{ padding: '8px 14px' }}>{inspectProduct.stockUom || 'Nos'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pop-up Bar Footer with Actions */}
+            <div style={{
+              padding: '14px 20px',
+              borderTop: '1px solid #E2E8F0',
+              background: '#F8FAFC',
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleSurplus(inspectProduct.id);
+                  setInspectProduct({
+                    ...inspectProduct,
+                    isSurplus: !inspectProduct.isSurplus
+                  });
+                }}
+                className={`badge ${inspectProduct.isSurplus ? 'badge-surplus' : 'badge-certified'}`}
+                style={{ padding: '6px 12px', fontSize: '11px', cursor: 'pointer', border: 'none' }}
+              >
+                {inspectProduct.isSurplus ? 'Disable Surplus Deal' : 'Mark as Surplus Deal'}
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  style={{ padding: '6px 14px', fontSize: '12px' }}
+                  onClick={() => {
+                    const prodToEdit = { ...inspectProduct };
+                    setInspectProduct(null);
+                    setEditProduct(prodToEdit);
+                    setEditModalTab('basic');
+                  }}
+                >
+                  <Edit size={13} />
+                  <span>Edit Parameters</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ padding: '6px 14px', fontSize: '12px' }}
+                  onClick={() => setInspectProduct(null)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
