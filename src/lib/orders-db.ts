@@ -158,6 +158,9 @@ export async function getOrdersFromMySQL(): Promise<CustomerOrder[]> {
       SELECT o.*,
              COALESCE(o.customer_name, u.full_name, 'Procurement In-Charge') as resolved_customer_name,
              COALESCE(o.company_name, u.company_name, 'Enterprise Client') as resolved_company_name,
+             COALESCE(u.email, '') as user_email,
+             COALESCE(u.phone, '') as user_phone,
+             COALESCE(u.gstin, '') as user_gstin,
              (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count
       FROM orders o
       LEFT JOIN users u ON o.customer_id = u.id
@@ -165,13 +168,48 @@ export async function getOrdersFromMySQL(): Promise<CustomerOrder[]> {
     `);
 
     if (Array.isArray(rows) && rows.length > 0) {
+      let itemRows: any[] = [];
+      try {
+        itemRows = await query<any>(`
+          SELECT order_id, sku, item_name as name, standard, quantity, unit, unit_price as rate, row_total as rowTotal
+          FROM order_items
+        `);
+      } catch (e) {
+        console.warn('[getOrdersFromMySQL] Could not fetch order_items:', e);
+      }
+
+      const itemsByOrder: Record<string, any[]> = {};
+      if (Array.isArray(itemRows)) {
+        for (const item of itemRows) {
+          const oid = String(item.order_id);
+          if (!itemsByOrder[oid]) itemsByOrder[oid] = [];
+          itemsByOrder[oid].push({
+            sku: item.sku || 'CBH-FASTENER',
+            name: item.name || item.sku || 'High Tensile Fastener',
+            standard: item.standard || 'DIN',
+            quantity: Number(item.quantity) || 1,
+            unit: item.unit || 'Nos',
+            rate: Number(item.rate) || 0,
+            rowTotal: Number(item.rowTotal) || 0,
+          });
+        }
+      }
+
       return rows.map((r: any) => ({
         id: String(r.id),
         orderNumber: r.order_number,
         date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         customerName: r.resolved_customer_name,
         companyName: r.resolved_company_name,
-        itemsCount: Number(r.items_count) || 1,
+        email: r.user_email || undefined,
+        phone: r.user_phone || undefined,
+        gstin: r.user_gstin || undefined,
+        deliveryPincode: r.delivery_pincode || undefined,
+        paymentStatus: r.payment_status || 'PAID',
+        grossAmount: parseFloat(r.gross_amount) || +(parseFloat(r.net_amount) / 1.18).toFixed(2),
+        discountAmount: parseFloat(r.discount_amount) || 0,
+        gstAmount: parseFloat(r.gst_amount) || +(parseFloat(r.net_amount) - (parseFloat(r.gross_amount) || 0)).toFixed(2),
+        itemsCount: Number(r.items_count) || (itemsByOrder[String(r.id)]?.length || 1),
         totalWeightKg: parseFloat(r.total_weight_kg) || 0,
         netAmount: parseFloat(r.net_amount) || 0,
         status: r.order_status || 'PROCESSING',
@@ -181,6 +219,7 @@ export async function getOrdersFromMySQL(): Promise<CustomerOrder[]> {
         shippingAddress: r.shipping_address || '',
         mtcCertNumber: r.mtc_document_url || 'MTC-CBH-2025-NABL',
         erpnextSalesOrderId: r.erpnext_sales_order_id || undefined,
+        items: itemsByOrder[String(r.id)] || [],
       }));
     }
   } catch (err) {

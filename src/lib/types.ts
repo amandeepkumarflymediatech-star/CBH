@@ -135,8 +135,28 @@ export interface CustomerOrder {
   mtcCertNumber: string;
   customerName?: string;
   companyName?: string;
+  email?: string;
+  phone?: string;
+  gstin?: string;
+  deliveryPincode?: string;
+  paymentStatus?: string;
+  grossAmount?: number;
+  gstAmount?: number;
+  discountAmount?: number;
+  deliveryInstructions?: string;
   erpnextSalesOrderId?: string;
-  items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number; uom?: string }>;
+  items?: Array<{
+    sku: string;
+    name: string;
+    standard?: string;
+    quantity: number;
+    rate: number;
+    unit?: string;
+    rowTotal?: number;
+    weightKg?: number;
+    uom?: string;
+    imageUrl?: string;
+  }>;
 }
 
 export interface BulkQuotation {

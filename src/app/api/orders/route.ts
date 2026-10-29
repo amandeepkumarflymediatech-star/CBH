@@ -186,9 +186,20 @@ export async function PUT(request: Request) {
           carrier_name = COALESCE(?, carrier_name),
           tracking_number = COALESCE(?, tracking_number),
           dispatch_date = COALESCE(?, dispatch_date),
+          shipping_address = COALESCE(?, shipping_address),
+          mtc_document_url = COALESCE(?, mtc_document_url),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?`,
-        [updates.status || null, updates.carrier || null, updates.trackingNumber || null, updates.dispatchDate || null, id]
+        WHERE id = ? OR order_number = ?`,
+        [
+          updates.status || null,
+          updates.carrier || null,
+          updates.trackingNumber || null,
+          updates.dispatchDate || null,
+          updates.shippingAddress || null,
+          updates.mtcCertNumber || null,
+          id,
+          id,
+        ]
       );
     } catch (mysqlErr) {
       console.warn('[Orders API] MySQL update error:', mysqlErr);
@@ -223,8 +234,8 @@ export async function DELETE(request: Request) {
 
     // Delete from MySQL
     try {
-      await query('DELETE FROM order_items WHERE order_id = ?', [id]);
-      await query('DELETE FROM orders WHERE id = ?', [id]);
+      await query('DELETE FROM order_items WHERE order_id = ? OR order_id IN (SELECT id FROM orders WHERE order_number = ?)', [id, id]);
+      await query('DELETE FROM orders WHERE id = ? OR order_number = ?', [id, id]);
     } catch (mysqlErr) {
       console.warn('[Orders API] MySQL delete error:', mysqlErr);
     }

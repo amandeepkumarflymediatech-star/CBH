@@ -62,33 +62,26 @@ export default function AdminOrdersPage() {
         body: JSON.stringify(updated),
       });
       const data = await res.json();
-      if (data.success && data.data) {
-        setOrders((prev) => prev.map((o) => (o.id === updated.id ? data.data : o)));
-        showToast(`Order ${updated.orderNumber} updated to ${updated.status}.`);
-      } else {
-        setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-        showToast(`Order ${updated.orderNumber} updated.`);
-      }
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updated.id || o.orderNumber === updated.orderNumber ? { ...o, ...updated } : o))
+      );
+      showToast(`✓ Order ${updated.orderNumber} updated to ${updated.status}.`);
     } catch {
-      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-      showToast(`Order ${updated.orderNumber} updated.`);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updated.id || o.orderNumber === updated.orderNumber ? { ...o, ...updated } : o))
+      );
+      showToast(`✓ Order ${updated.orderNumber} updated.`);
     }
   };
 
   const handleDeleteOrder = async (id: string) => {
     try {
-      const res = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        setOrders((prev) => prev.filter((o) => o.id !== id));
-        showToast('Order removed from dispatch log.');
-      } else {
-        setOrders((prev) => prev.filter((o) => o.id !== id));
-        showToast('Order deleted.');
-      }
+      await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+      setOrders((prev) => prev.filter((o) => o.id !== id && o.orderNumber !== id));
+      showToast('✓ Order removed from dispatch log.');
     } catch {
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      showToast('Order deleted.');
+      setOrders((prev) => prev.filter((o) => o.id !== id && o.orderNumber !== id));
+      showToast('✓ Order deleted.');
     }
   };
 

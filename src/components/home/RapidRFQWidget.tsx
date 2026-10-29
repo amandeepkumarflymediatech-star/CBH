@@ -31,53 +31,10 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
-  // Initial line items matching the exact screenshot
-  const [items, setItems] = useState<RfqLineItem[]>([
-    {
-      id: 1,
-      productId: 1,
-      sku: 'CBH-933-M10-100-BP',
-      name: 'Hex Screws Full Thread M10x1.5x100mm Grade 5.8 BP',
-      standard: 'DIN 933',
-      unit: 'PCS',
-      unitRate: 5.39,
-      quantity: 2500,
-      weightPerPcKg: 0.0601,
-      totalWeightKg: 2500 * 0.0601,
-      rowTotal: 2500 * 5.39,
-      imageUrl: '/assets/bolt_zinc.jpg',
-    },
-    {
-      id: 2,
-      productId: 3,
-      sku: 'CBH-933-M10-120-BZP',
-      name: 'Hex Screws Full Thread M10x1.5x120mm Grade 5.8 Blkzp',
-      standard: 'DIN 933',
-      unit: 'PCS',
-      unitRate: 9.84,
-      quantity: 3000,
-      weightPerPcKg: 0.0680,
-      totalWeightKg: 3000 * 0.0680,
-      rowTotal: 3000 * 9.84,
-      imageUrl: '/assets/bolt_zinc.jpg',
-    },
-    {
-      id: 3,
-      productId: 7,
-      sku: 'CBH-933-M10-140-BZP',
-      name: 'Hex Screws Full Thread M10x1.5x140mm Grade 5.8 Blkzp',
-      standard: 'DIN 933',
-      unit: 'PCS',
-      unitRate: 10.62,
-      quantity: 2000,
-      weightPerPcKg: 0.0775,
-      totalWeightKg: 2000 * 0.0775,
-      rowTotal: 2000 * 10.62,
-      imageUrl: '/assets/bolt_zinc.jpg',
-    },
-  ]);
+  // Dynamic line items (starts empty until customer selects a fastener)
+  const [items, setItems] = useState<RfqLineItem[]>([]);
 
-  // Restore cart on mount or persist default cart
+  // Restore cart on mount
   useEffect(() => {
     const saved = getStoredCart();
     if (saved && saved.length > 0) {
@@ -90,9 +47,8 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
         return item;
       });
       setItems(enriched);
-      setStoredCart(enriched);
     } else {
-      setStoredCart(items);
+      setItems([]);
     }
   }, []);
 
@@ -362,7 +318,27 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => {
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '32px' }}>🛒</span>
+                          <strong style={{ fontSize: '15px', color: '#1E293B' }}>Your RFQ Cart is currently empty</strong>
+                          <p style={{ margin: 0, fontSize: '12px', maxWidth: '360px', color: '#64748B' }}>
+                            Select a fastener SKU from the builder above and click &quot;Add Line to RFQ&quot;, or browse our full fasteners catalog.
+                          </p>
+                          <a
+                            href="/products"
+                            className="btn-primary"
+                            style={{ marginTop: '10px', padding: '7px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            Browse Products Catalog
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item) => {
                     const itemImage = item.imageUrl || INITIAL_PRODUCTS.find((p) => p.sku === item.sku)?.imageUrl || '/assets/bolt_zinc.jpg';
                     const isSelected = selectedLineIds.has(item.id);
                     return (
@@ -451,14 +427,23 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile App RFQ Card View (Seamless Phone Experience) */}
             <div className="rfq-mobile-cards show-mobile-only">
-              {items.map((item) => {
+              {items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #CBD5E1', margin: '10px 0' }}>
+                  <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#64748B' }}>Your RFQ Cart is empty</p>
+                  <a href="/products" className="btn-primary" style={{ padding: '6px 14px', fontSize: '12px', display: 'inline-block' }}>
+                    Browse Fasteners
+                  </a>
+                </div>
+              ) : (
+                items.map((item) => {
                 const itemImage = item.imageUrl || INITIAL_PRODUCTS.find((p) => p.sku === item.sku)?.imageUrl || '/assets/bolt_zinc.jpg';
                 return (
                   <div className="rfq-mobile-item-card" key={item.id}>
@@ -545,7 +530,8 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
 
             {/* Quick Sku Adder & CSV Bar */}
@@ -695,7 +681,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
             <div className="rfq-action-buttons">
               <button
                 type="button"
-                disabled={isPaying}
+                disabled={isPaying || items.length === 0}
                 onClick={async () => {
                   try {
                     setIsPaying(true);
@@ -739,7 +725,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                 style={{
                   width: '100%',
                   padding: '12px',
-                  background: '#5f259f',
+                  background: items.length === 0 ? '#94A3B8' : '#5f259f',
                   color: '#FFFFFF',
                   borderRadius: '4px',
                   fontWeight: 800,
@@ -748,10 +734,10 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  cursor: isPaying ? 'wait' : 'pointer',
+                  cursor: items.length === 0 ? 'not-allowed' : isPaying ? 'wait' : 'pointer',
                   border: 'none',
-                  boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
-                  opacity: isPaying ? 0.8 : 1,
+                  boxShadow: items.length === 0 ? 'none' : '0 4px 12px rgba(95, 37, 159, 0.25)',
+                  opacity: isPaying ? 0.8 : items.length === 0 ? 0.6 : 1,
                 }}
               >
                 <span>{isPaying ? 'Redirecting to PhonePe Gateway...' : '⚡ Pay via PhonePe Gateway'}</span>
@@ -767,7 +753,13 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
               <button
                 type="button"
                 className="btn-primary"
-                style={{ width: '100%', padding: '10px' }}
+                disabled={items.length === 0}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  opacity: items.length === 0 ? 0.6 : 1,
+                  cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                }}
                 onClick={handleGenerateQuote}
               >
                 <span>Generate Instant Bulk Quote</span>
