@@ -12,7 +12,8 @@ async function getUsers(): Promise<UserAccount[]> {
       FROM users u
       ORDER BY u.created_at DESC
     `);
-    if (rows && rows.length > 0) {
+    if (Array.isArray(rows)) {
+      if (rows.length === 0) return [];
       return rows.map((r: any) => ({
         id: Number(r.id),
         fullName: r.full_name,

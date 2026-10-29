@@ -33,7 +33,10 @@ import {
   ArrowUpDown,
   Copy,
   ChevronRight,
-  Info
+  Info,
+  PackageOpen,
+  RotateCcw,
+  Upload
 } from 'lucide-react';
 
 const FASTENER_IMAGE_PRESETS = [
@@ -274,8 +277,11 @@ interface AdminProductsSectionProps {
   onAdd: (product: Omit<Product, 'id'>) => Promise<void>;
   onUpdate: (product: Product) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  onBulkDelete?: (ids: number[]) => Promise<void>;
+  onRestoreDefaults?: () => Promise<void> | void;
   onToggleSurplus: (id: number) => Promise<void>;
   showToast: (msg: string) => void;
+  onRefreshProducts?: () => Promise<void> | void;
 }
 
 export default function AdminProductsSection({
@@ -283,8 +289,11 @@ export default function AdminProductsSection({
   onAdd,
   onUpdate,
   onDelete,
+  onBulkDelete,
+  onRestoreDefaults,
   onToggleSurplus,
   showToast,
+  onRefreshProducts,
 }: AdminProductsSectionProps) {
   // Table View Mode: 'table' (Clean commercial table) vs 'grid' (Mobile/Tablet Card Grid)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -313,6 +322,44 @@ export default function AdminProductsSection({
   const [inspectProduct, setInspectProduct] = useState<Product | null>(null);
   const [inspectTab, setInspectTab] = useState<'overview' | 'dimensions' | 'pricing' | 'inventory'>('overview');
   const [copiedSku, setCopiedSku] = useState(false);
+
+  // Multiple Products Selection & Bulk Delete States
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+
+  // Bulk Excel Upload Modal States
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [isBulkInspecting, setIsBulkInspecting] = useState(false);
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [bulkInspection, setBulkInspection] = useState<{
+    fileName: string;
+    fileSize: number;
+    sheets: Array<{ name: string; totalRows: number; estimatedProducts: number }>;
+    totalSheets: number;
+    firstSheetWithProducts: string;
+  } | null>(null);
+  const [selectedSheet, setSelectedSheet] = useState<string>('all');
+  const [upsertMode, setUpsertMode] = useState<'merge' | 'append' | 'replace'>('merge');
+  const [defaultImagePreset, setDefaultImagePreset] = useState<string>('/assets/bolt_zinc.jpg');
+  const [bulkPreviewItems, setBulkPreviewItems] = useState<Array<Product & { isExistingSku?: boolean }>>([]);
+  const [bulkPreviewStats, setBulkPreviewStats] = useState<{
+    totalProcessed: number;
+    validCount: number;
+    invalidCount: number;
+  } | null>(null);
+  const [bulkUploadError, setBulkUploadError] = useState<string | null>(null);
+  const [bulkSuccessResult, setBulkSuccessResult] = useState<{
+    totalCatalogCount: number;
+    importedCount: number;
+    addedCount: number;
+    updatedCount: number;
+    skippedCount?: number;
+    sheetsProcessed?: string[];
+  } | null>(null);
+  const [previewFilter, setPreviewFilter] = useState('');
+  const bulkFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Live Telemetry KPI Metrics
   const stats = useMemo(() => {
@@ -497,6 +544,80 @@ export default function AdminProductsSection({
     return filteredProducts.slice(start, start + itemsPerPage);
   }, [filteredProducts, currentPage, itemsPerPage]);
 
+  // Multiple selection helpers
+  const toggleSelectProduct = (id: number) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllPageSelected = useMemo(() => {
+    if (paginatedProducts.length === 0) return false;
+    return paginatedProducts.every((p) => selectedProductIds.has(p.id));
+  }, [paginatedProducts, selectedProductIds]);
+
+  const toggleSelectAllOnPage = () => {
+    if (isAllPageSelected) {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  const selectAllFiltered = () => {
+    const next = new Set<number>();
+    filteredProducts.forEach((p) => next.add(p.id));
+    setSelectedProductIds(next);
+  };
+
+  const selectAllProducts = () => {
+    const next = new Set<number>();
+    products.forEach((p) => next.add(p.id));
+    setSelectedProductIds(next);
+  };
+
+  const clearSelection = () => {
+    setSelectedProductIds(new Set());
+  };
+
+  const handleExecuteBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    const ids = Array.from(selectedProductIds);
+
+    try {
+      setIsDeletingBulk(true);
+      if (onBulkDelete) {
+        await onBulkDelete(ids);
+      } else {
+        const res = await fetch('/api/products', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        const data = await res.json();
+        showToast(data.message || `Deleted ${ids.length} products successfully.`);
+        if (onRefreshProducts) await onRefreshProducts();
+      }
+      setSelectedProductIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+    } catch (err: any) {
+      showToast(`Error deleting products: ${err.message || 'Operation failed'}`);
+    } finally {
+      setIsDeletingBulk(false);
+    }
+  };
+
   const handleResetFilters = () => {
     setSearch('');
     setSelectedSubGroup('all');
@@ -576,6 +697,121 @@ export default function AdminProductsSection({
     link.click();
     document.body.removeChild(link);
     showToast(`Exported all Excel columns for ${filteredProducts.length} fastener SKUs`);
+  };
+
+  // Bulk Excel Import Handlers
+  const handleDownloadTemplate = () => {
+    window.location.href = '/api/products/bulk-upload';
+  };
+
+  const handleResetBulkUpload = () => {
+    setBulkFile(null);
+    setBulkInspection(null);
+    setBulkPreviewItems([]);
+    setBulkPreviewStats(null);
+    setBulkUploadError(null);
+    setBulkSuccessResult(null);
+    setSelectedSheet('all');
+    setPreviewFilter('');
+    if (bulkFileInputRef.current) bulkFileInputRef.current.value = '';
+  };
+
+  const handleInspectAndPreviewFile = async (file: File, sheetToSelect: string = 'all') => {
+    const validExtensions = ['.xlsx', '.xls', '.csv'];
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!validExtensions.includes(ext)) {
+      setBulkUploadError('Please select a valid Excel (.xlsx, .xls) or .csv spreadsheet file.');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      setBulkUploadError('File size exceeds 50MB limit.');
+      return;
+    }
+
+    try {
+      setIsBulkInspecting(true);
+      setBulkUploadError(null);
+      setBulkSuccessResult(null);
+      setBulkFile(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('action', 'preview');
+      formData.append('sheetName', sheetToSelect);
+      formData.append('defaultImage', defaultImagePreset);
+
+      const res = await fetch('/api/products/bulk-upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setBulkUploadError(data.error || 'Failed to parse Excel file.');
+        return;
+      }
+
+      setBulkInspection(data.inspection || null);
+      setSelectedSheet(sheetToSelect);
+      setBulkPreviewItems(data.preview || []);
+      setBulkPreviewStats({
+        totalProcessed: data.totalRowsProcessed || 0,
+        validCount: data.validCount || 0,
+        invalidCount: data.invalidCount || 0,
+      });
+    } catch (err: any) {
+      setBulkUploadError(err.message || 'Error parsing file.');
+    } finally {
+      setIsBulkInspecting(false);
+    }
+  };
+
+  const handleSheetChange = async (newSheet: string) => {
+    setSelectedSheet(newSheet);
+    if (!bulkFile) return;
+    await handleInspectAndPreviewFile(bulkFile, newSheet);
+  };
+
+  const handleExecuteBulkImport = async () => {
+    if (!bulkFile) {
+      setBulkUploadError('No file selected for import.');
+      return;
+    }
+
+    try {
+      setIsBulkImporting(true);
+      setBulkUploadError(null);
+
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+      formData.append('action', 'import');
+      formData.append('sheetName', selectedSheet);
+      formData.append('upsertMode', upsertMode);
+      formData.append('defaultImage', defaultImagePreset);
+
+      const res = await fetch('/api/products/bulk-upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setBulkUploadError(data.error || 'Bulk import failed.');
+        return;
+      }
+
+      setBulkSuccessResult(data.stats);
+      showToast(data.message || 'Bulk products imported successfully!');
+
+      if (onRefreshProducts) {
+        await onRefreshProducts();
+      }
+    } catch (err: any) {
+      setBulkUploadError(err.message || 'Failed to complete bulk import.');
+    } finally {
+      setIsBulkImporting(false);
+    }
   };
 
   const submitAddForm = async (e: React.FormEvent) => {
@@ -812,6 +1048,34 @@ export default function AdminProductsSection({
               <span>Export CSV</span>
             </button>
 
+            {/* Bulk Upload Products through Excel */}
+            <button
+              type="button"
+              className="btn-outline"
+              style={{
+                padding: '8px 14px',
+                fontSize: '12px',
+                borderColor: '#10B981',
+                color: '#065F46',
+                background: '#ECFDF5',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: 700,
+                boxShadow: '0 1px 2px rgba(16, 185, 129, 0.1)'
+              }}
+              onClick={() => {
+                setIsBulkUploadOpen(true);
+                if (!bulkFile) {
+                  handleResetBulkUpload();
+                }
+              }}
+              title="Upload bulk products through Excel file (.xlsx, .xls, .csv)"
+            >
+              <FileSpreadsheet size={15} color="#059669" />
+              <span>Upload Excel</span>
+            </button>
+
             <button
               type="button"
               className="btn-primary"
@@ -987,11 +1251,158 @@ export default function AdminProductsSection({
           </div>
         </div>
 
+        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS ARE SELECTED) */}
+        {selectedProductIds.size > 0 && (
+          <div
+            style={{
+              marginBottom: '16px',
+              background: '#0F172A',
+              color: '#FFFFFF',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              boxShadow: '0 8px 20px rgba(15, 23, 42, 0.25)',
+              border: '1px solid #334155',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  background: '#0052CC',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {selectedProductIds.size} Selected
+              </span>
+              <span style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 600 }}>
+                {selectedProductIds.size === 1
+                  ? '1 product selected'
+                  : `${selectedProductIds.size} products selected`}
+              </span>
+              {selectedProductIds.size < filteredProducts.length && (
+                <button
+                  type="button"
+                  onClick={selectAllFiltered}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#60A5FA',
+                    fontSize: '12px',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    padding: 0,
+                  }}
+                >
+                  Select all {filteredProducts.length} filtered products
+                </button>
+              )}
+              {selectedProductIds.size < products.length && filteredProducts.length < products.length && (
+                <button
+                  type="button"
+                  onClick={selectAllProducts}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#93C5FD',
+                    fontSize: '12px',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    padding: 0,
+                  }}
+                >
+                  Select all {products.length} in catalog
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={clearSelection}
+                style={{
+                  background: '#1E293B',
+                  border: '1px solid #475569',
+                  color: '#CBD5E1',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Deselect All
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                style={{
+                  background: '#DC2626',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
+                }}
+              >
+                <Trash2 size={14} />
+                <span>
+                  {selectedProductIds.size === products.length && products.length > 0
+                    ? `Delete Entire Catalog (${products.length} SKUs)`
+                    : `Delete Selected (${selectedProductIds.size})`}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* VIEW MODE 1: RESPONSIVE CARD GRID (FOR PHONES, TABLETS & MODERN BROWSING) */}
         {viewMode === 'grid' ? (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              {filteredProducts.length === 0 ? (
+              {products.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
+                    <PackageOpen size={28} />
+                  </div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 6px' }}>Catalog Inventory is Empty (0 SKUs)</h3>
+                  <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+                    All fastener products have been removed from the central inventory. You can import new products using an Excel file, add a single SKU, or restore the demo fasteners.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsBulkUploadOpen(true)}>
+                      <Upload size={14} />
+                      <span>Upload Products via Excel</span>
+                    </button>
+                    <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsAddOpen(true)}>
+                      <Plus size={14} />
+                      <span>Add Single SKU</span>
+                    </button>
+                    {onRestoreDefaults && (
+                      <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={onRestoreDefaults}>
+                        <RotateCcw size={14} />
+                        <span>Restore Demo Catalog (47 SKUs)</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                   <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
                   <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
@@ -1009,14 +1420,14 @@ export default function AdminProductsSection({
                     <div
                       key={p.id}
                       style={{
-                        background: '#FFFFFF',
+                        background: selectedProductIds.has(p.id) ? '#F0F7FF' : '#FFFFFF',
                         borderRadius: '12px',
-                        border: p.isSurplus ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
+                        border: selectedProductIds.has(p.id) ? '2px solid #0052CC' : p.isSurplus ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
                         padding: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        boxShadow: selectedProductIds.has(p.id) ? '0 4px 14px rgba(0, 82, 204, 0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
                         transition: 'all 0.2s ease',
                         position: 'relative'
                       }}
@@ -1024,18 +1435,27 @@ export default function AdminProductsSection({
                       {/* Top Badges & Image */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <span style={{
-                            fontSize: '11px',
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: '#EFF6FF',
-                            color: '#0052CC',
-                            border: '1px solid #BFDBFE'
-                          }}>
-                            {p.standard || 'DIN'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedProductIds.has(p.id)}
+                              onChange={() => toggleSelectProduct(p.id)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                              title="Select product for bulk action"
+                            />
+                            <span style={{
+                              fontSize: '11px',
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: '#EFF6FF',
+                              color: '#0052CC',
+                              border: '1px solid #BFDBFE'
+                            }}>
+                              {p.standard || 'DIN'}
+                            </span>
+                          </div>
                           {p.isSurplus ? (
                             <span style={{
                               fontSize: '10px',
@@ -1257,7 +1677,16 @@ export default function AdminProductsSection({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '42%' }}>SKU & Product Details</th>
+                  <th style={{ padding: '12px 10px 12px 16px', width: '38px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllPageSelected}
+                      onChange={toggleSelectAllOnPage}
+                      style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                      title={isAllPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
+                    />
+                  </th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '40%' }}>SKU & Product Details</th>
                   <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Grade & Coating</th>
                   <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Rate (Pc / Kg)</th>
                   <th style={{ padding: '12px 14px', fontWeight: 700, width: '14%' }}>Stock & Status</th>
@@ -1265,9 +1694,39 @@ export default function AdminProductsSection({
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length === 0 ? (
+                {products.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
+                      <div className="admin-empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
+                          <PackageOpen size={28} />
+                        </div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 6px' }}>Catalog Inventory is Empty (0 SKUs)</h3>
+                        <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+                          All fastener products have been removed from the central inventory. You can import new products using an Excel file, add a single SKU, or restore the demo fasteners.
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button type="button" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsBulkUploadOpen(true)}>
+                            <Upload size={14} />
+                            <span>Upload Products via Excel</span>
+                          </button>
+                          <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsAddOpen(true)}>
+                            <Plus size={14} />
+                            <span>Add Single SKU</span>
+                          </button>
+                          {onRestoreDefaults && (
+                            <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={onRestoreDefaults}>
+                              <RotateCcw size={14} />
+                              <span>Restore Demo Catalog (47 SKUs)</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
                       <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
                         <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
                         <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
@@ -1289,9 +1748,21 @@ export default function AdminProductsSection({
                         className={p.isSurplus ? 'surplus-row' : ''}
                         style={{
                           borderBottom: '1px solid #F1F5F9',
+                          background: selectedProductIds.has(p.id) ? '#EFF6FF' : undefined,
                           transition: 'background 0.15s ease'
                         }}
                       >
+                        {/* 0. Row Selection Checkbox */}
+                        <td style={{ padding: '12px 10px 12px 16px', width: '38px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedProductIds.has(p.id)}
+                            onChange={() => toggleSelectProduct(p.id)}
+                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                            title="Select product for bulk action"
+                          />
+                        </td>
+
                         {/* 1. SKU & Product Details (Clickable Tab to open Pop up bar) */}
                         <td style={{ padding: '12px 16px' }}>
                           <div
@@ -1332,7 +1803,13 @@ export default function AdminProductsSection({
                                 alt={p.sku}
                                 width={38}
                                 height={38}
+                                unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
                                 style={{ objectFit: 'contain' }}
+                                onError={(e) => {
+                                  try {
+                                    (e.target as any).src = '/assets/bolt_zinc.jpg';
+                                  } catch {}
+                                }}
                               />
                             </div>
                             <div style={{ minWidth: 0, flex: 1 }}>
@@ -2785,6 +3262,139 @@ export default function AdminProductsSection({
         </div>
       )}
 
+      {/* MODAL 4B: BULK DELETE MULTIPLE PRODUCTS CONFIRMATION */}
+      {isBulkDeleteModalOpen && (
+        <div
+          className="modal-overlay active"
+          onClick={() => {
+            if (!isDeletingBulk) setIsBulkDeleteModalOpen(false);
+          }}
+        >
+          <div
+            className="modal-window"
+            onClick={(e) => e.stopPropagation()}
+            style={{ padding: '24px', maxWidth: '480px', width: '95%' }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  color: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '10px',
+                }}
+              >
+                <Trash2 size={24} />
+              </div>
+              <h3
+                style={{
+                  fontFamily: 'var(--font-headline)',
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  margin: '0 0 6px',
+                  color: '#0F172A',
+                }}
+              >
+                {selectedProductIds.size === products.length && products.length > 0
+                  ? `Delete Entire Catalog (${products.length} SKUs)?`
+                  : `Delete ${selectedProductIds.size} Selected ${selectedProductIds.size === 1 ? 'Product' : 'Products'}?`}
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px' }}>
+                {selectedProductIds.size === products.length && products.length > 0
+                  ? 'CAUTION: You are about to permanently delete all products in the inventory. The catalog will become completely empty (0 SKUs) until new products are uploaded.'
+                  : `Are you sure you want to permanently delete these ${selectedProductIds.size} fastener SKUs from the central database? They will be delisted from the catalog, search index, and the RFQ engine.`}
+              </p>
+
+              {/* Preview chips of selected SKUs */}
+              <div
+                style={{
+                  maxHeight: '140px',
+                  overflowY: 'auto',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  justifyContent: 'center',
+                }}
+              >
+                {Array.from(selectedProductIds).slice(0, 16).map((id) => {
+                  const p = products.find((item) => item.id === id);
+                  return (
+                    <span
+                      key={id}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        color: '#334155',
+                      }}
+                    >
+                      {p?.sku || `SKU #${id}`}
+                    </span>
+                  );
+                })}
+                {selectedProductIds.size > 16 && (
+                  <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
+                    + {selectedProductIds.size - 16} more
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ flex: 1 }}
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                disabled={isDeletingBulk}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  background: '#DC2626',
+                  borderColor: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+                onClick={handleExecuteBulkDelete}
+                disabled={isDeletingBulk}
+              >
+                {isDeletingBulk ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Yes, Delete {selectedProductIds.size} SKUs</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 5: DYNAMIC IMAGE & CAD BLUEPRINT PREVIEW LIGHTBOX */}
       {previewProduct && (
         <div className="modal-overlay active" onClick={() => setPreviewProduct(null)}>
@@ -3427,6 +4037,725 @@ export default function AdminProductsSection({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 7: BULK PRODUCTS UPLOAD VIA EXCEL MODAL */}
+      {isBulkUploadOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+          onClick={() => {
+            if (!isBulkImporting) setIsBulkUploadOpen(false);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '1100px',
+              maxHeight: '92vh',
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #E2E8F0',
+                background: '#F8FAFC',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: '#ECFDF5',
+                    border: '1.5px solid #A7F3D0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#059669',
+                    flexShrink: 0,
+                  }}
+                >
+                  <FileSpreadsheet size={24} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
+                    Bulk Fasteners Import via Excel
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
+                    Upload Excel (.xlsx, .xls) or .csv workbooks to import fastener SKUs, specs, weights, and live rates.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="btn-outline"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#FFFFFF',
+                  }}
+                  title="Download standard template with sample rows and column instructions"
+                >
+                  <Download size={14} color="#0052CC" />
+                  <span style={{ fontWeight: 600 }}>Download Template (.xlsx)</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isBulkImporting}
+                  onClick={() => setIsBulkUploadOpen(false)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '50%',
+                    width: '34px',
+                    height: '34px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: isBulkImporting ? 'not-allowed' : 'pointer',
+                    color: '#64748B',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* SUCCESS RESULT SCREEN */}
+              {bulkSuccessResult ? (
+                <div
+                  style={{
+                    background: '#ECFDF5',
+                    border: '1.5px solid #10B981',
+                    borderRadius: '14px',
+                    padding: '28px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      background: '#10B981',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                    }}
+                  >
+                    <CheckCircle2 size={34} />
+                  </div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#064E3B' }}>
+                    Bulk Import Completed Successfully!
+                  </h4>
+                  <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#047857' }}>
+                    Your fastener catalog has been synchronized with the uploaded Excel data.
+                  </p>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: '12px',
+                      maxWidth: '750px',
+                      margin: '0 auto 28px',
+                    }}
+                  >
+                    <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Items Processed</span>
+                      <div style={{ fontSize: '24px', fontWeight: 800, color: '#064E3B', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                        {bulkSuccessResult.importedCount.toLocaleString()}
+                      </div>
+                    </div>
+                    <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>New SKUs Added</span>
+                      <div style={{ fontSize: '24px', fontWeight: 800, color: '#059669', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                        +{bulkSuccessResult.addedCount.toLocaleString()}
+                      </div>
+                    </div>
+                    <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Existing SKUs Updated</span>
+                      <div style={{ fontSize: '24px', fontWeight: 800, color: '#0284C7', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                        {bulkSuccessResult.updatedCount.toLocaleString()}
+                      </div>
+                    </div>
+                    <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Active Catalog Total</span>
+                      <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                        {bulkSuccessResult.totalCatalogCount.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={handleResetBulkUpload}
+                      style={{ padding: '10px 20px', background: '#FFFFFF' }}
+                    >
+                      Upload Another Spreadsheet
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => setIsBulkUploadOpen(false)}
+                      style={{ padding: '10px 24px', background: '#059669', borderColor: '#059669' }}
+                    >
+                      Done & View Master Catalog
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* STEP 1: DROPZONE / FILE SELECTOR */}
+                  <input
+                    ref={bulkFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleInspectAndPreviewFile(file, 'all');
+                    }}
+                    style={{ display: 'none' }}
+                  />
+
+                  {!bulkFile ? (
+                    <div
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleInspectAndPreviewFile(file, 'all');
+                      }}
+                      onClick={() => bulkFileInputRef.current?.click()}
+                      style={{
+                        border: '2px dashed #94A3B8',
+                        borderRadius: '14px',
+                        padding: '40px 24px',
+                        background: '#F8FAFC',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '50%',
+                          background: '#EFF6FF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#0052CC',
+                          margin: '0 auto 14px',
+                        }}
+                      >
+                        <UploadCloud size={28} />
+                      </div>
+                      <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>
+                        Drag & drop your Excel file here, or click to browse
+                      </h4>
+                      <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#64748B' }}>
+                        Supports .XLSX, .XLS, or .CSV (multi-sheet master workbooks or standard product lists up to 50MB)
+                      </p>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          bulkFileInputRef.current?.click();
+                        }}
+                        style={{ padding: '8px 20px', fontSize: '13px' }}
+                      >
+                        Select Spreadsheet File
+                      </button>
+                    </div>
+                  ) : (
+                    /* FILE CHIP & CONTROLS */
+                    <div
+                      style={{
+                        background: '#F1F5F9',
+                        borderRadius: '12px',
+                        padding: '16px 20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '14px',
+                        border: '1px solid #CBD5E1',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '10px',
+                            background: '#059669',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <FileSpreadsheet size={22} />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <strong style={{ fontSize: '14px', color: '#0F172A' }}>{bulkFile.name}</strong>
+                            <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
+                              ({(bulkFile.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#475569' }}>
+                            {bulkInspection?.sheets?.length
+                              ? `${bulkInspection.sheets.length} Sheet(s) detected • ${bulkPreviewStats?.validCount || 0} valid products parsed`
+                              : 'Excel workbook loaded'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn-outline"
+                          onClick={() => bulkFileInputRef.current?.click()}
+                          style={{ padding: '6px 12px', fontSize: '12px', background: '#FFFFFF' }}
+                          disabled={isBulkImporting || isBulkInspecting}
+                        >
+                          Change File
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-outline"
+                          onClick={handleResetBulkUpload}
+                          style={{ padding: '6px 12px', fontSize: '12px', color: '#DC2626', borderColor: '#FCA5A5', background: '#FFFFFF' }}
+                          disabled={isBulkImporting || isBulkInspecting}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ERROR MESSAGE */}
+                  {bulkUploadError && (
+                    <div
+                      style={{
+                        background: '#FEF2F2',
+                        border: '1px solid #F87171',
+                        borderRadius: '10px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        color: '#991B1B',
+                        fontSize: '13px',
+                      }}
+                    >
+                      <AlertTriangle size={18} color="#DC2626" />
+                      <span>{bulkUploadError}</span>
+                    </div>
+                  )}
+
+                  {/* STEP 2: CONFIGURATION ROW (When file is chosen) */}
+                  {bulkFile && (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '16px',
+                        background: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '12px',
+                        padding: '16px',
+                      }}
+                    >
+                      {/* Sheet Selector */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Target Spreadsheet Sheet
+                        </label>
+                        {bulkInspection && bulkInspection.sheets.length > 1 ? (
+                          <select
+                            value={selectedSheet}
+                            onChange={(e) => handleSheetChange(e.target.value)}
+                            disabled={isBulkImporting || isBulkInspecting}
+                            style={{
+                              width: '100%',
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: '1px solid #CBD5E1',
+                              fontSize: '13px',
+                              background: '#F8FAFC',
+                              fontWeight: 600,
+                            }}
+                          >
+                            <option value="all">All Sheets Combined ({bulkInspection.sheets.length} sheets)</option>
+                            {bulkInspection.sheets.map((s) => (
+                              <option key={s.name} value={s.name}>
+                                {s.name} ({s.estimatedProducts.toLocaleString()} items / {s.totalRows.toLocaleString()} rows)
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              padding: '8px 12px',
+                              background: '#F8FAFC',
+                              borderRadius: '8px',
+                              border: '1px solid #E2E8F0',
+                              color: '#475569',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {bulkInspection?.sheets?.[0]?.name || 'Sheet1'} (Single Sheet)
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                          Select a specific category sheet or import all sheets at once.
+                        </span>
+                      </div>
+
+                      {/* Upsert Strategy */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Import Strategy
+                        </label>
+                        <select
+                          value={upsertMode}
+                          onChange={(e) => setUpsertMode(e.target.value as any)}
+                          disabled={isBulkImporting}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '13px',
+                            background: '#F8FAFC',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <option value="merge">Merge & Upsert (Update existing SKUs, create new) - Recommended</option>
+                          <option value="append">Append Only (Add new SKUs, skip existing)</option>
+                          <option value="replace">Replace Catalog (Overwrite entire inventory)</option>
+                        </select>
+                        <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                          Ensures duplicate SKUs update existing records with the latest pricing and specs.
+                        </span>
+                      </div>
+
+                      {/* Fallback Image Preset */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Default Image (If row lacks photo)
+                        </label>
+                        <select
+                          value={defaultImagePreset}
+                          onChange={(e) => setDefaultImagePreset(e.target.value)}
+                          disabled={isBulkImporting}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '13px',
+                            background: '#F8FAFC',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {FASTENER_IMAGE_PRESETS.map((p) => (
+                            <option key={p.url} value={p.url}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                          Assigned automatically when an item row has no photo URL.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: LIVE PREVIEW & INSPECTION TABLE */}
+                  {isBulkInspecting ? (
+                    <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px' }}>
+                      <Loader2 size={32} className="animate-spin" color="#0052CC" style={{ margin: '0 auto 12px' }} />
+                      <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                        Analyzing workbook sheets and parsing fastener engineering attributes...
+                      </p>
+                    </div>
+                  ) : bulkPreviewItems.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Parsed Items Preview ({bulkPreviewItems.length} Sample Rows)
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: '#ECFDF5',
+                              color: '#059669',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              border: '1px solid #A7F3D0',
+                            }}
+                          >
+                            ✓ {bulkPreviewStats?.validCount || bulkPreviewItems.length} Valid Fasteners Ready
+                          </span>
+                        </div>
+
+                        {/* Search input in preview */}
+                        <div style={{ position: 'relative', width: '220px' }}>
+                          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                          <input
+                            type="text"
+                            placeholder="Filter preview rows..."
+                            value={previewFilter}
+                            onChange={(e) => setPreviewFilter(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 10px 6px 30px',
+                              borderRadius: '6px',
+                              border: '1px solid #CBD5E1',
+                              fontSize: '12px',
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Interactive Preview Table */}
+                      <div
+                        style={{
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '10px',
+                          overflow: 'auto',
+                          maxHeight: '340px',
+                          background: '#FFFFFF',
+                        }}
+                      >
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #CBD5E1', position: 'sticky', top: 0, zIndex: 1 }}>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Status</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>SKU Code</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Item Name</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Standard</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Dia x Length</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Grade & Finish</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Rate / Pc</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Stock</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bulkPreviewItems
+                              .filter((p) => {
+                                if (!previewFilter) return true;
+                                const q = previewFilter.toLowerCase();
+                                return (
+                                  p.sku.toLowerCase().includes(q) ||
+                                  p.name.toLowerCase().includes(q) ||
+                                  p.standard.toLowerCase().includes(q) ||
+                                  p.diameter.toLowerCase().includes(q)
+                                );
+                              })
+                              .map((p, idx) => (
+                                <tr
+                                  key={idx}
+                                  style={{
+                                    borderBottom: '1px solid #F1F5F9',
+                                    background: idx % 2 === 0 ? '#FFFFFF' : '#FBFCFD',
+                                  }}
+                                >
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                                    {p.isExistingSku ? (
+                                      <span
+                                        style={{
+                                          fontSize: '10px',
+                                          fontWeight: 700,
+                                          background: '#EFF6FF',
+                                          color: '#0052CC',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #BFDBFE',
+                                        }}
+                                      >
+                                        Update SKU
+                                      </span>
+                                    ) : (
+                                      <span
+                                        style={{
+                                          fontSize: '10px',
+                                          fontWeight: 700,
+                                          background: '#ECFDF5',
+                                          color: '#059669',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #A7F3D0',
+                                        }}
+                                      >
+                                        New SKU
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC', whiteSpace: 'nowrap' }}>
+                                    {p.sku}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.name}>
+                                    {p.name}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                                    <span style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, color: '#334155' }}>
+                                      {p.standard || p.din || 'DIN'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
+                                    {p.sizeFormatted || `${p.diameter}x${p.lengthMm}mm`}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                                    {p.grade} • {p.finish}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC' }}>
+                                    {formatINR(p.pricePerPiece)}
+                                  </td>
+                                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', color: '#059669', fontWeight: 700 }}>
+                                    {p.stockPcs.toLocaleString()} pcs
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            {!bulkSuccessResult && (
+              <div
+                style={{
+                  padding: '16px 24px',
+                  borderTop: '1px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0052CC',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      textDecoration: 'underline',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Download size={13} />
+                    <span>Download CBH Fasteners Excel Template (.xlsx)</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => setIsBulkUploadOpen(false)}
+                    disabled={isBulkImporting}
+                    style={{ padding: '8px 16px', fontSize: '13px' }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleExecuteBulkImport}
+                    disabled={!bulkFile || isBulkImporting || isBulkInspecting || bulkPreviewItems.length === 0}
+                    style={{
+                      padding: '8px 24px',
+                      fontSize: '13px',
+                      background: '#059669',
+                      borderColor: '#059669',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    {isBulkImporting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Importing Fasteners...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud size={16} />
+                        <span>
+                          Import {bulkPreviewStats?.validCount ? `${bulkPreviewStats.validCount.toLocaleString()} ` : ''}Products Now
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -1,6 +1,81 @@
 import { NextResponse } from 'next/server';
 import { Product } from '@/lib/types';
-import { getProductsDb, setProductsDb } from '@/lib/products-db';
+import { getProductsDb, setProductsDb, resetProductsToDefault } from '@/lib/products-db';
+import { query } from '@/lib/db';
+import { resolveProductImageUrl } from '@/lib/product-image-resolver';
+
+async function getProducts(): Promise<Product[]> {
+  try {
+    const rows = await query<any[]>(`
+      SELECT * FROM products ORDER BY id ASC
+    `);
+    if (Array.isArray(rows)) {
+      if (rows.length === 0) {
+        // Database is active and empty (0 products) - do not insert or fallback to static data
+        setProductsDb([]);
+        return [];
+      }
+      const mysqlItems: Product[] = rows.map((r: any) => ({
+        id: Number(r.id),
+        sku: r.sku,
+        name: r.name,
+        category: r.category || 'Hex Screws',
+        subGroup: r.sub_group || '',
+        subCategory: r.sub_category || '',
+        standard: r.standard || 'DIN 933',
+        din: r.din || '',
+        isoStandard: r.iso_standard || '',
+        bsStandard: r.bs_standard || '',
+        asmeStandard: r.asme_standard || '',
+        grade: r.grade || '8.8',
+        finish: r.finish || 'Black Passivated (BP)',
+        threadType: r.thread_type || 'Full Thread',
+        threadLength: r.thread_length || '',
+        diameter: r.diameter || 'M10',
+        lengthMm: Number(r.length_mm) || 100,
+        pitchMm: parseFloat(r.pitch_mm) || 1.5,
+        sizeFormatted: r.size_formatted || `${r.diameter || 'M10'}x${r.length_mm || 100}`,
+        weightPerPcKg: parseFloat(r.weight_per_pc_kg) || 0.06,
+        weightPer1000PcsKg: parseFloat(r.weight_per_1000_pcs_kg) || +(parseFloat(r.weight_per_pc_kg || 0.06) * 1000).toFixed(3),
+        pricePerPiece: parseFloat(r.price_per_piece) || 5.0,
+        originalPricePerPiece: parseFloat(r.original_price_per_piece || r.price_per_piece) || 5.0,
+        pricePerKg: parseFloat(r.price_per_kg) || 90.0,
+        originalPricePerKg: parseFloat(r.original_price_per_kg || r.price_per_kg) || 90.0,
+        price100Pcs: parseFloat(r.price_100_pcs) || 0,
+        price1000Pcs: parseFloat(r.price_1000_pcs) || 0,
+        stockPcs: Number(r.stock_pcs) || 0,
+        stockKg: parseFloat(r.stock_kg) || 0,
+        stockUom: r.stock_uom || 'Nos',
+        isInStock: Boolean(r.is_in_stock),
+        isSurplus: Boolean(r.is_surplus),
+        surplusDiscountPct: Number(r.surplus_discount_pct) || 0,
+        moq: r.moq || '25 KGS',
+        leadTimeDays: Number(r.lead_time_days) || 10,
+        productionDays: Number(r.production_days) || 7,
+        packingDays: Number(r.packing_days) || 3,
+        pcsPerBox: r.pcs_per_box || '',
+        smallBoxWeightKg: parseFloat(r.small_box_weight_kg) || 2.5,
+        pcsPerMasterCtn: r.pcs_per_master_ctn || '',
+        masterCtnWeightKg: parseFloat(r.master_ctn_weight_kg) || 20.0,
+        brand: r.brand || 'CBH',
+        hsnCode: r.hsn_code || '73181500',
+        imageUrl: resolveProductImageUrl(r.image_url || r.gdrive_image_url, r.category, r.name),
+        drawingUrl: r.drawing_url || '',
+        gdriveImageUrl: r.gdrive_image_url || '',
+        descriptionHtml: r.description_html || '',
+        description: r.description || r.name,
+      }));
+
+      // Keep cache in sync with MySQL
+      setProductsDb(mysqlItems);
+      return mysqlItems;
+    }
+  } catch (err) {
+    console.warn('[Products API] MySQL fetch fallback to cache:', err);
+  }
+
+  return getProductsDb();
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,7 +86,7 @@ export async function GET(request: Request) {
   const stockStatus = searchParams.get('stockStatus');
   const sortBy = searchParams.get('sortBy');
 
-  const productsDb = getProductsDb();
+  const productsDb = await getProducts();
   let results = [...productsDb];
 
   // Search filter
@@ -75,6 +150,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    if (body.action === 'reset_defaults') {
+      const restored = resetProductsToDefault();
+      return NextResponse.json({
+        success: true,
+        message: `Catalog reset to factory default (${restored.length} products).`,
+        count: restored.length,
+        data: restored,
+      });
+    }
 
     if (!body.sku || !body.name || body.pricePerPiece === undefined || body.pricePerKg === undefined) {
       return NextResponse.json(
@@ -211,27 +296,158 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const singleId = searchParams.get('id');
+    const singleSku = searchParams.get('sku');
+    const idsParam = searchParams.get('ids');
+    const skusParam = searchParams.get('skus');
+    const allParam = searchParams.get('all');
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Product ID is required for deletion' }, { status: 400 });
+    let deleteAll = allParam === 'true' || idsParam === 'all' || singleId === 'all';
+    const idsToDelete: number[] = [];
+    const skusToDelete: string[] = [];
+
+    // Parse query params
+    if (!deleteAll) {
+      if (singleId && singleId !== 'all') {
+        const num = Number(singleId);
+        if (!isNaN(num) && num > 0) idsToDelete.push(num);
+        else skusToDelete.push(singleId.trim().toUpperCase());
+      }
+      if (singleSku) {
+        skusToDelete.push(singleSku.trim().toUpperCase());
+      }
+      if (idsParam && idsParam !== 'all') {
+        idsParam.split(',').forEach((s) => {
+          const trimmed = s.trim();
+          const num = Number(trimmed);
+          if (!isNaN(num) && num > 0) idsToDelete.push(num);
+          else if (trimmed) skusToDelete.push(trimmed.toUpperCase());
+        });
+      }
+      if (skusParam) {
+        skusParam.split(',').forEach((s) => {
+          const trimmed = s.trim();
+          if (trimmed) skusToDelete.push(trimmed.toUpperCase());
+        });
+      }
+
+      // Check request JSON body if available
+      try {
+        const body = await request.json();
+        if (body.all === true || body.ids === 'all' || body.id === 'all') {
+          deleteAll = true;
+        } else {
+          if (body.id !== undefined && body.id !== 'all') {
+            const num = Number(body.id);
+            if (!isNaN(num) && num > 0) idsToDelete.push(num);
+            else skusToDelete.push(String(body.id).trim().toUpperCase());
+          }
+          if (body.sku) {
+            skusToDelete.push(String(body.sku).trim().toUpperCase());
+          }
+          if (Array.isArray(body.ids)) {
+            body.ids.forEach((i: any) => {
+              const num = Number(i);
+              if (!isNaN(num) && num > 0) idsToDelete.push(num);
+              else if (i) skusToDelete.push(String(i).trim().toUpperCase());
+            });
+          }
+          if (Array.isArray(body.skus)) {
+            body.skus.forEach((s: any) => {
+              if (s) skusToDelete.push(String(s).trim().toUpperCase());
+            });
+          }
+        }
+      } catch {
+        // Body was empty or non-JSON
+      }
     }
 
     const productsDb = getProductsDb();
-    const index = productsDb.findIndex((p) => p.id === Number(id));
-    if (index === -1) {
-      return NextResponse.json({ success: false, error: 'Product SKU not found' }, { status: 404 });
+
+    // ACTION A: DIRECT WIPE OF ALL PRODUCTS
+    if (deleteAll) {
+      let mysqlDeleted = 0;
+      try {
+        await query('UPDATE order_items SET product_id = NULL');
+        await query('UPDATE rfq_items SET product_id = NULL');
+        const res: any = await query('DELETE FROM products');
+        mysqlDeleted = res?.affectedRows || 0;
+      } catch (dbErr) {
+        console.warn('MySQL products wipe error:', dbErr);
+      }
+
+      const prevCount = productsDb.length;
+      setProductsDb([]);
+
+      const totalDeleted = Math.max(mysqlDeleted, prevCount);
+      return NextResponse.json({
+        success: true,
+        message: `Successfully deleted all ${totalDeleted} products from database and active inventory. Catalog is now empty.`,
+        count: totalDeleted,
+        remainingCount: 0,
+      });
     }
 
-    const deleted = productsDb.splice(index, 1)[0];
-    setProductsDb(productsDb);
+    if (idsToDelete.length === 0 && skusToDelete.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Product ID or SKU (or all=true) is required for deletion' },
+        { status: 400 }
+      );
+    }
+
+    // Correlate IDs and SKUs using in-memory store
+    productsDb.forEach((p) => {
+      if (idsToDelete.includes(Number(p.id)) && p.sku) {
+        skusToDelete.push(p.sku.toUpperCase());
+      }
+      if (p.sku && skusToDelete.includes(p.sku.toUpperCase()) && Number(p.id)) {
+        idsToDelete.push(Number(p.id));
+      }
+    });
+
+    const uniqueIds = Array.from(new Set(idsToDelete));
+    const uniqueSkus = Array.from(new Set(skusToDelete.map((s) => s.toUpperCase())));
+
+    // 1. Delete from MySQL database
+    let mysqlDeleted = 0;
+    try {
+      if (uniqueIds.length > 0) {
+        try {
+          await query('UPDATE order_items SET product_id = NULL WHERE product_id IN (?)', [uniqueIds]);
+          await query('UPDATE rfq_items SET product_id = NULL WHERE product_id IN (?)', [uniqueIds]);
+        } catch {}
+        const res: any = await query('DELETE FROM products WHERE id IN (?)', [uniqueIds]);
+        mysqlDeleted += res?.affectedRows || 0;
+      }
+      if (uniqueSkus.length > 0) {
+        const res: any = await query('DELETE FROM products WHERE UPPER(sku) IN (?)', [uniqueSkus]);
+        mysqlDeleted += res?.affectedRows || 0;
+      }
+    } catch (dbErr) {
+      console.warn('MySQL deletion error:', dbErr);
+    }
+
+    // 2. Remove from local cache and memory
+    const idSet = new Set(uniqueIds);
+    const skuSet = new Set(uniqueSkus);
+    const remainingProducts = productsDb.filter(
+      (p) => !idSet.has(Number(p.id)) && !skuSet.has(p.sku.toUpperCase())
+    );
+    const cacheDeleted = productsDb.length - remainingProducts.length;
+    setProductsDb(remainingProducts);
+
+    const totalDeleted = Math.max(mysqlDeleted, cacheDeleted, uniqueIds.length, uniqueSkus.length);
 
     return NextResponse.json({
       success: true,
-      message: `Fastener SKU ${deleted.sku} removed from catalog database.`,
-      data: deleted,
+      message: `Successfully deleted ${totalDeleted} product${totalDeleted > 1 ? 's' : ''} from database.`,
+      count: totalDeleted,
+      mysqlDeleted,
+      remainingCount: remainingProducts.length,
     });
   } catch (error: any) {
+    console.error('Delete handler fatal error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Delete failed' }, { status: 500 });
   }
 }

@@ -14,7 +14,8 @@ async function getOrders(): Promise<CustomerOrder[]> {
       LEFT JOIN users u ON o.customer_id = u.id
       ORDER BY o.created_at DESC
     `);
-    if (rows && rows.length > 0) {
+    if (Array.isArray(rows)) {
+      if (rows.length === 0) return [];
       return rows.map((r: any) => ({
         id: String(r.id),
         orderNumber: r.order_number,

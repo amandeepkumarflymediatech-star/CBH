@@ -54,11 +54,10 @@ export const ALL_STATIC_PRODUCTS: Product[] = buildStaticProducts();
 export function findProductByIdOrSku(idOrSku: string | number, extraProducts?: Product[]): Product | undefined {
   const query = String(idOrSku).toLowerCase().trim();
 
-  if (extraProducts && extraProducts.length > 0) {
-    const found = extraProducts.find(
+  if (extraProducts !== undefined) {
+    return extraProducts.find(
       (p) => String(p.id).toLowerCase() === query || p.sku.toLowerCase() === query
     );
-    if (found) return found;
   }
 
   return ALL_STATIC_PRODUCTS.find(

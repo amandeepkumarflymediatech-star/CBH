@@ -784,8 +784,14 @@ export default function ProductsPage() {
                             src={p.imageUrl || '/assets/bolt_zinc.jpg'}
                             alt={p.name}
                             fill
+                            unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                             className="object-contain"
+                            onError={(e) => {
+                              try {
+                                (e.target as any).src = '/assets/bolt_zinc.jpg';
+                              } catch {}
+                            }}
                           />
                         </div>
                       </Link>

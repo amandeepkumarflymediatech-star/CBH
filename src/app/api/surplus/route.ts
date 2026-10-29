@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { INITIAL_SURPLUS_LOTS } from '@/lib/mock-data';
 import { SurplusLot } from '@/lib/types';
 import { query } from '@/lib/db';
 
-let surplusDb: SurplusLot[] = [...INITIAL_SURPLUS_LOTS];
+let surplusDb: SurplusLot[] = [];
 
 async function getSurplusLots(): Promise<SurplusLot[]> {
   try {
     const rows = await query<any>(`SELECT * FROM surplus_lots ORDER BY created_at DESC`);
-    if (rows && rows.length > 0) {
+    if (Array.isArray(rows)) {
+      if (rows.length === 0) return [];
       return rows.map((r: any) => ({
         id: r.id,
         sku: r.lot_number,

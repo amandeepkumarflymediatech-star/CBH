@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
-import { ALL_STATIC_PRODUCTS, findProductByIdOrSku } from '@/lib/catalog-products-all';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
 import {
@@ -44,20 +43,18 @@ export default function ProductDetailPage() {
   const rawId = params?.id ? decodeURIComponent(String(params.id)) : '1';
 
   // State: All catalog products (from API / memory)
-  const [allProducts, setAllProducts] = useState<Product[]>(ALL_STATIC_PRODUCTS);
-
-  // State: Active product
-  const [product, setProduct] = useState<Product>(() => {
-    return findProductByIdOrSku(rawId) || ALL_STATIC_PRODUCTS[0];
-  });
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [notFound, setNotFound] = useState<boolean>(false);
 
   // Configurator Interactive State
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [selectedDiameter, setSelectedDiameter] = useState(product.diameter || 'M10');
-  const [selectedLength, setSelectedLength] = useState(String(product.lengthMm || 100));
-  const [selectedGrade, setSelectedGrade] = useState(product.grade || '8.8');
-  const [selectedFinish, setSelectedFinish] = useState(product.finish || 'Black Passivated (BP)');
-  const [quantity, setQuantity] = useState(product.pcsPerBox ? (typeof product.pcsPerBox === 'number' ? product.pcsPerBox : parseInt(String(product.pcsPerBox)) || 500) : 500);
+  const [selectedDiameter, setSelectedDiameter] = useState('M10');
+  const [selectedLength, setSelectedLength] = useState('100');
+  const [selectedGrade, setSelectedGrade] = useState('8.8');
+  const [selectedFinish, setSelectedFinish] = useState('Black Passivated (BP)');
+  const [quantity, setQuantity] = useState(500);
 
   // Tab States
   const [activeMediaTab, setActiveMediaTab] = useState<'photo' | 'cad' | 'cert'>('photo');
@@ -76,25 +73,17 @@ export default function ProductDetailPage() {
 
   // Fetch dynamic products from live API / ERPNext cache on mount
   useEffect(() => {
-    const staticFound = findProductByIdOrSku(rawId);
-    if (staticFound) {
-      setProduct(staticFound);
-      setSelectedDiameter(staticFound.diameter || 'M10');
-      setSelectedLength(String(staticFound.lengthMm || 100));
-      setSelectedGrade(staticFound.grade || '8.8');
-      setSelectedFinish(staticFound.finish || 'Black Passivated (BP)');
-      if (staticFound.pcsPerBox) {
-        const b = typeof staticFound.pcsPerBox === 'number' ? staticFound.pcsPerBox : parseInt(String(staticFound.pcsPerBox)) || 500;
-        setQuantity(b);
-      }
-    }
-
+    setIsLoading(true);
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.data)) {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           setAllProducts(data.data);
-          const apiFound = findProductByIdOrSku(rawId, data.data);
+          const apiFound = data.data.find(
+            (p: Product) =>
+              String(p.id).toLowerCase() === rawId.toLowerCase() ||
+              p.sku.toLowerCase() === rawId.toLowerCase()
+          );
           if (apiFound) {
             setProduct(apiFound);
             setSelectedDiameter(apiFound.diameter || 'M10');
@@ -105,16 +94,35 @@ export default function ProductDetailPage() {
               const b = typeof apiFound.pcsPerBox === 'number' ? apiFound.pcsPerBox : parseInt(String(apiFound.pcsPerBox)) || 500;
               setQuantity(b);
             }
+            setNotFound(false);
+          } else {
+            setProduct(null);
+            setNotFound(true);
           }
+        } else {
+          setAllProducts([]);
+          setProduct(null);
+          setNotFound(true);
         }
       })
-      .catch((err) => console.error('Failed fetching dynamic product detail:', err));
+      .catch((err) => {
+        console.error('Failed fetching dynamic product detail:', err);
+        setProduct(null);
+        setNotFound(true);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [rawId]);
 
   // Extract sister variations (other diameters & lengths in the same category / standard family)
   const { availableDiameters, availableLengths } = useMemo(() => {
     const diaSet = new Set<string>();
     const lenSet = new Set<string>();
+
+    if (!product) {
+      return { availableDiameters: [], availableLengths: [] };
+    }
 
     if (product.diameter) diaSet.add(product.diameter);
     if (product.lengthMm) lenSet.add(String(product.lengthMm));
@@ -167,13 +175,14 @@ export default function ProductDetailPage() {
   };
 
   const currentDiscount = getVolumeDiscount(quantity);
-  const basePrice = globalUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
+  const basePrice = product ? (globalUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg) : 0;
   const discountedRate = basePrice * (1 - currentDiscount.pct / 100);
   const grossTotal = quantity * discountedRate;
-  const weightTotalKg = quantity * (product.weightPerPcKg || 0.06);
+  const weightTotalKg = product ? quantity * (product.weightPerPcKg || 0.06) : 0;
 
   // Add to RFQ Cart
   const handleAddToCart = () => {
+    if (!product) return;
     const newItem: RfqLineItem = {
       id: Date.now(),
       productId: product.id,
@@ -195,6 +204,7 @@ export default function ProductDetailPage() {
 
   // Add companion hardware to RFQ
   const handleAddCompanion = (companionName: string, standard: string, rate: number) => {
+    if (!product) return;
     const newItem: RfqLineItem = {
       id: Date.now(),
       productId: product.id + 9000,
@@ -224,8 +234,53 @@ export default function ProductDetailPage() {
   };
 
   // Format box and carton numbers
-  const boxQty = typeof product.pcsPerBox === 'number' ? product.pcsPerBox : parseInt(String(product.pcsPerBox)) || 500;
-  const ctnQty = typeof product.pcsPerMasterCtn === 'number' ? product.pcsPerMasterCtn : parseInt(String(product.pcsPerMasterCtn)) || 4000;
+  const boxQty = product ? (typeof product.pcsPerBox === 'number' ? product.pcsPerBox : parseInt(String(product.pcsPerBox)) || 500) : 500;
+  const ctnQty = product ? (typeof product.pcsPerMasterCtn === 'number' ? product.pcsPerMasterCtn : parseInt(String(product.pcsPerMasterCtn)) || 4000) : 4000;
+
+  if (isLoading) {
+    return (
+      <div className="pdp-page" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+        <MainHeader
+          unit={globalUnit}
+          onUnitToggle={setGlobalUnit}
+          cartCount={cartItems.length}
+          onOpenCart={() => setIsCartOpen(true)}
+        />
+        <div style={{ maxWidth: '800px', margin: '120px auto', textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 16px', animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: '#64748B', fontSize: '15px', fontWeight: 500 }}>Loading fastener specifications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !product) {
+    return (
+      <div className="pdp-page" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
+        <MainHeader
+          unit={globalUnit}
+          onUnitToggle={setGlobalUnit}
+          cartCount={cartItems.length}
+          onOpenCart={() => setIsCartOpen(true)}
+        />
+        <div style={{ maxWidth: '640px', margin: '80px auto', textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#FEF2F2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '28px' }}>
+            📦
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', marginBottom: '8px' }}>Product Not Found</h2>
+          <p style={{ color: '#64748B', fontSize: '14px', maxWidth: '440px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+            The requested fastener item <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#334155' }}>{rawId}</code> does not exist in the active database or has been removed from the catalog.
+          </p>
+          <Link
+            href="/"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: '#0F172A', color: '#FFFFFF', borderRadius: '8px', fontWeight: 600, fontSize: '14px', textDecoration: 'none' }}
+          >
+            ← Return to Fastener Catalog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pdp-page" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: '90px' }}>

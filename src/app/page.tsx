@@ -12,13 +12,12 @@ import Testimonials from '@/components/home/Testimonials';
 import ConsultationBar from '@/components/home/ConsultationBar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit, Product, RfqLineItem } from '@/lib/types';
-import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
 
 export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [allProducts, setAllProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   // Fetch live products dynamically from API & ERPNext database
@@ -26,7 +25,7 @@ export default function HomePage() {
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data && data.data.length > 0) {
+        if (data.success && Array.isArray(data.data)) {
           setAllProducts(data.data);
           setProducts(data.data);
         }
@@ -215,7 +214,7 @@ export default function HomePage() {
       <FastenerFinder
         onFilterChange={handleFilterChange}
         productsCount={products.length}
-        totalProductsCount={INITIAL_PRODUCTS.length}
+        totalProductsCount={allProducts.length}
       />
 
       {/* SECTION 2: Bulk Order & Rapid RFQ Interactive Widget */}

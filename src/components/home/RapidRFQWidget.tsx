@@ -98,6 +98,40 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
 
   const [selectedSku, setSelectedSku] = useState(INITIAL_PRODUCTS[1].sku);
   const [quoteSuccessMsg, setQuoteSuccessMsg] = useState('');
+  const [selectedLineIds, setSelectedLineIds] = useState<Set<string | number>>(new Set());
+
+  // Multi-selection handlers
+  const toggleSelectLine = (id: string | number) => {
+    setSelectedLineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllLines = () => {
+    if (selectedLineIds.size === items.length && items.length > 0) {
+      setSelectedLineIds(new Set());
+    } else {
+      setSelectedLineIds(new Set(items.map((i) => i.id)));
+    }
+  };
+
+  const handleDeleteSelectedLines = () => {
+    if (selectedLineIds.size === 0) return;
+    const count = selectedLineIds.size;
+    setItems((prev) => {
+      const updated = prev.filter((item) => !selectedLineIds.has(item.id));
+      setStoredCart(updated);
+      return updated;
+    });
+    setSelectedLineIds(new Set());
+    showToast(`${count} item${count > 1 ? 's' : ''} removed from bulk order`, 'success');
+  };
 
   // Switch between PCS and KGS
   const handleUnitSwitch = (newUnit: GlobalUnit) => {
@@ -184,6 +218,11 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
       setStoredCart(updated);
       return updated;
     });
+    setSelectedLineIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const summary = calculateRfqSummary(items);
@@ -243,11 +282,77 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
               </div>
             </div>
 
+            {/* Batch Selection Action Bar */}
+            {selectedLineIds.size > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 16px',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                borderRadius: '8px',
+                marginBottom: '14px',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#991B1B' }}>
+                    {selectedLineIds.size} of {items.length} product{items.length > 1 ? 's' : ''} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLineIds(new Set())}
+                    style={{ fontSize: '12px', color: '#64748B', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Clear selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLineIds(new Set(items.map((i) => i.id)))}
+                    style={{ fontSize: '12px', color: '#B91C1C', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Select all ({items.length})
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedLines}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    backgroundColor: '#DC2626',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(220,38,38,0.2)'
+                  }}
+                >
+                  <Trash2 size={14} />
+                  <span>Delete Selected ({selectedLineIds.size})</span>
+                </button>
+              </div>
+            )}
+
             {/* Desktop & Tablet Parametric Table View */}
             <div className="rfq-table-responsive hide-mobile">
               <table className="rfq-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={items.length > 0 && selectedLineIds.size === items.length}
+                        onChange={toggleSelectAllLines}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        title={selectedLineIds.size === items.length ? 'Deselect all' : 'Select all'}
+                      />
+                    </th>
                     <th>Fastener Spec / Description</th>
                     <th>Standard</th>
                     <th>Unit Rate</th>
@@ -259,8 +364,18 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                 <tbody>
                   {items.map((item) => {
                     const itemImage = item.imageUrl || INITIAL_PRODUCTS.find((p) => p.sku === item.sku)?.imageUrl || '/assets/bolt_zinc.jpg';
+                    const isSelected = selectedLineIds.has(item.id);
                     return (
-                      <tr key={item.id}>
+                      <tr key={item.id} style={{ backgroundColor: isSelected ? 'rgba(254, 242, 242, 0.6)' : undefined }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectLine(item.id)}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            title="Select line item"
+                          />
+                        </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{
@@ -349,6 +464,13 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                   <div className="rfq-mobile-item-card" key={item.id}>
                     <div className="rfq-mob-card-head">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLineIds.has(item.id)}
+                          onChange={() => toggleSelectLine(item.id)}
+                          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                          title="Select item"
+                        />
                         <div style={{
                           width: '40px',
                           height: '40px',

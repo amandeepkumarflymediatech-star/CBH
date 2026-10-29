@@ -13,7 +13,8 @@ async function getQuotes(): Promise<BulkQuotation[]> {
       FROM bulk_rfqs r
       ORDER BY r.created_at DESC
     `);
-    if (rows && rows.length > 0) {
+    if (Array.isArray(rows)) {
+      if (rows.length === 0) return [];
       return rows.map((r: any) => ({
         id: String(r.id),
         rfqNumber: r.rfq_number,

@@ -363,6 +363,7 @@ export default function AdminPortalLoginPage() {
                   <input
                     type="email"
                     required
+                    placeholder="admin@cbh.store"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     style={{

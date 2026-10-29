@@ -22,18 +22,26 @@ import {
   Eye,
   EyeOff,
   Flame,
-  Clock
+  Clock,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 interface AdminErpNextSectionProps {
   products: Product[];
   onProductsSync: (newProducts: Product[]) => void;
+  onDeleteProduct?: (id: number) => Promise<void>;
+  onBulkDeleteProducts?: (ids: number[]) => Promise<void>;
   showToast: (msg: string) => void;
 }
 
 export default function AdminErpNextSection({
   products,
   onProductsSync,
+  onDeleteProduct,
+  onBulkDeleteProducts,
   showToast,
 }: AdminErpNextSectionProps) {
   // Configuration State
@@ -239,6 +247,107 @@ export default function AdminErpNextSection({
     const start = (currentPage - 1) * itemsPerPage;
     return filteredProducts.slice(start, start + itemsPerPage);
   }, [filteredProducts, currentPage, itemsPerPage]);
+
+  // Selection & Deletion State
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [deleteTargetProduct, setDeleteTargetProduct] = useState<Product | null>(null);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const toggleSelectProduct = (id: number) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllPageSelected = useMemo(() => {
+    if (paginatedProducts.length === 0) return false;
+    return paginatedProducts.every((p) => selectedProductIds.has(p.id));
+  }, [paginatedProducts, selectedProductIds]);
+
+  const toggleSelectAllOnPage = () => {
+    if (isAllPageSelected) {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  const selectAllFiltered = () => {
+    const next = new Set<number>();
+    filteredProducts.forEach((p) => next.add(p.id));
+    setSelectedProductIds(next);
+  };
+
+  const selectAllProducts = () => {
+    const next = new Set<number>();
+    products.forEach((p) => next.add(p.id));
+    setSelectedProductIds(next);
+  };
+
+  const clearSelection = () => {
+    setSelectedProductIds(new Set());
+  };
+
+  const executeDeleteSingle = async (p: Product) => {
+    try {
+      setIsDeleting(true);
+      if (onDeleteProduct) {
+        await onDeleteProduct(p.id);
+      } else {
+        const res = await fetch(`/api/products?id=${p.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        showToast(data.message || `Deleted SKU ${p.sku} successfully.`);
+      }
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        next.delete(p.id);
+        return next;
+      });
+      setDeleteTargetProduct(null);
+    } catch (err: any) {
+      showToast(`Error deleting SKU: ${err.message || 'Operation failed'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const executeBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    const ids = Array.from(selectedProductIds);
+    try {
+      setIsDeleting(true);
+      if (onBulkDeleteProducts) {
+        await onBulkDeleteProducts(ids);
+      } else {
+        const isAll = ids.length >= products.length;
+        const res = await fetch('/api/products', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(isAll ? { all: true } : { ids }),
+        });
+        const data = await res.json();
+        showToast(data.message || `Deleted ${ids.length} items successfully.`);
+      }
+      setSelectedProductIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+    } catch (err: any) {
+      showToast(`Error deleting items: ${err.message || 'Operation failed'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -676,10 +785,139 @@ export default function AdminErpNextSection({
           </div>
         </div>
 
+        {/* Batch Action Bar */}
+        {selectedProductIds.size > 0 && (
+          <div
+            style={{
+              marginBottom: '14px',
+              background: '#0F172A',
+              color: '#FFFFFF',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px',
+              boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  background: '#0052CC',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {selectedProductIds.size} Selected
+              </span>
+              <span style={{ fontSize: '12px', color: '#E2E8F0', fontWeight: 600 }}>
+                {selectedProductIds.size === 1
+                  ? '1 item selected'
+                  : `${selectedProductIds.size} items selected`}
+              </span>
+              {selectedProductIds.size < filteredProducts.length && (
+                <button
+                  type="button"
+                  onClick={selectAllFiltered}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#60A5FA',
+                    fontSize: '12px',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    padding: 0,
+                  }}
+                >
+                  Select all {filteredProducts.length} filtered items
+                </button>
+              )}
+              {selectedProductIds.size < products.length && filteredProducts.length < products.length && (
+                <button
+                  type="button"
+                  onClick={selectAllProducts}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#93C5FD',
+                    fontSize: '12px',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    padding: 0,
+                  }}
+                >
+                  Select all {products.length} in catalog
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={clearSelection}
+                style={{
+                  background: '#1E293B',
+                  border: '1px solid #475569',
+                  color: '#CBD5E1',
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Deselect All
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                style={{
+                  background: '#DC2626',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
+                }}
+              >
+                <Trash2 size={13} />
+                <span>
+                  {selectedProductIds.size === products.length && products.length > 0
+                    ? `Delete Entire Catalog (${products.length} SKUs)`
+                    : `Delete Selected (${selectedProductIds.size})`}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: '#F1F5F9', borderBottom: '2px solid #CBD5E1', color: '#334155' }}>
+                <th style={{ width: '38px', textAlign: 'center', padding: '10px 8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllPageSelected}
+                    onChange={toggleSelectAllOnPage}
+                    style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                    title={isAllPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
+                  />
+                </th>
                 <th style={{ padding: '10px 12px' }}>SKU Code</th>
                 <th style={{ padding: '10px 12px' }}>Item Name</th>
                 <th style={{ padding: '10px 12px' }}>Standard &amp; Grade</th>
@@ -688,18 +926,36 @@ export default function AdminErpNextSection({
                 <th style={{ padding: '10px 12px' }}>Rate (₹ / Kg)</th>
                 <th style={{ padding: '10px 12px' }}>Stock Balance</th>
                 <th style={{ padding: '10px 12px' }}>Source Status</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', width: '70px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {paginatedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
-                    No synchronized fastener items match "{searchTerm}".
+                  <td colSpan={10} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                    {products.length === 0
+                      ? 'Catalog is currently empty (0 items).'
+                      : `No synchronized fastener items match "${searchTerm}".`}
                   </td>
                 </tr>
               ) : (
                 paginatedProducts.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                  <tr
+                    key={p.id}
+                    style={{
+                      borderBottom: '1px solid #E2E8F0',
+                      background: selectedProductIds.has(p.id) ? '#EFF6FF' : undefined,
+                    }}
+                  >
+                    <td style={{ textAlign: 'center', padding: '10px 8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.has(p.id)}
+                        onChange={() => toggleSelectProduct(p.id)}
+                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                        title="Select item"
+                      />
+                    </td>
                     <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>
                       {p.sku}
                     </td>
@@ -747,6 +1003,27 @@ export default function AdminErpNextSection({
                         <span>ERP Dynamic</span>
                       </span>
                     </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTargetProduct(p)}
+                        title={`Delete SKU ${p.sku}`}
+                        style={{
+                          background: '#FEE2E2',
+                          border: '1px solid #FECACA',
+                          color: '#DC2626',
+                          borderRadius: '6px',
+                          padding: '5px 8px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -765,6 +1042,214 @@ export default function AdminErpNextSection({
           itemLabel="synced items"
         />
       </div>
+
+      {/* SINGLE ITEM DELETE CONFIRMATION MODAL */}
+      {deleteTargetProduct && (
+        <div
+          className="modal-overlay active"
+          onClick={() => {
+            if (!isDeleting) setDeleteTargetProduct(null);
+          }}
+        >
+          <div
+            className="modal-window"
+            onClick={(e) => e.stopPropagation()}
+            style={{ padding: '24px', maxWidth: '440px', width: '95%' }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  color: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '10px',
+                }}
+              >
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#0F172A' }}>
+                Delete Synced Fastener SKU?
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 12px' }}>
+                Are you sure you want to delete this fastener item from the live synchronized catalog and database?
+              </p>
+              <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                <strong style={{ color: '#0052CC', fontFamily: 'var(--font-mono)' }}>{deleteTargetProduct.sku}</strong>
+                <div style={{ color: '#334155', marginTop: '4px' }}>{deleteTargetProduct.name}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ flex: 1 }}
+                onClick={() => setDeleteTargetProduct(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  background: '#DC2626',
+                  borderColor: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onClick={() => executeDeleteSingle(deleteTargetProduct)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Yes, Delete SKU</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE CONFIRMATION MODAL */}
+      {isBulkDeleteModalOpen && (
+        <div
+          className="modal-overlay active"
+          onClick={() => {
+            if (!isDeleting) setIsBulkDeleteModalOpen(false);
+          }}
+        >
+          <div
+            className="modal-window"
+            onClick={(e) => e.stopPropagation()}
+            style={{ padding: '24px', maxWidth: '480px', width: '95%' }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#FEE2E2',
+                  color: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '10px',
+                }}
+              >
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#0F172A' }}>
+                {selectedProductIds.size === products.length && products.length > 0
+                  ? `Delete Entire Catalog (${products.length} SKUs)?`
+                  : `Delete ${selectedProductIds.size} Selected Items?`}
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px' }}>
+                {selectedProductIds.size === products.length && products.length > 0
+                  ? 'CAUTION: This will delete all products in the database and catalog. The inventory will become empty.'
+                  : `Are you sure you want to permanently delete these ${selectedProductIds.size} items from the central database and synchronized catalog?`}
+              </p>
+
+              {/* Preview chips */}
+              <div
+                style={{
+                  maxHeight: '120px',
+                  overflowY: 'auto',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  padding: '8px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  justifyContent: 'center',
+                }}
+              >
+                {Array.from(selectedProductIds).slice(0, 12).map((id) => {
+                  const p = products.find((item) => item.id === id);
+                  return (
+                    <span
+                      key={id}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        color: '#334155',
+                      }}
+                    >
+                      {p?.sku || `#${id}`}
+                    </span>
+                  );
+                })}
+                {selectedProductIds.size > 12 && (
+                  <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
+                    + {selectedProductIds.size - 12} more
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ flex: 1 }}
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  background: '#DC2626',
+                  borderColor: '#DC2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onClick={executeBulkDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Yes, Delete {selectedProductIds.size} SKUs</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

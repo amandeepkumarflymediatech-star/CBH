@@ -145,7 +145,13 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                       alt={p.name}
                       width={180}
                       height={120}
+                      unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
                       style={{ objectFit: 'contain' }}
+                      onError={(e) => {
+                        try {
+                          (e.target as any).src = '/assets/bolt_zinc.jpg';
+                        } catch {}
+                      }}
                     />
                   </Link>
 

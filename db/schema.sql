@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS bulk_rfqs (
 CREATE TABLE IF NOT EXISTS rfq_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_id INTEGER NOT NULL REFERENCES bulk_rfqs(id) ON DELETE CASCADE,
-    product_id INTEGER REFERENCES products(id),
+    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
     sku VARCHAR(100) NOT NULL,
     item_description VARCHAR(255) NOT NULL,
     standard VARCHAR(50) NOT NULL,
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    product_id INTEGER REFERENCES products(id),
+    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
     sku VARCHAR(100) NOT NULL,
     item_name VARCHAR(255) NOT NULL,
     standard VARCHAR(50) NOT NULL,
