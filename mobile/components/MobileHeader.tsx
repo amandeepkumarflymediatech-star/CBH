@@ -1,0 +1,221 @@
+import React from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
+
+interface MobileHeaderProps {
+  title: string;
+  subtitle?: string;
+  showBack?: boolean;
+  onBack?: () => void;
+  role?: 'customer' | 'admin';
+  cartCount?: number;
+  onCartClick?: () => void;
+  onLogoClick?: () => void;
+  rightAction?: React.ReactNode;
+}
+
+export const MobileHeader: React.FC<MobileHeaderProps> = ({
+  title,
+  subtitle,
+  showBack = false,
+  onBack,
+  role = 'customer',
+  cartCount = 0,
+  onCartClick,
+  onLogoClick,
+  rightAction,
+}) => {
+  const isAdmin = role === 'admin';
+
+  return (
+    <View style={styles.header}>
+      {/* Left: Brand Icon or Back */}
+      <View style={styles.left}>
+        {showBack ? (
+          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>←</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={onLogoClick ? 0.75 : 1}
+            onPress={onLogoClick}
+            style={[
+              styles.brandLogo,
+              { backgroundColor: isAdmin ? '#0F172A' : '#0052CC' },
+            ]}
+          >
+            <Text style={styles.brandLogoText}>{isAdmin ? '🛡' : 'CBH'}</Text>
+          </TouchableOpacity>
+        )}
+
+        <View>
+          <View style={styles.titleRow}>
+            <Text numberOfLines={1} style={styles.title}>
+              {title}
+            </Text>
+            <View
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor: isAdmin ? '#EFF6FF' : '#ECFDF5',
+                  borderColor: isAdmin ? '#BFDBFE' : '#A7F3D0',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.roleBadgeText,
+                  { color: isAdmin ? '#0052CC' : '#059669' },
+                ]}
+              >
+                {isAdmin ? 'ADMIN' : 'B2B'}
+              </Text>
+            </View>
+          </View>
+          {subtitle ? (
+            <Text numberOfLines={1} style={styles.subtitle}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Right: Actions & Cart */}
+      <View style={styles.right}>
+        {rightAction}
+
+        {!isAdmin && onCartClick ? (
+          <TouchableOpacity onPress={onCartClick} style={styles.cartBtn}>
+            <Text style={styles.cartIcon}>🛒</Text>
+            {cartCount > 0 ? (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  header: {
+    height: 56,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnText: {
+    fontSize: 18,
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  brandLogo: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogoText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    maxWidth: 160,
+  },
+  roleBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  roleBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  subtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    maxWidth: 170,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cartBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  cartIcon: {
+    fontSize: 16,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF6B00',
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+});
+
+export default MobileHeader;
