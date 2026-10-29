@@ -551,6 +551,8 @@ export async function DELETE(request: Request) {
     const allParam = searchParams.get('all');
 
     let deleteAll = allParam === 'true' || idsParam === 'all' || singleId === 'all';
+    let deleteMatching = false;
+    let filterParams: any = {};
     const idsToDelete: number[] = [];
     const skusToDelete: string[] = [];
 
@@ -584,6 +586,22 @@ export async function DELETE(request: Request) {
         const body = await request.json();
         if (body.all === true || body.ids === 'all' || body.id === 'all') {
           deleteAll = true;
+        } else if (body.allMatching === true) {
+          deleteMatching = true;
+          filterParams = {
+            search: body.search || searchParams.get('search') || '',
+            subGroup: body.subGroup || searchParams.get('subGroup') || '',
+            category: body.category || searchParams.get('category') || '',
+            standard: body.standard || searchParams.get('standard') || '',
+            grade: body.grade || searchParams.get('grade') || '',
+            surplus: body.surplus || searchParams.get('surplus') || '',
+            stockStatus: body.stockStatus || searchParams.get('stockStatus') || '',
+          };
+          const hasAnyFilter = Object.values(filterParams).some((v) => v && v !== 'all');
+          if (!hasAnyFilter) {
+            deleteAll = true;
+            deleteMatching = false;
+          }
         } else {
           if (body.id !== undefined && body.id !== 'all') {
             const num = Number(body.id);
@@ -635,6 +653,67 @@ export async function DELETE(request: Request) {
         message: `Successfully deleted all ${totalDeleted} products from database and active inventory. Catalog is now empty.`,
         count: totalDeleted,
         remainingCount: 0,
+      });
+    }
+
+    // ACTION B: DELETE ALL PRODUCTS MATCHING CURRENT FILTERS
+    if (deleteMatching) {
+      const whereClauses: string[] = [];
+      const params: any[] = [];
+
+      if (filterParams.search) {
+        whereClauses.push(
+          '(LOWER(sku) LIKE ? OR LOWER(name) LIKE ? OR LOWER(diameter) LIKE ? OR LOWER(category) LIKE ? OR LOWER(sub_group) LIKE ? OR LOWER(standard) LIKE ? OR LOWER(din) LIKE ? OR LOWER(iso_standard) LIKE ? OR LOWER(grade) LIKE ? OR LOWER(finish) LIKE ? OR LOWER(size_formatted) LIKE ? OR LOWER(hsn_code) LIKE ?)'
+        );
+        const q = `%${filterParams.search.toLowerCase()}%`;
+        params.push(q, q, q, q, q, q, q, q, q, q, q, q);
+      }
+      if (filterParams.subGroup && filterParams.subGroup !== 'all') {
+        whereClauses.push('LOWER(sub_group) = ?');
+        params.push(filterParams.subGroup.toLowerCase());
+      }
+      if (filterParams.category && filterParams.category !== 'all') {
+        whereClauses.push('LOWER(category) LIKE ?');
+        params.push(`%${filterParams.category.toLowerCase()}%`);
+      }
+      if (filterParams.standard && filterParams.standard !== 'all') {
+        whereClauses.push('(LOWER(standard) LIKE ? OR LOWER(din) LIKE ? OR LOWER(iso_standard) LIKE ?)');
+        const s = `%${filterParams.standard.toLowerCase()}%`;
+        params.push(s, s, s);
+      }
+      if (filterParams.grade && filterParams.grade !== 'all') {
+        whereClauses.push('LOWER(grade) LIKE ?');
+        params.push(`%${filterParams.grade.toLowerCase()}%`);
+      }
+      if (filterParams.surplus === 'true' || filterParams.surplus === 'surplus') {
+        whereClauses.push('is_surplus = 1');
+      } else if (filterParams.surplus === 'false' || filterParams.surplus === 'standard') {
+        whereClauses.push('is_surplus = 0');
+      }
+      if (filterParams.stockStatus === 'in_stock') {
+        whereClauses.push('stock_pcs > 5000');
+      } else if (filterParams.stockStatus === 'low_stock') {
+        whereClauses.push('stock_pcs > 0 AND stock_pcs <= 5000');
+      } else if (filterParams.stockStatus === 'out_of_stock') {
+        whereClauses.push('stock_pcs = 0');
+      }
+
+      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      let mysqlDeleted = 0;
+      try {
+        await query(`UPDATE order_items SET product_id = NULL WHERE product_id IN (SELECT id FROM products ${whereSql})`, params);
+        await query(`UPDATE rfq_items SET product_id = NULL WHERE product_id IN (SELECT id FROM products ${whereSql})`, params);
+        const res: any = await query(`DELETE FROM products ${whereSql}`, params);
+        mysqlDeleted = res?.affectedRows || 0;
+      } catch (dbErr) {
+        console.warn('MySQL delete matching error:', dbErr);
+      }
+
+      invalidateProductsCache();
+      return NextResponse.json({
+        success: true,
+        message: `Successfully deleted ${mysqlDeleted} matching products from database.`,
+        count: mysqlDeleted,
       });
     }
 

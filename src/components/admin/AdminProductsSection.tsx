@@ -355,6 +355,7 @@ export default function AdminProductsSection({
 
   // Multiple Products Selection & Bulk Delete States
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [isSelectAllCatalog, setIsSelectAllCatalog] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
@@ -619,62 +620,95 @@ export default function AdminProductsSection({
     });
   };
 
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      debouncedSearch.trim() ||
+      selectedSubGroup !== 'all' ||
+      selectedStandard !== 'all' ||
+      selectedGrade !== 'all' ||
+      selectedStock !== 'all' ||
+      selectedCatalog !== 'all'
+    );
+  }, [debouncedSearch, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog]);
+
   const isAllPageSelected = useMemo(() => {
     if (serverProducts.length === 0) return false;
     return serverProducts.every((p) => selectedProductIds.has(p.id));
   }, [serverProducts, selectedProductIds]);
 
   const toggleSelectAllOnPage = () => {
-    if (isAllPageSelected) {
-      setSelectedProductIds((prev) => {
-        const next = new Set(prev);
-        serverProducts.forEach((p) => next.delete(p.id));
-        return next;
-      });
+    if (isAllPageSelected || isSelectAllCatalog) {
+      setSelectedProductIds(new Set());
+      setIsSelectAllCatalog(false);
     } else {
-      setSelectedProductIds((prev) => {
-        const next = new Set(prev);
-        serverProducts.forEach((p) => next.add(p.id));
-        return next;
-      });
+      const next = new Set<number>();
+      serverProducts.forEach((p) => next.add(p.id));
+      setSelectedProductIds(next);
+      setIsSelectAllCatalog(false);
     }
   };
 
-  const selectAllFiltered = () => {
+  const selectEntireCatalog = () => {
     const next = new Set<number>();
     serverProducts.forEach((p) => next.add(p.id));
     setSelectedProductIds(next);
+    setIsSelectAllCatalog(true);
+  };
+
+  const selectAllFiltered = () => {
+    selectEntireCatalog();
   };
 
   const selectAllProducts = () => {
-    const next = new Set<number>();
-    serverProducts.forEach((p) => next.add(p.id));
-    setSelectedProductIds(next);
+    selectEntireCatalog();
   };
 
   const clearSelection = () => {
     setSelectedProductIds(new Set());
+    setIsSelectAllCatalog(false);
   };
 
   const handleExecuteBulkDelete = async () => {
-    if (selectedProductIds.size === 0) return;
-    const ids = Array.from(selectedProductIds);
+    if (selectedProductIds.size === 0 && !isSelectAllCatalog) return;
 
     try {
       setIsDeletingBulk(true);
-      if (onBulkDelete) {
-        await onBulkDelete(ids);
-      } else {
-        const targetSkus = serverProducts.filter((p) => selectedProductIds.has(p.id)).map((p) => p.sku);
+      if (isSelectAllCatalog) {
+        const payload: any = { allMatching: true };
+        if (debouncedSearch.trim()) payload.search = debouncedSearch.trim();
+        if (selectedSubGroup !== 'all') payload.subGroup = selectedSubGroup;
+        if (selectedStandard !== 'all') payload.standard = selectedStandard;
+        if (selectedGrade !== 'all') payload.grade = selectedGrade;
+        if (selectedStock !== 'all') payload.stockStatus = selectedStock;
+        if (selectedCatalog !== 'all') payload.surplus = selectedCatalog;
+
+        if (!hasActiveFilters) {
+          payload.all = true;
+        }
+
         const res = await fetch('/api/products', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids, skus: targetSkus }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
-        showToast(data.message || `Deleted ${ids.length} products successfully.`);
+        showToast(data.message || `Deleted all ${totalCount.toLocaleString()} products successfully.`);
+      } else {
+        const ids = Array.from(selectedProductIds);
+        const targetSkus = serverProducts.filter((p) => selectedProductIds.has(p.id)).map((p) => p.sku);
+        if (onBulkDelete) {
+          await onBulkDelete(ids);
+        } else {
+          const res = await fetch('/api/products', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, skus: targetSkus }),
+          });
+          const data = await res.json();
+          showToast(data.message || `Deleted ${ids.length} products successfully.`);
+        }
       }
-      setSelectedProductIds(new Set());
+      clearSelection();
       setIsBulkDeleteModalOpen(false);
       await fetchProducts();
     } catch (err: any) {
@@ -1292,6 +1326,32 @@ export default function AdminProductsSection({
               <Plus size={15} />
               <span>Add Fastener</span>
             </button>
+
+            {totalCount > 0 && (
+              <button
+                type="button"
+                className="btn-outline"
+                style={{
+                  padding: '8px 14px',
+                  fontSize: '12px',
+                  borderColor: '#FCA5A5',
+                  color: '#DC2626',
+                  background: '#FEF2F2',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 700,
+                }}
+                onClick={() => {
+                  selectEntireCatalog();
+                  setIsBulkDeleteModalOpen(true);
+                }}
+                title="Bulk delete entire catalog or all matching products"
+              >
+                <Trash2 size={14} color="#DC2626" />
+                <span>Bulk Delete ({totalCount.toLocaleString()})</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1454,8 +1514,8 @@ export default function AdminProductsSection({
           </div>
         </div>
 
-        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS ARE SELECTED) */}
-        {selectedProductIds.size > 0 && (
+        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS OR ENTIRE CATALOG IS SELECTED) */}
+        {(selectedProductIds.size > 0 || isSelectAllCatalog) && (
           <div
             style={{
               marginBottom: '16px',
@@ -1475,7 +1535,7 @@ export default function AdminProductsSection({
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <span
                 style={{
-                  background: '#0052CC',
+                  background: isSelectAllCatalog ? '#DC2626' : '#0052CC',
                   color: '#FFFFFF',
                   fontWeight: 800,
                   fontSize: '12px',
@@ -1484,29 +1544,29 @@ export default function AdminProductsSection({
                   fontFamily: 'var(--font-mono)',
                 }}
               >
-                {selectedProductIds.size} Selected
+                {isSelectAllCatalog ? `${totalCount.toLocaleString()} (ALL)` : `${selectedProductIds.size} Selected`}
               </span>
               <span style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 600 }}>
-                {selectedProductIds.size === 1
-                  ? '1 product selected'
-                  : `${selectedProductIds.size} products selected`}
+                {isSelectAllCatalog
+                  ? `All ${totalCount.toLocaleString()} products ${hasActiveFilters ? 'matching filter' : 'in entire catalog'} selected`
+                  : `${selectedProductIds.size} product${selectedProductIds.size > 1 ? 's' : ''} selected on this page`}
               </span>
-              {selectedProductIds.size < serverProducts.length && (
+              {!isSelectAllCatalog && totalCount > selectedProductIds.size && (
                 <button
                   type="button"
-                  onClick={selectAllFiltered}
+                  onClick={selectEntireCatalog}
                   style={{
-                    background: 'none',
-                    border: 'none',
+                    background: '#1E293B',
+                    border: '1px solid #3B82F6',
                     color: '#60A5FA',
                     fontSize: '12px',
-                    textDecoration: 'underline',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontWeight: 600,
-                    padding: 0,
+                    fontWeight: 700,
+                    padding: '4px 10px',
                   }}
                 >
-                  Select all {serverProducts.length} on current page
+                  ⚡ Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
                 </button>
               )}
             </div>
@@ -1548,11 +1608,81 @@ export default function AdminProductsSection({
               >
                 <Trash2 size={14} />
                 <span>
-                  {selectedProductIds.size === products.length && products.length > 0
-                    ? `Delete Entire Catalog (${products.length} SKUs)`
+                  {isSelectAllCatalog
+                    ? `Delete Entire Catalog (${totalCount.toLocaleString()} SKUs)`
                     : `Delete Selected (${selectedProductIds.size})`}
                 </span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* SELECT ALL CATALOG BANNER */}
+        {(isAllPageSelected || isSelectAllCatalog) && totalCount > serverProducts.length && (
+          <div
+            style={{
+              background: '#EFF6FF',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: '10px',
+              padding: '12px 18px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px',
+              boxShadow: '0 2px 6px rgba(0, 82, 204, 0.08)',
+            }}
+          >
+            <div style={{ fontSize: '13px', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+              <Info size={18} color="#0052CC" style={{ flexShrink: 0 }} />
+              {isSelectAllCatalog ? (
+                <span>
+                  ✓ All <strong>{totalCount.toLocaleString()}</strong> products {hasActiveFilters ? 'matching current filter' : 'in catalog'} are selected across all pages.
+                </span>
+              ) : (
+                <span>
+                  All <strong>{serverProducts.length}</strong> products on this page are selected.
+                </span>
+              )}
+            </div>
+
+            <div>
+              {isSelectAllCatalog ? (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#0052CC',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear selection
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={selectEntireCatalog}
+                  style={{
+                    background: '#0052CC',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 82, 204, 0.25)',
+                  }}
+                >
+                  Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -3503,57 +3633,78 @@ export default function AdminProductsSection({
                   color: '#0F172A',
                 }}
               >
-                {selectedProductIds.size === products.length && products.length > 0
-                  ? `Delete Entire Catalog (${products.length} SKUs)?`
+                {isSelectAllCatalog
+                  ? `Delete All ${totalCount.toLocaleString()} Products in Catalog?`
                   : `Delete ${selectedProductIds.size} Selected ${selectedProductIds.size === 1 ? 'Product' : 'Products'}?`}
               </h3>
-              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px' }}>
-                {selectedProductIds.size === products.length && products.length > 0
-                  ? 'CAUTION: You are about to permanently delete all products in the inventory. The catalog will become completely empty (0 SKUs) until new products are uploaded.'
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px', lineHeight: '1.5' }}>
+                {isSelectAllCatalog
+                  ? `CAUTION: You are about to permanently delete all ${totalCount.toLocaleString()} fastener products from the central database${hasActiveFilters ? ' matching your active filter parameters' : ''}. The catalog will be completely emptied until new products are uploaded.`
                   : `Are you sure you want to permanently delete these ${selectedProductIds.size} fastener SKUs from the central database? They will be delisted from the catalog, search index, and the RFQ engine.`}
               </p>
 
-              {/* Preview chips of selected SKUs */}
-              <div
-                style={{
-                  maxHeight: '140px',
-                  overflowY: 'auto',
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px',
-                  justifyContent: 'center',
-                }}
-              >
-                {Array.from(selectedProductIds).slice(0, 16).map((id) => {
-                  const p = products.find((item) => item.id === id);
-                  return (
-                    <span
-                      key={id}
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        background: '#FFFFFF',
-                        border: '1px solid #CBD5E1',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        color: '#334155',
-                      }}
-                    >
-                      {p?.sku || `SKU #${id}`}
+              {/* Preview chips or Entire Catalog Badge */}
+              {isSelectAllCatalog ? (
+                <div
+                  style={{
+                    background: '#FEF2F2',
+                    border: '1.5px solid #FCA5A5',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    color: '#991B1B',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <AlertTriangle size={18} color="#DC2626" />
+                  <span>Entire Catalog Target: All {totalCount.toLocaleString()} SKUs across all pages</span>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    maxHeight: '140px',
+                    overflowY: 'auto',
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {Array.from(selectedProductIds).slice(0, 16).map((id) => {
+                    const p = serverProducts.find((item) => item.id === id);
+                    return (
+                      <span
+                        key={id}
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: '#FFFFFF',
+                          border: '1px solid #CBD5E1',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          color: '#334155',
+                        }}
+                      >
+                        {p?.sku || `SKU #${id}`}
+                      </span>
+                    );
+                  })}
+                  {selectedProductIds.size > 16 && (
+                    <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
+                      + {selectedProductIds.size - 16} more
                     </span>
-                  );
-                })}
-                {selectedProductIds.size > 16 && (
-                  <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
-                    + {selectedProductIds.size - 16} more
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -3584,12 +3735,14 @@ export default function AdminProductsSection({
                 {isDeletingBulk ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Deleting...</span>
+                    <span>Deleting Products...</span>
                   </>
                 ) : (
                   <>
                     <Trash2 size={14} />
-                    <span>Yes, Delete {selectedProductIds.size} SKUs</span>
+                    <span>
+                      Yes, Delete {isSelectAllCatalog ? `All ${totalCount.toLocaleString()} Products` : `${selectedProductIds.size} SKUs`}
+                    </span>
                   </>
                 )}
               </button>
