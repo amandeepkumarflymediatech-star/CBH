@@ -20,7 +20,10 @@ import {
   ArrowRight,
   TrendingUp,
   FileCheck2,
-  Clock
+  Clock,
+  Trash2,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { formatINR } from '@/lib/rfq-calculator';
 import { PhonePeConfig, PhonePeTransactionRecord } from '@/lib/phonepe';
@@ -46,6 +49,13 @@ export default function AdminPaymentsPage() {
   const [transactions, setTransactions] = useState<PhonePeTransactionRecord[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Selection and Deletion states
+  const [selectedTxnIds, setSelectedTxnIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<PhonePeTransactionRecord | null>(null);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -54,6 +64,113 @@ export default function AdminPaymentsPage() {
     const start = (currentPage - 1) * itemsPerPage;
     return transactions.slice(start, start + itemsPerPage);
   }, [transactions, currentPage, itemsPerPage]);
+
+  const isAllOnPageSelected =
+    paginatedTransactions.length > 0 &&
+    paginatedTransactions.every((txn) => selectedTxnIds.has(txn.transactionId));
+
+  const handleToggleSelectAllOnPage = () => {
+    const next = new Set(selectedTxnIds);
+    if (isAllOnPageSelected) {
+      paginatedTransactions.forEach((txn) => next.delete(txn.transactionId));
+    } else {
+      paginatedTransactions.forEach((txn) => next.add(txn.transactionId));
+    }
+    setSelectedTxnIds(next);
+  };
+
+  const handleSelectAllTotal = () => {
+    setSelectedTxnIds(new Set(transactions.map((t) => t.transactionId)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTxnIds(new Set());
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    const next = new Set(selectedTxnIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedTxnIds(next);
+  };
+
+  const handleConfirmDeleteSingle = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/payment/phonepe/status?txnId=${encodeURIComponent(deleteTarget.transactionId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`Transaction ${deleteTarget.transactionId} removed`);
+        setTransactions((prev) => prev.filter((t) => t.transactionId !== deleteTarget.transactionId));
+        setSelectedTxnIds((prev) => {
+          const next = new Set(prev);
+          next.delete(deleteTarget.transactionId);
+          return next;
+        });
+        setDeleteTarget(null);
+      } else {
+        showNotification(data.error || 'Failed to delete transaction', 'error');
+      }
+    } catch {
+      showNotification('Error deleting transaction', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteBulk = async () => {
+    if (selectedTxnIds.size === 0) return;
+    setIsDeleting(true);
+    try {
+      const ids = Array.from(selectedTxnIds);
+      const res = await fetch('/api/payment/phonepe/status', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`Deleted ${ids.length} transaction records`);
+        setTransactions((prev) => prev.filter((t) => !selectedTxnIds.has(t.transactionId)));
+        setSelectedTxnIds(new Set());
+        setIsBulkDeleteModalOpen(false);
+      } else {
+        showNotification(data.error || 'Failed to delete transactions', 'error');
+      }
+    } catch {
+      showNotification('Error deleting transactions', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmClearAll = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch('/api/payment/phonepe/status?all=true', {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('All transaction records cleared from ledger');
+        setTransactions([]);
+        setSelectedTxnIds(new Set());
+        setIsDeleteAllModalOpen(false);
+      } else {
+        showNotification(data.error || 'Failed to clear transactions', 'error');
+      }
+    } catch {
+      showNotification('Error clearing transaction ledger', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -388,79 +505,175 @@ export default function AdminPaymentsPage() {
 
       {/* Transactions Ledger */}
       <div className="bg-white rounded-2xl border border-[#D8DFE7] shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-[#D8DFE7] flex items-center justify-between">
+        <div className="p-5 border-b border-[#D8DFE7] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-black text-[#0F172A] text-base">PhonePe Settlement Ledger</h3>
-            <p className="text-xs text-slate-500">Live payment audit trail and PhonePe transaction IDs.</p>
+            <h3 className="font-black text-[#0F172A] text-base flex items-center gap-2">
+              <span>PhonePe Settlement Ledger</span>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                {transactions.length}
+              </span>
+            </h3>
+            <p className="text-xs text-slate-500">Live payment audit trail, merchant settlement records, and transaction IDs.</p>
           </div>
-          <button
-            type="button"
-            onClick={fetchData}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
-            title="Refresh Ledger"
-          >
-            <RefreshCw size={15} />
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {selectedTxnIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Trash2 size={13} />
+                <span>Delete Selected ({selectedTxnIds.size})</span>
+              </button>
+            )}
+
+            {transactions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                className="px-3 py-1.5 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                title="Clear all transactions from ledger"
+              >
+                <Trash2 size={13} />
+                <span>Clear All</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={fetchData}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 border border-slate-200"
+              title="Refresh Ledger"
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
         </div>
+
+        {/* Multi-selection Banner */}
+        {selectedTxnIds.size > 0 && (
+          <div className="bg-purple-50 border-b border-purple-200 px-5 py-2.5 flex items-center justify-between text-xs text-purple-900 font-medium">
+            <div className="flex items-center gap-2">
+              <span>
+                <strong>{selectedTxnIds.size}</strong> transaction{selectedTxnIds.size > 1 ? 's' : ''} selected.
+              </span>
+              {selectedTxnIds.size < transactions.length && (
+                <button
+                  type="button"
+                  onClick={handleSelectAllTotal}
+                  className="font-bold underline text-[#5f259f] hover:text-[#421673] ml-1"
+                >
+                  Select all {transactions.length} transactions in ledger
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="text-xs font-semibold text-purple-700 hover:text-purple-950 underline"
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-[#D8DFE7] text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3.5 px-4 w-10">
+                  <input
+                    type="checkbox"
+                    checked={isAllOnPageSelected}
+                    onChange={handleToggleSelectAllOnPage}
+                    className="w-4 h-4 rounded text-[#5f259f] focus:ring-purple-400 border-slate-300 cursor-pointer"
+                    aria-label="Select all on this page"
+                  />
+                </th>
                 <th className="py-3.5 px-4">Transaction ID</th>
                 <th className="py-3.5 px-4">Customer / Firm</th>
                 <th className="py-3.5 px-4">Amount</th>
                 <th className="py-3.5 px-4">Payment Mode</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Timestamp</th>
+                <th className="py-3.5 px-4 text-center w-16">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginatedTransactions.map((txn) => (
-                <tr key={txn.transactionId} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-[#0F172A]">
-                    <div>{txn.transactionId}</div>
-                    <span className="text-[10px] text-slate-400 font-normal">{txn.orderNumber}</span>
-                  </td>
+              {paginatedTransactions.map((txn) => {
+                const isSelected = selectedTxnIds.has(txn.transactionId);
+                return (
+                  <tr
+                    key={txn.transactionId}
+                    className={`hover:bg-slate-50/70 transition-colors ${
+                      isSelected ? 'bg-purple-50/40' : ''
+                    }`}
+                  >
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectOne(txn.transactionId)}
+                        className="w-4 h-4 rounded text-[#5f259f] focus:ring-purple-400 border-slate-300 cursor-pointer"
+                        aria-label={`Select transaction ${txn.transactionId}`}
+                      />
+                    </td>
 
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-[#0F172A]">{txn.customerName}</div>
-                    <span className="text-[11px] text-slate-500 font-mono">{txn.customerPhone}</span>
-                  </td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#0F172A]">
+                      <div>{txn.transactionId}</div>
+                      <span className="text-[10px] text-slate-400 font-normal">{txn.orderNumber}</span>
+                    </td>
 
-                  <td className="py-3.5 px-4 font-mono font-black text-[#0052CC]">
-                    {formatINR(txn.amount)}
-                  </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#0F172A]">{txn.customerName}</div>
+                      <span className="text-[11px] text-slate-500 font-mono">{txn.customerPhone}</span>
+                    </td>
 
-                  <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
-                      {txn.paymentMode || 'UPI / Gateway'}
-                    </span>
-                  </td>
+                    <td className="py-3.5 px-4 font-mono font-black text-[#0052CC]">
+                      {formatINR(txn.amount)}
+                    </td>
 
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        txn.status === 'SUCCESS'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : txn.status === 'PENDING'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border-rose-200'
-                      }`}
-                    >
-                      {txn.status}
-                    </span>
-                  </td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
+                        {txn.paymentMode || 'UPI / Gateway'}
+                      </span>
+                    </td>
 
-                  <td className="py-3.5 px-4 text-right text-slate-500 font-mono text-[11px]">
-                    {txn.createdAt ? new Date(txn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                  </td>
-                </tr>
-              ))}
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          txn.status === 'SUCCESS'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : txn.status === 'PENDING'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}
+                      >
+                        {txn.status}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right text-slate-500 font-mono text-[11px]">
+                      {txn.createdAt ? new Date(txn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(txn)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Delete transaction record"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     No transactions recorded yet. Click &apos;Test PG Ping&apos; to generate your first test transaction!
                   </td>
                 </tr>
@@ -480,6 +693,123 @@ export default function AdminPaymentsPage() {
           itemLabel="settlement transactions"
         />
       </div>
+
+      {/* Confirmation Modal - Single Delete */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Delete Transaction Record?</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Are you sure you want to delete this payment record from the settlement ledger? This action cannot be undone.
+            </p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs mb-5 font-mono space-y-1">
+              <div className="text-slate-500">
+                Txn ID: <strong className="text-slate-900">{deleteTarget.transactionId}</strong>
+              </div>
+              <div className="text-slate-500">
+                Customer: <span className="text-slate-900 font-sans">{deleteTarget.customerName}</span>
+              </div>
+              <div className="text-slate-500">
+                Amount: <span className="text-[#0052CC] font-bold">{formatINR(deleteTarget.amount)}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteSingle}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                {isDeleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 size={13} />}
+                <span>{isDeleting ? 'Deleting...' : 'Delete Transaction'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal - Bulk Delete */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Delete Selected Transactions?</h3>
+            <p className="text-xs text-slate-500 mb-5">
+              You have selected <strong className="text-rose-600">{selectedTxnIds.size}</strong> transaction record(s).
+              Deleting them will permanently remove them from the ledger.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteBulk}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                {isDeleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 size={13} />}
+                <span>{isDeleting ? 'Deleting...' : `Delete ${selectedTxnIds.size} Records`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal - Clear All */}
+      {isDeleteAllModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Clear Entire Payment Ledger?</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              This will purge all <strong className="text-rose-600">{transactions.length}</strong> transaction record(s) from the PhonePe settlement ledger. This action cannot be reversed.
+            </p>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 mb-5">
+              ⚠️ Note: This clears stored audit logs and settlement history in CBH. Actual bank funds in your PhonePe merchant account remain unaffected.
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmClearAll}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                {isDeleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 size={13} />}
+                <span>{isDeleting ? 'Clearing...' : 'Yes, Purge Entire Ledger'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

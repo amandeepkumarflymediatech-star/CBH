@@ -176,6 +176,34 @@ export function savePhonePeTransaction(txn: PhonePeTransactionRecord): void {
   }
 }
 
+export function deletePhonePeTransaction(txnIdOrOrderNumber: string): boolean {
+  let txns = getPhonePeTransactions();
+  const prevCount = txns.length;
+  txns = txns.filter(
+    (t) => t.transactionId !== txnIdOrOrderNumber && t.orderNumber !== txnIdOrOrderNumber
+  );
+  memoryTxns = txns;
+  try {
+    const dir = path.dirname(TXNS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(TXNS_FILE, JSON.stringify(txns, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[PhonePe] Failed deleting transaction:', err);
+  }
+  return txns.length < prevCount;
+}
+
+export function clearAllPhonePeTransactions(): void {
+  memoryTxns = [];
+  try {
+    const dir = path.dirname(TXNS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(TXNS_FILE, JSON.stringify([], null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[PhonePe] Failed clearing transactions:', err);
+  }
+}
+
 /**
  * Generate PhonePe SHA256 Checksum Signature
  * Format: SHA256(Base64_Payload + Endpoint + SaltKey) + "###" + SaltIndex
