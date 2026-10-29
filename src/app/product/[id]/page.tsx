@@ -74,16 +74,17 @@ export default function ProductDetailPage() {
   // Fetch dynamic products from live API / ERPNext cache on mount
   useEffect(() => {
     setIsLoading(true);
-    fetch('/api/products')
+    const isNumeric = /^\d+$/.test(rawId);
+    const queryUrl = isNumeric
+      ? `/api/products?id=${encodeURIComponent(rawId)}`
+      : `/api/products?sku=${encodeURIComponent(rawId)}`;
+
+    fetch(queryUrl)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           setAllProducts(data.data);
-          const apiFound = data.data.find(
-            (p: Product) =>
-              String(p.id).toLowerCase() === rawId.toLowerCase() ||
-              p.sku.toLowerCase() === rawId.toLowerCase()
-          );
+          const apiFound = data.data[0];
           if (apiFound) {
             setProduct(apiFound);
             setSelectedDiameter(apiFound.diameter || 'M10');
@@ -95,15 +96,31 @@ export default function ProductDetailPage() {
               setQuantity(b);
             }
             setNotFound(false);
-          } else {
-            setProduct(null);
-            setNotFound(true);
+            return;
           }
-        } else {
-          setAllProducts([]);
-          setProduct(null);
-          setNotFound(true);
         }
+        
+        // Fallback search
+        return fetch(`/api/products?search=${encodeURIComponent(rawId)}&limit=5`)
+          .then((r) => r.json())
+          .then((fallbackData) => {
+            if (fallbackData.success && Array.isArray(fallbackData.data) && fallbackData.data.length > 0) {
+              const match = fallbackData.data.find(
+                (p: Product) =>
+                  String(p.id).toLowerCase() === rawId.toLowerCase() ||
+                  p.sku.toLowerCase() === rawId.toLowerCase()
+              ) || fallbackData.data[0];
+              setProduct(match);
+              setSelectedDiameter(match.diameter || 'M10');
+              setSelectedLength(String(match.lengthMm || 100));
+              setSelectedGrade(match.grade || '8.8');
+              setSelectedFinish(match.finish || 'Black Passivated (BP)');
+              setNotFound(false);
+            } else {
+              setProduct(null);
+              setNotFound(true);
+            }
+          });
       })
       .catch((err) => {
         console.error('Failed fetching dynamic product detail:', err);

@@ -34,29 +34,13 @@ export default function HomePage() {
       .finally(() => setIsLoadingProducts(false));
   }, []);
 
-  const [cartItems, setCartItems] = useState<RfqLineItem[]>([
-    {
-      id: 1,
-      productId: 1,
-      sku: 'CBH-933-M10-100-BP',
-      name: 'Hex Screws Full Thread M10x1.5x100mm Grade 5.8 BP',
-      standard: 'DIN 933',
-      unit: 'PCS',
-      unitRate: 5.39,
-      quantity: 500,
-      weightPerPcKg: 0.0601,
-      totalWeightKg: 500 * 0.0601,
-      rowTotal: 500 * 5.39,
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Sync cart items with localStorage and listen for updates
   useEffect(() => {
     const saved = getStoredCart();
-    if (saved && saved.length > 0) {
-      setCartItems(saved);
-    }
+    setCartItems(saved || []);
     const handleCartChange = (e: any) => {
       if (e.detail?.items) {
         setCartItems(e.detail.items);

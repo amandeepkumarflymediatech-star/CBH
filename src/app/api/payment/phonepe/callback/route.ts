@@ -74,6 +74,32 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
 
+      // Persist order to MySQL database table `orders` & `order_items`
+      try {
+        const { saveOrderToMySQL } = await import('@/lib/orders-db');
+        const calcWeight = (existing?.items || []).reduce(
+          (acc: number, it: any) =>
+            acc + Number(it.weightKg || it.weightPerPcKg || 0.05) * Number(it.quantity || 1),
+          0
+        );
+        await saveOrderToMySQL({
+          orderNumber: existing?.orderNumber || transactionId,
+          customerName: existing?.customerName || 'Enterprise Buyer',
+          companyName: existing?.companyName,
+          email: existing?.customerEmail,
+          phone: existing?.customerPhone,
+          shippingAddress: existing?.shippingAddress || 'Plot 12, Industrial Area',
+          netAmount: amount,
+          totalWeightKg: calcWeight || 25.0,
+          status: 'CONFIRMED',
+          paymentStatus: 'PAID',
+          erpnextSalesOrderId: erpnextOrderId,
+          items: existing?.items,
+        });
+      } catch (dbErr) {
+        console.warn('[PhonePe Callback] MySQL order save error:', dbErr);
+      }
+
       return NextResponse.json({
         success: true,
         message: 'Callback processed successfully',

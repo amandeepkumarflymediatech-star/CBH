@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { RfqLineItem } from '@/lib/types';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
 
 // Zone Definitions
 interface Zone {
@@ -147,23 +148,30 @@ export default function VirtualStorePage() {
   const [isExploded, setIsExploded] = useState(false);
   const [quantity, setQuantity] = useState(500);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(1);
+  const [cartCount, setCartCount] = useState(0);
   const [isNightMode, setIsNightMode] = useState(false);
-  const [cartItems, setCartItems] = useState<RfqLineItem[]>([
-    {
-      id: 1,
-      productId: 1,
-      sku: 'CBH-FAZ2-M12-100',
-      name: 'FAZ II Plus Bolt Anchor M12x100 Grade 5.8 / 8.8 BP',
-      standard: 'ETA Option 1',
-      unit: 'PCS',
-      unitRate: 148.5,
-      quantity: 500,
-      weightPerPcKg: 0.125,
-      totalWeightKg: 500 * 0.125,
-      rowTotal: 500 * 148.5
+  const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
+
+  // Sync cart items with localStorage and listen for updates
+  useEffect(() => {
+    const saved = getStoredCart();
+    if (saved && saved.length > 0) {
+      setCartItems(saved);
+      setCartCount(saved.length);
+    } else {
+      setCartItems([]);
+      setCartCount(0);
     }
-  ]);
+
+    const handleCartChange = (e: any) => {
+      if (e.detail?.items) {
+        setCartItems(e.detail.items);
+        setCartCount(e.detail.items.length);
+      }
+    };
+    window.addEventListener('cbh_cart_change', handleCartChange);
+    return () => window.removeEventListener('cbh_cart_change', handleCartChange);
+  }, []);
 
   // Three.js Scene References
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -735,7 +743,11 @@ export default function VirtualStorePage() {
       rowTotal: quantity * product.price
     };
 
-    setCartItems((prev) => [newLineItem, ...prev]);
+    setCartItems((prev) => {
+      const updated = [newLineItem, ...prev];
+      setStoredCart(updated);
+      return updated;
+    });
     setCartCount((c) => c + 1);
     setIsCartOpen(true);
   };
@@ -1386,8 +1398,8 @@ export default function VirtualStorePage() {
         onClose={() => setIsCartOpen(false)}
         items={cartItems}
         onUpdateQty={(id, qty) => {
-          setCartItems((prev) =>
-            prev.map((item) =>
+          setCartItems((prev) => {
+            const updated = prev.map((item) =>
               item.id === id
                 ? {
                     ...item,
@@ -1396,11 +1408,17 @@ export default function VirtualStorePage() {
                     rowTotal: qty * item.unitRate
                   }
                 : item
-            )
-          );
+            );
+            setStoredCart(updated);
+            return updated;
+          });
         }}
         onRemoveItem={(id) => {
-          setCartItems((prev) => prev.filter((i) => i.id !== id));
+          setCartItems((prev) => {
+            const updated = prev.filter((i) => i.id !== id);
+            setStoredCart(updated);
+            return updated;
+          });
           setCartCount((c) => Math.max(0, c - 1));
         }}
       />

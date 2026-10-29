@@ -16,7 +16,7 @@ export default function AdminErpNextPage() {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch('/api/products?limit=50');
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setProducts(json.data);

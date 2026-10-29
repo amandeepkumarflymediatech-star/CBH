@@ -49,6 +49,7 @@ export default function AdminDashboardPage() {
 
   // Live state from backend APIs
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProductsCount, setTotalProductsCount] = useState<number>(0);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [rfqs, setRfqs] = useState<BulkQuotation[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -60,14 +61,21 @@ export default function AdminDashboardPage() {
       try {
         setIsLoading(true);
         const [prodRes, ordRes, rfqRes, usersRes] = await Promise.allSettled([
-          fetch('/api/products').then((r) => r.json()),
+          fetch('/api/products?limit=50').then((r) => r.json()),
           fetch('/api/orders').then((r) => r.json()),
           fetch('/api/rfq').then((r) => r.json()),
           fetch('/api/users').then((r) => r.json()),
         ]);
 
-        if (prodRes.status === 'fulfilled' && prodRes.value?.data) {
-          setProducts(prodRes.value.data);
+        if (prodRes.status === 'fulfilled' && prodRes.value) {
+          if (Array.isArray(prodRes.value.data)) {
+            setProducts(prodRes.value.data);
+          }
+          setTotalProductsCount(
+            prodRes.value.total ??
+              prodRes.value.pagination?.total ??
+              (Array.isArray(prodRes.value.data) ? prodRes.value.data.length : 0)
+          );
         }
         if (ordRes.status === 'fulfilled' && ordRes.value?.data) {
           setOrders(ordRes.value.data);
@@ -240,7 +248,7 @@ export default function AdminDashboardPage() {
           <div>
             <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Fastener SKUs</div>
             <div className="text-2xl font-black text-[#0F172A] dark:text-white tracking-tight mt-1">
-              {products.length}
+              {(totalProductsCount || products.length).toLocaleString()}
             </div>
             <div className="text-[11px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
               <CheckCircle2 size={12} />
@@ -461,7 +469,7 @@ export default function AdminDashboardPage() {
             <div className="absolute text-center flex flex-col items-center pointer-events-none">
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fasteners</span>
               <span className="text-xl font-black text-[#0F172A] dark:text-white tracking-tight mt-0.5">
-                {products.length} SKUs
+                {(totalProductsCount || products.length).toLocaleString()} SKUs
               </span>
             </div>
           </div>
@@ -676,7 +684,7 @@ export default function AdminDashboardPage() {
               href="/admin/products"
               className="font-bold text-[#5B4DF6] hover:underline no-underline"
             >
-              Full Catalog ({products.length}) &rarr;
+              Full Catalog ({(totalProductsCount || products.length).toLocaleString()}) &rarr;
             </Link>
           </div>
         </div>

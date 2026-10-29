@@ -99,6 +99,34 @@ async function handleRedirect(req: NextRequest) {
       });
       if (!orderNumber) orderNumber = existing.orderNumber;
       if (!amount) amount = existing.amount;
+
+      // If payment is SUCCESS, persist or update order in MySQL database
+      if (status === 'SUCCESS') {
+        try {
+          const { saveOrderToMySQL } = await import('@/lib/orders-db');
+          const calcWeight = (existing.items || []).reduce(
+            (acc: number, it: any) =>
+              acc + Number(it.weightKg || it.weightPerPcKg || 0.05) * Number(it.quantity || 1),
+            0
+          );
+          await saveOrderToMySQL({
+            orderNumber: orderNumber || existing.orderNumber,
+            customerName: existing.customerName || 'Enterprise Buyer',
+            companyName: existing.companyName,
+            email: existing.customerEmail,
+            phone: existing.customerPhone,
+            shippingAddress: existing.shippingAddress || 'Plot 12, Industrial Area',
+            netAmount: amount || existing.amount,
+            totalWeightKg: calcWeight || 25.0,
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            erpnextSalesOrderId: erpnextOrderId || existing.erpnextSalesOrderId,
+            items: existing.items,
+          });
+        } catch (dbErr) {
+          console.warn('[PhonePe Redirect] MySQL order save error:', dbErr);
+        }
+      }
     }
   }
 

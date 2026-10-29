@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import TablePagination from '@/components/common/TablePagination';
 import { Product } from '@/lib/types';
@@ -273,19 +273,19 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
 }
 
 interface AdminProductsSectionProps {
-  products: Product[];
-  onAdd: (product: Omit<Product, 'id'>) => Promise<void>;
-  onUpdate: (product: Product) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
+  products?: Product[];
+  onAdd?: (product: Omit<Product, 'id'>) => Promise<void>;
+  onUpdate?: (product: Product) => Promise<void>;
+  onDelete?: (id: number) => Promise<void>;
   onBulkDelete?: (ids: number[]) => Promise<void>;
   onRestoreDefaults?: () => Promise<void> | void;
-  onToggleSurplus: (id: number) => Promise<void>;
+  onToggleSurplus?: (id: number) => Promise<void>;
   showToast: (msg: string) => void;
   onRefreshProducts?: () => Promise<void> | void;
 }
 
 export default function AdminProductsSection({
-  products,
+  products: initialProducts,
   onAdd,
   onUpdate,
   onDelete,
@@ -300,8 +300,38 @@ export default function AdminProductsSection({
   const [isSyncing, setIsSyncing] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
 
+  // Server-side Paginated Data State
+  const [serverProducts, setServerProducts] = useState<Product[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [serverStats, setServerStats] = useState<{
+    total: number;
+    inStock: number;
+    surplusCount: number;
+    erpSynced: number;
+    screwsCount: number;
+    boltsCount: number;
+  }>({
+    total: 0,
+    inStock: 0,
+    surplusCount: 0,
+    erpSynced: 0,
+    screwsCount: 0,
+    boltsCount: 0,
+  });
+  const [apiFilterOptions, setApiFilterOptions] = useState<{
+    subGroups: string[];
+    standards: string[];
+    grades: string[];
+  }>({
+    subGroups: [],
+    standards: [],
+    grades: [],
+  });
+
   // Search & Filter state
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSubGroup, setSelectedSubGroup] = useState('all');
   const [selectedStandard, setSelectedStandard] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
@@ -325,6 +355,7 @@ export default function AdminProductsSection({
 
   // Multiple Products Selection & Bulk Delete States
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+  const [isSelectAllCatalog, setIsSelectAllCatalog] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
@@ -360,17 +391,130 @@ export default function AdminProductsSection({
   } | null>(null);
   const [previewFilter, setPreviewFilter] = useState('');
   const bulkFileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const previewAbortControllerRef = React.useRef<AbortController | null>(null);
 
-  // Live Telemetry KPI Metrics
-  const stats = useMemo(() => {
-    const total = products.length;
-    const inStock = products.filter((p) => p.stockPcs > 0).length;
-    const surplusCount = products.filter((p) => p.isSurplus).length;
-    const erpSynced = products.filter((p) => p.imageUrl && p.imageUrl.includes('frappe.cloud')).length;
-    const screwsCount = products.filter((p) => (p.subGroup || '').toUpperCase().includes('SCREW')).length;
-    const boltsCount = products.filter((p) => (p.subGroup || '').toUpperCase().includes('BOLT')).length;
-    return { total, inStock, surplusCount, erpSynced, screwsCount, boltsCount };
-  }, [products]);
+  // Background Bulk Upload Job State & Tracking
+  const [activeJob, setActiveJob] = useState<{
+    id: string;
+    status: 'pending' | 'parsing' | 'syncing' | 'completed' | 'failed';
+    fileName: string;
+    totalRows: number;
+    processedRows: number;
+    progressPercent: number;
+    addedCount: number;
+    updatedCount: number;
+    skippedCount?: number;
+    catalogTotal?: number;
+    message?: string;
+    error?: string;
+  } | null>(null);
+  const [isDismissedJobBanner, setIsDismissedJobBanner] = useState(false);
+
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page to 1 when filters or debounced search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
+
+  // Fetch paginated products directly from server
+  const fetchProducts = useCallback(async () => {
+    try {
+      setIsLoadingData(true);
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(itemsPerPage),
+      });
+
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+      if (selectedSubGroup && selectedSubGroup !== 'all') params.set('subGroup', selectedSubGroup);
+      if (selectedStandard && selectedStandard !== 'all') params.set('standard', selectedStandard);
+      if (selectedGrade && selectedGrade !== 'all') params.set('grade', selectedGrade);
+      if (selectedStock && selectedStock !== 'all') params.set('stockStatus', selectedStock);
+      if (selectedCatalog && selectedCatalog !== 'all') params.set('surplus', selectedCatalog);
+      if (sortBy && sortBy !== 'default') params.set('sortBy', sortBy);
+
+      const res = await fetch(`/api/products?${params.toString()}`);
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data)) {
+        setServerProducts(json.data);
+        setTotalCount(json.total || 0);
+        if (json.stats) setServerStats(json.stats);
+        if (json.filterOptions) setApiFilterOptions(json.filterOptions);
+      }
+    } catch (err) {
+      console.error('Failed to load paginated products:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [currentPage, itemsPerPage, debouncedSearch, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Check for existing active background import job on initial load
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveJob = async () => {
+      try {
+        const res = await fetch('/api/products/bulk-upload?action=active');
+        const data = await res.json();
+        if (isMounted && data.success && data.job) {
+          setActiveJob(data.job);
+        }
+      } catch (err) {
+        // Silent failure if offline or initial load
+      }
+    };
+    checkActiveJob();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Poll background job progress while active
+  useEffect(() => {
+    if (!activeJob || !['pending', 'parsing', 'syncing'].includes(activeJob.status)) {
+      return;
+    }
+
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/products/bulk-upload?jobId=${activeJob.id}`);
+        const data = await res.json();
+        if (data.success && data.job) {
+          setActiveJob(data.job);
+          if (data.job.status === 'completed') {
+            showToast(
+              `Bulk import completed: +${data.job.addedCount.toLocaleString()} added, ${data.job.updatedCount.toLocaleString()} updated!`
+            );
+            fetchProducts();
+            if (onRefreshProducts) onRefreshProducts();
+          } else if (data.job.status === 'failed') {
+            showToast(`Bulk import error: ${data.job.error || 'Import operation failed'}`);
+          }
+        }
+      } catch (err) {
+        console.warn('Background import poll error:', err);
+      }
+    }, 1500);
+
+    return () => clearInterval(timer);
+  }, [activeJob?.id, activeJob?.status, fetchProducts, onRefreshProducts]);
+
+  // Active products & global metrics
+  const paginatedProducts = serverProducts;
+  const products = serverProducts;
+  const filteredProducts = serverProducts;
+  const stats = serverStats;
 
   // Live Sync trigger with ERPNext
   const handleSyncErpNext = async () => {
@@ -443,106 +587,28 @@ export default function AdminProductsSection({
 
   const [addForm, setAddForm] = useState(DEFAULT_ADD_FORM);
 
-  // Dynamic filter lists from data
-  const { subGroups, standards, grades } = useMemo(() => {
-    const sGroups = new Set<string>();
-    const stds = new Set<string>();
-    const grds = new Set<string>();
+  // Dynamic filter lists from data & API
+  const subGroups = useMemo(() => {
+    const set = new Set<string>(['BOLTS', 'SCREWS', 'NUTS', 'WASHERS', 'STUDS', 'ANCHORS', ...(apiFilterOptions.subGroups || [])]);
+    serverProducts.forEach((p) => { if (p.subGroup) set.add(p.subGroup); });
+    return Array.from(set).sort();
+  }, [apiFilterOptions, serverProducts]);
 
-    products.forEach((p) => {
-      if (p.subGroup) sGroups.add(p.subGroup);
-      if (p.standard) stds.add(p.standard);
-      if (p.din) stds.add(p.din);
-      if (p.isoStandard) stds.add(p.isoStandard);
-      if (p.grade) grds.add(p.grade);
+  const standards = useMemo(() => {
+    const set = new Set<string>(['DIN 933', 'DIN 931', 'DIN 6921', 'DIN 912', 'DIN 7991', 'ISO 4014', 'ISO 4017', ...(apiFilterOptions.standards || [])]);
+    serverProducts.forEach((p) => {
+      if (p.standard) set.add(p.standard);
+      if (p.din) set.add(p.din);
+      if (p.isoStandard) set.add(p.isoStandard);
     });
+    return Array.from(set).sort();
+  }, [apiFilterOptions, serverProducts]);
 
-    return {
-      subGroups: Array.from(sGroups).sort(),
-      standards: Array.from(stds).sort(),
-      grades: Array.from(grds).sort(),
-    };
-  }, [products]);
-
-  // Filtered & Sorted products
-  const filteredProducts = useMemo(() => {
-    let list = [...products];
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.sku.toLowerCase().includes(q) ||
-          p.name.toLowerCase().includes(q) ||
-          p.diameter?.toLowerCase().includes(q) ||
-          p.standard?.toLowerCase().includes(q) ||
-          p.din?.toLowerCase().includes(q) ||
-          p.isoStandard?.toLowerCase().includes(q) ||
-          p.subGroup?.toLowerCase().includes(q) ||
-          p.subCategory?.toLowerCase().includes(q) ||
-          p.category?.toLowerCase().includes(q) ||
-          p.grade?.toLowerCase().includes(q) ||
-          p.finish?.toLowerCase().includes(q) ||
-          p.sizeFormatted?.toLowerCase().includes(q) ||
-          p.hsnCode?.toLowerCase().includes(q) ||
-          p.brand?.toLowerCase().includes(q)
-      );
-    }
-
-    if (selectedSubGroup !== 'all') {
-      list = list.filter((p) => (p.subGroup || '').toLowerCase() === selectedSubGroup.toLowerCase());
-    }
-
-    if (selectedStandard !== 'all') {
-      list = list.filter(
-        (p) =>
-          (p.standard || '').toLowerCase().includes(selectedStandard.toLowerCase()) ||
-          (p.din || '').toLowerCase().includes(selectedStandard.toLowerCase()) ||
-          (p.isoStandard || '').toLowerCase().includes(selectedStandard.toLowerCase())
-      );
-    }
-
-    if (selectedGrade !== 'all') {
-      list = list.filter((p) => (p.grade || '').toLowerCase().includes(selectedGrade.toLowerCase()));
-    }
-
-    if (selectedStock === 'in_stock') {
-      list = list.filter((p) => p.stockPcs > 5000);
-    } else if (selectedStock === 'low_stock') {
-      list = list.filter((p) => p.stockPcs > 0 && p.stockPcs <= 5000);
-    } else if (selectedStock === 'out_of_stock') {
-      list = list.filter((p) => p.stockPcs === 0);
-    }
-
-    if (selectedCatalog === 'surplus') {
-      list = list.filter((p) => p.isSurplus);
-    } else if (selectedCatalog === 'standard') {
-      list = list.filter((p) => !p.isSurplus);
-    }
-
-    if (sortBy === 'price_asc') {
-      list.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
-    } else if (sortBy === 'price_desc') {
-      list.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
-    } else if (sortBy === 'stock_desc') {
-      list.sort((a, b) => b.stockPcs - a.stockPcs);
-    } else if (sortBy === 'sku_asc') {
-      list.sort((a, b) => a.sku.localeCompare(b.sku));
-    }
-
-    return list;
-  }, [products, search, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
-
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog, sortBy]);
-
-  // Sliced paginated products
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredProducts.slice(start, start + itemsPerPage);
-  }, [filteredProducts, currentPage, itemsPerPage]);
+  const grades = useMemo(() => {
+    const set = new Set<string>(['4.6', '8.8', '10.9', '12.9', 'SS 304', 'SS 316', 'B7', ...(apiFilterOptions.grades || [])]);
+    serverProducts.forEach((p) => { if (p.grade) set.add(p.grade); });
+    return Array.from(set).sort();
+  }, [apiFilterOptions, serverProducts]);
 
   // Multiple selection helpers
   const toggleSelectProduct = (id: number) => {
@@ -554,63 +620,97 @@ export default function AdminProductsSection({
     });
   };
 
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      debouncedSearch.trim() ||
+      selectedSubGroup !== 'all' ||
+      selectedStandard !== 'all' ||
+      selectedGrade !== 'all' ||
+      selectedStock !== 'all' ||
+      selectedCatalog !== 'all'
+    );
+  }, [debouncedSearch, selectedSubGroup, selectedStandard, selectedGrade, selectedStock, selectedCatalog]);
+
   const isAllPageSelected = useMemo(() => {
-    if (paginatedProducts.length === 0) return false;
-    return paginatedProducts.every((p) => selectedProductIds.has(p.id));
-  }, [paginatedProducts, selectedProductIds]);
+    if (serverProducts.length === 0) return false;
+    return serverProducts.every((p) => selectedProductIds.has(p.id));
+  }, [serverProducts, selectedProductIds]);
 
   const toggleSelectAllOnPage = () => {
-    if (isAllPageSelected) {
-      setSelectedProductIds((prev) => {
-        const next = new Set(prev);
-        paginatedProducts.forEach((p) => next.delete(p.id));
-        return next;
-      });
+    if (isAllPageSelected || isSelectAllCatalog) {
+      setSelectedProductIds(new Set());
+      setIsSelectAllCatalog(false);
     } else {
-      setSelectedProductIds((prev) => {
-        const next = new Set(prev);
-        paginatedProducts.forEach((p) => next.add(p.id));
-        return next;
-      });
+      const next = new Set<number>();
+      serverProducts.forEach((p) => next.add(p.id));
+      setSelectedProductIds(next);
+      setIsSelectAllCatalog(false);
     }
   };
 
-  const selectAllFiltered = () => {
+  const selectEntireCatalog = () => {
     const next = new Set<number>();
-    filteredProducts.forEach((p) => next.add(p.id));
+    serverProducts.forEach((p) => next.add(p.id));
     setSelectedProductIds(next);
+    setIsSelectAllCatalog(true);
+  };
+
+  const selectAllFiltered = () => {
+    selectEntireCatalog();
   };
 
   const selectAllProducts = () => {
-    const next = new Set<number>();
-    products.forEach((p) => next.add(p.id));
-    setSelectedProductIds(next);
+    selectEntireCatalog();
   };
 
   const clearSelection = () => {
     setSelectedProductIds(new Set());
+    setIsSelectAllCatalog(false);
   };
 
   const handleExecuteBulkDelete = async () => {
-    if (selectedProductIds.size === 0) return;
-    const ids = Array.from(selectedProductIds);
+    if (selectedProductIds.size === 0 && !isSelectAllCatalog) return;
 
     try {
       setIsDeletingBulk(true);
-      if (onBulkDelete) {
-        await onBulkDelete(ids);
-      } else {
+      if (isSelectAllCatalog) {
+        const payload: any = { allMatching: true };
+        if (debouncedSearch.trim()) payload.search = debouncedSearch.trim();
+        if (selectedSubGroup !== 'all') payload.subGroup = selectedSubGroup;
+        if (selectedStandard !== 'all') payload.standard = selectedStandard;
+        if (selectedGrade !== 'all') payload.grade = selectedGrade;
+        if (selectedStock !== 'all') payload.stockStatus = selectedStock;
+        if (selectedCatalog !== 'all') payload.surplus = selectedCatalog;
+
+        if (!hasActiveFilters) {
+          payload.all = true;
+        }
+
         const res = await fetch('/api/products', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
-        showToast(data.message || `Deleted ${ids.length} products successfully.`);
-        if (onRefreshProducts) await onRefreshProducts();
+        showToast(data.message || `Deleted all ${totalCount.toLocaleString()} products successfully.`);
+      } else {
+        const ids = Array.from(selectedProductIds);
+        const targetSkus = serverProducts.filter((p) => selectedProductIds.has(p.id)).map((p) => p.sku);
+        if (onBulkDelete) {
+          await onBulkDelete(ids);
+        } else {
+          const res = await fetch('/api/products', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, skus: targetSkus }),
+          });
+          const data = await res.json();
+          showToast(data.message || `Deleted ${ids.length} products successfully.`);
+        }
       }
-      setSelectedProductIds(new Set());
+      clearSelection();
       setIsBulkDeleteModalOpen(false);
+      await fetchProducts();
     } catch (err: any) {
       showToast(`Error deleting products: ${err.message || 'Operation failed'}`);
     } finally {
@@ -620,6 +720,7 @@ export default function AdminProductsSection({
 
   const handleResetFilters = () => {
     setSearch('');
+    setDebouncedSearch('');
     setSelectedSubGroup('all');
     setSelectedStandard('all');
     setSelectedGrade('all');
@@ -630,7 +731,30 @@ export default function AdminProductsSection({
   };
 
   // Full 100% Excel Column Export
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    let exportItems = serverProducts;
+    if (totalCount > serverProducts.length) {
+      showToast(`Generating export for all ${totalCount.toLocaleString()} matching SKUs...`);
+      try {
+        const params = new URLSearchParams({ limit: 'all' });
+        if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+        if (selectedSubGroup !== 'all') params.set('subGroup', selectedSubGroup);
+        if (selectedStandard !== 'all') params.set('standard', selectedStandard);
+        if (selectedGrade !== 'all') params.set('grade', selectedGrade);
+        if (selectedStock !== 'all') params.set('stockStatus', selectedStock);
+        if (selectedCatalog !== 'all') params.set('surplus', selectedCatalog);
+        if (sortBy !== 'default') params.set('sortBy', sortBy);
+
+        const res = await fetch(`/api/products?${params.toString()}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          exportItems = data.data;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch all products for export, falling back to loaded page:', err);
+      }
+    }
+
     const headers = [
       'SKU', 'Item Name', 'Sub-Group', 'Category', 'Sub-Category',
       'Standard', 'DIN', 'ISO Standard', 'BS Standard', 'ASME Standard',
@@ -645,7 +769,7 @@ export default function AdminProductsSection({
       'Brand', 'GST HSN Code', 'Drawing CAD URL', 'GDrive Image URL', 'Surplus Deal'
     ];
 
-    const rows = filteredProducts.map((p) => [
+    const rows = exportItems.map((p) => [
       `"${p.sku}"`,
       `"${(p.name || '').replace(/"/g, '""')}"`,
       `"${p.subGroup || ''}"`,
@@ -696,7 +820,7 @@ export default function AdminProductsSection({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Exported all Excel columns for ${filteredProducts.length} fastener SKUs`);
+    showToast(`Exported all Excel columns for ${exportItems.length} fastener SKUs`);
   };
 
   // Bulk Excel Import Handlers
@@ -711,6 +835,9 @@ export default function AdminProductsSection({
     setBulkPreviewStats(null);
     setBulkUploadError(null);
     setBulkSuccessResult(null);
+    if (activeJob?.status === 'completed' || activeJob?.status === 'failed') {
+      setActiveJob(null);
+    }
     setSelectedSheet('all');
     setPreviewFilter('');
     if (bulkFileInputRef.current) bulkFileInputRef.current.value = '';
@@ -729,11 +856,20 @@ export default function AdminProductsSection({
       return;
     }
 
+    // Set file immediately so the user can click "Import Products Now" without waiting!
+    setBulkFile(file);
+    setBulkUploadError(null);
+    setBulkSuccessResult(null);
+
+    // Cancel any previous pending preview request
+    if (previewAbortControllerRef.current) {
+      previewAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    previewAbortControllerRef.current = controller;
+
     try {
       setIsBulkInspecting(true);
-      setBulkUploadError(null);
-      setBulkSuccessResult(null);
-      setBulkFile(file);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -744,6 +880,7 @@ export default function AdminProductsSection({
       const res = await fetch('/api/products/bulk-upload', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -761,7 +898,9 @@ export default function AdminProductsSection({
         invalidCount: data.invalidCount || 0,
       });
     } catch (err: any) {
-      setBulkUploadError(err.message || 'Error parsing file.');
+      if (err.name !== 'AbortError') {
+        setBulkUploadError(err.message || 'Error parsing file.');
+      }
     } finally {
       setIsBulkInspecting(false);
     }
@@ -778,6 +917,12 @@ export default function AdminProductsSection({
       setBulkUploadError('No file selected for import.');
       return;
     }
+
+    // Immediately abort preview fetch if still running so import has full bandwidth
+    if (previewAbortControllerRef.current) {
+      previewAbortControllerRef.current.abort();
+    }
+    setIsBulkInspecting(false);
 
     try {
       setIsBulkImporting(true);
@@ -801,11 +946,18 @@ export default function AdminProductsSection({
         return;
       }
 
-      setBulkSuccessResult(data.stats);
-      showToast(data.message || 'Bulk products imported successfully!');
+      if (data.background && data.job) {
+        setActiveJob(data.job);
+        setIsDismissedJobBanner(false);
+        showToast('Bulk import started in background! You can close this window.');
+      } else {
+        setBulkSuccessResult(data.stats);
+        showToast(data.message || 'Bulk products imported successfully!');
 
-      if (onRefreshProducts) {
-        await onRefreshProducts();
+        if (onRefreshProducts) {
+          await onRefreshProducts();
+        }
+        await fetchProducts();
       }
     } catch (err: any) {
       setBulkUploadError(err.message || 'Failed to complete bulk import.');
@@ -827,7 +979,7 @@ export default function AdminProductsSection({
     const generatedSku = addForm.sku.trim() || `CBH-${(addForm.din || addForm.standard || 'STD').replace(/\s+/g, '')}-${addForm.diameter}-${addForm.lengthMm}-${Math.floor(100 + Math.random() * 900)}`;
     const formattedSize = addForm.sizeFormatted.trim() || `${addForm.diameter}X${addForm.pitchMm}X${addForm.lengthMm}`;
 
-    await onAdd({
+    const newProductPayload = {
       sku: generatedSku.toUpperCase(),
       name: addForm.name.trim() || `${addForm.standard} ${addForm.diameter}x${addForm.lengthMm}mm Grade ${addForm.grade} ${addForm.finish}`,
       subGroup: addForm.subGroup,
@@ -873,8 +1025,25 @@ export default function AdminProductsSection({
       drawingUrl: addForm.drawingUrl,
       gdriveImageUrl: addForm.gdriveImageUrl,
       imageUrl: addForm.imageUrl || '/assets/bolt_zinc.jpg',
-    });
+    };
 
+    if (onAdd) {
+      await onAdd(newProductPayload);
+    } else {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProductPayload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`SKU "${generatedSku}" registered in central inventory.`);
+      } else {
+        showToast(data.error || 'Failed to add SKU.');
+      }
+    }
+
+    await fetchProducts();
     setIsAddOpen(false);
     setAddForm(DEFAULT_ADD_FORM);
     setAddModalTab('basic');
@@ -883,14 +1052,82 @@ export default function AdminProductsSection({
   const submitEditForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editProduct) return;
-    await onUpdate(editProduct);
+    if (onUpdate) {
+      await onUpdate(editProduct);
+    } else {
+      const res = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProduct),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`SKU "${editProduct.sku}" updated successfully.`);
+      } else {
+        showToast(data.error || 'Failed to update SKU.');
+      }
+    }
+    setServerProducts((prev) => prev.map((p) => (p.id === editProduct.id ? editProduct : p)));
     setEditProduct(null);
+    await fetchProducts();
   };
 
   const confirmDelete = async () => {
     if (!deleteProduct) return;
-    await onDelete(deleteProduct.id);
+    if (onDelete) {
+      await onDelete(deleteProduct.id);
+    } else {
+      const skuParam = deleteProduct.sku ? `&sku=${encodeURIComponent(deleteProduct.sku)}` : '';
+      const res = await fetch(`/api/products?id=${deleteProduct.id}${skuParam}`, { method: 'DELETE' });
+      const data = await res.json();
+      showToast(data.message || 'Product deleted from database.');
+    }
     setDeleteProduct(null);
+    await fetchProducts();
+  };
+
+  const handleToggleSurplus = async (id: number) => {
+    if (onToggleSurplus) {
+      await onToggleSurplus(id);
+    } else {
+      const target = serverProducts.find((p) => p.id === id);
+      if (!target) return;
+      const updated = { ...target, isSurplus: !target.isSurplus };
+      const res = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Surplus status updated for SKU "${target.sku}".`);
+      }
+    }
+    setServerProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isSurplus: !p.isSurplus } : p)));
+    await fetchProducts();
+  };
+
+  const handleRestoreDefaultsAction = async () => {
+    if (onRestoreDefaults) {
+      await onRestoreDefaults();
+    } else {
+      try {
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset_defaults' }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Demo catalog restored.');
+        } else {
+          showToast('Failed to restore demo catalog.');
+        }
+      } catch {
+        showToast('Error restoring demo catalog.');
+      }
+    }
+    await fetchProducts();
   };
 
   return (
@@ -1089,6 +1326,32 @@ export default function AdminProductsSection({
               <Plus size={15} />
               <span>Add Fastener</span>
             </button>
+
+            {totalCount > 0 && (
+              <button
+                type="button"
+                className="btn-outline"
+                style={{
+                  padding: '8px 14px',
+                  fontSize: '12px',
+                  borderColor: '#FCA5A5',
+                  color: '#DC2626',
+                  background: '#FEF2F2',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 700,
+                }}
+                onClick={() => {
+                  selectEntireCatalog();
+                  setIsBulkDeleteModalOpen(true);
+                }}
+                title="Bulk delete entire catalog or all matching products"
+              >
+                <Trash2 size={14} color="#DC2626" />
+                <span>Bulk Delete ({totalCount.toLocaleString()})</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1234,7 +1497,7 @@ export default function AdminProductsSection({
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <span className="admin-filter-count" style={{ fontSize: '12px' }}>
-              Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> SKUs
+              Showing {totalCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, totalCount)} of <strong>{totalCount.toLocaleString()}</strong> SKUs
               {viewMode === 'grid' && <span style={{ color: '#059669', marginLeft: '6px', fontWeight: 600 }}>• Card grid responsive layout</span>}
             </span>
             {(search || selectedSubGroup !== 'all' || selectedStandard !== 'all' || selectedGrade !== 'all' || selectedStock !== 'all' || selectedCatalog !== 'all' || sortBy !== 'default') && (
@@ -1251,8 +1514,8 @@ export default function AdminProductsSection({
           </div>
         </div>
 
-        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS ARE SELECTED) */}
-        {selectedProductIds.size > 0 && (
+        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS OR ENTIRE CATALOG IS SELECTED) */}
+        {(selectedProductIds.size > 0 || isSelectAllCatalog) && (
           <div
             style={{
               marginBottom: '16px',
@@ -1272,7 +1535,7 @@ export default function AdminProductsSection({
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <span
                 style={{
-                  background: '#0052CC',
+                  background: isSelectAllCatalog ? '#DC2626' : '#0052CC',
                   color: '#FFFFFF',
                   fontWeight: 800,
                   fontSize: '12px',
@@ -1281,47 +1544,29 @@ export default function AdminProductsSection({
                   fontFamily: 'var(--font-mono)',
                 }}
               >
-                {selectedProductIds.size} Selected
+                {isSelectAllCatalog ? `${totalCount.toLocaleString()} (ALL)` : `${selectedProductIds.size} Selected`}
               </span>
               <span style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 600 }}>
-                {selectedProductIds.size === 1
-                  ? '1 product selected'
-                  : `${selectedProductIds.size} products selected`}
+                {isSelectAllCatalog
+                  ? `All ${totalCount.toLocaleString()} products ${hasActiveFilters ? 'matching filter' : 'in entire catalog'} selected`
+                  : `${selectedProductIds.size} product${selectedProductIds.size > 1 ? 's' : ''} selected on this page`}
               </span>
-              {selectedProductIds.size < filteredProducts.length && (
+              {!isSelectAllCatalog && totalCount > selectedProductIds.size && (
                 <button
                   type="button"
-                  onClick={selectAllFiltered}
+                  onClick={selectEntireCatalog}
                   style={{
-                    background: 'none',
-                    border: 'none',
+                    background: '#1E293B',
+                    border: '1px solid #3B82F6',
                     color: '#60A5FA',
                     fontSize: '12px',
-                    textDecoration: 'underline',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontWeight: 600,
-                    padding: 0,
+                    fontWeight: 700,
+                    padding: '4px 10px',
                   }}
                 >
-                  Select all {filteredProducts.length} filtered products
-                </button>
-              )}
-              {selectedProductIds.size < products.length && filteredProducts.length < products.length && (
-                <button
-                  type="button"
-                  onClick={selectAllProducts}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#93C5FD',
-                    fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    padding: 0,
-                  }}
-                >
-                  Select all {products.length} in catalog
+                  ⚡ Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
                 </button>
               )}
             </div>
@@ -1363,11 +1608,81 @@ export default function AdminProductsSection({
               >
                 <Trash2 size={14} />
                 <span>
-                  {selectedProductIds.size === products.length && products.length > 0
-                    ? `Delete Entire Catalog (${products.length} SKUs)`
+                  {isSelectAllCatalog
+                    ? `Delete Entire Catalog (${totalCount.toLocaleString()} SKUs)`
                     : `Delete Selected (${selectedProductIds.size})`}
                 </span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* SELECT ALL CATALOG BANNER */}
+        {(isAllPageSelected || isSelectAllCatalog) && totalCount > serverProducts.length && (
+          <div
+            style={{
+              background: '#EFF6FF',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: '10px',
+              padding: '12px 18px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px',
+              boxShadow: '0 2px 6px rgba(0, 82, 204, 0.08)',
+            }}
+          >
+            <div style={{ fontSize: '13px', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+              <Info size={18} color="#0052CC" style={{ flexShrink: 0 }} />
+              {isSelectAllCatalog ? (
+                <span>
+                  ✓ All <strong>{totalCount.toLocaleString()}</strong> products {hasActiveFilters ? 'matching current filter' : 'in catalog'} are selected across all pages.
+                </span>
+              ) : (
+                <span>
+                  All <strong>{serverProducts.length}</strong> products on this page are selected.
+                </span>
+              )}
+            </div>
+
+            <div>
+              {isSelectAllCatalog ? (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#0052CC',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear selection
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={selectEntireCatalog}
+                  style={{
+                    background: '#0052CC',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 82, 204, 0.25)',
+                  }}
+                >
+                  Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1376,7 +1691,13 @@ export default function AdminProductsSection({
         {viewMode === 'grid' ? (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              {products.length === 0 ? (
+              {isLoadingData ? (
+                <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <Loader2 size={32} className="animate-spin" color="#FF6B00" style={{ margin: '0 auto 12px' }} />
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Loading Fastener SKUs...</div>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Querying central database catalog with limit pagination</div>
+                </div>
+              ) : totalCount === 0 && !search && selectedSubGroup === 'all' && selectedStandard === 'all' && selectedGrade === 'all' && selectedStock === 'all' && selectedCatalog === 'all' ? (
                 <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
                   <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
                     <PackageOpen size={28} />
@@ -1394,15 +1715,13 @@ export default function AdminProductsSection({
                       <Plus size={14} />
                       <span>Add Single SKU</span>
                     </button>
-                    {onRestoreDefaults && (
-                      <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={onRestoreDefaults}>
-                        <RotateCcw size={14} />
-                        <span>Restore Demo Catalog (47 SKUs)</span>
-                      </button>
-                    )}
+                    <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={handleRestoreDefaultsAction}>
+                      <RotateCcw size={14} />
+                      <span>Restore Demo Catalog (47 SKUs)</span>
+                    </button>
                   </div>
                 </div>
-              ) : filteredProducts.length === 0 ? (
+              ) : totalCount === 0 ? (
                 <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                   <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
                   <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
@@ -1639,7 +1958,7 @@ export default function AdminProductsSection({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onToggleSurplus(p.id)}
+                          onClick={() => handleToggleSurplus(p.id)}
                           className="btn-outline"
                           style={{ padding: '6px 8px', color: p.isSurplus ? '#B45309' : '#64748B' }}
                           title="Toggle surplus deal"
@@ -1663,10 +1982,13 @@ export default function AdminProductsSection({
             </div>
             <TablePagination
               currentPage={currentPage}
-              totalItems={filteredProducts.length}
+              totalItems={totalCount}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
+              onItemsPerPageChange={(limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }}
               itemLabel="fastener SKUs"
               pageSizeOptions={[10, 20, 50, 100]}
             />
@@ -1694,7 +2016,17 @@ export default function AdminProductsSection({
                 </tr>
               </thead>
               <tbody>
-                {products.length === 0 ? (
+                {isLoadingData ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <Loader2 size={32} className="animate-spin" color="#FF6B00" style={{ margin: '0 auto 12px' }} />
+                        <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Loading Fastener SKUs...</div>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Querying central database catalog with limit pagination</div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : totalCount === 0 && !search && selectedSubGroup === 'all' && selectedStandard === 'all' && selectedGrade === 'all' && selectedStock === 'all' && selectedCatalog === 'all' ? (
                   <tr>
                     <td colSpan={6}>
                       <div className="admin-empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
@@ -1714,17 +2046,15 @@ export default function AdminProductsSection({
                             <Plus size={14} />
                             <span>Add Single SKU</span>
                           </button>
-                          {onRestoreDefaults && (
-                            <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={onRestoreDefaults}>
-                              <RotateCcw size={14} />
-                              <span>Restore Demo Catalog (47 SKUs)</span>
-                            </button>
-                          )}
+                          <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={handleRestoreDefaultsAction}>
+                            <RotateCcw size={14} />
+                            <span>Restore Demo Catalog (47 SKUs)</span>
+                          </button>
                         </div>
                       </div>
                     </td>
                   </tr>
-                ) : filteredProducts.length === 0 ? (
+                ) : totalCount === 0 ? (
                   <tr>
                     <td colSpan={6}>
                       <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
@@ -2011,10 +2341,13 @@ export default function AdminProductsSection({
             </table>
             <TablePagination
               currentPage={currentPage}
-              totalItems={filteredProducts.length}
+              totalItems={totalCount}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
+              onItemsPerPageChange={(limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }}
               itemLabel="fastener SKUs"
               pageSizeOptions={[10, 20, 50, 100]}
             />
@@ -3300,57 +3633,78 @@ export default function AdminProductsSection({
                   color: '#0F172A',
                 }}
               >
-                {selectedProductIds.size === products.length && products.length > 0
-                  ? `Delete Entire Catalog (${products.length} SKUs)?`
+                {isSelectAllCatalog
+                  ? `Delete All ${totalCount.toLocaleString()} Products in Catalog?`
                   : `Delete ${selectedProductIds.size} Selected ${selectedProductIds.size === 1 ? 'Product' : 'Products'}?`}
               </h3>
-              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px' }}>
-                {selectedProductIds.size === products.length && products.length > 0
-                  ? 'CAUTION: You are about to permanently delete all products in the inventory. The catalog will become completely empty (0 SKUs) until new products are uploaded.'
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px', lineHeight: '1.5' }}>
+                {isSelectAllCatalog
+                  ? `CAUTION: You are about to permanently delete all ${totalCount.toLocaleString()} fastener products from the central database${hasActiveFilters ? ' matching your active filter parameters' : ''}. The catalog will be completely emptied until new products are uploaded.`
                   : `Are you sure you want to permanently delete these ${selectedProductIds.size} fastener SKUs from the central database? They will be delisted from the catalog, search index, and the RFQ engine.`}
               </p>
 
-              {/* Preview chips of selected SKUs */}
-              <div
-                style={{
-                  maxHeight: '140px',
-                  overflowY: 'auto',
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px',
-                  justifyContent: 'center',
-                }}
-              >
-                {Array.from(selectedProductIds).slice(0, 16).map((id) => {
-                  const p = products.find((item) => item.id === id);
-                  return (
-                    <span
-                      key={id}
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        background: '#FFFFFF',
-                        border: '1px solid #CBD5E1',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        color: '#334155',
-                      }}
-                    >
-                      {p?.sku || `SKU #${id}`}
+              {/* Preview chips or Entire Catalog Badge */}
+              {isSelectAllCatalog ? (
+                <div
+                  style={{
+                    background: '#FEF2F2',
+                    border: '1.5px solid #FCA5A5',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    color: '#991B1B',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <AlertTriangle size={18} color="#DC2626" />
+                  <span>Entire Catalog Target: All {totalCount.toLocaleString()} SKUs across all pages</span>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    maxHeight: '140px',
+                    overflowY: 'auto',
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {Array.from(selectedProductIds).slice(0, 16).map((id) => {
+                    const p = serverProducts.find((item) => item.id === id);
+                    return (
+                      <span
+                        key={id}
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: '#FFFFFF',
+                          border: '1px solid #CBD5E1',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          color: '#334155',
+                        }}
+                      >
+                        {p?.sku || `SKU #${id}`}
+                      </span>
+                    );
+                  })}
+                  {selectedProductIds.size > 16 && (
+                    <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
+                      + {selectedProductIds.size - 16} more
                     </span>
-                  );
-                })}
-                {selectedProductIds.size > 16 && (
-                  <span style={{ fontSize: '11px', color: '#64748B', alignSelf: 'center', fontWeight: 600 }}>
-                    + {selectedProductIds.size - 16} more
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -3381,12 +3735,14 @@ export default function AdminProductsSection({
                 {isDeletingBulk ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Deleting...</span>
+                    <span>Deleting Products...</span>
                   </>
                 ) : (
                   <>
                     <Trash2 size={14} />
-                    <span>Yes, Delete {selectedProductIds.size} SKUs</span>
+                    <span>
+                      Yes, Delete {isSelectAllCatalog ? `All ${totalCount.toLocaleString()} Products` : `${selectedProductIds.size} SKUs`}
+                    </span>
                   </>
                 )}
               </button>
@@ -4000,7 +4356,7 @@ export default function AdminProductsSection({
               <button
                 type="button"
                 onClick={() => {
-                  onToggleSurplus(inspectProduct.id);
+                  handleToggleSurplus(inspectProduct.id);
                   setInspectProduct({
                     ...inspectProduct,
                     isSurplus: !inspectProduct.isSurplus
@@ -4156,8 +4512,99 @@ export default function AdminProductsSection({
 
             {/* Modal Body */}
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* SUCCESS RESULT SCREEN */}
-              {bulkSuccessResult ? (
+              {/* STATE 1: ACTIVE BACKGROUND IMPORT IN PROGRESS */}
+              {activeJob && ['pending', 'parsing', 'syncing'].includes(activeJob.status) ? (
+                <div
+                  style={{
+                    background: '#F0F9FF',
+                    border: '1.5px solid #0284C7',
+                    borderRadius: '14px',
+                    padding: '32px 24px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      background: '#0284C7',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                      boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                    }}
+                  >
+                    <Loader2 size={32} className="animate-spin" />
+                  </div>
+
+                  <h4 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#0369A1' }}>
+                    Bulk Import Running in Background
+                  </h4>
+                  <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#0284C7' }}>
+                    {activeJob.message || 'Processing Excel workbook and inserting products into database...'}
+                  </p>
+
+                  {/* Animated Progress Bar */}
+                  <div
+                    style={{
+                      width: '100%',
+                      maxWidth: '560px',
+                      margin: '0 auto 12px',
+                      background: '#E0F2FE',
+                      borderRadius: '999px',
+                      height: '14px',
+                      overflow: 'hidden',
+                      border: '1px solid #BAE6FD',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.max(5, activeJob.progressPercent || 0)}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #0284C7, #0052CC)',
+                        borderRadius: '999px',
+                        transition: 'width 0.4s ease-out',
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '20px',
+                      fontSize: '12px',
+                      color: '#0369A1',
+                      fontWeight: 700,
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <span>{activeJob.progressPercent}% Complete</span>
+                    {activeJob.totalRows > 0 && (
+                      <span>
+                        {activeJob.processedRows?.toLocaleString() || 0} / {activeJob.totalRows?.toLocaleString()} Rows
+                      </span>
+                    )}
+                    <span>File: {activeJob.fileName}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => setIsBulkUploadOpen(false)}
+                      style={{ padding: '10px 24px', background: '#0284C7', borderColor: '#0284C7', fontSize: '13px' }}
+                    >
+                      Continue Working in Admin (Run in Background)
+                    </button>
+                  </div>
+                </div>
+              ) : bulkSuccessResult || (activeJob && activeJob.status === 'completed') ? (
+                /* STATE 2: SUCCESS RESULT SCREEN */
                 <div
                   style={{
                     background: '#ECFDF5',
@@ -4202,25 +4649,25 @@ export default function AdminProductsSection({
                     <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Items Processed</span>
                       <div style={{ fontSize: '24px', fontWeight: 800, color: '#064E3B', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                        {bulkSuccessResult.importedCount.toLocaleString()}
+                        {(bulkSuccessResult?.importedCount || activeJob?.totalRows || 0).toLocaleString()}
                       </div>
                     </div>
                     <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>New SKUs Added</span>
                       <div style={{ fontSize: '24px', fontWeight: 800, color: '#059669', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                        +{bulkSuccessResult.addedCount.toLocaleString()}
+                        +{(bulkSuccessResult?.addedCount || activeJob?.addedCount || 0).toLocaleString()}
                       </div>
                     </div>
                     <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Existing SKUs Updated</span>
                       <div style={{ fontSize: '24px', fontWeight: 800, color: '#0284C7', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                        {bulkSuccessResult.updatedCount.toLocaleString()}
+                        {(bulkSuccessResult?.updatedCount || activeJob?.updatedCount || 0).toLocaleString()}
                       </div>
                     </div>
                     <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
                       <span style={{ fontSize: '11px', fontWeight: 700, color: '#065F46', textTransform: 'uppercase' }}>Active Catalog Total</span>
                       <div style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
-                        {bulkSuccessResult.totalCatalogCount.toLocaleString()}
+                        {(bulkSuccessResult?.totalCatalogCount || activeJob?.catalogTotal || totalCount || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -4241,6 +4688,49 @@ export default function AdminProductsSection({
                       style={{ padding: '10px 24px', background: '#059669', borderColor: '#059669' }}
                     >
                       Done & View Master Catalog
+                    </button>
+                  </div>
+                </div>
+              ) : activeJob && activeJob.status === 'failed' ? (
+                /* STATE 3: ERROR SCREEN */
+                <div
+                  style={{
+                    background: '#FEF2F2',
+                    border: '1.5px solid #F87171',
+                    borderRadius: '14px',
+                    padding: '28px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '50%',
+                      background: '#DC2626',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                    }}
+                  >
+                    <AlertTriangle size={34} />
+                  </div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#991B1B' }}>
+                    Bulk Import Failed
+                  </h4>
+                  <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#B91C1C' }}>
+                    {activeJob.error || 'An unexpected error occurred during database import.'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleResetBulkUpload}
+                      style={{ padding: '10px 20px', background: '#DC2626', borderColor: '#DC2626' }}
+                    >
+                      Try Again
                     </button>
                   </div>
                 </div>
@@ -4521,10 +5011,23 @@ export default function AdminProductsSection({
 
                   {/* STEP 3: LIVE PREVIEW & INSPECTION TABLE */}
                   {isBulkInspecting ? (
-                    <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px' }}>
-                      <Loader2 size={32} className="animate-spin" color="#0052CC" style={{ margin: '0 auto 12px' }} />
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-                        Analyzing workbook sheets and parsing fastener engineering attributes...
+                    <div
+                      style={{
+                        padding: '24px 20px',
+                        textAlign: 'center',
+                        background: '#F8FAFC',
+                        borderRadius: '12px',
+                        border: '1px dashed #CBD5E1',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <Loader2 size={20} className="animate-spin" color="#0052CC" />
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                          Loading sample items preview...
+                        </span>
+                      </div>
+                      <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#64748B' }}>
+                        No need to wait! You can click <strong>&quot;Import Products Now&quot;</strong> below to start importing directly in the background.
                       </p>
                     </div>
                   ) : bulkPreviewItems.length > 0 ? (
@@ -4677,7 +5180,7 @@ export default function AdminProductsSection({
             </div>
 
             {/* Footer */}
-            {!bulkSuccessResult && (
+            {!bulkSuccessResult && !(activeJob && (activeJob.status === 'completed' || ['pending', 'parsing', 'syncing'].includes(activeJob.status))) && (
               <div
                 style={{
                   padding: '16px 24px',
@@ -4728,7 +5231,7 @@ export default function AdminProductsSection({
                     type="button"
                     className="btn-primary"
                     onClick={handleExecuteBulkImport}
-                    disabled={!bulkFile || isBulkImporting || isBulkInspecting || bulkPreviewItems.length === 0}
+                    disabled={!bulkFile || isBulkImporting}
                     style={{
                       padding: '8px 24px',
                       fontSize: '13px',
@@ -4742,13 +5245,15 @@ export default function AdminProductsSection({
                     {isBulkImporting ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
-                        <span>Importing Fasteners...</span>
+                        <span>Starting Background Import...</span>
                       </>
                     ) : (
                       <>
                         <UploadCloud size={16} />
                         <span>
-                          Import {bulkPreviewStats?.validCount ? `${bulkPreviewStats.validCount.toLocaleString()} ` : ''}Products Now
+                          {bulkPreviewStats?.validCount
+                            ? `Import ${bulkPreviewStats.validCount.toLocaleString()} Products Now`
+                            : 'Import Products Now (Background)'}
                         </span>
                       </>
                     )}
@@ -4757,6 +5262,166 @@ export default function AdminProductsSection({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* FLOATING BACKGROUND JOB NOTIFIER WIDGET */}
+      {activeJob && !isDismissedJobBanner && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9998,
+            background: '#FFFFFF',
+            borderRadius: '14px',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.18)',
+            border: `1.5px solid ${
+              activeJob.status === 'completed'
+                ? '#10B981'
+                : activeJob.status === 'failed'
+                ? '#EF4444'
+                : '#0052CC'
+            }`,
+            padding: '16px',
+            maxWidth: '380px',
+            width: 'calc(100vw - 48px)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: '10px',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {['pending', 'parsing', 'syncing'].includes(activeJob.status) ? (
+                <Loader2 size={18} className="animate-spin" color="#0052CC" />
+              ) : activeJob.status === 'completed' ? (
+                <CheckCircle2 size={18} color="#10B981" />
+              ) : (
+                <AlertTriangle size={18} color="#EF4444" />
+              )}
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                {activeJob.status === 'completed'
+                  ? 'Import Completed'
+                  : activeJob.status === 'failed'
+                  ? 'Import Failed'
+                  : 'Importing in Background'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {!isBulkUploadOpen && (
+                <button
+                  type="button"
+                  onClick={() => setIsBulkUploadOpen(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '2px 4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#0052CC',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  View
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsDismissedJobBanner(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '2px',
+                  cursor: 'pointer',
+                  color: '#94A3B8',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+            {activeJob.message || activeJob.fileName}
+          </p>
+
+          {['pending', 'parsing', 'syncing'].includes(activeJob.status) && (
+            <div>
+              <div
+                style={{
+                  background: '#E2E8F0',
+                  borderRadius: '999px',
+                  height: '8px',
+                  overflow: 'hidden',
+                  marginBottom: '6px',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.max(5, activeJob.progressPercent || 0)}%`,
+                    height: '100%',
+                    background: '#0052CC',
+                    borderRadius: '999px',
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '11px',
+                  color: '#64748B',
+                }}
+              >
+                <span>{activeJob.progressPercent}% complete</span>
+                {activeJob.totalRows > 0 && (
+                  <span>
+                    {activeJob.processedRows?.toLocaleString() || 0} / {activeJob.totalRows?.toLocaleString()} rows
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeJob.status === 'completed' && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '8px',
+                paddingTop: '8px',
+                borderTop: '1px solid #E2E8F0',
+              }}
+            >
+              <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                +{activeJob.addedCount?.toLocaleString()} added, {activeJob.updatedCount?.toLocaleString()} updated
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  fetchProducts();
+                  setIsDismissedJobBanner(true);
+                }}
+                className="btn-outline"
+                style={{ padding: '3px 10px', fontSize: '11px', background: '#FFFFFF' }}
+              >
+                Refresh View
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

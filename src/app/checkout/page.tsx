@@ -48,54 +48,16 @@ export default function CheckoutPage() {
   // Payment Method
   const [paymentMethod, setPaymentMethod] = useState<'PHONEPE' | 'NEFT_RTGS'>('PHONEPE');
 
-  // Order Items
-  const [items, setItems] = useState<RfqLineItem[]>([
-    {
-      id: 1,
-      productId: 1,
-      sku: 'CBH-933-M10-100-8.8',
-      name: 'Hex Screws Full Thread DIN 933 M10x1.5x100mm Grade 8.8 BP',
-      standard: 'DIN 933',
-      unit: 'PCS',
-      unitRate: 14.5,
-      quantity: 5000,
-      weightPerPcKg: 0.0601,
-      totalWeightKg: 5000 * 0.0601,
-      rowTotal: 5000 * 14.5,
-    },
-    {
-      id: 2,
-      productId: 4,
-      sku: 'CBH-934-M10-8.8-HDG',
-      name: 'Hex Nuts DIN 934 M10x1.5 Grade 8.8 Hot Dip Galvanized',
-      standard: 'DIN 934',
-      unit: 'PCS',
-      unitRate: 4.8,
-      quantity: 5000,
-      weightPerPcKg: 0.0116,
-      totalWeightKg: 5000 * 0.0116,
-      rowTotal: 5000 * 4.8,
-    },
-    {
-      id: 3,
-      productId: 8,
-      sku: 'CBH-125-M10-SS304',
-      name: 'Plain Flat Washer DIN 125 M10 AISI 304 Stainless Steel',
-      standard: 'DIN 125',
-      unit: 'PCS',
-      unitRate: 2.4,
-      quantity: 5000,
-      weightPerPcKg: 0.0041,
-      totalWeightKg: 5000 * 0.0041,
-      rowTotal: 5000 * 2.4,
-    },
-  ]);
+  // Order Items (starts empty, populated from live cart)
+  const [items, setItems] = useState<RfqLineItem[]>([]);
 
   // Load persisted cart from home page and populate customer info if logged in
   useEffect(() => {
     const savedCart = getStoredCart();
     if (savedCart && savedCart.length > 0) {
       setItems(savedCart);
+    } else {
+      setItems([]);
     }
 
     const user = getStoredUser();
@@ -120,6 +82,14 @@ export default function CheckoutPage() {
 
   const handlePhonePeCheckout = async () => {
     setErrorMessage(null);
+
+    // Validate Empty Cart
+    if (items.length === 0) {
+      const msg = 'Your cart is empty. Please add fastener items to proceed to checkout.';
+      setErrorMessage(msg);
+      showWarningAlert('Empty Cart', msg);
+      return;
+    }
 
     // Validate Required Fields
     if (!formData.fullName || !formData.phone || !formData.shippingAddress || !formData.pincode) {
@@ -511,31 +481,44 @@ export default function CheckoutPage() {
 
               {/* Items List */}
               <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                {items.map((item) => (
-                  <div key={item.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={item.imageUrl || '/assets/bolt_zinc.jpg'}
-                          alt={item.name}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
-                          }}
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-bold text-[#0F172A] block line-clamp-1">{item.name}</span>
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          {item.quantity.toLocaleString()} {item.unit} • ₹{item.unitRate}/{item.unit}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="font-extrabold font-mono text-[#0052CC] flex-shrink-0">
-                      {formatINR(item.rowTotal)}
-                    </span>
+                {items.length === 0 ? (
+                  <div className="p-5 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                    <p className="font-bold text-slate-800 text-sm mb-1">Your RFQ Cart is Empty</p>
+                    <p className="mb-3 text-[11px] text-slate-500">Please select fastener items from the catalog before proceeding to checkout.</p>
+                    <Link
+                      href="/products"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0052CC] text-white rounded-lg text-xs font-bold hover:bg-[#0043A8] transition-colors"
+                    >
+                      Browse Fasteners Catalog
+                    </Link>
                   </div>
-                ))}
+                ) : (
+                  items.map((item) => (
+                    <div key={item.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={item.imageUrl || '/assets/bolt_zinc.jpg'}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-[#0F172A] block line-clamp-1">{item.name}</span>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {item.quantity.toLocaleString()} {item.unit} • ₹{item.unitRate}/{item.unit}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-extrabold font-mono text-[#0052CC] flex-shrink-0">
+                        {formatINR(item.rowTotal)}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Numbers Breakdown */}
@@ -584,10 +567,11 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={handlePhonePeCheckout}
-                disabled={isSubmitting}
+                disabled={isSubmitting || items.length === 0}
                 className="w-full py-4 rounded-xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
                 style={{
-                  background: paymentMethod === 'PHONEPE' ? '#5f259f' : '#0052CC',
+                  background: items.length === 0 ? '#94A3B8' : paymentMethod === 'PHONEPE' ? '#5f259f' : '#0052CC',
+                  cursor: items.length === 0 ? 'not-allowed' : isSubmitting ? 'wait' : 'pointer',
                 }}
               >
                 {isSubmitting ? (

@@ -170,7 +170,7 @@ export default function AdminLayout({
   const fetchTelemetry = async () => {
     try {
       const [prodRes, rfqRes, ordRes, usersRes] = await Promise.allSettled([
-        fetch('/api/products').then((r) => r.json()),
+        fetch('/api/products?limit=1').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
         fetch('/api/orders').then((r) => r.json()),
         fetch('/api/users').then((r) => r.json()),
@@ -178,7 +178,10 @@ export default function AdminLayout({
 
       setTelemetry((prev) => ({
         ...prev,
-        productsCount: prodRes.status === 'fulfilled' && prodRes.value?.data ? prodRes.value.data.length : prev.productsCount,
+        productsCount:
+          prodRes.status === 'fulfilled' && prodRes.value
+            ? (prodRes.value.total ?? prodRes.value.pagination?.total ?? (Array.isArray(prodRes.value.data) ? prodRes.value.data.length : prev.productsCount))
+            : prev.productsCount,
         rfqsCount: rfqRes.status === 'fulfilled' && rfqRes.value?.data ? rfqRes.value.data.filter((q: any) => q.status === 'PENDING').length : prev.rfqsCount,
         ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
         usersCount: usersRes.status === 'fulfilled' && usersRes.value?.data ? usersRes.value.data.length : prev.usersCount,
@@ -387,20 +390,9 @@ export default function AdminLayout({
                           : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
-                      All Orders
+                       Orders
                     </Link>
-                    <Link
-                      href="/admin/orders?status=PENDING"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      Returns
-                    </Link>
-                    <Link
-                      href="/admin/orders?status=PROCESSING"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      Order Tracking
-                    </Link>
+                   
                   </div>
                 )}
               </div>
