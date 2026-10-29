@@ -390,20 +390,9 @@ export default function AdminLayout({
                           : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
-                      All Orders
+                       Orders
                     </Link>
-                    <Link
-                      href="/admin/orders?status=PENDING"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      Returns
-                    </Link>
-                    <Link
-                      href="/admin/orders?status=PROCESSING"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      Order Tracking
-                    </Link>
+                   
                   </div>
                 )}
               </div>
