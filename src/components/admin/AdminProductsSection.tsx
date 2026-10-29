@@ -390,6 +390,7 @@ export default function AdminProductsSection({
   } | null>(null);
   const [previewFilter, setPreviewFilter] = useState('');
   const bulkFileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const previewAbortControllerRef = React.useRef<AbortController | null>(null);
 
   // Background Bulk Upload Job State & Tracking
   const [activeJob, setActiveJob] = useState<{
@@ -821,11 +822,20 @@ export default function AdminProductsSection({
       return;
     }
 
+    // Set file immediately so the user can click "Import Products Now" without waiting!
+    setBulkFile(file);
+    setBulkUploadError(null);
+    setBulkSuccessResult(null);
+
+    // Cancel any previous pending preview request
+    if (previewAbortControllerRef.current) {
+      previewAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    previewAbortControllerRef.current = controller;
+
     try {
       setIsBulkInspecting(true);
-      setBulkUploadError(null);
-      setBulkSuccessResult(null);
-      setBulkFile(file);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -836,6 +846,7 @@ export default function AdminProductsSection({
       const res = await fetch('/api/products/bulk-upload', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -853,7 +864,9 @@ export default function AdminProductsSection({
         invalidCount: data.invalidCount || 0,
       });
     } catch (err: any) {
-      setBulkUploadError(err.message || 'Error parsing file.');
+      if (err.name !== 'AbortError') {
+        setBulkUploadError(err.message || 'Error parsing file.');
+      }
     } finally {
       setIsBulkInspecting(false);
     }
@@ -870,6 +883,12 @@ export default function AdminProductsSection({
       setBulkUploadError('No file selected for import.');
       return;
     }
+
+    // Immediately abort preview fetch if still running so import has full bandwidth
+    if (previewAbortControllerRef.current) {
+      previewAbortControllerRef.current.abort();
+    }
+    setIsBulkInspecting(false);
 
     try {
       setIsBulkImporting(true);
@@ -4839,10 +4858,23 @@ export default function AdminProductsSection({
 
                   {/* STEP 3: LIVE PREVIEW & INSPECTION TABLE */}
                   {isBulkInspecting ? (
-                    <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px' }}>
-                      <Loader2 size={32} className="animate-spin" color="#0052CC" style={{ margin: '0 auto 12px' }} />
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-                        Analyzing workbook sheets and parsing fastener engineering attributes...
+                    <div
+                      style={{
+                        padding: '24px 20px',
+                        textAlign: 'center',
+                        background: '#F8FAFC',
+                        borderRadius: '12px',
+                        border: '1px dashed #CBD5E1',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <Loader2 size={20} className="animate-spin" color="#0052CC" />
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                          Loading sample items preview...
+                        </span>
+                      </div>
+                      <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#64748B' }}>
+                        No need to wait! You can click <strong>&quot;Import Products Now&quot;</strong> below to start importing directly in the background.
                       </p>
                     </div>
                   ) : bulkPreviewItems.length > 0 ? (
@@ -5046,7 +5078,7 @@ export default function AdminProductsSection({
                     type="button"
                     className="btn-primary"
                     onClick={handleExecuteBulkImport}
-                    disabled={!bulkFile || isBulkImporting || isBulkInspecting || bulkPreviewItems.length === 0}
+                    disabled={!bulkFile || isBulkImporting}
                     style={{
                       padding: '8px 24px',
                       fontSize: '13px',
@@ -5066,7 +5098,9 @@ export default function AdminProductsSection({
                       <>
                         <UploadCloud size={16} />
                         <span>
-                          Import {bulkPreviewStats?.validCount ? `${bulkPreviewStats.validCount.toLocaleString()} ` : ''}Products Now
+                          {bulkPreviewStats?.validCount
+                            ? `Import ${bulkPreviewStats.validCount.toLocaleString()} Products Now`
+                            : 'Import Products Now (Background)'}
                         </span>
                       </>
                     )}
