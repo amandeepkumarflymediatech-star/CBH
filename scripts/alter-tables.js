@@ -168,6 +168,16 @@ async function main() {
   }
   console.log(`✓ Products table verification complete: ${addedCount} columns added, ${productColumns.length - addedCount} already up to date.\n`);
 
+  // Ensure stock columns are large enough for high-volume inventory
+  console.log('🔍 Ensuring `stock_pcs` and `stock_kg` have high-capacity data types...');
+  try {
+    await connection.query('ALTER TABLE `products` MODIFY COLUMN `stock_pcs` BIGINT NOT NULL DEFAULT 0');
+    await connection.query('ALTER TABLE `products` MODIFY COLUMN `stock_kg` DECIMAL(14, 2) NOT NULL DEFAULT 0.00');
+    console.log('✓ `stock_pcs` set to BIGINT and `stock_kg` set to DECIMAL(14,2).\n');
+  } catch (err) {
+    console.warn('⚠️ Warning updating stock columns:', err.message);
+  }
+
   // Add indexes for Excel fields if missing
   console.log('🔍 Checking `products` performance indexes...');
   await safeAddIndex(connection, targetDb, 'products', 'idx_products_sub_group', '(sub_group)');

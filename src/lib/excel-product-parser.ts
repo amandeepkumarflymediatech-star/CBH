@@ -404,9 +404,15 @@ export function parseRowToProduct(
     ['stock', 'stockpcs', 'currentstock', 'qty', 'quantity', 'cbhactualstocklevel', 'actualstocklevel'],
     106
   );
-  let stockPcs = parseInt(String(stockRaw).replace(/[^0-9]/g, ''));
-  if (isNaN(stockPcs) || stockPcs < 0) {
-    stockPcs = 10000; // Ready stock default
+  let stockPcs = 10000;
+  if (stockRaw !== undefined && stockRaw !== null && String(stockRaw).trim() !== '') {
+    const parsedStock = parseFloat(String(stockRaw));
+    if (!isNaN(parsedStock)) {
+      stockPcs = parsedStock > 0 ? Math.round(parsedStock) : 0;
+    }
+  }
+  if (stockPcs > 2000000000) {
+    stockPcs = 2000000000;
   }
   const stockKg = parseFloat((stockPcs * weightPerPcKg).toFixed(2));
   const isInStock = stockPcs > 0;

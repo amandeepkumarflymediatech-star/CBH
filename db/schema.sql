@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS products (
     packing_days INT DEFAULT 3,                 -- Packing duration
     
     -- Inventory Levels
-    stock_pcs INTEGER NOT NULL DEFAULT 0,
-    stock_kg DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    stock_pcs BIGINT NOT NULL DEFAULT 0,
+    stock_kg DECIMAL(14, 2) NOT NULL DEFAULT 0.00,
     stock_uom VARCHAR(20) DEFAULT 'Nos',
     min_order_pcs INTEGER DEFAULT 100,
     min_order_kg DECIMAL(8, 2) DEFAULT 5.00,

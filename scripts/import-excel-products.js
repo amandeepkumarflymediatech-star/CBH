@@ -143,8 +143,13 @@ function parseSheetRows(ws, sheetName) {
     else if (!isNaN(pPc) && pPc > 0) pricePerPiece = +pPc.toFixed(4);
 
     const pricePerKg = parseFloat(row[80]) || (weightPerPcKg > 0 ? +(pricePerPiece / weightPerPcKg).toFixed(2) : 90.0);
-    const stockPcs = parseInt(row[106]) || 10000;
-    const stockKg = parseFloat((stockPcs * weightPerPcKg).toFixed(2));
+    let stockPcs = 10000;
+    if (row[106] !== undefined && row[106] !== null && String(row[106]).trim() !== '') {
+      const parsedStock = parseFloat(String(row[106]));
+      if (!isNaN(parsedStock)) stockPcs = parsedStock > 0 ? Math.round(parsedStock) : 0;
+    }
+    if (stockPcs > 2000000000) stockPcs = 2000000000;
+    const stockKg = +(Math.min(99999999.99, Math.max(0, stockPcs * weightPerPcKg))).toFixed(2);
 
     const pcsPerBox = String(row[60] || '').trim();
     const pcsPerMasterCtn = String(row[63] || '').trim();
