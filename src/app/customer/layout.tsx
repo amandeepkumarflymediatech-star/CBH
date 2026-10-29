@@ -303,20 +303,9 @@ export default function CustomerLayout({
                           : 'text-slate-500 hover:text-slate-900'
                       }`}
                     >
-                      All Orders ({telemetry.ordersCount})
+                      Orders ({telemetry.ordersCount})
                     </Link>
-                    <Link
-                      href="/customer/orders?status=IN_TRANSIT"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      In Transit (GPS)
-                    </Link>
-                    <Link
-                      href="/customer/orders?status=PROCESSING"
-                      className="block px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 no-underline"
-                    >
-                      Under Fabrication
-                    </Link>
+                    
                   </div>
                 )}
               </div>
