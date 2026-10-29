@@ -106,6 +106,8 @@ export default function CustomerDashboardPage() {
   // Order status sub-filter for Consignments tab
   const [orderStatusFilter, setOrderStatusFilter] = useState<'ALL' | 'IN_TRANSIT' | 'PROCESSING' | 'DELIVERED'>('ALL');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [orderCarrierFilter, setOrderCarrierFilter] = useState('ALL');
+  const [orderSortBy, setOrderSortBy] = useState('date_desc');
 
   // Live telemetry counts (dynamic, zero by default)
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
@@ -375,11 +377,23 @@ export default function CustomerDashboardPage() {
     }
   };
 
+  // Distinct carriers for Consignments filter
+  const availableCarriers = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach((o) => {
+      if (o.carrier && o.carrier.trim()) set.add(o.carrier.trim());
+    });
+    return Array.from(set).sort();
+  }, [orders]);
+
   // Filtered orders for Consignments Tab
   const filteredOrders = useMemo(() => {
     let list = [...orders];
     if (orderStatusFilter !== 'ALL') {
       list = list.filter((o) => o.status === orderStatusFilter);
+    }
+    if (orderCarrierFilter !== 'ALL') {
+      list = list.filter((o) => o.carrier?.toLowerCase() === orderCarrierFilter.toLowerCase());
     }
     if (orderSearchQuery.trim()) {
       const q = orderSearchQuery.toLowerCase();
@@ -391,8 +405,29 @@ export default function CustomerDashboardPage() {
           (o.trackingNumber && o.trackingNumber.toLowerCase().includes(q))
       );
     }
+    list.sort((a, b) => {
+      if (orderSortBy === 'date_desc') {
+        return (
+          new Date(b.date || b.dispatchDate || 0).getTime() -
+          new Date(a.date || a.dispatchDate || 0).getTime()
+        );
+      }
+      if (orderSortBy === 'date_asc') {
+        return (
+          new Date(a.date || a.dispatchDate || 0).getTime() -
+          new Date(b.date || b.dispatchDate || 0).getTime()
+        );
+      }
+      if (orderSortBy === 'amount_desc') {
+        return (b.netAmount || 0) - (a.netAmount || 0);
+      }
+      if (orderSortBy === 'amount_asc') {
+        return (a.netAmount || 0) - (b.netAmount || 0);
+      }
+      return 0;
+    });
     return list;
-  }, [orders, orderStatusFilter, orderSearchQuery]);
+  }, [orders, orderStatusFilter, orderCarrierFilter, orderSearchQuery, orderSortBy]);
 
   return (
     <div className="space-y-6">
@@ -938,25 +973,70 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Search by PO #, Transporter, Docket #, or Yard location..."
-              value={orderSearchQuery}
-              onChange={(e) => setOrderSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0F172A] placeholder:text-slate-400 focus:outline-none focus:border-[#5B4DF6]"
-            />
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            {orderSearchQuery && (
-              <button
-                type="button"
-                onClick={() => setOrderSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          {/* Search Bar & Quick Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search by PO #, Transporter, Docket #, or Yard location..."
+                value={orderSearchQuery}
+                onChange={(e) => setOrderSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0F172A] placeholder:text-slate-400 focus:outline-none focus:border-[#5B4DF6]"
+              />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              {orderSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setOrderSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              {availableCarriers.length > 0 && (
+                <select
+                  value={orderCarrierFilter}
+                  onChange={(e) => setOrderCarrierFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#5B4DF6] cursor-pointer"
+                >
+                  <option value="ALL">All Transporters</option>
+                  {availableCarriers.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <select
+                value={orderSortBy}
+                onChange={(e) => setOrderSortBy(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#5B4DF6] cursor-pointer"
               >
-                <X size={14} />
-              </button>
-            )}
+                <option value="date_desc">Date: Newest First</option>
+                <option value="date_asc">Date: Oldest First</option>
+                <option value="amount_desc">Amount: High to Low</option>
+                <option value="amount_asc">Amount: Low to High</option>
+              </select>
+
+              {(orderSearchQuery || orderStatusFilter !== 'ALL' || orderCarrierFilter !== 'ALL' || orderSortBy !== 'date_desc') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderSearchQuery('');
+                    setOrderStatusFilter('ALL');
+                    setOrderCarrierFilter('ALL');
+                    setOrderSortBy('date_desc');
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Orders List */}
