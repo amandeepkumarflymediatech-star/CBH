@@ -30,3 +30,6 @@ next-env.d.ts
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Generated / runtime cache
+src/data/erpnext-cached-products.json

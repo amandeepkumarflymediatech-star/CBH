@@ -7,7 +7,8 @@ import { Product } from './types';
  */
 export async function syncProductsToMySQL(
   products: Product[],
-  mode: 'replace' | 'merge' | 'append' = 'merge'
+  mode: 'replace' | 'merge' | 'append' = 'merge',
+  onProgress?: (processed: number, total: number) => void
 ): Promise<boolean> {
   if (!products || products.length === 0) return true;
 
@@ -20,7 +21,7 @@ export async function syncProductsToMySQL(
       }
     }
 
-    const chunkSize = 150;
+    const chunkSize = 200;
     for (let i = 0; i < products.length; i += chunkSize) {
       const chunk = products.slice(i, i + chunkSize);
       const rows = chunk.map((p) => [
@@ -103,6 +104,14 @@ export async function syncProductsToMySQL(
           drawing_url=VALUES(drawing_url)`,
         [rows]
       );
+
+      if (onProgress) {
+        try {
+          onProgress(Math.min(i + chunkSize, products.length), products.length);
+        } catch (progErr) {
+          console.warn('[syncProductsToMySQL] onProgress error:', progErr);
+        }
+      }
     }
     return true;
   } catch (err) {

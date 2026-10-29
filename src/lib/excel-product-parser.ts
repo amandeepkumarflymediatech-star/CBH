@@ -525,7 +525,7 @@ export function parseRowToProduct(
  * Inspects an Excel workbook buffer and returns its sheets and row statistics
  */
 export function inspectWorkbook(buffer: Buffer): WorkbookInspection {
-  const wb = XLSX.read(buffer, { type: 'buffer' });
+  const wb = XLSX.read(buffer, { type: 'buffer', dense: true });
   const sheets: SheetSummary[] = [];
   const validCategorySheets = filterProductSheets(wb.SheetNames);
   let firstSheetWithProducts = validCategorySheets[0] || wb.SheetNames[0] || 'Sheet1';
@@ -533,28 +533,24 @@ export function inspectWorkbook(buffer: Buffer): WorkbookInspection {
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
     if (!ws) continue;
-    const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
-    const totalRows = rawRows.length;
 
-    // Approximate products count: rows with non-empty column 7 or column 1/0
-    let estimated = 0;
-    if (totalRows > 1) {
-      const headerIdx = detectHeaderRow(rawRows);
-      for (let i = headerIdx + 1; i < totalRows; i++) {
-        const r = rawRows[i];
-        if (r && (r[7] || r[1] || r[0])) {
-          const str = String(r[7] || r[1] || r[0]).trim();
-          if (str && str !== '0' && str !== '#REF!' && str.length > 2 && str.toLowerCase() !== 'item name') {
-            estimated++;
-          }
-        }
+    let totalRows = 0;
+    if (ws['!ref']) {
+      try {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        totalRows = range.e.r - range.s.r + 1;
+      } catch {
+        totalRows = 0;
       }
+    } else {
+      const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+      totalRows = rawRows.length;
     }
 
     sheets.push({
       name: sheetName,
       totalRows,
-      estimatedProducts: estimated,
+      estimatedProducts: Math.max(0, totalRows - 1),
     });
   }
 
@@ -588,7 +584,22 @@ export function parseWorkbookBuffer(
     if (!ws) continue;
 
     sheetNamesProcessed.push(sheetName);
-    const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+
+    // If maxPreview is requested (e.g. previewing 30 sample items), only parse the top 80 rows
+    let sheetToParse = ws;
+    if (options.maxPreview && ws['!ref']) {
+      try {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        const previewEndRow = Math.min(range.e.r, range.s.r + (options.maxPreview * 2) + 20);
+        const previewRange = XLSX.utils.encode_range({
+          s: range.s,
+          e: { r: previewEndRow, c: range.e.c },
+        });
+        sheetToParse = { ...ws, '!ref': previewRange };
+      } catch {}
+    }
+
+    const rawRows = XLSX.utils.sheet_to_json<any[]>(sheetToParse, { header: 1 });
     if (!rawRows || rawRows.length === 0) continue;
 
     const headerIdx = detectHeaderRow(rawRows);
