@@ -415,11 +415,24 @@ export default function App() {
           <MobileHeader
             title={headerInfo.title}
             subtitle={headerInfo.subtitle}
-            showBack={Boolean(selectedProduct) || activeTab === 'auth'}
+            showBack={
+              Boolean(selectedProduct) ||
+              activeTab === 'auth' ||
+              (role === 'admin' && activeTab !== 'dashboard')
+            }
+            showLogo={
+              role === 'admin'
+                ? activeTab === 'dashboard'
+                : !selectedProduct && activeTab !== 'auth'
+            }
             onBack={() => {
               if (selectedProduct) {
                 setSelectedProduct(null);
+              } else if (role === 'admin' && activeTab !== 'dashboard') {
+                setActiveTab('dashboard');
               } else if (activeTab === 'auth') {
+                setActiveTab('home');
+              } else {
                 setActiveTab('home');
               }
             }}

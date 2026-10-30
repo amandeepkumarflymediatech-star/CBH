@@ -5,11 +5,12 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
+import { NavIcon } from './NavIcon';
 
 export interface NavTabItem {
   id: string;
   label: string;
-  icon: string;
+  iconName: string;
   badge?: number | string;
 }
 
@@ -33,19 +34,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isAdmin = role === 'admin';
 
   const adminTabs: NavTabItem[] = [
-    { id: 'dashboard', label: 'Console', icon: '⚡' },
-    { id: 'orders', label: 'Orders', icon: '📦', badge: pendingOrdersCount || undefined },
-    { id: 'products', label: 'Inventory', icon: '🔩' },
-    { id: 'rfqs', label: 'Quotes', icon: '📄', badge: pendingRfqsCount || undefined },
-    { id: 'users', label: 'Clients', icon: '👥' },
+    { id: 'dashboard', label: 'Console', iconName: 'dashboard' },
+    { id: 'orders', label: 'Orders', iconName: 'orders', badge: pendingOrdersCount || undefined },
+    { id: 'products', label: 'Inventory', iconName: 'products' },
+    { id: 'rfqs', label: 'Quotes', iconName: 'rfqs', badge: pendingRfqsCount || undefined },
+    { id: 'users', label: 'Clients', iconName: 'users' },
   ];
 
   const customerTabs: NavTabItem[] = [
-    { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'catalog', label: 'Catalog', icon: '🔩' },
-    { id: 'cart', label: 'Cart', icon: '🛒', badge: cartCount || undefined },
-    { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'profile', label: 'Account', icon: '👤' },
+    { id: 'home', label: 'Home', iconName: 'home' },
+    { id: 'catalog', label: 'Catalog', iconName: 'catalog' },
+    { id: 'cart', label: 'Cart', iconName: 'cart', badge: cartCount || undefined },
+    { id: 'orders', label: 'Orders', iconName: 'orders' },
+    { id: 'profile', label: 'Account', iconName: 'profile' },
   ];
 
   const tabs = isAdmin ? adminTabs : customerTabs;
@@ -54,16 +55,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     <View style={styles.navBar}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
+        const tintColor = isActive ? '#0052CC' : '#64748B';
+
         return (
           <TouchableOpacity
             key={tab.id}
             onPress={() => onTabChange(tab.id)}
             style={styles.tabBtn}
+            activeOpacity={0.75}
           >
             {isActive ? <View style={styles.activePill} /> : null}
 
             <View style={styles.iconWrap}>
-              <Text style={styles.iconText}>{tab.icon}</Text>
+              <NavIcon name={tab.iconName} color={tintColor} size={20} />
               {tab.badge ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{tab.badge}</Text>

@@ -11,6 +11,7 @@ interface MobileHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  showLogo?: boolean;
   onBack?: () => void;
   role?: 'customer' | 'admin';
   cartCount?: number;
@@ -23,6 +24,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   title,
   subtitle,
   showBack = false,
+  showLogo,
   onBack,
   role = 'customer',
   cartCount = 0,
@@ -31,16 +33,19 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   rightAction,
 }) => {
   const isAdmin = role === 'admin';
+  const displayLogo = showLogo !== undefined ? showLogo : (isAdmin ? !showBack : !showBack);
 
   return (
     <View style={styles.header}>
       {/* Left: Brand Icon or Back */}
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.75}>
             <Text style={styles.backBtnText}>←</Text>
           </TouchableOpacity>
-        ) : (
+        ) : null}
+
+        {displayLogo ? (
           <TouchableOpacity
             activeOpacity={onLogoClick ? 0.75 : 1}
             onPress={onLogoClick}
@@ -52,9 +57,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               resizeMode="contain"
             />
           </TouchableOpacity>
-        )}
+        ) : null}
 
-        <View>
+        <View style={styles.titleContainer}>
           <View style={styles.titleRow}>
             <Text numberOfLines={1} style={styles.title}>
               {title}
@@ -164,6 +169,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  titleContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,7 +182,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
-    maxWidth: 160,
+    flexShrink: 1,
   },
   roleBadge: {
     paddingHorizontal: 5,
@@ -188,7 +197,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 11,
     color: '#64748B',
-    maxWidth: 170,
+    flexShrink: 1,
   },
   right: {
     flexDirection: 'row',
