@@ -28,50 +28,42 @@ import { FALLBACK_PRODUCTS } from './config/api';
 import { MobileHeader } from './components/MobileHeader';
 import { MobileBottomNav } from './components/MobileBottomNav';
 
-// Screens
-import {
-  AdminDashboardScreen,
-  AdminOrdersScreen,
-  AdminProductsScreen,
-  AdminRfqsScreen,
-  AdminUsersScreen,
-  AdminErpSyncScreen,
-  AdminPaymentsScreen,
-  AdminProfileScreen,
-  AdminLoginScreen,
-} from './screens/admin';
+// Screens (Direct explicit imports - prevents Metro bundle bloat & circular dependencies)
+import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
+import { AdminOrdersScreen } from './screens/admin/AdminOrdersScreen';
+import { AdminProductsScreen } from './screens/admin/AdminProductsScreen';
+import { AdminRfqsScreen } from './screens/admin/AdminRfqsScreen';
+import { AdminUsersScreen } from './screens/admin/AdminUsersScreen';
+import { AdminErpSyncScreen } from './screens/admin/AdminErpSyncScreen';
+import { AdminPaymentsScreen } from './screens/admin/AdminPaymentsScreen';
+import { AdminProfileScreen } from './screens/admin/AdminProfileScreen';
+import { AdminSurplusScreen } from './screens/admin/AdminSurplusScreen';
+import { AdminCategoriesScreen } from './screens/admin/AdminCategoriesScreen';
 
-import {
-  CustomerHomeScreen,
-  CustomerCatalogScreen,
-  CustomerProductDetailScreen,
-  CustomerCartScreen,
-  CustomerOrdersScreen,
-  CustomerRfqsScreen,
-  CustomerCertificatesScreen,
-  CustomerProfileScreen,
-  CustomerAuthScreen,
-} from './screens/customer';
+import { CustomerHomeScreen } from './screens/customer/CustomerHomeScreen';
+import { CustomerCatalogScreen } from './screens/customer/CustomerCatalogScreen';
+import { CustomerProductDetailScreen } from './screens/customer/CustomerProductDetailScreen';
+import { CustomerCartScreen } from './screens/customer/CustomerCartScreen';
+import { CustomerOrdersScreen } from './screens/customer/CustomerOrdersScreen';
+import { CustomerRfqsScreen } from './screens/customer/CustomerRfqsScreen';
+import { CustomerCertificatesScreen } from './screens/customer/CustomerCertificatesScreen';
+import { CustomerProfileScreen } from './screens/customer/CustomerProfileScreen';
+
+import { AuthScreen } from './screens/auth/AuthScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 
 export default function App() {
   const [isWelcome, setIsWelcome] = useState<boolean>(true);
   const [role, setRole] = useState<UserRole>('customer');
-  const [user, setUser] = useState<MobileAuthUser | null>(DEMO_MOBILE_CUSTOMER);
+  // User state: starts null (Guest Explore mode) so first-time visitors can browse catalog
+  const [user, setUser] = useState<MobileAuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedProduct, setSelectedProduct] = useState<MobileProduct | null>(null);
 
-  // Cart State (Preloaded with 1 line item for instant testing)
-  const [cartItems, setCartItems] = useState<MobileCartItem[]>([
-    {
-      product: FALLBACK_PRODUCTS[0],
-      unit: 'PCS',
-      quantity: 1000,
-      unitPrice: FALLBACK_PRODUCTS[0].pricePerPiece,
-      lineTotal: +(1000 * FALLBACK_PRODUCTS[0].pricePerPiece).toFixed(2),
-      totalWeightKg: 43.0,
-    },
-  ]);
+  const [catalogFilterStandard, setCatalogFilterStandard] = useState<string>('All');
+
+  // Dynamic Cart State (starts empty - no hardcoded items)
+  const [cartItems, setCartItems] = useState<MobileCartItem[]>([]);
 
   // Auth sync
   useEffect(() => {
@@ -82,6 +74,17 @@ export default function App() {
       setActiveTab(stored.role === 'admin' ? 'dashboard' : 'home');
     }
   }, []);
+
+  const handleAuthSuccess = (u: MobileAuthUser, fallbackTab: string = 'home') => {
+    setUser(u);
+    setRole(u.role);
+    setIsWelcome(false);
+    if (u.role === 'admin') {
+      setActiveTab('dashboard');
+    } else {
+      setActiveTab(fallbackTab);
+    }
+  };
 
   const handleRoleSwitch = (newRole: UserRole) => {
     setIsWelcome(false);
@@ -101,7 +104,9 @@ export default function App() {
   const handleLogout = () => {
     setMobileStoredUser(null);
     setUser(null);
-    setActiveTab(role === 'admin' ? 'login' : 'auth');
+    setRole('customer');
+    setIsWelcome(true);
+    setActiveTab('home');
   };
 
   // Cart operations
@@ -177,6 +182,10 @@ export default function App() {
           return { title: 'ERPNext Sync', subtitle: 'Bidirectional Pipeline' };
         case 'payments':
           return { title: 'Settlement Ledger', subtitle: 'PhonePe & Bank Wires' };
+        case 'surplus':
+          return { title: 'Surplus Stock', subtitle: 'Factory Clearance Lots' };
+        case 'categories':
+          return { title: 'Catalog Taxonomies', subtitle: 'Categories & Families' };
         case 'profile':
           return { title: 'Operator Profile', subtitle: 'Node Authorization' };
         case 'login':
@@ -227,15 +236,22 @@ export default function App() {
       );
     }
 
+    // 1. Unified Authentication Gate (handles role-based sign-in for both customers and admins)
+    if (activeTab === 'auth' || activeTab === 'login') {
+      return (
+        <AuthScreen
+          onSuccess={(u) => handleAuthSuccess(u, 'home')}
+          onBackToWelcome={() => setIsWelcome(true)}
+        />
+      );
+    }
+
     if (role === 'admin') {
-      if (!user && activeTab === 'login') {
+      if (!user) {
         return (
-          <AdminLoginScreen
-            onSuccess={(u) => {
-              setUser(u);
-              setActiveTab('dashboard');
-            }}
-            onSwitchToCustomer={() => handleRoleSwitch('customer')}
+          <AuthScreen
+            onSuccess={(u) => handleAuthSuccess(u, 'dashboard')}
+            onBackToWelcome={() => setIsWelcome(true)}
           />
         );
       }
@@ -261,6 +277,10 @@ export default function App() {
           return <AdminErpSyncScreen />;
         case 'payments':
           return <AdminPaymentsScreen />;
+        case 'surplus':
+          return <AdminSurplusScreen />;
+        case 'categories':
+          return <AdminCategoriesScreen />;
         case 'profile':
           return (
             <AdminProfileScreen
@@ -272,23 +292,18 @@ export default function App() {
           return <AdminDashboardScreen onNavigate={setActiveTab} />;
       }
     } else {
-      if (!user && activeTab === 'auth') {
-        return (
-          <CustomerAuthScreen
-            onSuccess={(u) => {
-              setUser(u);
-              setActiveTab('home');
-            }}
-            onSwitchToAdmin={() => handleRoleSwitch('admin')}
-          />
-        );
-      }
-
       switch (activeTab) {
         case 'home':
           return (
             <CustomerHomeScreen
-              onNavigate={setActiveTab}
+              onNavigate={(tab, params) => {
+                if (params?.standard) {
+                  setCatalogFilterStandard(params.standard);
+                } else if (tab === 'catalog' && !params?.standard) {
+                  setCatalogFilterStandard('All');
+                }
+                setActiveTab(tab);
+              }}
               onSelectProduct={setSelectedProduct}
               onAddToCart={handleAddToCart}
             />
@@ -296,6 +311,7 @@ export default function App() {
         case 'catalog':
           return (
             <CustomerCatalogScreen
+              initialStandard={catalogFilterStandard}
               onSelectProduct={setSelectedProduct}
               onAddToCart={handleAddToCart}
             />
@@ -304,6 +320,8 @@ export default function App() {
           return (
             <CustomerCartScreen
               cartItems={cartItems}
+              user={user}
+              onRequireAuth={() => setActiveTab('auth')}
               onUpdateQuantity={handleUpdateCartQty}
               onRemoveItem={handleRemoveCartItem}
               onClearCart={handleClearCart}
@@ -314,12 +332,39 @@ export default function App() {
             />
           );
         case 'orders':
-          return <CustomerOrdersScreen />;
+          if (!user) {
+            return (
+              <AuthScreen
+                onSuccess={(u) => handleAuthSuccess(u, 'orders')}
+                onBackToWelcome={() => setIsWelcome(true)}
+              />
+            );
+          }
+          return (
+            <CustomerOrdersScreen
+              user={user}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
+            />
+          );
         case 'rfqs':
-          return <CustomerRfqsScreen onNavigateToCart={() => setActiveTab('cart')} />;
+          return (
+            <CustomerRfqsScreen
+              user={user}
+              onNavigateToCart={() => setActiveTab('cart')}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
+            />
+          );
         case 'certificates':
           return <CustomerCertificatesScreen />;
         case 'profile':
+          if (!user) {
+            return (
+              <AuthScreen
+                onSuccess={(u) => handleAuthSuccess(u, 'profile')}
+                onBackToWelcome={() => setIsWelcome(true)}
+              />
+            );
+          }
           return (
             <CustomerProfileScreen
               onLogout={handleLogout}
@@ -342,76 +387,25 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-        barStyle={role === 'admin' ? 'light-content' : 'dark-content'}
-        backgroundColor={role === 'admin' ? '#0F172A' : '#FFFFFF'}
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
       />
-
-      {/* Top CLI Role Switcher Header Bar */}
-      <View style={styles.topToolbar}>
-        <Text style={styles.toolbarLabel}>Mode:</Text>
-        <View style={styles.toolbarPills}>
-          <TouchableOpacity
-            onPress={() => setIsWelcome(true)}
-            style={[
-              styles.pillBtn,
-              isWelcome ? styles.pillBtnActiveWelcome : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.pillBtnText,
-                isWelcome ? styles.pillBtnTextActive : null,
-              ]}
-            >
-              Welcome
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => handleRoleSwitch('customer')}
-            style={[
-              styles.pillBtn,
-              !isWelcome && role === 'customer' ? styles.pillBtnActiveCustomer : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.pillBtnText,
-                !isWelcome && role === 'customer' ? styles.pillBtnTextActive : null,
-              ]}
-            >
-              Customer
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => handleRoleSwitch('admin')}
-            style={[
-              styles.pillBtn,
-              !isWelcome && role === 'admin' ? styles.pillBtnActiveAdmin : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.pillBtnText,
-                !isWelcome && role === 'admin' ? styles.pillBtnTextActive : null,
-              ]}
-            >
-              Admin
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* Screen Viewport */}
       {isWelcome ? (
         <View style={styles.viewport}>
           <WelcomeScreen
-            onEnterCustomer={() => handleRoleSwitch('customer')}
-            onEnterAdmin={() => handleRoleSwitch('admin')}
-            onQuickAction={(tab) => {
-              handleRoleSwitch('customer');
-              setActiveTab(tab);
+            onExplore={() => {
+              setMobileStoredUser(null);
+              setUser(null);
+              setIsWelcome(false);
+              setRole('customer');
+              setActiveTab('home');
+            }}
+            onSignIn={() => {
+              setIsWelcome(false);
+              setRole('customer');
+              setActiveTab('auth');
             }}
           />
         </View>
@@ -421,12 +415,36 @@ export default function App() {
           <MobileHeader
             title={headerInfo.title}
             subtitle={headerInfo.subtitle}
-            showBack={Boolean(selectedProduct)}
-            onBack={() => setSelectedProduct(null)}
+            showBack={Boolean(selectedProduct) || activeTab === 'auth'}
+            onBack={() => {
+              if (selectedProduct) {
+                setSelectedProduct(null);
+              } else if (activeTab === 'auth') {
+                setActiveTab('home');
+              }
+            }}
             role={role}
             cartCount={cartItems.length}
             onCartClick={() => setActiveTab('cart')}
-            onLogoClick={() => setIsWelcome(true)}
+            onLogoClick={() => {
+              // Navigates to home/dashboard - does NOT kick user out to Welcome Gateway
+              if (role === 'admin') {
+                setActiveTab('dashboard');
+              } else {
+                setActiveTab('home');
+              }
+            }}
+            rightAction={
+              role === 'admin' ? (
+                <TouchableOpacity
+                  onPress={handleLogout}
+                  style={styles.adminHeaderLogoutBtn}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.adminHeaderLogoutText}>Logout</Text>
+                </TouchableOpacity>
+              ) : undefined
+            }
           />
 
           {/* Screen Viewport */}
@@ -437,7 +455,13 @@ export default function App() {
             <MobileBottomNav
               role={role}
               activeTab={activeTab}
-              onTabChange={setActiveTab}
+              onTabChange={(tabId) => {
+                if ((tabId === 'orders' || tabId === 'profile') && !user) {
+                  setActiveTab('auth');
+                  return;
+                }
+                setActiveTab(tabId);
+              }}
               cartCount={cartItems.length}
               pendingRfqsCount={role === 'admin' ? 2 : undefined}
               pendingOrdersCount={role === 'admin' ? 3 : undefined}
@@ -452,52 +476,23 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  topToolbar: {
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  toolbarLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  toolbarPills: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 2,
-    gap: 2,
-  },
-  pillBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  pillBtnActiveWelcome: {
-    backgroundColor: '#0284C7',
-  },
-  pillBtnActiveCustomer: {
-    backgroundColor: '#0052CC',
-  },
-  pillBtnActiveAdmin: {
-    backgroundColor: '#2563EB',
-  },
-  pillBtnText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  pillBtnTextActive: {
-    color: '#FFFFFF',
+    backgroundColor: '#FFFFFF',
   },
   viewport: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  adminHeaderLogoutBtn: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  adminHeaderLogoutText: {
+    color: '#B91C1C',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

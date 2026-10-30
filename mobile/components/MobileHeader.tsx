@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 
 interface MobileHeaderProps {
@@ -43,12 +44,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             activeOpacity={onLogoClick ? 0.75 : 1}
             onPress={onLogoClick}
-            style={[
-              styles.brandLogo,
-              { backgroundColor: isAdmin ? '#0F172A' : '#0052CC' },
-            ]}
+            style={styles.brandLogoWrap}
           >
-            <Text style={styles.brandLogoText}>{isAdmin ? '🛡' : 'CBH'}</Text>
+            <Image
+              source={require('../assets/cbh-store-logo.png')}
+              style={styles.brandLogoImg}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         )}
 
@@ -142,17 +144,25 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontWeight: '700',
   },
-  brandLogo: {
-    width: 34,
-    height: 34,
+  brandLogoWrap: {
+    width: 36,
+    height: 36,
     borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 2,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  brandLogoText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
+  brandLogoImg: {
+    width: '100%',
+    height: '100%',
   },
   titleRow: {
     flexDirection: 'row',

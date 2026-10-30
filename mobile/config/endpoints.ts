@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/api/orders?id=${id}`,
     CREATE: '/api/orders',
     UPDATE_STATUS: '/api/orders',
+    DELETE: (id: string | number) => `/api/orders?id=${id}`,
   },
 
   // RFQ (Request for Quotation) & Bulk Quotes
@@ -44,6 +45,7 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/api/rfq?id=${id}`,
     CREATE: '/api/rfq',
     UPDATE: '/api/rfq',
+    DELETE: (id: string | number) => `/api/rfq?id=${id}`,
     CONVERT_TO_PO: '/api/rfq',
   },
 
@@ -53,6 +55,7 @@ export const API_ENDPOINTS = {
     DETAIL: (id: number) => `/api/users?id=${id}`,
     CREATE: '/api/users',
     UPDATE: '/api/users',
+    DELETE: (id: string | number) => `/api/users?id=${id}`,
   },
 
   // Factory Clearance & Surplus Inventory
@@ -60,6 +63,7 @@ export const API_ENDPOINTS = {
     LIST: '/api/surplus',
     CREATE: '/api/surplus',
     UPDATE: '/api/surplus',
+    DELETE: (id: string | number) => `/api/surplus?id=${id}`,
   },
 
   // ERPNext Integration & Webhook Sync

@@ -1,0 +1,404 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>CBH Fasteners - Mobile & Web Unified Architecture Guide</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    color: #1E293B;
+    background-color: #FFFFFF;
+    line-height: 1.6;
+    padding: 30px;
+    margin: 0;
+  }
+  h1 {
+    font-size: 26pt;
+    color: #0F172A;
+    border-bottom: 3px solid #0052CC;
+    padding-bottom: 8px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: 18pt;
+    color: #0052CC;
+    border-bottom: 1.5px solid #E2E8F0;
+    padding-bottom: 6px;
+    margin-top: 30px;
+    margin-bottom: 14px;
+  }
+  h3 {
+    font-size: 13pt;
+    color: #334155;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p {
+    font-size: 11pt;
+    margin: 6px 0 12px 0;
+  }
+  .tagline {
+    background-color: #F0F7FF;
+    border-left: 4px solid #0052CC;
+    padding: 12px 18px;
+    border-radius: 4px;
+    font-size: 11pt;
+    color: #1E40AF;
+    margin-bottom: 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px 0;
+    font-size: 10pt;
+  }
+  th {
+    background-color: #0F172A;
+    color: #FFFFFF;
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    border: 1px solid #334155;
+  }
+  td {
+    padding: 9px 12px;
+    border: 1px solid #CBD5E1;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td {
+    background-color: #F8FAFC;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 9pt;
+    font-weight: bold;
+    border-radius: 4px;
+  }
+  .badge-blue { background-color: #DBEAFE; color: #1E40AF; }
+  .badge-green { background-color: #DCFCE7; color: #166534; }
+  .badge-amber { background-color: #FEF3C7; color: #92400E; }
+  .badge-purple { background-color: #F3E8FF; color: #6B21A8; }
+  pre, code {
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  pre {
+    background-color: #0F172A;
+    color: #38BDF8;
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 9.5pt;
+    overflow-x: auto;
+    border: 1px solid #1E293B;
+    line-height: 1.45;
+  }
+  code {
+    background-color: #F1F5F9;
+    color: #0F172A;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 9.5pt;
+  }
+  pre code {
+    background-color: transparent;
+    color: #38BDF8;
+    padding: 0;
+  }
+  .card {
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 16px;
+    background-color: #FFFFFF;
+    margin: 14px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .footer {
+    margin-top: 50px;
+    padding-top: 14px;
+    border-top: 1px solid #CBD5E1;
+    font-size: 9pt;
+    color: #64748B;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>CBH Fasteners — Mobile App & Website Unified Architecture</h1>
+
+<div class="tagline">
+  <strong>Technical Architecture & Communication Specification</strong><br/>
+  <strong>Project:</strong> CBH Fasteners Industrial Platform (Desktop Web + Android Native App)<br/>
+  <strong>Backend Engine:</strong> Next.js 14 REST API & MySQL 8.0 Relational Database<br/>
+  <strong>Mobile Framework:</strong> React Native 0.84 (Direct Android Bridge)
+</div>
+
+<h2>1. Executive Summary: How Mobile & Web Communicate</h2>
+<p>
+  <strong>Yes, the mobile app and website use the exact same backend API and share the exact same database.</strong>
+</p>
+<p>
+  There is <strong>no separate database</strong> and <strong>no duplicate backend</strong>. The CBH platform operates on a single unified architecture:
+</p>
+<ul>
+  <li><strong>Unified Data Engine:</strong> When an Admin creates a new Fastener SKU in the Mobile App, it sends an HTTP POST request to <code>/api/products</code>. That API writes directly into the MySQL <code>products</code> table. Refreshing the website immediately displays the newly created product.</li>
+  <li><strong>Instant Bi-Directional Sync:</strong> When a customer places an order on the website, it is stored in the MySQL <code>orders</code> table. Opening the Mobile App Admin Console immediately shows the new order in real-time.</li>
+  <li><strong>Shared Business Logic:</strong> Price tiers (Bronze, Silver, Gold, VIP), volume discount calculations, ERPNext sync queues, and authentication credentials are identical across both platforms.</li>
+</ul>
+
+<h2>2. Communication Flow Diagram</h2>
+<pre>
+┌──────────────────────────────────────┐     ┌──────────────────────────────────────┐
+│        🌐 DESKTOP WEB STOREFRONT      │     │      📱 ANDROID NATIVE MOBILE APP     │
+│       (Browser: localhost:3000)      │     │      (React Native: 10.0.2.2:3000)   │
+└──────────────────┬───────────────────┘     └───────────────────┬──────────────────┘
+                   │                                             │
+                   │ HTTP Fetch (/api/...)                       │ HTTP apiFetch (/api/...)
+                   ▼                                             ▼
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                    NEXT.JS 14 UNIFIED REST API ENGINE (PORT 3000)                 │
+│                                                                                   │
+│  • POST /api/auth/login        -> Role-based authentication & bcrypt verification │
+│  • GET, POST, PUT, DELETE /api/products -> Inventory catalog (605 warehouse SKUs) │
+│  • GET, POST, PUT, DELETE /api/orders   -> Logistics & dispatch order pipeline    │
+│  • GET, POST, PUT, DELETE /api/rfq      -> B2B bulk quotation inquiries           │
+│  • GET, POST, PUT, DELETE /api/users    -> Corporate client registry & credit     │
+│  • GET /api/erpnext/status              -> Real-time plant sync telemetry         │
+└─────────────────────────────────────────┬─────────────────────────────────────────┘
+                                          │
+                                          │ Connection Pool (mysql2)
+                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│                       🗄️ MYSQL RELATIONAL DATABASE (PORT 3306)                     │
+│                        Database: cbh_fasteners                                    │
+│                        Tables: products, orders, order_items, users, bulk_rfqs   │
+└───────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+<h2>3. Network Configuration & IP Routing</h2>
+<p>
+  When developing on an Android emulator or testing on a physical mobile device, standard <code>localhost:3000</code> does not reach your computer because Android runs its own Linux operating system where <code>localhost</code> means the phone itself.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Environment</th>
+      <th>Base URL</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Android Emulator</strong></td>
+      <td><code>http://10.0.2.2:3000/api</code></td>
+      <td>Android's built-in virtual loopback IP pointing directly to your host PC's <code>localhost:3000</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Physical Device (Wi-Fi)</strong></td>
+      <td><code>http://192.168.1.x:3000/api</code></td>
+      <td>Host machine LAN IP address when phone is on the same local Wi-Fi router.</td>
+    </tr>
+    <tr>
+      <td><strong>ADB Port Reverse (USB)</strong></td>
+      <td><code>http://localhost:3000/api</code></td>
+      <td>Via <code>adb reverse tcp:3000 tcp:3000</code>, forwarding emulator port 3000 to PC.</td>
+    </tr>
+    <tr>
+      <td><strong>Production Live Server</strong></td>
+      <td><code>https://cbh.store/api</code></td>
+      <td>Cloud production domain with SSL encryption.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Code Implementation: <code>mobile/config/env.ts</code></h3>
+<pre>
+import { Platform } from 'react-native';
+
+const LOCAL_IP = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+const PORT = '3000';
+
+export const ENV = {
+  DEV_API_URL: `http://${LOCAL_IP}:${PORT}/api`,
+  LAN_API_URL: 'http://192.168.1.6:3000/api',
+  PROD_API_URL: 'https://cbh.socialflymediatech.com/api',
+  IS_PROD: false, // Set to true when generating production release APK
+};
+
+export const API_BASE_URL = ENV.IS_PROD ? ENV.PROD_API_URL : ENV.DEV_API_URL;
+</pre>
+
+<h2>4. Complete Project Folder & File Structure</h2>
+<pre>
+d:\CBH\                                       <-- PROJECT ROOT
+├── package.json                              <-- Web & root dependencies
+├── MOBILE_ARCHITECTURE.md                    <-- Architecture Markdown Reference
+├── CBH_MOBILE_WEB_ARCHITECTURE.doc           <-- Official Word Document
+│
+├── src\                                      <-- 🌐 WEB APP & REST API BACKEND
+│   ├── app\
+│   │   ├── (storefront)\                     <-- Next.js Web storefront
+│   │   ├── admin\                            <-- Web desktop admin console
+│   │   └── api\                              <-- ⭐ SHARED BACKEND REST APIs
+│   │       ├── auth\login\route.ts           <-- POST /api/auth/login
+│   │       ├── products\route.ts             <-- GET/POST/PUT/DELETE /api/products
+│   │       ├── orders\route.ts               <-- GET/POST/PUT/DELETE /api/orders
+│   │       ├── rfq\route.ts                  <-- GET/POST/PUT/DELETE /api/rfq
+│   │       ├── users\route.ts                <-- GET/POST/PUT/DELETE /api/users
+│   │       └── erpnext\status\route.ts       <-- GET /api/erpnext/status
+│   └── lib\
+│       ├── db.ts                             <-- MySQL connection pool
+│       └── auth-utils.ts                     <-- Password verification
+│
+└── mobile\                                   <-- 📱 REACT NATIVE STANDALONE SUBPROJECT
+    ├── index.js                              <-- Native entry point
+    ├── App.tsx                               <-- Root navigation & role controller
+    │
+    ├── assets\
+    │   └── cbh-store-logo.png                <-- 3D Hexagonal Metallic Brand Logo
+    │
+    ├── config\                               <-- 🔌 API & NETWORKING LAYER
+    │   ├── env.ts                            <-- IP switching (Dev vs Prod)
+    │   ├── endpoints.ts                      <-- Exhaustive registry of all API URLs
+    │   ├── api.ts                            <-- mobileApi HTTP client (CRUD methods)
+    │   └── auth.ts                           <-- Stored session token persistence
+    │
+    ├── types\
+    │   └── index.ts                          <-- Shared TypeScript Interfaces (Zero runtime cost)
+    │
+    ├── components\                           <-- 🎨 REUSABLE MOBILE UI COMPONENTS
+    │   ├── MobileHeader.tsx                  <-- Header with official logo & role badges
+    │   ├── MobileBottomNav.tsx               <-- 5-tab dynamic navigation bar
+    │   ├── MobileCard.tsx                    <-- Elevated card container
+    │   ├── MobileBadge.tsx                   <-- Color-coded status pills
+    │   ├── MobileSearch.tsx                  <-- Interactive search bar with clear button
+    │   └── MobileModal.tsx                   <-- Smooth animated bottom slide modal
+    │
+    └── screens\                              <-- 📱 MOBILE SCREENS
+        ├── WelcomeScreen.tsx                 <-- Brand Gateway with animated logo
+        │
+        ├── auth\                             <-- Authentication Screens
+        │   ├── AuthScreen.tsx                <-- Container view switcher
+        │   ├── LoginScreen.tsx               <-- Unified role-based corporate sign-in
+        │   ├── RegisterScreen.tsx            <-- Enterprise B2B account onboarding
+        │   ├── ForgotPasswordScreen.tsx      <-- Password recovery
+        │   └── OtpVerificationScreen.tsx     <-- Two-factor OTP screen
+        │
+        ├── customer\                         <-- 🛒 Customer Storefront Screens
+        │   ├── CustomerHomeScreen.tsx        <-- Hero banners, quick categories, recent orders
+        │   ├── CustomerCatalogScreen.tsx     <-- Full 605+ SKU catalog with dual pricing
+        │   ├── CustomerProductDetailScreen.tsx<-- Technical specs & box packaging
+        │   ├── CustomerCartScreen.tsx        <-- Order calculation & MOQ validation
+        │   ├── CustomerOrdersScreen.tsx      <-- Real-time dispatch tracking & AWB
+        │   ├── CustomerRfqsScreen.tsx        <-- Instant bulk price inquiries
+        │   ├── CustomerCertificatesScreen.tsx<-- MTC NABL test report downloads
+        │   └── CustomerProfileScreen.tsx     <-- Corporate account & credit limits
+        │
+        └── admin\                            <-- 🛡️ Operations Administrator Console (Full CRUD)
+            ├── AdminDashboardScreen.tsx      <-- Real-time KPI telemetry (Live MySQL counts)
+            ├── AdminProductsScreen.tsx       <-- Create, Read, Update, Delete SKUs
+            ├── AdminOrdersScreen.tsx         <-- Create, Read, Update, Delete Dispatches
+            ├── AdminRfqsScreen.tsx           <-- Review, Quote, Delete Quotations
+            ├── AdminUsersScreen.tsx          <-- Create, Read, Update, Delete Clients
+            ├── AdminErpSyncScreen.tsx        <-- Industrial ERPNext plant telemetry
+            ├── AdminPaymentsScreen.tsx       <-- PhonePe PG ledger & transaction logs
+            └── AdminProfileScreen.tsx        <-- Station specs & secure sign out
+</pre>
+
+<h2>5. Role-Based Dynamic Authentication (No Role Switchers)</h2>
+<p>
+  Unlike consumer apps with confusing UI role switchers, the CBH mobile login screen provides a single, high-trust corporate form. The server securely determines access:
+</p>
+<ol>
+  <li>The user enters their corporate email (e.g. <code>admin@cbh.store</code> or <code>procurement@apexinfra.com</code>) and password.</li>
+  <li>The app sends an HTTP POST request to <code>/api/auth/login</code>.</li>
+  <li>Next.js queries MySQL: <code>SELECT * FROM users WHERE email = ?</code> and validates the bcrypt hash.</li>
+  <li>The server returns the account payload including <code>role: 'admin'</code> or <code>role: 'customer'</code>.</li>
+  <li>The mobile app dynamically activates the corresponding console:
+    <ul>
+      <li>If <code>role === 'admin'</code>: Launches the <strong>Admin Operations Console</strong>.</li>
+      <li>If <code>role === 'customer'</code>: Launches the <strong>Customer B2B Storefront</strong>.</li>
+    </ul>
+  </li>
+</ol>
+
+<h2>6. Full CRUD Capability in Mobile Admin Panel</h2>
+<p>
+  All four primary admin management screens have complete Create, Read, Update, and Delete operations:
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Screen</th>
+      <th>Create (C)</th>
+      <th>Read (R)</th>
+      <th>Update (U)</th>
+      <th>Delete (D)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Admin Products</strong></td>
+      <td><span class="badge badge-green">➕ Add SKU Modal</span><br/>Standard, Grade, Rates, Stock</td>
+      <td><span class="badge badge-blue">Live Search & Filter</span><br/>DIN standard chips, pull-to-refresh</td>
+      <td><span class="badge badge-amber">✏️ Edit Modal</span><br/>Rates per pc/kg, stock counts</td>
+      <td><span class="badge badge-purple">🗑️ Delete</span><br/>Permanent removal confirmation</td>
+    </tr>
+    <tr>
+      <td><strong>Admin Orders</strong></td>
+      <td><span class="badge badge-green">➕ New Dispatch</span><br/>Generate dispatch order</td>
+      <td><span class="badge badge-blue">Status Filtering</span><br/>PROCESSING, DISPATCHED, etc.</td>
+      <td><span class="badge badge-amber">⚡ Update Status</span><br/>Carrier name, AWB tracking</td>
+      <td><span class="badge badge-purple">🗑️ Delete</span><br/>Cancel & delete consignment</td>
+    </tr>
+    <tr>
+      <td><strong>Admin RFQs</strong></td>
+      <td>Submitted by buyers via catalog RFQ checkout</td>
+      <td><span class="badge badge-blue">Search & Tabs</span><br/>Status tabs, client info</td>
+      <td><span class="badge badge-amber">📝 Review & Quote</span><br/>Volume discount %, push to ERP</td>
+      <td><span class="badge badge-purple">🗑️ Delete</span><br/>Delete inquiry record</td>
+    </tr>
+    <tr>
+      <td><strong>Admin Clients</strong></td>
+      <td><span class="badge badge-green">➕ Add Client</span><br/>Company, GSTIN, credit limit</td>
+      <td><span class="badge badge-blue">Directory Search</span><br/>Search by GSTIN, role filter</td>
+      <td><span class="badge badge-amber">✏️ Edit Tier</span><br/>Credit limit (₹), tier discount %</td>
+      <td><span class="badge badge-purple">🗑️ Delete</span><br/>Revoke account access</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>7. How to Run & Verify</h2>
+<pre>
+# Terminal 1: Next.js API Server (Port 3000)
+cd d:\CBH
+npm run dev
+
+# Terminal 2: Metro Bundler (Port 8081)
+cd d:\CBH\mobile
+npx react-native start --port 8081
+
+# Terminal 3: Port Forwarding (USB Bridge)
+adb reverse tcp:8081 tcp:8081
+adb reverse tcp:3000 tcp:3000
+</pre>
+
+<div class="footer">
+  <strong>CBH Fasteners Tech Pvt. Ltd.</strong> — Ludhiana Central Operations Node<br/>
+  Document Version 1.0.0 • Confidential Enterprise Architecture Documentation
+</div>
+
+</body>
+</html>
+

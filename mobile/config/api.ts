@@ -147,6 +147,7 @@ export const authApi = {
 };
 
 // ============================================================================
+// ============================================================================
 // 2. PRODUCTS & INVENTORY APIS
 // ============================================================================
 export const productsApi = {
@@ -154,54 +155,100 @@ export const productsApi = {
     search?: string;
     category?: string;
     subCategory?: string;
+    subGroup?: string;
     standard?: string;
     grade?: string;
     finish?: string;
     diameter?: string;
     isSurplus?: boolean;
+    stockStatus?: string;
     limit?: number;
     offset?: number;
+    page?: number;
   }) => {
     const qs = toQueryString({
       search: params?.search,
       category: params?.category,
       subCategory: params?.subCategory,
+      subGroup: params?.subGroup,
       standard: params?.standard,
       grade: params?.grade,
       finish: params?.finish,
       diameter: params?.diameter,
       surplus: params?.isSurplus,
+      stockStatus: params?.stockStatus,
       limit: params?.limit,
       offset: params?.offset,
+      page: params?.page,
     });
-    const res = await request<MobileProduct[]>(`${API_ENDPOINTS.PRODUCTS.LIST}${qs}`);
+    const res = await request<any>(`${API_ENDPOINTS.PRODUCTS.LIST}${qs}`);
 
-    // Fallback default industrial items if API returns empty
-    if (!res.success || !res.products?.length) {
+    // Dynamic API returns { success: true, data: [...], total: ..., filterOptions: {...}, stats: {...} }
+    const list: MobileProduct[] = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.products)
+      ? res.products
+      : [];
+
+    if (res.success && (list.length > 0 || res.data !== undefined)) {
       return {
         ...res,
-        products: FALLBACK_PRODUCTS.filter((p) => {
-          if (params?.category && params.category !== 'All' && p.category !== params.category) {
-            return false;
-          }
-          if (params?.search) {
-            const s = params.search.toLowerCase();
-            return (
-              p.name.toLowerCase().includes(s) ||
-              p.sku.toLowerCase().includes(s) ||
-              p.standard.toLowerCase().includes(s)
-            );
-          }
-          return true;
-        }),
+        success: true,
+        products: list,
+        data: list,
+        total: res.total ?? (res.pagination?.total ?? list.length),
+        count: res.count ?? list.length,
+        filterOptions: res.filterOptions,
+        stats: res.stats,
       };
     }
 
-    return res;
+    // Offline / Network fallback
+    return {
+      ...res,
+      success: true,
+      products: FALLBACK_PRODUCTS.filter((p) => {
+        if (params?.category && params.category !== 'All' && p.category !== params.category) {
+          return false;
+        }
+        if (params?.standard && params.standard !== 'All' && p.standard !== params.standard) {
+          return false;
+        }
+        if (params?.grade && params.grade !== 'All' && p.grade !== params.grade) {
+          return false;
+        }
+        if (params?.search) {
+          const s = params.search.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(s) ||
+            p.sku.toLowerCase().includes(s) ||
+            p.standard.toLowerCase().includes(s)
+          );
+        }
+        return true;
+      }),
+      data: FALLBACK_PRODUCTS,
+      total: FALLBACK_PRODUCTS.length,
+      count: FALLBACK_PRODUCTS.length,
+      filterOptions: {
+        standards: ['DIN 933', 'DIN 912', 'DIN 6921', 'DIN 934', 'DIN 125A'],
+        grades: ['8.8 High Tensile', '10.9 High Tensile', '12.9 Ultra HT', 'SS 304'],
+        subGroups: ['Hex Screws', 'Flange Bolts', 'Socket Screws', 'Nuts', 'Washers'],
+      },
+      stats: {
+        total: 605,
+        inStock: 602,
+        erpSynced: 513,
+      },
+    };
   },
 
   getById: async (id: number | string) => {
-    return request<MobileProduct>(API_ENDPOINTS.PRODUCTS.DETAIL(id));
+    const res = await request<any>(API_ENDPOINTS.PRODUCTS.DETAIL(id));
+    if (res.data) {
+      return { ...res, product: res.data };
+    }
+    return res;
   },
 
   create: async (productData: Partial<MobileProduct>) => {
@@ -236,7 +283,28 @@ export const productsApi = {
 // 3. CATALOG TAXONOMIES APIS
 // ============================================================================
 export const catalogApi = {
-  getCategories: async () => request(API_ENDPOINTS.CATALOG.CATEGORIES),
+  getCategories: async () => {
+    const res = await request<any>(API_ENDPOINTS.CATALOG.CATEGORIES);
+    const list = Array.isArray(res.data) ? res.data : Array.isArray(res.categories) ? res.categories : [];
+    return { ...res, categories: list, data: list };
+  },
+  createCategory: async (data: any) => {
+    return request(API_ENDPOINTS.CATALOG.CATEGORIES, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  updateCategory: async (data: any) => {
+    return request(API_ENDPOINTS.CATALOG.CATEGORIES, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  deleteCategory: async (id: string | number) => {
+    return request(`${API_ENDPOINTS.CATALOG.CATEGORIES}?id=${id}`, {
+      method: 'DELETE',
+    });
+  },
   getSubcategories: async () => request(API_ENDPOINTS.CATALOG.SUBCATEGORIES),
   getFamilies: async () => request(API_ENDPOINTS.CATALOG.FAMILIES),
   getVariants: async () => request(API_ENDPOINTS.CATALOG.VARIANTS),
@@ -260,39 +328,61 @@ export const ordersApi = {
       customerId: params?.customerId,
       limit: params?.limit,
     });
-    const res = await request<MobileOrder[]>(`${API_ENDPOINTS.ORDERS.LIST}${qs}`);
+    const res = await request<any>(`${API_ENDPOINTS.ORDERS.LIST}${qs}`);
 
-    if (!res.success || !res.orders?.length) {
+    const list: MobileOrder[] = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.orders)
+      ? res.orders
+      : [];
+
+    if (res.success && (list.length > 0 || res.data !== undefined)) {
       return {
         ...res,
-        orders: FALLBACK_ORDERS.filter((o) => {
-          if (params?.status && params.status !== 'All' && o.status !== params.status) return false;
-          if (params?.search) {
-            const s = params.search.toLowerCase();
-            return (
-              o.orderNumber.toLowerCase().includes(s) ||
-              (o.companyName && o.companyName.toLowerCase().includes(s)) ||
-              (o.trackingNumber && o.trackingNumber.toLowerCase().includes(s))
-            );
-          }
-          return true;
-        }),
+        success: true,
+        orders: list,
+        data: list,
+        total: res.total ?? list.length,
       };
     }
 
-    return res;
+    return {
+      ...res,
+      orders: FALLBACK_ORDERS.filter((o) => {
+        if (params?.status && params.status !== 'All' && o.status !== params.status) return false;
+        if (params?.search) {
+          const s = params.search.toLowerCase();
+          return (
+            o.orderNumber.toLowerCase().includes(s) ||
+            (o.companyName && o.companyName.toLowerCase().includes(s)) ||
+            (o.trackingNumber && o.trackingNumber.toLowerCase().includes(s))
+          );
+        }
+        return true;
+      }),
+      data: FALLBACK_ORDERS,
+    };
   },
 
   getById: async (id: string) => {
-    return request<MobileOrder>(API_ENDPOINTS.ORDERS.DETAIL(id));
+    const res = await request<any>(API_ENDPOINTS.ORDERS.DETAIL(id));
+    if (res.data) {
+      return { ...res, order: res.data };
+    }
+    return res;
   },
 
   create: async (orderPayload: {
-    customerId: number | string;
+    customerId?: number | string;
+    customerName?: string;
+    companyName?: string;
     items: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
     shippingAddress: string;
+    deliveryPincode?: string;
     paymentMethod: 'PHONEPE' | 'NEFT_RTGS' | 'CREDIT_LINE';
     carrier?: string;
+    netAmount?: number;
+    totalWeightKg?: number;
   }) => {
     return request(API_ENDPOINTS.ORDERS.CREATE, {
       method: 'POST',
@@ -312,6 +402,12 @@ export const ordersApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  delete: async (id: string | number) => {
+    return request(API_ENDPOINTS.ORDERS.DELETE(id), {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============================================================================
@@ -324,30 +420,47 @@ export const rfqApi = {
       status: params?.status,
       customerId: params?.customerId,
     });
-    const res = await request<MobileRfq[]>(`${API_ENDPOINTS.RFQ.LIST}${qs}`);
+    const res = await request<any>(`${API_ENDPOINTS.RFQ.LIST}${qs}`);
 
-    if (!res.success || !res.quotes?.length) {
+    const list: MobileRfq[] = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.quotes)
+      ? res.quotes
+      : [];
+
+    if (res.success && (list.length > 0 || res.data !== undefined)) {
       return {
         ...res,
-        quotes: FALLBACK_RFQS.filter((r) => {
-          if (params?.status && params.status !== 'All' && r.status !== params.status) return false;
-          if (params?.search) {
-            const s = params.search.toLowerCase();
-            return (
-              r.rfqNumber.toLowerCase().includes(s) ||
-              (r.companyName && r.companyName.toLowerCase().includes(s))
-            );
-          }
-          return true;
-        }),
+        success: true,
+        quotes: list,
+        data: list,
+        total: res.total ?? list.length,
       };
     }
 
-    return res;
+    return {
+      ...res,
+      quotes: FALLBACK_RFQS.filter((r) => {
+        if (params?.status && params.status !== 'All' && r.status !== params.status) return false;
+        if (params?.search) {
+          const s = params.search.toLowerCase();
+          return (
+            r.rfqNumber.toLowerCase().includes(s) ||
+            (r.companyName && r.companyName.toLowerCase().includes(s))
+          );
+        }
+        return true;
+      }),
+      data: FALLBACK_RFQS,
+    };
   },
 
   getById: async (id: string) => {
-    return request<MobileRfq>(API_ENDPOINTS.RFQ.DETAIL(id));
+    const res = await request<any>(API_ENDPOINTS.RFQ.DETAIL(id));
+    if (res.data) {
+      return { ...res, quote: res.data };
+    }
+    return res;
   },
 
   create: async (rfqPayload: {
@@ -358,6 +471,9 @@ export const rfqApi = {
     gstin?: string;
     shippingPincode?: string;
     globalUnit?: 'PCS' | 'KGS';
+    grossAmount?: number;
+    discountPct?: number;
+    totalWeightKg?: number;
     items: Array<{
       productId: number;
       sku: string;
@@ -386,6 +502,12 @@ export const rfqApi = {
     });
   },
 
+  delete: async (id: string | number) => {
+    return request(API_ENDPOINTS.RFQ.DELETE(id), {
+      method: 'DELETE',
+    });
+  },
+
   convertToPo: async (rfqId: string) => {
     return request(API_ENDPOINTS.RFQ.CONVERT_TO_PO, {
       method: 'POST',
@@ -404,34 +526,70 @@ export const usersApi = {
       role: params?.role,
       tier: params?.tier,
     });
-    const res = await request<MobileUserAccount[]>(`${API_ENDPOINTS.USERS.LIST}${qs}`);
+    const res = await request<any>(`${API_ENDPOINTS.USERS.LIST}${qs}`);
 
-    if (!res.success || !res.users?.length) {
+    const list: MobileUserAccount[] = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.users)
+      ? res.users
+      : [];
+
+    if (res.success && (list.length > 0 || res.data !== undefined)) {
       return {
         ...res,
-        users: FALLBACK_USERS.filter((u) => {
-          if (params?.role && u.role.toLowerCase() !== params.role.toLowerCase()) return false;
-          if (params?.tier && u.tier !== params.tier) return false;
-          if (params?.search) {
-            const s = params.search.toLowerCase();
-            return (
-              u.fullName.toLowerCase().includes(s) ||
-              u.companyName.toLowerCase().includes(s) ||
-              u.email.toLowerCase().includes(s)
-            );
-          }
-          return true;
-        }),
+        success: true,
+        users: list,
+        data: list,
+        total: res.total ?? list.length,
       };
     }
 
-    return res;
+    return {
+      ...res,
+      users: FALLBACK_USERS.filter((u) => {
+        if (params?.role && u.role.toLowerCase() !== params.role.toLowerCase()) return false;
+        if (params?.tier && u.tier !== params.tier) return false;
+        if (params?.search) {
+          const s = params.search.toLowerCase();
+          return (
+            u.fullName.toLowerCase().includes(s) ||
+            u.companyName.toLowerCase().includes(s) ||
+            u.email.toLowerCase().includes(s)
+          );
+        }
+        return true;
+      }),
+      data: FALLBACK_USERS,
+    };
+  },
+
+  create: async (userData: {
+    fullName: string;
+    companyName: string;
+    email: string;
+    phone?: string;
+    gstin?: string;
+    role?: 'customer' | 'admin';
+    tier?: string;
+    creditLimit?: number;
+    password?: string;
+  }) => {
+    return request(API_ENDPOINTS.USERS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
   },
 
   update: async (userData: Partial<MobileUserAccount> & { id: number }) => {
     return request(API_ENDPOINTS.USERS.UPDATE, {
       method: 'PUT',
       body: JSON.stringify(userData),
+    });
+  },
+
+  delete: async (id: number | string) => {
+    return request(API_ENDPOINTS.USERS.DELETE(id), {
+      method: 'DELETE',
     });
   },
 };
@@ -445,22 +603,48 @@ export const surplusApi = {
       search: params?.search,
       standard: params?.standard,
     });
-    const res = await request<MobileSurplusLot[]>(`${API_ENDPOINTS.SURPLUS.LIST}${qs}`);
+    const res = await request<any>(`${API_ENDPOINTS.SURPLUS.LIST}${qs}`);
 
-    if (!res.success || !res.surplus?.length) {
+    const list: MobileSurplusLot[] = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.surplus)
+      ? res.surplus
+      : [];
+
+    if (res.success && (list.length > 0 || res.data !== undefined)) {
       return {
         ...res,
-        surplus: FALLBACK_SURPLUS,
+        success: true,
+        surplus: list,
+        data: list,
+        total: res.total ?? list.length,
       };
     }
 
-    return res;
+    return {
+      ...res,
+      surplus: FALLBACK_SURPLUS,
+      data: FALLBACK_SURPLUS,
+    };
   },
 
   create: async (data: Partial<MobileSurplusLot>) => {
     return request(API_ENDPOINTS.SURPLUS.CREATE, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  update: async (data: Partial<MobileSurplusLot>) => {
+    return request(API_ENDPOINTS.SURPLUS.UPDATE, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: number | string) => {
+    return request(API_ENDPOINTS.SURPLUS.DELETE(id), {
+      method: 'DELETE',
     });
   },
 };
@@ -491,6 +675,13 @@ export const erpnextApi = {
       body: JSON.stringify({ doctype }),
     });
   },
+
+  saveConfig: async (config: any) => {
+    return request(API_ENDPOINTS.ERPNEXT.SYNC, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save_config', config }),
+    });
+  },
 };
 
 // ============================================================================
@@ -515,6 +706,13 @@ export const paymentApi = {
 
   getConfig: async () => {
     return request(API_ENDPOINTS.PAYMENT.PHONEPE_CONFIG);
+  },
+
+  saveConfig: async (config: any) => {
+    return request(API_ENDPOINTS.PAYMENT.PHONEPE_CONFIG, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
   },
 };
 

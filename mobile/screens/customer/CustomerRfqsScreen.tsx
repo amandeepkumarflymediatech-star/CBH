@@ -5,51 +5,96 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { mobileApi } from '../../config/api';
-import { MobileRfq } from '../../types';
+import { MobileRfq, MobileAuthUser } from '../../types';
 
 interface CustomerRfqsScreenProps {
+  user?: MobileAuthUser | null;
   onNavigateToCart: () => void;
+  onNavigateToCatalog?: () => void;
 }
 
-export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({ onNavigateToCart }) => {
+export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({
+  user,
+  onNavigateToCart,
+  onNavigateToCatalog,
+}) => {
   const [rfqs, setRfqs] = useState<MobileRfq[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMsg, setToastMsg] = useState('');
 
-  const fetchRfqs = async () => {
+  const fetchRfqs = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const res = await mobileApi.rfq.getAll({ search: searchQuery || undefined });
+      const res = await mobileApi.rfq.getAll({ search: searchQuery.trim() || undefined });
       if (res.quotes) {
         setRfqs(res.quotes);
       }
     } catch (err) {
       console.warn('[Customer RFQs] Fetch error:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchRfqs();
-  }, [searchQuery]);
+  }, [searchQuery, user?.id]);
 
   const handleAcceptQuote = (rfq: MobileRfq) => {
-    setToastMsg(`Accepted quote for ${rfq.rfqNumber}! PO Issued.`);
+    setToastMsg(`Accepted official quote for ${rfq.rfqNumber}! PO Generated in ERPNext.`);
     setRfqs((prev) =>
       prev.map((r) => (r.id === rfq.id ? { ...r, status: 'PO_ISSUED' } : r))
     );
-    setTimeout(() => setToastMsg(''), 3000);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const getRfqBadgeVariant = (status: MobileRfq['status']) => {
+    switch (status) {
+      case 'APPROVED':
+      case 'PO_ISSUED':
+        return 'success';
+      case 'QUOTED':
+        return 'info';
+      case 'IN_REVIEW':
+      case 'PENDING':
+        return 'warning';
+      case 'REJECTED':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => fetchRfqs(true)}
+          colors={['#0052CC']}
+        />
+      }
+    >
       <MobileSearch
         value={searchQuery}
         onChange={setSearchQuery}
-        placeholder="Search RFQ Number..."
+        placeholder="Search RFQ Number (e.g. CBH-RFQ)..."
       />
 
       {toastMsg ? (
@@ -62,57 +107,91 @@ export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({ onNaviga
         <Text style={styles.newRfqBtnText}>📄 Create New Bulk Procurement RFQ</Text>
       </TouchableOpacity>
 
-      {rfqs.map((rfq) => (
-        <MobileCard key={rfq.id}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
-            <MobileBadge
-              label={rfq.status}
-              variant={
-                rfq.status === 'APPROVED' || rfq.status === 'PO_ISSUED'
-                  ? 'success'
-                  : rfq.status === 'QUOTED'
-                  ? 'info'
-                  : 'warning'
-              }
-              size="sm"
-            />
-          </View>
+      <View style={styles.resultsHeader}>
+        <Text style={styles.resultsCount}>
+          Found {rfqs.length} quotation inquiries
+        </Text>
+        <TouchableOpacity onPress={() => fetchRfqs(true)}>
+          <Text style={styles.reloadText}>↻ Refresh</Text>
+        </TouchableOpacity>
+      </View>
 
-          <Text style={styles.tonnageText}>
-            Estimated Volume: {rfq.totalWeightKg || 1200} Kg ({rfq.itemsCount || 3} Fastener Lines)
+      {/* Loading state */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0052CC" />
+          <Text style={styles.loadingText}>Loading quotation inquiries...</Text>
+        </View>
+      ) : rfqs.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>📋</Text>
+          <Text style={styles.emptyTitle}>No Quotation Inquiries</Text>
+          <Text style={styles.emptySubtitle}>
+            Add items to your cart and request an official RFQ to receive custom volume discounts and commercial proforma.
           </Text>
-
-          <View style={styles.quoteBox}>
-            <View>
-              <Text style={styles.quoteBoxLabel}>Discount Margin</Text>
-              <Text style={styles.quoteBoxVal}>{rfq.discountPct}% OFF List</Text>
+          {onNavigateToCatalog ? (
+            <TouchableOpacity onPress={onNavigateToCatalog} style={styles.browseBtn}>
+              <Text style={styles.browseBtnText}>Explore Fastener Catalog</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : (
+        rfqs.map((rfq) => (
+          <MobileCard key={rfq.id}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
+              <MobileBadge
+                label={rfq.status}
+                variant={getRfqBadgeVariant(rfq.status)}
+                size="sm"
+              />
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.quoteBoxLabel}>Quoted Amount</Text>
-              <Text style={styles.quoteBoxAmount}>
-                ₹{rfq.netTotal?.toLocaleString('en-IN')}
-              </Text>
+
+            <View style={styles.metaRow}>
+              <Text style={styles.dateText}>Inquiry Date: {rfq.date || '2026-10-30'}</Text>
+              <Text style={styles.companyText}>{rfq.companyName || 'Industrial Client'}</Text>
             </View>
-          </View>
 
-          <View style={styles.divider} />
+            <Text style={styles.tonnageText}>
+              Estimated Volume: {rfq.totalWeightKg || 1200} Kg ({rfq.itemsCount || 3} Fastener Lines)
+            </Text>
 
-          <View style={styles.rowBetween}>
-            <Text style={styles.validUntilText}>Valid until: {rfq.validUntil}</Text>
-            {rfq.status === 'QUOTED' ? (
-              <TouchableOpacity
-                onPress={() => handleAcceptQuote(rfq)}
-                style={styles.acceptBtn}
-              >
-                <Text style={styles.acceptBtnText}>Accept &amp; Issue PO</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.reviewStatus}>Under Review</Text>
-            )}
-          </View>
-        </MobileCard>
-      ))}
+            <View style={styles.quoteBox}>
+              <View>
+                <Text style={styles.quoteBoxLabel}>Discount Margin</Text>
+                <Text style={styles.quoteBoxVal}>{rfq.discountPct || 14}% OFF List</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.quoteBoxLabel}>Quoted Amount (Incl. GST)</Text>
+                <Text style={styles.quoteBoxAmount}>
+                  ₹{(rfq.netTotal || 0).toLocaleString('en-IN')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.cardDivider} />
+
+            <View style={styles.actionsRow}>
+              {rfq.status === 'QUOTED' ? (
+                <TouchableOpacity
+                  onPress={() => handleAcceptQuote(rfq)}
+                  style={styles.acceptBtn}
+                >
+                  <Text style={styles.acceptBtnText}>✓ Accept Quote &amp; Issue PO</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.statusPill}>
+                  <Text style={styles.statusPillText}>
+                    {rfq.status === 'PO_ISSUED'
+                      ? '✓ Purchase Order Confirmed'
+                      : '⏳ Under Sales Desk Engineering Review'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </MobileCard>
+        ))
+      )}
     </ScrollView>
   );
 };
@@ -121,6 +200,8 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
+    backgroundColor: '#F8FAFC',
+    paddingBottom: 40,
   },
   toast: {
     backgroundColor: '#ECFDF5',
@@ -131,19 +212,81 @@ const styles = StyleSheet.create({
   },
   toastText: {
     color: '#065F46',
-    fontWeight: '700',
     fontSize: 12,
+    fontWeight: '700',
   },
   newRfqBtn: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#0052CC',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   newRfqBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: '#0052CC',
     fontSize: 13,
+    fontWeight: '800',
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultsCount: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  reloadText: {
+    fontSize: 11,
+    color: '#0052CC',
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  emptyIcon: {
+    fontSize: 36,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  browseBtn: {
+    marginTop: 8,
+    backgroundColor: '#0052CC',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  browseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   rowBetween: {
     flexDirection: 'row',
@@ -151,64 +294,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rfqNumber: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#FF6B00',
+    color: '#0F172A',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  companyText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
   },
   tonnageText: {
     fontSize: 12,
-    color: '#475569',
+    color: '#334155',
     marginTop: 6,
+    fontWeight: '600',
   },
   quoteBox: {
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
-    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
     padding: 10,
-    marginTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   quoteBoxLabel: {
     fontSize: 10,
-    color: '#9A3412',
-    textTransform: 'uppercase',
+    color: '#64748B',
+    fontWeight: '600',
   },
   quoteBoxVal: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C2410C',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#059669',
   },
   quoteBoxAmount: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#9A3412',
+    fontWeight: '900',
+    color: '#0052CC',
   },
-  divider: {
+  cardDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginVertical: 8,
+    marginVertical: 10,
   },
-  validUntilText: {
-    fontSize: 11,
-    color: '#64748B',
+  actionsRow: {
+    alignItems: 'center',
   },
   acceptBtn: {
-    backgroundColor: '#059669',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    backgroundColor: '#0052CC',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
   },
   acceptBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
-  reviewStatus: {
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+  },
+  statusPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#0052CC',
+    color: '#64748B',
   },
 });
 

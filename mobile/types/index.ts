@@ -33,9 +33,12 @@ export interface MobileProduct {
   standard: string;
   din?: string;
   isoStandard?: string;
+  bsStandard?: string;
+  asmeStandard?: string;
   grade: string;
   finish: string;
   threadType: string;
+  threadLength?: string;
   diameter: string;
   lengthMm: number;
   pitchMm: number;
@@ -46,6 +49,8 @@ export interface MobileProduct {
   originalPricePerPiece?: number;
   pricePerKg: number;
   originalPricePerKg?: number;
+  price100Pcs?: number;
+  price1000Pcs?: number;
   stockPcs: number;
   stockKg: number;
   stockUom?: string;
@@ -53,10 +58,18 @@ export interface MobileProduct {
   isSurplus?: boolean;
   surplusDiscountPct?: number;
   moq?: string;
+  pcsPerBox?: number | string;
+  smallBoxWeightKg?: number;
+  pcsPerMasterCtn?: number | string;
+  masterCtnWeightKg?: number;
   leadTimeDays?: number;
+  productionDays?: number;
+  packingDays?: number;
   brand?: string;
   imageUrl: string;
+  drawingUrl?: string;
   description?: string;
+  hsnCode?: string;
 }
 
 export interface MobileCartItem {
@@ -83,6 +96,8 @@ export interface MobileOrder {
   mtcCertNumber: string;
   customerName?: string;
   companyName?: string;
+  email?: string;
+  phone?: string;
   erpnextSalesOrderId?: string;
   items?: Array<{
     sku: string;
@@ -178,6 +193,39 @@ export interface MobileCertificate {
     elongationPct: number;
     hardnessHrc: string;
   };
+}
+
+export interface MobileCategory {
+  id?: string | number;
+  slug: string;
+  name: string;
+  tagline?: string;
+  description?: string;
+  imageUrl?: string;
+  bannerUrl?: string;
+  subcategoriesCount?: number;
+  productsCount?: number;
+  featured?: boolean;
+}
+
+export interface PhonePeConfigMobile {
+  merchantId: string;
+  saltKey: string;
+  saltIndex: string;
+  environment: 'SANDBOX' | 'PRODUCTION';
+  enableSimulator: boolean;
+  defaultCallbackUrl: string;
+  defaultRedirectUrl: string;
+  autoConfirmOrders: boolean;
+}
+
+export interface ErpNextConfigMobile {
+  erpUrl: string;
+  apiKey: string;
+  apiSecret: string;
+  priceList: string;
+  warehouse: string;
+  autoSync: boolean;
 }
 
 export interface MobileApiResponse<T = any> {

@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
@@ -18,20 +21,45 @@ export const AdminRfqsScreen: React.FC = () => {
   const [rfqs, setRfqs] = useState<MobileRfq[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Quote Review Modal
   const [activeRfq, setActiveRfq] = useState<MobileRfq | null>(null);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [discountPct, setDiscountPct] = useState<number>(18);
+  const [quoteStatus, setQuoteStatus] = useState<MobileRfq['status']>('QUOTED');
+
+  // Delete RFQ Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [rfqToDelete, setRfqToDelete] = useState<MobileRfq | null>(null);
+
   const [toastMsg, setToastMsg] = useState('');
 
-  const fetchRfqs = async () => {
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const fetchRfqs = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       const res = await mobileApi.rfq.getAll({
         status: selectedStatus === 'All' ? undefined : selectedStatus,
-        search: searchQuery || undefined,
+        search: searchQuery.trim() || undefined,
       });
       if (res.quotes) setRfqs(res.quotes);
     } catch (err) {
       console.warn('[Admin RFQs] Fetch error:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -39,31 +67,41 @@ export const AdminRfqsScreen: React.FC = () => {
     fetchRfqs();
   }, [selectedStatus, searchQuery]);
 
+  // ============================================================================
+  // CRUD: UPDATE QUOTE
+  // ============================================================================
   const handleOpenQuote = (rfq: MobileRfq) => {
     setActiveRfq(rfq);
     setDiscountPct(rfq.discountPct || 18);
+    setQuoteStatus('QUOTED');
     setIsQuoteModalOpen(true);
   };
 
   const handleApproveQuote = async () => {
     if (!activeRfq) return;
+    setIsSubmitting(true);
     try {
       const net = +(activeRfq.grossAmount * (1 - discountPct / 100)).toFixed(2);
       await mobileApi.rfq.updateStatus({
         id: activeRfq.id,
-        status: 'QUOTED',
+        status: quoteStatus,
         discountPct,
       });
+
       setRfqs((prev) =>
         prev.map((r) =>
-          r.id === activeRfq.id ? { ...r, status: 'QUOTED', discountPct, netTotal: net } : r
+          r.id === activeRfq.id
+            ? { ...r, status: quoteStatus, discountPct, netTotal: net }
+            : r
         )
       );
-      setToastMsg(`Official Quote released for ${activeRfq.rfqNumber}!`);
-      setTimeout(() => setToastMsg(''), 3000);
+
       setIsQuoteModalOpen(false);
+      showToast(`Quotation #${activeRfq.rfqNumber} updated to ${quoteStatus}!`);
     } catch (err: any) {
-      alert(err.message || 'Quotation failed');
+      Alert.alert('Update Error', err.message || 'Quotation update failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -73,23 +111,74 @@ export const AdminRfqsScreen: React.FC = () => {
       setRfqs((prev) =>
         prev.map((r) => (r.id === rfq.id ? { ...r, status: 'CONVERTED_TO_PO' } : r))
       );
-      setToastMsg(`RFQ #${rfq.rfqNumber} pushed to ERPNext Sales Order!`);
-      setTimeout(() => setToastMsg(''), 3000);
+      showToast(`RFQ #${rfq.rfqNumber} converted to Sales Order in ERPNext!`);
     } catch (err: any) {
-      alert(err.message || 'ERP conversion failed');
+      Alert.alert('Conversion Error', err.message || 'ERP conversion failed');
+    }
+  };
+
+  // ============================================================================
+  // CRUD: DELETE
+  // ============================================================================
+  const handlePromptDelete = (rfq: MobileRfq) => {
+    setRfqToDelete(rfq);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!rfqToDelete) return;
+    setIsSubmitting(true);
+    try {
+      await mobileApi.rfq.delete(rfqToDelete.id);
+      setRfqs((prev) => prev.filter((r) => r.id !== rfqToDelete.id));
+      setIsDeleteModalOpen(false);
+      showToast(`RFQ #${rfqToDelete.rfqNumber} removed from database.`);
+      setRfqToDelete(null);
+    } catch (err: any) {
+      Alert.alert('Delete Error', err.message || 'Failed to delete RFQ.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const statusFilters = ['All', 'PENDING', 'IN_REVIEW', 'QUOTED', 'APPROVED'];
 
+  const getStatusVariant = (st: string) => {
+    switch (st) {
+      case 'APPROVED':
+      case 'CONVERTED_TO_PO':
+        return 'success';
+      case 'QUOTED':
+        return 'primary';
+      case 'IN_REVIEW':
+      case 'PENDING':
+        return 'warning';
+      case 'REJECTED':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => fetchRfqs(true)}
+          colors={['#0052CC']}
+        />
+      }
+    >
+      {/* Search Bar */}
       <MobileSearch
         value={searchQuery}
         onChange={setSearchQuery}
         placeholder="Search RFQ #, Enterprise Client, GSTIN..."
       />
 
+      {/* Status Chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
         {statusFilters.map((st) => {
           const isActive = selectedStatus === st;
@@ -107,101 +196,238 @@ export const AdminRfqsScreen: React.FC = () => {
         })}
       </ScrollView>
 
+      {/* Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
           <Text style={styles.toastText}>✓ {toastMsg}</Text>
         </View>
       ) : null}
 
-      {rfqs.map((rfq) => (
-        <MobileCard key={rfq.id}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
-            <MobileBadge
-              label={rfq.status}
-              variant={
-                rfq.status === 'APPROVED' || rfq.status === 'CONVERTED_TO_PO'
-                  ? 'success'
-                  : rfq.status === 'QUOTED'
-                  ? 'info'
-                  : 'warning'
-              }
-              size="sm"
-            />
-          </View>
+      {/* Header Info */}
+      <View style={styles.controlBar}>
+        <Text style={styles.resultsCount}>{rfqs.length} Procurement Quotations</Text>
+        <Text style={styles.subCount}>Real-time slab pricing approval queue</Text>
+      </View>
 
-          <Text style={styles.clientName}>{rfq.companyName || rfq.customerName}</Text>
-          <Text style={styles.clientDetails}>
-            GSTIN: {rfq.gstin || '29AABCA1234F1Z5'} • Pin: {rfq.shippingPincode || '560058'}
-          </Text>
-
-          <View style={styles.quoteBox}>
-            <View>
-              <Text style={styles.quoteLabel}>Tonnage</Text>
-              <Text style={styles.quoteVal}>{rfq.totalWeightKg || 1250} Kg</Text>
+      {/* RFQ List */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0052CC" />
+          <Text style={styles.loadingText}>Loading quotation inquiries...</Text>
+        </View>
+      ) : rfqs.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>No RFQs Found</Text>
+          <Text style={styles.emptySubtitle}>No buyer requests match your search or filter.</Text>
+          <TouchableOpacity onPress={() => { setSearchQuery(''); setSelectedStatus('All'); }} style={styles.resetBtn}>
+            <Text style={styles.resetBtnText}>Clear Filters</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        rfqs.map((rfq) => (
+          <MobileCard key={rfq.id}>
+            <View style={styles.rowBetween}>
+              <View>
+                <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
+                <Text style={styles.companyName}>{rfq.companyName || 'Industrial Buyer'}</Text>
+              </View>
+              <MobileBadge
+                label={rfq.status}
+                variant={getStatusVariant(rfq.status) as any}
+                size="sm"
+              />
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.quoteLabel}>Quotation Value</Text>
-              <Text style={styles.quoteAmount}>
-                ₹{rfq.netTotal?.toLocaleString('en-IN')}{' '}
-                <Text style={{ fontSize: 10, color: '#EA580C' }}>(-{rfq.discountPct}%)</Text>
+
+            <Text style={styles.contactText}>
+              👤 {rfq.customerName || 'Procurement Officer'} • 📞 {rfq.phone || '+91 98880 21000'}
+            </Text>
+
+            {/* Items Summary */}
+            <View style={styles.itemsBox}>
+              <Text style={styles.itemsHeader}>Quotation Items Breakdown:</Text>
+              {rfq.items && rfq.items.length > 0 ? (
+                rfq.items.slice(0, 3).map((item, idx) => (
+                  <Text key={idx} style={styles.itemRow} numberOfLines={1}>
+                    • {item.name || item.sku} ({item.quantity} {rfq.globalUnit || 'KGS'})
+                  </Text>
+                ))
+              ) : (
+                <Text style={styles.itemRow}>• Heavy Structural Fastener Lot</Text>
+              )}
+            </View>
+
+            {/* Financial Overview */}
+            <View style={styles.rowBetween}>
+              <View>
+                <Text style={styles.metaLabel}>Gross Catalogue Value</Text>
+                <Text style={styles.grossVal}>₹{(rfq.grossAmount || 0).toLocaleString()}</Text>
+              </View>
+
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.metaLabel}>Approved Slab Discount</Text>
+                <Text style={styles.discountVal}>{rfq.discountPct || 18}% OFF</Text>
+              </View>
+            </View>
+
+            <View style={styles.cardDivider} />
+
+            <View style={styles.rowBetween}>
+              <Text style={styles.netLabel}>Net Quotation Total</Text>
+              <Text style={styles.netVal}>
+                ₹{(rfq.netTotal || rfq.grossAmount * (1 - (rfq.discountPct || 18) / 100)).toLocaleString()}
               </Text>
             </View>
-          </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.rowBetween}>
-            <Text style={styles.validText}>Valid: {rfq.validUntil}</Text>
-            {rfq.status === 'QUOTED' || rfq.status === 'APPROVED' ? (
+            {/* CRUD Action Buttons: Delete, Review Quote, and Convert to PO */}
+            <View style={styles.cardActionsRow}>
               <TouchableOpacity
-                onPress={() => handleConvertToPo(rfq)}
-                style={styles.erpBtn}
+                onPress={() => handlePromptDelete(rfq)}
+                style={styles.deleteBtn}
+                activeOpacity={0.8}
               >
-                <Text style={styles.erpBtnText}>✓ Push to ERP SO</Text>
+                <Text style={styles.deleteBtnText}>🗑 Delete</Text>
               </TouchableOpacity>
-            ) : (
+
               <TouchableOpacity
                 onPress={() => handleOpenQuote(rfq)}
-                style={styles.quoteBtn}
+                style={styles.reviewBtn}
+                activeOpacity={0.85}
               >
-                <Text style={styles.quoteBtnText}>✎ Set Margin</Text>
+                <Text style={styles.reviewBtnText}>📝 Review &amp; Quote</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        </MobileCard>
-      ))}
 
-      <MobileModal
-        isOpen={isQuoteModalOpen}
-        onClose={() => setIsQuoteModalOpen(false)}
-        title={`Release Quote: ${activeRfq?.rfqNumber}`}
-        subtitle={activeRfq?.companyName}
-        footer={
-          <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity
-              onPress={() => setIsQuoteModalOpen(false)}
-              style={styles.modalCancelBtn}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+              {rfq.status === 'APPROVED' ? (
+                <TouchableOpacity
+                  onPress={() => handleConvertToPo(rfq)}
+                  style={styles.poBtn}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.poBtnText}>⚡ Push to ERP</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </MobileCard>
+        ))
+      )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 1: REVIEW & QUOTE                                                */}
+      {/* ====================================================================== */}
+      {activeRfq ? (
+        <MobileModal
+          isOpen={isQuoteModalOpen}
+          onClose={() => setIsQuoteModalOpen(false)}
+          title={`Review RFQ: ${activeRfq.rfqNumber}`}
+        >
+          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+            <Text style={styles.modalSubtitle}>
+              Set approved commercial volume discount for {activeRfq.companyName}.
+            </Text>
+
+            <Text style={styles.inputLabel}>Gross Catalogue Value</Text>
+            <Text style={styles.previewGross}>₹{activeRfq.grossAmount.toLocaleString()}</Text>
+
+            <Text style={styles.inputLabel}>Commercial Slab Discount (%)</Text>
+            <TextInput
+              style={styles.textInput}
+              keyboardType="numeric"
+              value={String(discountPct)}
+              onChangeText={(val) => setDiscountPct(parseFloat(val) || 0)}
+            />
+
+            <Text style={styles.inputLabel}>Quotation Status</Text>
+            <View style={styles.statusRow}>
+              {(['QUOTED', 'APPROVED', 'REJECTED'] as const).map((st) => (
+                <TouchableOpacity
+                  key={st}
+                  style={[styles.statusBtn, quoteStatus === st && styles.statusBtnActive]}
+                  onPress={() => setQuoteStatus(st)}
+                >
+                  <Text
+                    style={[
+                      styles.statusBtnText,
+                      quoteStatus === st && styles.statusBtnTextActive,
+                    ]}
+                  >
+                    {st}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.calculatedBox}>
+              <Text style={styles.calculatedLabel}>Net Quotation Offered to Client:</Text>
+              <Text style={styles.calculatedVal}>
+                ₹{(activeRfq.grossAmount * (1 - discountPct / 100)).toLocaleString()}
+              </Text>
+            </View>
+
             <TouchableOpacity
               onPress={handleApproveQuote}
-              style={styles.modalConfirmBtn}
+              style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+              disabled={isSubmitting}
+              activeOpacity={0.88}
             >
-              <Text style={styles.modalConfirmText}>Release Quote</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>Broadcast Formal Quote →</Text>
+              )}
             </TouchableOpacity>
+          </ScrollView>
+        </MobileModal>
+      ) : null}
+
+      {/* ====================================================================== */}
+      {/* MODAL 2: DELETE RFQ CONFIRMATION                                       */}
+      {/* ====================================================================== */}
+      {rfqToDelete ? (
+        <MobileModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          title="Delete Quotation Confirmation"
+        >
+          <View style={styles.modalScroll}>
+            <View style={styles.deleteWarningBox}>
+              <Text style={styles.deleteWarningIcon}>⚠</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.deleteWarningTitle}>Quotation Record Removal</Text>
+                <Text style={styles.deleteWarningText}>
+                  Are you sure you want to delete RFQ <Text style={{ fontWeight: '800' }}>#{rfqToDelete.rfqNumber}</Text>?
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.deleteItemMeta}>
+              • Client: {rfqToDelete.companyName}{'\n'}
+              • Status: {rfqToDelete.status}{'\n'}
+              • Value: ₹{(rfqToDelete.grossAmount || 0).toLocaleString()}
+            </Text>
+
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity
+                onPress={() => setIsDeleteModalOpen(false)}
+                style={styles.cancelBtn}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleConfirmDelete}
+                style={[styles.confirmDeleteBtn, isSubmitting && styles.btnDisabled]}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.confirmDeleteBtnText}>Confirm Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        }
-      >
-        <Text style={styles.inputLabel}>Approved Discount Margin (%)</Text>
-        <TextInput
-          keyboardType="numeric"
-          value={String(discountPct)}
-          onChangeText={(v) => setDiscountPct(Number(v) || 0)}
-          style={styles.input}
-        />
-      </MobileModal>
+        </MobileModal>
+      ) : null}
     </ScrollView>
   );
 };
@@ -210,37 +436,53 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
+    backgroundColor: '#F8FAFC',
+    paddingBottom: 40,
   },
   chipsRow: {
     flexDirection: 'row',
+    marginBottom: 4,
   },
   chip: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 20,
-    borderWidth: 1.5,
-    marginRight: 6,
+    marginRight: 8,
+    borderWidth: 1,
   },
   chipActive: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
   },
   chipInactive: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
   },
   chipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
+    color: '#64748B',
   },
   chipTextActive: {
     color: '#FFFFFF',
   },
+  controlBar: {
+    paddingVertical: 4,
+  },
+  resultsCount: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  subCount: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
   toast: {
     backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
     borderWidth: 1,
-    borderColor: '#34D399',
     borderRadius: 8,
     padding: 10,
   },
@@ -248,84 +490,170 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontWeight: '700',
     fontSize: 12,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#64748B',
+    fontSize: 13,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  resetBtn: {
+    marginTop: 12,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  resetBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0052CC',
   },
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   rfqNumber: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#FF6B00',
+    color: '#0052CC',
   },
-  clientName: {
+  companyName: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
+    marginTop: 2,
+  },
+  contactText: {
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 6,
   },
-  clientDetails: {
+  itemsBox: {
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 6,
+    marginVertical: 8,
+  },
+  itemsHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  itemRow: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
+    lineHeight: 16,
   },
-  quoteBox: {
-    backgroundColor: '#FFF7ED',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
-    padding: 8,
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quoteLabel: {
+  metaLabel: {
     fontSize: 10,
-    color: '#9A3412',
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
   },
-  quoteVal: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#C2410C',
-    marginTop: 2,
+  grossVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
   },
-  quoteAmount: {
+  discountVal: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#C2410C',
-    marginTop: 2,
+    color: '#D97706',
   },
-  divider: {
+  cardDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
     marginVertical: 8,
   },
-  validText: {
-    fontSize: 11,
-    color: '#64748B',
+  netLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  erpBtn: {
+  netVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+  },
+  reviewBtn: {
+    flex: 1,
+    backgroundColor: '#0052CC',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  reviewBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  poBtn: {
     backgroundColor: '#059669',
-    paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
   },
-  erpBtnText: {
+  poBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
-  quoteBtn: {
-    backgroundColor: '#FF6B00',
-    paddingVertical: 6,
+  deleteBtn: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
     paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
   },
-  quoteBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
+  deleteBtnText: {
+    color: '#DC2626',
+    fontSize: 12,
     fontWeight: '700',
+  },
+  modalScroll: {
+    paddingVertical: 6,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 12,
   },
   inputLabel: {
     fontSize: 11,
@@ -334,39 +662,147 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: 8,
   },
-  input: {
-    height: 40,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontWeight: '700',
+  previewGross: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0F172A',
+    marginBottom: 4,
   },
-  modalCancelBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
+  textInput: {
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    color: '#475569',
-    fontWeight: '600',
-  },
-  modalConfirmBtn: {
-    flex: 1,
-    paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#FF6B00',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  statusBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  statusBtnActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  statusBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  statusBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  calculatedBox: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 14,
     alignItems: 'center',
   },
-  modalConfirmText: {
-    color: '#FFFFFF',
+  calculatedLabel: {
+    fontSize: 11,
     fontWeight: '700',
+    color: '#065F46',
+  },
+  calculatedVal: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#059669',
+    marginTop: 2,
+  },
+  saveBtn: {
+    backgroundColor: '#0052CC',
+    height: 46,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  btnDisabled: {
+    opacity: 0.6,
+  },
+  deleteWarningBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+  },
+  deleteWarningIcon: {
+    fontSize: 18,
+    color: '#DC2626',
+  },
+  deleteWarningTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#991B1B',
+  },
+  deleteWarningText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  deleteItemMeta: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 20,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  confirmDeleteBtn: {
+    flex: 1,
+    backgroundColor: '#DC2626',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmDeleteBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });
 
