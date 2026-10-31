@@ -67,6 +67,7 @@ export default function AdminLayout({
     usersCount: 2,
     surplusCount: 6,
     blogsCount: 5,
+    customRequestsCount: 0,
   });
 
   useEffect(() => {
@@ -169,11 +170,12 @@ export default function AdminLayout({
 
   const fetchTelemetry = async () => {
     try {
-      const [prodRes, rfqRes, ordRes, usersRes] = await Promise.allSettled([
+      const [prodRes, rfqRes, ordRes, usersRes, customRes] = await Promise.allSettled([
         fetch('/api/products?limit=1').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
         fetch('/api/orders').then((r) => r.json()),
         fetch('/api/users').then((r) => r.json()),
+        fetch('/api/custom-product-requests?status=PENDING').then((r) => r.json()),
       ]);
 
       setTelemetry((prev) => ({
@@ -185,6 +187,7 @@ export default function AdminLayout({
         rfqsCount: rfqRes.status === 'fulfilled' && rfqRes.value?.data ? rfqRes.value.data.filter((q: any) => q.status === 'PENDING').length : prev.rfqsCount,
         ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
         usersCount: usersRes.status === 'fulfilled' && usersRes.value?.data ? usersRes.value.data.length : prev.usersCount,
+        customRequestsCount: customRes.status === 'fulfilled' && customRes.value?.count !== undefined ? customRes.value.count : prev.customRequestsCount,
       }));
     } catch {
       // ignore background telemetry errors
@@ -251,6 +254,7 @@ export default function AdminLayout({
     if (pathname.startsWith('/admin/users')) return 'Customers';
     if (pathname.startsWith('/admin/categories')) return 'Categories';
     if (pathname.startsWith('/admin/surplus')) return 'Surplus Stock';
+    if (pathname.startsWith('/admin/custom-requests')) return 'Custom Product Requests';
     if (pathname.startsWith('/admin/payments')) return 'Payment Gateways';
     if (pathname.startsWith('/admin/erpnext')) return 'Marketplace Sync';
     if (pathname.startsWith('/admin/seo')) return 'SEO & Schemas';
@@ -409,6 +413,27 @@ export default function AdminLayout({
               >
                 <TrendingUp size={18} strokeWidth={1.9} />
                 {!isSidebarCollapsed && <span>Sales</span>}
+              </Link>
+
+              {/* 4.1 Custom Fastener Requests */}
+              <Link
+                href="/admin/custom-requests"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/custom-requests')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Custom Product Requests"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Sparkles size={18} strokeWidth={1.9} className="text-amber-500" />
+                  {!isSidebarCollapsed && <span>Custom Requests</span>}
+                </div>
+                {!isSidebarCollapsed && telemetry.customRequestsCount > 0 && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                    {telemetry.customRequestsCount}
+                  </span>
+                )}
               </Link>
 
               {/* 5. Customers / OEM Accounts */}

@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import SurplusSection from '@/components/home/SurplusSection';
 import CartDrawer from '@/components/cart/CartDrawer';
+import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 import { GlobalUnit } from '@/lib/types';
-import { Flame, CheckCircle2, ShieldCheck, MapPin } from 'lucide-react';
+import { Flame, CheckCircle2, ShieldCheck, MapPin, Sparkles, Plus, ArrowRight } from 'lucide-react';
 import { formatINR } from '@/lib/rfq-calculator';
 
 import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
@@ -13,6 +14,7 @@ import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
 export default function SurplusPage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
 
   const handleClaimLot = async (lotId: string, title: string) => {
     const confirmed = await showConfirmDialog(
@@ -75,17 +77,45 @@ export default function SurplusPage() {
       />
 
       <div style={{ background: '#121518', color: '#FFFFFF', padding: '40px 0 30px', borderBottom: '2px solid var(--color-primary)' }}>
-        <div className="container">
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
-            <Flame size={15} />
-            <span>CERTIFIED DIRECT FACTORY CLEARANCE DEPOT</span>
+        <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>
+                <Flame size={15} />
+                <span>CERTIFIED DIRECT FACTORY CLEARANCE DEPOT</span>
+              </div>
+              <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '42px', fontWeight: 800, textTransform: 'uppercase', margin: '8px 0 12px' }}>
+                Direct CBH Warehouse Clearance Lots
+              </h1>
+              <p style={{ fontSize: '15px', color: '#B0BCCB', maxWidth: '680px', lineHeight: 1.6 }}>
+                Direct access to verified factory liquidation inventory and plant surplus fasteners at up to 60% below standard tariffs. Owned, stocked, and tested directly by CBH Fasteners with 100% authentic NABL 3.1 Mill Test Certificates.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCustomRequestOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                background: 'var(--color-primary)',
+                color: '#FFFFFF',
+                borderRadius: 'var(--radius-md)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 82, 204, 0.35)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Plus size={16} />
+              <span>Request Custom Item / Surplus Lot</span>
+            </button>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '42px', fontWeight: 800, textTransform: 'uppercase', margin: '8px 0 12px' }}>
-            Direct CBH Warehouse Clearance Lots
-          </h1>
-          <p style={{ fontSize: '15px', color: '#B0BCCB', maxWidth: '680px', lineHeight: 1.6 }}>
-            Direct access to verified factory liquidation inventory and plant surplus fasteners at up to 60% below standard tariffs. Owned, stocked, and tested directly by CBH Fasteners with 100% authentic NABL 3.1 Mill Test Certificates.
-          </p>
         </div>
       </div>
 
@@ -158,8 +188,68 @@ export default function SurplusPage() {
           ))}
         </div>
 
+        {/* Custom Sourcing Callout Card */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+            border: '1px solid #334155',
+            borderRadius: '16px',
+            padding: '32px',
+            marginTop: '36px',
+            color: '#FFFFFF',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ maxWidth: '640px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#38BDF8', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <Sparkles size={14} />
+                <span>NON-LISTED OR CUSTOM FASTENER FABRICATION</span>
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 800, margin: '6px 0', color: '#F8FAFC' }}>
+                Need a Specific Size, Grade, or Lot Not Listed in Surplus?
+              </h3>
+              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
+                Submit your dimensional drawings, DIN/ISO specification, coating, and required tonnage. Our procurement team will review the inquiry and onboard it directly into our active production schedule and live product catalog.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCustomRequestOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                background: '#0052CC',
+                color: '#FFFFFF',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 82, 204, 0.4)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>Submit Custom Fastener Request</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
+
         <SurplusSection />
       </div>
+
+      <CustomProductRequestModal
+        isOpen={isCustomRequestOpen}
+        onClose={() => setIsCustomRequestOpen(false)}
+        sourceContext="SURPLUS"
+      />
 
       <CartDrawer
         isOpen={isCartOpen}

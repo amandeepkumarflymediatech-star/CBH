@@ -22,13 +22,16 @@ import {
   ShoppingCart,
   SlidersHorizontal,
   X,
-  PackageCheck
+  PackageCheck,
+  Plus
 } from 'lucide-react';
+import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 
 export default function ProductsPage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -705,19 +708,32 @@ export default function ProductsPage() {
           
           {/* Status strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-slate-500 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-sm">
-            <div>
-              Showing <strong className="text-slate-900">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</strong> of <strong className="text-slate-900">{filteredProducts.length}</strong> matching fasteners
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>
+                Showing <strong className="text-slate-900">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</strong> of <strong className="text-slate-900">{filteredProducts.length}</strong> matching fasteners
+              </span>
             </div>
-            {hasActiveFilters && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={resetFilters}
-                className="text-red-600 font-semibold hover:underline flex items-center gap-1 text-xs"
+                onClick={() => setIsCustomRequestOpen(true)}
+                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#0052CC] font-bold text-xs rounded-lg transition-colors border border-blue-200 flex items-center gap-1"
+                title="Can't find your required fastener? Request custom dimensions."
               >
-                <span>Clear all active filters</span>
-                <span>&times;</span>
+                <Plus size={13} />
+                <span>Request Custom Spec</span>
               </button>
-            )}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-red-600 font-semibold hover:underline flex items-center gap-1 text-xs"
+                >
+                  <span>Clear filters</span>
+                  <span>&times;</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Loading Skeleton */}
@@ -733,16 +749,26 @@ export default function ProductsPage() {
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mb-1">
                 No fastener specifications matched your filter
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-4 leading-relaxed">
-                Try relaxing your diameter, standard, or finish filters to explore more of our stock.
+              <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-5 leading-relaxed">
+                Looking for a non-standard length, special alloy grade, or custom thread pitch? Submit a custom procurement request to our factory desk.
               </p>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="bg-blue-700 text-white font-bold px-4 py-2 rounded-lg text-xs hover:bg-blue-800 transition-colors shadow-sm"
-              >
-                Reset All Filters
-              </button>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="bg-slate-100 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs hover:bg-slate-200 transition-colors"
+                >
+                  Reset All Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomRequestOpen(true)}
+                  className="bg-[#0052CC] text-white font-bold px-5 py-2 rounded-xl text-xs hover:bg-[#0747A6] transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  <Sparkles size={14} />
+                  <span>Request Custom Fastener Specification</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
@@ -1045,6 +1071,15 @@ export default function ProductsPage() {
         onRemoveItem={(id) => {
           setCartItems((prev) => prev.filter((item) => item.id !== id));
         }}
+      />
+
+      {/* Custom Fastener Request Modal */}
+      <CustomProductRequestModal
+        isOpen={isCustomRequestOpen}
+        onClose={() => setIsCustomRequestOpen(false)}
+        sourceContext="CATALOG"
+        initialCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
+        initialSearchQuery={searchQuery || undefined}
       />
     </div>
   );

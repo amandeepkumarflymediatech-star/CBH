@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import TablePagination from '@/components/common/TablePagination';
 import { SurplusLot } from '@/lib/types';
 import { formatINR } from '@/lib/rfq-calculator';
@@ -16,7 +17,8 @@ import {
   AlertTriangle,
   X,
   Warehouse,
-  Power
+  Power,
+  Sparkles
 } from 'lucide-react';
 
 interface AdminSurplusSectionProps {
@@ -211,7 +213,28 @@ export default function AdminSurplusSection({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link
+            href="/admin/custom-requests"
+            className="btn-outline"
+            style={{
+              padding: '8px 14px',
+              fontSize: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#EFF6FF',
+              color: '#1D4ED8',
+              borderColor: '#BFDBFE',
+              textDecoration: 'none',
+              fontWeight: 700,
+            }}
+            title="Review customer custom fastener and surplus requests"
+          >
+            <Sparkles size={14} className="text-[#0052CC]" />
+            <span>Custom Inquiries</span>
+          </Link>
+
           <button
             type="button"
             className="btn-outline"

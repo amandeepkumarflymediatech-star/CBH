@@ -365,4 +365,43 @@ export interface BlogPost {
   updatedAt?: string;
 }
 
+export type CustomRequestStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'ADDED_TO_CATALOG' | 'REJECTED';
+
+export interface CustomProductRequest {
+  id: number;
+  requestNumber: string;
+  customerId?: number | null;
+  customerName: string;
+  companyName?: string;
+  customerEmail: string;
+  customerPhone: string;
+  shippingPincode?: string;
+  productName: string;
+  category: string;
+  subCategory?: string;
+  standard: string;
+  grade: string;
+  finish: string;
+  threadType: string;
+  diameter: string;
+  lengthMm: number;
+  pitchMm: number;
+  sizeFormatted: string;
+  quantityRequired: number;
+  quantityUom: string;
+  targetPrice?: number;
+  urgencyLevel: 'SURPLUS_IMMEDIATE' | 'STANDARD' | 'SCHEDULED';
+  drawingUrl?: string;
+  sampleImageUrl?: string;
+  notes?: string;
+  status: CustomRequestStatus;
+  adminNotes?: string;
+  convertedProductId?: number;
+  convertedSku?: string;
+  erpnextItemCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 

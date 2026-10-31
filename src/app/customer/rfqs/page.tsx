@@ -14,9 +14,11 @@ import {
   Download,
   X,
   FileDown,
-  Printer
+  Printer,
+  Sparkles
 } from 'lucide-react';
 import TablePagination from '@/components/common/TablePagination';
+import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 import { BulkQuotation } from '@/lib/types';
 import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
@@ -29,6 +31,7 @@ export default function CustomerRfqsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
   const [isBOMModalOpen, setIsBOMModalOpen] = useState(false);
+  const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
   const [activeQuoteModal, setActiveQuoteModal] = useState<BulkQuotation | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -103,6 +106,14 @@ export default function CustomerRfqsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsCustomRequestOpen(true)}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 border border-slate-200"
+          >
+            <Sparkles size={14} className="text-[#0052CC]" />
+            <span>+ Request Custom Spec</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsBOMModalOpen(true)}
@@ -451,6 +462,13 @@ export default function CustomerRfqsPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Fastener Request Modal */}
+      <CustomProductRequestModal
+        isOpen={isCustomRequestOpen}
+        onClose={() => setIsCustomRequestOpen(false)}
+        sourceContext="CUSTOMER_PORTAL"
+      />
     </div>
   );
 }
