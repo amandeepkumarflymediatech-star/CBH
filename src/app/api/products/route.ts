@@ -206,11 +206,24 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      whereClauses.push(
-        '(LOWER(sku) LIKE ? OR LOWER(name) LIKE ? OR LOWER(diameter) LIKE ? OR LOWER(category) LIKE ? OR LOWER(sub_group) LIKE ? OR LOWER(standard) LIKE ? OR LOWER(din) LIKE ? OR LOWER(iso_standard) LIKE ? OR LOWER(grade) LIKE ? OR LOWER(finish) LIKE ? OR LOWER(size_formatted) LIKE ? OR LOWER(hsn_code) LIKE ?)'
-      );
-      const q = `%${search.toLowerCase()}%`;
-      params.push(q, q, q, q, q, q, q, q, q, q, q, q);
+      // Multi-token flexible search for fastener attributes and keywords
+      const searchTokens = search
+        .toLowerCase()
+        .replace(/[(),]/g, ' ')
+        .split(/\s+/)
+        .filter((t) => t.length > 0);
+
+      if (searchTokens.length > 0) {
+        const tokenClauses = searchTokens.map(
+          () =>
+            '(LOWER(sku) LIKE ? OR LOWER(name) LIKE ? OR LOWER(diameter) LIKE ? OR LOWER(category) LIKE ? OR LOWER(sub_group) LIKE ? OR LOWER(standard) LIKE ? OR LOWER(din) LIKE ? OR LOWER(iso_standard) LIKE ? OR LOWER(grade) LIKE ? OR LOWER(finish) LIKE ? OR LOWER(size_formatted) LIKE ? OR LOWER(hsn_code) LIKE ?)'
+        );
+        whereClauses.push(`(${tokenClauses.join(' AND ')})`);
+        for (const token of searchTokens) {
+          const q = `%${token}%`;
+          params.push(q, q, q, q, q, q, q, q, q, q, q, q);
+        }
+      }
     }
 
     if (subGroup && subGroup !== 'all') {
@@ -302,16 +315,18 @@ export async function GET(request: Request) {
   let results = [...productsDb];
 
   if (search) {
-    const q = search.toLowerCase();
-    results = results.filter(
-      (p) =>
-        p.sku.toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q) ||
-        p.diameter?.toLowerCase().includes(q) ||
-        p.category?.toLowerCase().includes(q) ||
-        p.standard?.toLowerCase().includes(q) ||
-        p.grade?.toLowerCase().includes(q)
-    );
+    const searchTokens = search
+      .toLowerCase()
+      .replace(/[(),]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
+
+    if (searchTokens.length > 0) {
+      results = results.filter((p) => {
+        const pSearchable = `${p.sku} ${p.name} ${p.diameter || ''} ${p.category || ''} ${p.subGroup || ''} ${p.standard || ''} ${p.din || ''} ${p.isoStandard || ''} ${p.grade || ''} ${p.finish || ''} ${p.sizeFormatted || ''} ${p.hsnCode || ''}`.toLowerCase();
+        return searchTokens.every((token) => pSearchable.includes(token));
+      });
+    }
   }
 
   if (subGroup && subGroup !== 'all') {

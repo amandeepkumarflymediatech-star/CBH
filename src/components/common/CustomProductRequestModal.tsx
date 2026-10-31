@@ -29,6 +29,10 @@ interface CustomProductRequestModalProps {
   onClose: () => void;
   initialCategory?: string;
   initialSearchQuery?: string;
+  initialDiameter?: string;
+  initialLengthMm?: number | string;
+  initialStandard?: string;
+  initialGrade?: string;
   sourceContext?: 'SURPLUS' | 'CATALOG' | 'CUSTOMER_PORTAL';
 }
 
@@ -86,8 +90,8 @@ const THREAD_TYPES = [
   'Full Thread',
   'Partial / Half Thread',
   'Metric Fine Pitch',
-  'UNC (Unified Coarse)',
-  'UNF (Unified Fine)',
+  'UNC (Coarse)',
+  'UNF (Fine)',
 ];
 
 const DIAMETERS = [
@@ -101,6 +105,10 @@ export default function CustomProductRequestModal({
   onClose,
   initialCategory,
   initialSearchQuery,
+  initialDiameter,
+  initialLengthMm,
+  initialStandard,
+  initialGrade,
   sourceContext = 'SURPLUS',
 }: CustomProductRequestModalProps) {
   const [submitting, setSubmitting] = useState(false);
@@ -109,12 +117,12 @@ export default function CustomProductRequestModal({
 
   // Form State
   const [category, setCategory] = useState(initialCategory || 'Hex Screws');
-  const [standard, setStandard] = useState('DIN 933');
-  const [grade, setGrade] = useState('8.8 High Tensile');
+  const [standard, setStandard] = useState(initialStandard || 'DIN 933');
+  const [grade, setGrade] = useState(initialGrade || '8.8 High Tensile');
   const [finish, setFinish] = useState('SELF / Natural Black');
   const [threadType, setThreadType] = useState('Full Thread');
-  const [diameter, setDiameter] = useState('M12');
-  const [lengthMm, setLengthMm] = useState<number | string>(50);
+  const [diameter, setDiameter] = useState(initialDiameter || 'M12');
+  const [lengthMm, setLengthMm] = useState<number | string>(initialLengthMm || 50);
   const [pitchMm, setPitchMm] = useState<number | string>(1.75);
   const [productTitle, setProductTitle] = useState('');
 
@@ -147,6 +155,28 @@ export default function CustomProductRequestModal({
       if (user.phone) setCustomerPhone(user.phone);
     }
   }, [isOpen]);
+
+  // Sync initialCategory & search term when reopened
+  useEffect(() => {
+    if (initialCategory && initialCategory !== 'all') {
+      setCategory(initialCategory);
+    }
+    if (initialSearchQuery) {
+      setNotes((prev) => prev || `Search keyword: ${initialSearchQuery}`);
+    }
+    if (initialDiameter) {
+      setDiameter(initialDiameter);
+    }
+    if (initialLengthMm) {
+      setLengthMm(initialLengthMm);
+    }
+    if (initialStandard) {
+      setStandard(initialStandard);
+    }
+    if (initialGrade) {
+      setGrade(initialGrade);
+    }
+  }, [initialCategory, initialSearchQuery, initialDiameter, initialLengthMm, initialStandard, initialGrade, isOpen]);
 
   // Dynamic formatted size & auto title preview
   const formattedSize = useMemo(() => {
@@ -228,33 +258,34 @@ export default function CustomProductRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-200 my-auto sm:my-8 max-h-[96dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header Strip */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-[#0052CC] rounded-xl">
+        <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-2.5 bg-slate-50/70">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 bg-blue-50 text-[#0052CC] rounded-xl shrink-0">
               {sourceContext === 'SURPLUS' ? (
-                <Flame className="w-5 h-5 text-amber-600" />
+                <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
               ) : (
-                <Sparkles className="w-5 h-5 text-[#0052CC]" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC]" />
               )}
             </div>
-            <div>
-              <h2 className="text-lg font-black text-[#0F172A] tracking-tight">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-black text-[#0F172A] tracking-tight truncate">
                 {sourceContext === 'SURPLUS'
-                  ? 'Request Custom Factory Surplus / Clearance Lot'
-                  : 'Request Custom Fastener Engineering Specification'}
+                  ? 'Request Factory Surplus Lot'
+                  : 'Request Custom Fastener Spec'}
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Can&apos;t find your exact size or alloy grade? Submit your dimensional specifications for factory procurement and catalog onboarding.
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate hidden xs:block">
+                Can&apos;t find your exact size or grade? We onboard custom tooling &amp; clearance runs.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
+            aria-label="Close modal"
           >
             <X size={18} />
           </button>
@@ -262,60 +293,60 @@ export default function CustomProductRequestModal({
 
         {/* Content Area */}
         {successData ? (
-          <div className="py-10 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
-              <CheckCircle2 size={36} />
+          <div className="p-6 sm:p-10 text-center space-y-4 overflow-y-auto">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 size={32} />
             </div>
-            <h3 className="text-xl font-black text-[#0F172A]">Request Submitted Successfully!</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Your custom fastener inquiry has been registered in our factory procurement queue. Our technical engineering desk will review the specifications, verify tooling availability, and add this product to the live catalog or generate a proforma quotation.
+            <h3 className="text-lg sm:text-xl font-black text-[#0F172A]">Request Registered Successfully!</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              Your custom fastener inquiry has been registered in our factory queue. Our engineering desk will review tooling and add this product to the live catalog or generate your proforma invoice.
             </p>
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl max-w-sm mx-auto font-mono text-xs">
+            <div className="p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl max-w-sm mx-auto font-mono text-xs">
               <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Docket Reference Number</span>
-              <strong className="text-base text-[#0052CC]">{successData.requestNumber}</strong>
+              <strong className="text-base sm:text-lg text-[#0052CC]">{successData.requestNumber}</strong>
             </div>
-            <div className="pt-4 flex justify-center">
+            <div className="pt-2 flex justify-center">
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold transition-all shadow"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold transition-all shadow"
               >
                 Done / Back to Catalog
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="overflow-y-auto pr-1 space-y-5 pt-4 text-xs">
+          <form onSubmit={handleSubmit} className="overflow-y-auto overscroll-contain flex-1 p-3.5 sm:p-6 space-y-4 sm:space-y-5 text-xs">
             {errorMessage && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2">
-                <AlertCircle size={15} />
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2 text-xs">
+                <AlertCircle size={15} className="shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Generated Fastener Spec Preview Banner */}
-            <div className="p-3.5 bg-blue-50/60 border border-blue-200/80 rounded-xl">
+            <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl">
               <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block mb-0.5">
                 Target Fastener Specification Preview
               </span>
-              <div className="font-mono font-extrabold text-[#0052CC] text-xs break-all">
+              <div className="font-mono font-extrabold text-[#0052CC] text-[11px] sm:text-xs break-all leading-snug">
                 {productTitle || generatedTitle}
               </div>
             </div>
 
             {/* Section 1: Fastener Type & Standard */}
             <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Layers size={13} className="text-[#0052CC]" />
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                <Layers size={13} className="text-[#0052CC] shrink-0" />
                 <span>1. Fastener Category &amp; Standard</span>
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Fastener Category</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Fastener Category</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -324,11 +355,11 @@ export default function CustomProductRequestModal({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Standard / Specification</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Standard / Specification</label>
                   <select
                     value={standard}
                     onChange={(e) => setStandard(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {STANDARDS.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -340,17 +371,17 @@ export default function CustomProductRequestModal({
 
             {/* Section 2: Dimensional Engineering Specs */}
             <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Info size={13} className="text-[#0052CC]" />
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                <Info size={13} className="text-[#0052CC] shrink-0" />
                 <span>2. Dimensions &amp; Geometry</span>
               </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Diameter (DIA)</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Diameter (DIA)</label>
                   <select
                     value={diameter}
                     onChange={(e) => setDiameter(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {DIAMETERS.map((d) => (
                       <option key={d} value={d}>{d}</option>
@@ -359,35 +390,35 @@ export default function CustomProductRequestModal({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Length (mm / in)</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Length (mm)</label>
                   <input
                     type="number"
                     value={lengthMm}
                     onChange={(e) => setLengthMm(e.target.value)}
                     placeholder="e.g. 65"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Pitch / TPI</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Pitch (mm)</label>
                   <input
                     type="number"
                     step="0.05"
                     value={pitchMm}
                     onChange={(e) => setPitchMm(e.target.value)}
                     placeholder="e.g. 1.5"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Thread Profile</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Thread Profile</label>
                   <select
                     value={threadType}
                     onChange={(e) => setThreadType(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {THREAD_TYPES.map((t) => (
                       <option key={t} value={t}>{t}</option>
@@ -399,17 +430,17 @@ export default function CustomProductRequestModal({
 
             {/* Section 3: Material Grade & Finish */}
             <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Sparkles size={13} className="text-[#0052CC]" />
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                <Sparkles size={13} className="text-[#0052CC] shrink-0" />
                 <span>3. Material Metallurgy &amp; Coating</span>
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Material Grade</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Material Grade</label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {GRADES.map((g) => (
                       <option key={g} value={g}>{g}</option>
@@ -418,11 +449,11 @@ export default function CustomProductRequestModal({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Surface Finish / Coating</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Surface Finish / Coating</label>
                   <select
                     value={finish}
                     onChange={(e) => setFinish(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
                     {FINISHES.map((f) => (
                       <option key={f} value={f}>{f}</option>
@@ -434,25 +465,25 @@ export default function CustomProductRequestModal({
 
             {/* Section 4: Quantity & Target Rate */}
             <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Truck size={13} className="text-[#0052CC]" />
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                <Truck size={13} className="text-[#0052CC] shrink-0" />
                 <span>4. Volume &amp; Target Pricing</span>
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Required Volume</label>
-                  <div className="flex items-center gap-1">
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Required Volume</label>
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
-                      className="w-2/3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                      className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                       required
                     />
                     <select
                       value={quantityUom}
                       onChange={(e) => setQuantityUom(e.target.value)}
-                      className="w-1/3 px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                      className="w-20 shrink-0 px-2 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     >
                       <option value="Nos">Nos</option>
                       <option value="Kgs">Kgs</option>
@@ -462,27 +493,27 @@ export default function CustomProductRequestModal({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Target Price (₹ / unit optional)</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Target Rate (₹ optional)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={targetPrice}
                     onChange={(e) => setTargetPrice(e.target.value)}
                     placeholder="e.g. 18.50"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Dispatch Urgency</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Dispatch Urgency</label>
                   <select
                     value={urgencyLevel}
                     onChange={(e: any) => setUrgencyLevel(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   >
-                    <option value="SURPLUS_IMMEDIATE">Surplus Depot Lot (Fast Dispatch)</option>
+                    <option value="SURPLUS_IMMEDIATE">Surplus Depot Lot (Immediate)</option>
                     <option value="STANDARD">Standard Procurement (10-15 Days)</option>
-                    <option value="SCHEDULED">Plant Staggered Schedule (30+ Days)</option>
+                    <option value="SCHEDULED">Plant Schedule (30+ Days)</option>
                   </select>
                 </div>
               </div>
@@ -490,99 +521,99 @@ export default function CustomProductRequestModal({
 
             {/* Section 5: CAD Drawing / Attachment URL */}
             <div className="space-y-1">
-              <label className="block text-slate-500 font-bold mb-1 flex items-center justify-between">
+              <label className="block text-slate-500 font-bold mb-1 flex items-center justify-between text-[11px]">
                 <span>Drawing URL / Technical Spec Sheet Link (Optional)</span>
-                <span className="text-[10px] text-slate-400 font-normal">Google Drive, Dropbox, or PDF link</span>
+                <span className="text-[10px] text-slate-400 font-normal">Google Drive / Dropbox</span>
               </label>
               <input
                 type="url"
                 value={drawingUrl}
                 onChange={(e) => setDrawingUrl(e.target.value)}
                 placeholder="https://drive.google.com/file/d/.../view"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
               />
             </div>
 
             {/* Section 6: Client Contact Details */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <User size={13} className="text-[#0052CC]" />
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                <User size={13} className="text-[#0052CC] shrink-0" />
                 <span>5. Client Procurement Coordinates</span>
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Full Contact Name *</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Full Contact Name *</label>
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="e.g. Rajesh Kumar"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Company / Enterprise Firm</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Company / Enterprise Firm</label>
                   <input
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Larsen &amp; Toubro Ltd."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Email Address *</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Email Address *</label>
                   <input
                     type="email"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     placeholder="procurement@company.com"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Mobile Phone (WhatsApp) *</label>
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Mobile Phone (WhatsApp) *</label>
                   <input
                     type="tel"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-semibold text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-500 font-bold mb-1">Special Engineering Notes / Delivery Location</label>
+                <label className="block text-slate-500 font-bold mb-1 text-[11px]">Special Engineering Notes / Delivery Location</label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Specify application temperature, salt-spray requirements, project delivery location, or special head marking..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-[#0052CC]"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 text-xs transition-colors text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold rounded-xl shadow transition-all disabled:opacity-50 flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold rounded-xl shadow transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
               >
                 {submitting ? 'Registering Request...' : 'Submit Custom Request to Admin'}
                 <ChevronRight size={14} />
@@ -594,4 +625,3 @@ export default function CustomProductRequestModal({
     </div>
   );
 }
-

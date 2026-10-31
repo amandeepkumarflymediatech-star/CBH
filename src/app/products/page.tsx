@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
@@ -15,19 +16,336 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  RotateCcw,
   Sparkles,
   ChevronRight,
   ChevronLeft,
   ShoppingCart,
   SlidersHorizontal,
   X,
+  Plus,
+  HelpCircle,
+  Link2,
   PackageCheck,
-  Plus
+  Compass,
+  Check
 } from 'lucide-react';
 import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 
-export default function ProductsPage() {
+// ============================================================================
+// SEARCH QUERY PARSER & ATTRIBUTE DETECTOR
+// ============================================================================
+
+interface DetectedFastenerAttributes {
+  rawQuery: string;
+  cleanQuery: string;
+  tokens: string[];
+  diameter?: string;
+  lengthMm?: number;
+  standard?: string;
+  grade?: string;
+  finish?: string;
+  category?: string;
+}
+
+function parseFastenerQuery(query: string): DetectedFastenerAttributes {
+  const rawQuery = (query || '').trim();
+  if (!rawQuery) {
+    return { rawQuery: '', cleanQuery: '', tokens: [] };
+  }
+
+  // Normalize common variations:
+  // "DIN-933" -> "DIN 933", "ISO-4017" -> "ISO 4017", "M 10" -> "M10"
+  let clean = rawQuery
+    .replace(/DIN[-\s]?(\d{3,4})/gi, 'DIN $1')
+    .replace(/ISO[-\s]?(\d{4,5})/gi, 'ISO $1')
+    .replace(/\bM\s*(\d{1,2})\b/gi, 'M$1')
+    .replace(/,/g, ' ')
+    .replace(/[()]/g, ' ')
+    .trim();
+
+  const tokens = clean
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  let diameter: string | undefined;
+  let lengthMm: number | undefined;
+  let standard: string | undefined;
+  let grade: string | undefined;
+  let finish: string | undefined;
+  let category: string | undefined;
+
+  // 1. Diameter (e.g. M4..M48, 1/4", 1/2", 3/4", 1")
+  const diaMatch = clean.match(/\b(M\d{1,2}|(?:\d+\/)?\d+["'])\b/i);
+  if (diaMatch) {
+    diameter = diaMatch[1].toUpperCase();
+  }
+
+  // 2. Length (e.g. M10X50, M12x75, 50mm, or x 50)
+  const lengthMatch = clean.match(/(?:x|\*|\s)\s*(\d{2,3})(?:mm)?\b/i) || clean.match(/\b(\d{2,3})mm\b/i);
+  if (lengthMatch) {
+    lengthMm = parseInt(lengthMatch[1], 10);
+  }
+
+  // 3. Standard
+  const stdMatch = clean.match(/\b(DIN\s*\d{3,4}|ISO\s*\d{4,5}|ASTM\s*[A-Z0-9]+|ASME\s*[A-Z0-9.]+)\b/i);
+  if (stdMatch) {
+    standard = stdMatch[1].toUpperCase();
+  }
+
+  // 4. Grade
+  const gradeMatch = clean.match(/\b(4\.6|8\.8|10\.9|12\.9|SS\s*304|SS\s*316|304|316|A2-70|A4-80|A2|A4|B7)\b/i);
+  if (gradeMatch) {
+    grade = gradeMatch[1].toUpperCase();
+  }
+
+  // 5. Finish
+  const finishMatch = clean.match(/\b(zinc|wzp|yzp|hdg|galvanized|galvanised|black|bp|passivated|geomet|dacromet)\b/i);
+  if (finishMatch) {
+    finish = finishMatch[1].toLowerCase();
+  }
+
+  // 6. Category
+  if (/\b(nut|nuts)\b/i.test(clean)) category = 'Hex Nuts';
+  else if (/\b(washer|washers)\b/i.test(clean)) category = 'Washers';
+  else if (/\b(socket|cap)\b/i.test(clean)) category = 'Socket Caps';
+  else if (/\b(flange)\b/i.test(clean)) category = 'HEX FLANGE BOLTS';
+  else if (/\b(bolt|screw)\b/i.test(clean)) category = 'Hex Screws';
+
+  return {
+    rawQuery,
+    cleanQuery: clean,
+    tokens,
+    diameter,
+    lengthMm,
+    standard,
+    grade,
+    finish,
+    category,
+  };
+}
+
+// ============================================================================
+// PRODUCT CARD COMPONENT
+// ============================================================================
+
+interface FastenerCardProps {
+  product: Product;
+  currentUnit: GlobalUnit;
+  currentQty: number;
+  onToggleUnit: (u: GlobalUnit) => void;
+  onAdjustQty: (delta: number) => void;
+  onAddToCart: (p: Product) => void;
+  relatedBadge?: string;
+  badgeTone?: 'blue' | 'amber' | 'emerald' | 'purple';
+}
+
+function FastenerCard({
+  product: p,
+  currentUnit,
+  currentQty,
+  onToggleUnit,
+  onAdjustQty,
+  onAddToCart,
+  relatedBadge,
+  badgeTone = 'blue',
+}: FastenerCardProps) {
+  const currentPrice = currentUnit === 'PCS' ? p.pricePerPiece : p.pricePerKg;
+
+  const toneClass = {
+    blue: 'bg-blue-50 text-blue-800 border-blue-200',
+    amber: 'bg-amber-50 text-amber-800 border-amber-200',
+    emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    purple: 'bg-purple-50 text-purple-800 border-purple-200',
+  }[badgeTone];
+
+  return (
+    <div
+      className={`bg-white rounded-xl border ${
+        p.isSurplus
+          ? 'border-amber-300 ring-1 ring-amber-200'
+          : relatedBadge
+          ? 'border-blue-200 shadow-sm'
+          : 'border-slate-200'
+      } p-3.5 sm:p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative`}
+    >
+      <div>
+        {/* Top Badges */}
+        <div className="flex justify-between items-center mb-2 gap-1.5 flex-wrap">
+          <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold font-mono tracking-wider">
+            {p.standard}
+          </span>
+
+          {p.isSurplus ? (
+            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide">
+              -{p.surplusDiscountPct || 60}% SURPLUS
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-emerald-600 text-[11px] font-bold">
+              <CheckCircle2 size={13} />
+              <span>In Stock</span>
+            </span>
+          )}
+        </div>
+
+        {/* Optional Related Reason Badge */}
+        {relatedBadge && (
+          <div className={`mb-2 px-2 py-1 rounded-md text-[10px] font-extrabold border ${toneClass} flex items-center gap-1 leading-tight`}>
+            <Sparkles size={11} className="shrink-0" />
+            <span className="truncate">{relatedBadge}</span>
+          </div>
+        )}
+
+        {/* Product Image */}
+        <Link href={`/product/${p.id}`} className="block text-center my-2 sm:my-3 group">
+          <div className="relative w-full h-32 sm:h-36 transition-transform group-hover:scale-105 duration-200">
+            <Image
+              src={p.imageUrl || '/assets/bolt_zinc.jpg'}
+              alt={p.name}
+              fill
+              unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-contain"
+              onError={(e) => {
+                try {
+                  (e.target as any).src = '/assets/bolt_zinc.jpg';
+                } catch {}
+              }}
+            />
+          </div>
+        </Link>
+
+        {/* Specs Matrix Strip */}
+        <div className="grid grid-cols-3 text-center bg-slate-50 rounded-lg p-2 text-[10px] font-mono border border-slate-100 mb-2">
+          <div>
+            <span className="text-slate-400 block text-[9px] uppercase">GRADE</span>
+            <strong className="text-slate-900 truncate block">{p.grade}</strong>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[9px] uppercase">SIZE</span>
+            <strong className="text-slate-900 truncate block">{p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}</strong>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[9px] uppercase">PITCH</span>
+            <strong className="text-slate-900 truncate block">{p.pitchMm}mm</strong>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 min-h-[2rem] sm:min-h-[2.4rem] leading-snug mb-1">
+          <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
+            {p.name}
+          </Link>
+        </h3>
+
+        {/* Meta details */}
+        <div className="flex flex-wrap gap-1 mb-2.5 text-[10px]">
+          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+            Box: {p.pcsPerBox || '500'} pcs
+          </span>
+          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+            MOQ: {p.moq || '25 KGS'}
+          </span>
+          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
+            Lead: {p.leadTimeDays || 10}d
+          </span>
+        </div>
+
+        {/* Finish */}
+        <div className="text-[11px] text-slate-500 mb-2 truncate">
+          Finish: <strong className="text-slate-700">{p.finish}</strong>
+        </div>
+      </div>
+
+      {/* Bottom Commercial Section */}
+      <div>
+        {/* Dual Pricing Box */}
+        <div className="bg-slate-50 rounded-lg p-2.5 mb-2.5 border border-slate-200/80">
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-[10px] sm:text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+              {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
+            </span>
+            <span className="text-base sm:text-lg font-black text-blue-700 font-mono">
+              {formatINR(currentPrice)}
+            </span>
+          </div>
+          <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200">
+            <span>
+              Alt: {formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)} / {currentUnit === 'PCS' ? 'Kg' : 'Pc'}
+            </span>
+            <span>
+              Wt: {(p.weightPerPcKg * 1000).toFixed(1)}g / pc
+            </span>
+          </div>
+        </div>
+
+        {/* Procurement Configurator (Unit Toggle + Stepper) */}
+        <div className="flex items-center gap-1.5 mb-2.5">
+          {/* Unit Switcher */}
+          <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold shrink-0">
+            <button
+              type="button"
+              onClick={() => onToggleUnit('PCS')}
+              className={`px-2 py-1 rounded transition-colors ${
+                currentUnit === 'PCS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              PCS
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleUnit('KGS')}
+              className={`px-2 py-1 rounded transition-colors ${
+                currentUnit === 'KGS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              KGS
+            </button>
+          </div>
+
+          {/* Quantity Stepper */}
+          <div className="flex-1 flex items-center justify-between border border-slate-300 rounded bg-white px-2 py-1 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => onAdjustQty(-1)}
+              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
+              aria-label="Decrease quantity"
+            >
+              -
+            </button>
+            <span className="font-bold text-slate-900">{currentQty}</span>
+            <button
+              type="button"
+              onClick={() => onAdjustQty(1)}
+              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Add to RFQ Button */}
+        <button
+          type="button"
+          onClick={() => onAddToCart(p)}
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 sm:py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm active:scale-[0.98]"
+        >
+          <ShoppingCart size={14} />
+          <span>Add to RFQ Quote</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN INNER CATALOG COMPONENT (CONSUMES URL SEARCH PARAMS)
+// ============================================================================
+
+function ProductsPageInner() {
+  const searchParams = useSearchParams();
+
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +362,9 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'stock_desc'>('featured');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // Show all related products toggle when search has direct matches
+  const [showAllRelated, setShowAllRelated] = useState(false);
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
@@ -55,6 +376,24 @@ export default function ProductsPage() {
   // Cart State
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
+
+  // Sync state from URL query parameters on load / update
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null && q !== undefined) {
+      setSearchQuery(q);
+    }
+    const cat = searchParams.get('category');
+    if (cat) setSelectedCategory(cat);
+    const std = searchParams.get('standard');
+    if (std) setSelectedStandard(std);
+    const grd = searchParams.get('grade');
+    if (grd) setSelectedGrade(grd);
+    const dia = searchParams.get('diameter');
+    if (dia) setSelectedDiameter(dia);
+    const fin = searchParams.get('finish');
+    if (fin) setSelectedFinish(fin);
+  }, [searchParams]);
 
   // Fetch real products dynamically
   useEffect(() => {
@@ -96,77 +435,196 @@ export default function ProductsPage() {
     };
   }, [products]);
 
-  // Filter & Sort Products
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
+  // Parsed Search Attributes
+  const parsedSearch = useMemo(() => {
+    return parseFastenerQuery(searchQuery);
+  }, [searchQuery]);
 
-    // Search Query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
-          p.sku.toLowerCase().includes(q) ||
-          p.name.toLowerCase().includes(q) ||
-          p.standard.toLowerCase().includes(q) ||
-          p.grade.toLowerCase().includes(q) ||
-          p.finish.toLowerCase().includes(q) ||
-          p.diameter.toLowerCase().includes(q)
-      );
+  // Intelligent Search & Related Products Engine
+  const { directMatches, relatedProducts } = useMemo(() => {
+    if (!products.length) return { directMatches: [], relatedProducts: [] };
+
+    const query = searchQuery.trim();
+    if (!query) {
+      // No search active: all products filtered by category/dropdowns
+      let all = [...products];
+
+      // Category / Tab filter
+      if (selectedCategory !== 'all') {
+        if (selectedCategory === 'surplus') {
+          all = all.filter((p) => p.isSurplus);
+        } else if (selectedCategory === 'din933') {
+          all = all.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
+        } else if (selectedCategory === 'din931') {
+          all = all.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
+        } else if (selectedCategory === 'din912') {
+          all = all.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
+        } else if (selectedCategory === 'nuts') {
+          all = all.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
+        }
+      }
+
+      // Dropdown filters
+      if (selectedStandard !== 'all') all = all.filter((p) => p.standard === selectedStandard);
+      if (selectedGrade !== 'all') all = all.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
+      if (selectedFinish !== 'all') all = all.filter((p) => p.finish === selectedFinish);
+      if (selectedDiameter !== 'all') all = all.filter((p) => p.diameter === selectedDiameter);
+      if (inStockOnly) all = all.filter((p) => p.isInStock && p.stockPcs > 0);
+
+      // Sort
+      if (sortBy === 'price_asc') all.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
+      else if (sortBy === 'price_desc') all.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
+      else if (sortBy === 'stock_desc') all.sort((a, b) => b.stockPcs - a.stockPcs);
+
+      return { directMatches: all, relatedProducts: [] };
     }
 
-    // Category / Tab filter
-    if (selectedCategory !== 'all') {
-      if (selectedCategory === 'surplus') {
-        result = result.filter((p) => p.isSurplus);
-      } else if (selectedCategory === 'din933') {
-        result = result.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
-      } else if (selectedCategory === 'din931') {
-        result = result.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
-      } else if (selectedCategory === 'din912') {
-        result = result.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
-      } else if (selectedCategory === 'nuts') {
-        result = result.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
+    const { tokens, diameter: targetDia, lengthMm: targetLen, standard: targetStd, grade: targetGrd, category: targetCat } = parsedSearch;
+
+    const directList: { product: Product; score: number }[] = [];
+    const relatedList: { product: Product; score: number; reason: string; tone: 'blue' | 'amber' | 'emerald' | 'purple' }[] = [];
+
+    const lowerQuery = query.toLowerCase();
+
+    for (const p of products) {
+      const pSku = p.sku.toLowerCase();
+      const pName = p.name.toLowerCase();
+      const pCategory = (p.category || '').toLowerCase();
+      const pStandard = (p.standard || '').toLowerCase();
+      const pDin = (p.din || '').toLowerCase();
+      const pGrade = (p.grade || '').toLowerCase();
+      const pFinish = (p.finish || '').toLowerCase();
+      const pDia = (p.diameter || '').toLowerCase();
+      const pSize = (p.sizeFormatted || '').toLowerCase();
+      const pThread = (p.threadType || '').toLowerCase();
+
+      const haystack = `${pSku} ${pName} ${pCategory} ${pStandard} ${pDin} ${pGrade} ${pFinish} ${pDia} ${pSize} ${pThread}`;
+
+      // Check how many tokens match
+      const matchedTokens = tokens.filter((t) => haystack.includes(t));
+      const allTokensMatch = tokens.length > 0 && matchedTokens.length === tokens.length;
+
+      if (allTokensMatch) {
+        // DIRECT MATCH
+        let score = 100;
+        if (pSku === lowerQuery) score += 150;
+        if (pName.includes(lowerQuery)) score += 60;
+        if (targetDia && pDia === targetDia.toLowerCase()) score += 30;
+        if (targetLen && p.lengthMm === targetLen) score += 25;
+        if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) score += 20;
+        if (p.isInStock && p.stockPcs > 0) score += 10;
+
+        directList.push({ product: p, score });
+      } else {
+        // Check for RELATED Fasteners & Complementary Specifications
+        let isRelated = false;
+        let score = 0;
+        let reason = '';
+        let tone: 'blue' | 'amber' | 'emerald' | 'purple' = 'blue';
+
+        // 1. Same Metric Diameter (Crucial for Fastener Assembly)
+        if (targetDia && pDia === targetDia.toLowerCase()) {
+          isRelated = true;
+
+          // Mating Nut?
+          if (pCategory.includes('nut') || pStandard.includes('934') || pName.includes('nut')) {
+            reason = `🔗 Compatible ${p.diameter} Hex Nut (DIN 934)`;
+            score = 95;
+            tone = 'emerald';
+          }
+          // Mating Washer?
+          else if (pCategory.includes('washer') || pName.includes('washer')) {
+            reason = `⚙️ Compatible ${p.diameter} Plain Washer`;
+            score = 90;
+            tone = 'emerald';
+          }
+          // Same Standard, Alternative Length?
+          else if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) {
+            reason = `⚡ Same ${p.standard} · ${p.diameter}x${p.lengthMm}mm (Alt Length)`;
+            score = 80;
+            tone = 'blue';
+          }
+          // Same Diameter, Similar Category
+          else {
+            reason = `📏 Same ${p.diameter} Diameter (${p.standard || p.category})`;
+            score = 70;
+            tone = 'blue';
+          }
+        }
+        // 2. Same Standard (e.g. DIN 933 or DIN 912)
+        else if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) {
+          isRelated = true;
+          reason = `📋 Same ${p.standard} Specification (${p.sizeFormatted || p.diameter})`;
+          score = 60;
+          tone = 'purple';
+        }
+        // 3. High Token Overlap (e.g. matched 2 of 3 words)
+        else if (tokens.length >= 2 && matchedTokens.length >= Math.ceil(tokens.length * 0.5)) {
+          isRelated = true;
+          reason = `🔍 Matches ${matchedTokens.length}/${tokens.length} search specs`;
+          score = 50 + matchedTokens.length * 5;
+          tone = 'amber';
+        }
+        // 4. Same Grade & Category
+        else if (targetGrd && pGrade.includes(targetGrd.toLowerCase()) && targetCat && pCategory.includes(targetCat.toLowerCase())) {
+          isRelated = true;
+          reason = `🛡️ Same Grade ${p.grade} Fastener`;
+          score = 45;
+          tone = 'amber';
+        }
+
+        if (isRelated) {
+          relatedList.push({ product: p, score, reason, tone });
+        }
       }
     }
 
-    // Standard
-    if (selectedStandard !== 'all') {
-      result = result.filter((p) => p.standard === selectedStandard);
-    }
+    // Sort Direct Matches
+    directList.sort((a, b) => b.score - a.score);
+    let finalDirect = directList.map((d) => d.product);
 
-    // Grade
-    if (selectedGrade !== 'all') {
-      result = result.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
+    // Apply active secondary filters to direct matches
+    if (selectedCategory !== 'all') {
+      if (selectedCategory === 'surplus') {
+        finalDirect = finalDirect.filter((p) => p.isSurplus);
+      } else if (selectedCategory === 'din933') {
+        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
+      } else if (selectedCategory === 'din931') {
+        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
+      } else if (selectedCategory === 'din912') {
+        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
+      } else if (selectedCategory === 'nuts') {
+        finalDirect = finalDirect.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
+      }
     }
+    if (selectedStandard !== 'all') finalDirect = finalDirect.filter((p) => p.standard === selectedStandard);
+    if (selectedGrade !== 'all') finalDirect = finalDirect.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
+    if (selectedFinish !== 'all') finalDirect = finalDirect.filter((p) => p.finish === selectedFinish);
+    if (selectedDiameter !== 'all') finalDirect = finalDirect.filter((p) => p.diameter === selectedDiameter);
+    if (inStockOnly) finalDirect = finalDirect.filter((p) => p.isInStock && p.stockPcs > 0);
 
-    // Finish
-    if (selectedFinish !== 'all') {
-      result = result.filter((p) => p.finish === selectedFinish);
-    }
+    // Sort direct matches according to sortBy
+    if (sortBy === 'price_asc') finalDirect.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
+    else if (sortBy === 'price_desc') finalDirect.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
+    else if (sortBy === 'stock_desc') finalDirect.sort((a, b) => b.stockPcs - a.stockPcs);
 
-    // Diameter
-    if (selectedDiameter !== 'all') {
-      result = result.filter((p) => p.diameter === selectedDiameter);
-    }
+    // Sort Related Products by Score
+    relatedList.sort((a, b) => b.score - a.score);
 
-    // In Stock
-    if (inStockOnly) {
-      result = result.filter((p) => p.isInStock && p.stockPcs > 0);
-    }
+    // Deduplicate related items (make sure none appear in direct)
+    const directIds = new Set(finalDirect.map((p) => p.id));
+    const finalRelated = relatedList
+      .filter((r) => !directIds.has(r.product.id))
+      .slice(0, 24);
 
-    // Sort
-    if (sortBy === 'price_asc') {
-      result.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
-    } else if (sortBy === 'price_desc') {
-      result.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
-    } else if (sortBy === 'stock_desc') {
-      result.sort((a, b) => b.stockPcs - a.stockPcs);
-    }
-
-    return result;
+    return {
+      directMatches: finalDirect,
+      relatedProducts: finalRelated,
+    };
   }, [
     products,
     searchQuery,
+    parsedSearch,
     selectedCategory,
     selectedStandard,
     selectedGrade,
@@ -188,15 +646,15 @@ export default function ProductsPage() {
     selectedDiameter,
     inStockOnly,
     sortBy,
-    itemsPerPage
+    itemsPerPage,
   ]);
 
-  // Paginated slice
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
+  // Paginated slice for direct matches
+  const totalPages = Math.max(1, Math.ceil(directMatches.length / itemsPerPage));
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredProducts.slice(start, start + itemsPerPage);
-  }, [filteredProducts, currentPage, itemsPerPage]);
+    return directMatches.slice(start, start + itemsPerPage);
+  }, [directMatches, currentPage, itemsPerPage]);
 
   // Page Numbers generator
   const getPageNumbers = () => {
@@ -296,7 +754,7 @@ export default function ProductsPage() {
 
   const hasActiveFilters = activeFilterCount > 0;
 
-  // Filter Form Content used for both Desktop Sidebar & Mobile Drawer
+  // Render Filter Form Content
   const renderFilterControls = () => (
     <div className="space-y-4">
       {/* Standard Filter */}
@@ -447,14 +905,14 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Search Bar Bar */}
+          {/* Search Bar */}
           <div className="mt-4 sm:mt-6 relative max-w-3xl">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by SKU, Standard (DIN 933), Diameter (M10), Grade (8.8), or Finish (HDG, Zinc)..."
+              placeholder="Search by keywords, SKU, Standard (DIN 933), Diameter (M10), Grade (8.8), or Finish..."
               className="w-full pl-11 pr-10 py-3 sm:py-3.5 rounded-xl border border-white/20 bg-white text-slate-900 text-xs sm:text-sm placeholder-slate-400 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
             />
             {searchQuery && (
@@ -467,6 +925,21 @@ export default function ProductsPage() {
                 <X size={13} className="text-slate-600" />
               </button>
             )}
+          </div>
+
+          {/* Quick search hints */}
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-blue-200 flex-wrap">
+            <span className="font-semibold text-slate-300">Popular searches:</span>
+            {['Hex Bolt M10', 'DIN 933 8.8', 'Socket Cap M8', 'DIN 934 Nut M12', 'SS 304 Bolt', 'Zinc Plated M16'].map((term) => (
+              <button
+                key={term}
+                type="button"
+                onClick={() => setSearchQuery(term)}
+                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/10"
+              >
+                {term}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -646,7 +1119,7 @@ export default function ProductsPage() {
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="flex-1 py-2.5 px-3 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 shadow-sm"
               >
-                View ({filteredProducts.length}) Results
+                View ({directMatches.length}) Results
               </button>
             </div>
           </div>
@@ -691,38 +1164,52 @@ export default function ProductsPage() {
             <p className="text-slate-300 leading-relaxed mb-3">
               We forge and machine custom fastener lengths, special thread pitches, and exotic alloy grades (Inconel, Monel, Duplex).
             </p>
-            <Link
-              href="/bulk-order"
+            <button
+              type="button"
+              onClick={() => setIsCustomRequestOpen(true)}
               className="inline-flex items-center gap-1.5 text-sky-400 font-bold hover:text-sky-300 transition-colors"
             >
-              <span>Submit Custom RFQ</span>
+              <span>Submit Custom Spec Request</span>
               <ArrowRight size={13} />
-            </Link>
+            </button>
           </div>
         </aside>
 
         {/* ============================================================== */}
         {/* PRODUCT GRID CONTAINER                                          */}
         {/* ============================================================== */}
-        <main className="flex-1 min-w-0 flex flex-col gap-4">
+        <main className="flex-1 min-w-0 flex flex-col gap-5">
           
           {/* Status strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-slate-500 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 flex-wrap">
-              <span>
-                Showing <strong className="text-slate-900">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</strong> of <strong className="text-slate-900">{filteredProducts.length}</strong> matching fasteners
-              </span>
+              {searchQuery ? (
+                <span>
+                  Search results for &ldquo;<strong className="text-slate-900">{searchQuery}</strong>&rdquo;: <strong className="text-blue-700">{directMatches.length}</strong> direct {directMatches.length === 1 ? 'match' : 'matches'}
+                  {relatedProducts.length > 0 && (
+                    <span className="text-slate-500 ml-1.5">
+                      (+ <strong className="text-amber-700 font-semibold">{relatedProducts.length}</strong> related specifications)
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span>
+                  Showing <strong className="text-slate-900">{directMatches.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, directMatches.length)}</strong> of <strong className="text-slate-900">{directMatches.length}</strong> matching fasteners
+                </span>
+              )}
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsCustomRequestOpen(true)}
-                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#0052CC] font-bold text-xs rounded-lg transition-colors border border-blue-200 flex items-center gap-1"
+                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0052CC] font-bold text-xs rounded-lg transition-colors border border-blue-200 flex items-center gap-1"
                 title="Can't find your required fastener? Request custom dimensions."
               >
                 <Plus size={13} />
                 <span>Request Custom Spec</span>
               </button>
+
               {hasActiveFilters && (
                 <button
                   type="button"
@@ -736,311 +1223,262 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Loading Skeleton */}
+          {/* ============================================================== */}
+          {/* CASE 1: ZERO DIRECT MATCHES -> HELPFUL RELATED RECOMMENDATIONS  */}
+          {/* ============================================================== */}
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div key={i} className="bg-white rounded-xl p-4 border border-slate-200 h-80 animate-pulse" />
               ))}
             </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-8 sm:p-14 text-center my-6">
-              <Layers size={44} className="mx-auto text-slate-400 mb-3" />
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mb-1">
-                No fastener specifications matched your filter
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-5 leading-relaxed">
-                Looking for a non-standard length, special alloy grade, or custom thread pitch? Submit a custom procurement request to our factory desk.
-              </p>
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="bg-slate-100 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs hover:bg-slate-200 transition-colors"
-                >
-                  Reset All Filters
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomRequestOpen(true)}
-                  className="bg-[#0052CC] text-white font-bold px-5 py-2 rounded-xl text-xs hover:bg-[#0747A6] transition-colors shadow-sm flex items-center gap-1.5"
-                >
-                  <Sparkles size={14} />
-                  <span>Request Custom Fastener Specification</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-              {paginatedProducts.map((p) => {
-                const currentUnit = getCardUnit(p.id);
-                const currentQty = getCardQty(p.id);
-                const currentPrice = currentUnit === 'PCS' ? p.pricePerPiece : p.pricePerKg;
+          ) : directMatches.length === 0 ? (
+            <div className="space-y-6">
+              {/* Notice Banner */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200/90 p-4 sm:p-6 shadow-sm">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="p-2 sm:p-2.5 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                    <HelpCircle size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-sm sm:text-base font-extrabold text-slate-900 mb-1">
+                      No exact catalog match for &ldquo;{searchQuery || 'selected criteria'}&rdquo;
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-3">
+                      {relatedProducts.length > 0 ? (
+                        <>
+                          We could not find an exact catalog item with that identical name or dimension. However, we found{' '}
+                          <strong className="text-slate-900 font-bold">{relatedProducts.length} related fasteners</strong>{' '}
+                          matching your specifications
+                          {parsedSearch.diameter ? ` (Metric Diameter: ${parsedSearch.diameter})` : ''}
+                          {parsedSearch.standard ? ` (Standard: ${parsedSearch.standard})` : ''}
+                          {parsedSearch.grade ? ` (Grade: ${parsedSearch.grade})` : ''}:
+                        </>
+                      ) : (
+                        <>
+                          Looking for a non-standard length, custom thread pitch, or special alloy grade? Our manufacturing facility forges custom fasteners and onboards new ERP specs.
+                        </>
+                      )}
+                    </p>
 
-                return (
-                  <div
-                    key={p.id}
-                    className={`bg-white rounded-xl border ${
-                      p.isSurplus ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
-                    } p-3.5 sm:p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative`}
-                  >
-                    <div>
-                      {/* Top Badges */}
-                      <div className="flex justify-between items-center mb-2.5">
-                        <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold font-mono tracking-wider">
-                          {p.standard}
-                        </span>
-
-                        {p.isSurplus ? (
-                          <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide">
-                            -{p.surplusDiscountPct || 60}% SURPLUS
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 text-[11px] font-bold">
-                            <CheckCircle2 size={13} />
-                            <span>In Stock</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Product Image */}
-                      <Link href={`/product/${p.id}`} className="block text-center my-2 sm:my-3 group">
-                        <div className="relative w-full h-32 sm:h-36 transition-transform group-hover:scale-105 duration-200">
-                          <Image
-                            src={p.imageUrl || '/assets/bolt_zinc.jpg'}
-                            alt={p.name}
-                            fill
-                            unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                            className="object-contain"
-                            onError={(e) => {
-                              try {
-                                (e.target as any).src = '/assets/bolt_zinc.jpg';
-                              } catch {}
-                            }}
-                          />
-                        </div>
-                      </Link>
-
-                      {/* Specs Matrix Strip */}
-                      <div className="grid grid-cols-3 text-center bg-slate-50 rounded-lg p-2 text-[10px] font-mono border border-slate-100 mb-2">
-                        <div>
-                          <span className="text-slate-400 block text-[9px] uppercase">GRADE</span>
-                          <strong className="text-slate-900 truncate block">{p.grade}</strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-400 block text-[9px] uppercase">SIZE</span>
-                          <strong className="text-slate-900 truncate block">{p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}</strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-400 block text-[9px] uppercase">PITCH</span>
-                          <strong className="text-slate-900 truncate block">{p.pitchMm}mm</strong>
-                        </div>
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 min-h-[2rem] sm:min-h-[2.4rem] leading-snug mb-1">
-                        <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
-                          {p.name}
-                        </Link>
-                      </h3>
-
-                      {/* Excel Logistics & Packaging Meta */}
-                      <div className="flex flex-wrap gap-1 mb-2.5 text-[10px]">
-                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                          Box: {p.pcsPerBox || '500'} pcs
-                        </span>
-                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                          MOQ: {p.moq || '25 KGS'}
-                        </span>
-                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-                          Lead: {p.leadTimeDays || 10}d
-                        </span>
-                      </div>
-
-                      {/* Finish */}
-                      <div className="text-[11px] text-slate-500 mb-2 truncate">
-                        Finish: <strong className="text-slate-700">{p.finish}</strong>
-                      </div>
-                    </div>
-
-                    {/* Bottom Commercial Section */}
-                    <div>
-                      {/* Dual Pricing Box */}
-                      <div className="bg-slate-50 rounded-lg p-2.5 mb-2.5 border border-slate-200/80">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <span className="text-[10px] sm:text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-                            {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
-                          </span>
-                          <span className="text-base sm:text-lg font-black text-blue-700 font-mono">
-                            {formatINR(currentPrice)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200">
-                          <span>
-                            Alt: {formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)} / {currentUnit === 'PCS' ? 'Kg' : 'Pc'}
-                          </span>
-                          <span>
-                            Wt: {(p.weightPerPcKg * 1000).toFixed(1)}g / pc
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Procurement Configurator (Unit Toggle + Stepper) */}
-                      <div className="flex items-center gap-1.5 mb-2.5">
-                        {/* Unit Switcher */}
-                        <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => toggleCardUnit(p.id, 'PCS')}
-                            className={`px-2 py-1 rounded transition-colors ${
-                              currentUnit === 'PCS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            PCS
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleCardUnit(p.id, 'KGS')}
-                            className={`px-2 py-1 rounded transition-colors ${
-                              currentUnit === 'KGS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            KGS
-                          </button>
-                        </div>
-
-                        {/* Quantity Stepper */}
-                        <div className="flex-1 flex items-center justify-between border border-slate-300 rounded bg-white px-2 py-1 text-xs font-mono">
-                          <button
-                            type="button"
-                            onClick={() => adjustCardQty(p.id, -1)}
-                            className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
-                          >
-                            -
-                          </button>
-                          <span className="font-bold text-slate-900">{currentQty}</span>
-                          <button
-                            type="button"
-                            onClick={() => adjustCardQty(p.id, 1)}
-                            className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Add to RFQ Button */}
+                    {/* Action buttons inside banner */}
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(p)}
-                        className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 sm:py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm active:scale-[0.98]"
+                        onClick={() => setIsCustomRequestOpen(true)}
+                        className="bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
                       >
-                        <ShoppingCart size={14} />
-                        <span>Add to RFQ Quote</span>
+                        <Sparkles size={14} />
+                        <span>Request Custom Specification (1-Click)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold px-3 py-2 rounded-xl text-xs transition-colors"
+                      >
+                        Reset All Filters
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ============================================================== */}
-          {/* RESPONSIVE PAGINATION CONTROLS                                 */}
-          {/* ============================================================== */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl border border-slate-200 p-3 sm:p-4 mt-4 shadow-sm">
-              {/* Items Per Page Selector */}
-              <div className="flex items-center gap-2 text-xs text-slate-600 w-full sm:w-auto justify-between sm:justify-start">
-                <span>Fasteners per page:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none"
-                >
-                  <option value={12}>12 / page</option>
-                  <option value={24}>24 / page</option>
-                  <option value={48}>48 / page</option>
-                  <option value={filteredProducts.length || 100}>All ({filteredProducts.length})</option>
-                </select>
-                <span className="text-slate-400 text-[11px]">
-                  (Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>)
-                </span>
-              </div>
-
-              {/* Page Navigation Buttons */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {/* Prev Button */}
-                <button
-                  type="button"
-                  disabled={currentPage === 1}
-                  onClick={() => {
-                    setCurrentPage((prev) => Math.max(1, prev - 1));
-                    window.scrollTo({ top: 380, behavior: 'smooth' });
-                  }}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
-                    currentPage === 1
-                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                  }`}
-                >
-                  <ChevronLeft size={14} />
-                  <span className="hidden sm:inline">Previous</span>
-                </button>
-
-                {/* Page Number Pills */}
-                <div className="flex items-center gap-1">
-                  {getPageNumbers().map((page, idx) => {
-                    if (page === '...') {
-                      return (
-                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs">
-                          ...
-                        </span>
-                      );
-                    }
-                    const isCurrent = page === currentPage;
-                    return (
-                      <button
-                        key={`page-${page}`}
-                        type="button"
-                        onClick={() => {
-                          setCurrentPage(Number(page));
-                          window.scrollTo({ top: 380, behavior: 'smooth' });
-                        }}
-                        className={`min-w-[32px] sm:min-w-[34px] h-8 sm:h-8.5 px-2 rounded-lg text-xs font-extrabold flex items-center justify-center transition-colors ${
-                          isCurrent
-                            ? 'bg-blue-700 text-white shadow-sm'
-                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
                 </div>
-
-                {/* Next Button */}
-                <button
-                  type="button"
-                  disabled={currentPage === totalPages}
-                  onClick={() => {
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-                    window.scrollTo({ top: 380, behavior: 'smooth' });
-                  }}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
-                    currentPage === totalPages
-                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight size={14} />
-                </button>
               </div>
+
+              {/* Render Related Products when zero direct matches */}
+              {relatedProducts.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Compass size={17} className="text-[#0052CC]" />
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                        Related Fasteners &amp; Alternative Specifications ({relatedProducts.length})
+                      </h3>
+                    </div>
+                    <span className="text-[11px] text-slate-500 hidden sm:inline">
+                      Similar diameter, standard, or mating nuts/washers
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                    {relatedProducts.map(({ product: p, reason, tone }) => (
+                      <FastenerCard
+                        key={`zero-rel-${p.id}`}
+                        product={p}
+                        currentUnit={getCardUnit(p.id)}
+                        currentQty={getCardQty(p.id)}
+                        onToggleUnit={(u) => toggleCardUnit(p.id, u)}
+                        onAdjustQty={(delta) => adjustCardQty(p.id, delta)}
+                        onAddToCart={handleAddToCart}
+                        relatedBadge={reason}
+                        badgeTone={tone}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ============================================================== */
+            /* CASE 2: DIRECT MATCHES GRID + RELATED SPECIFICATIONS SECTION    */
+            /* ============================================================== */
+            <div className="space-y-8">
+              {/* Direct Matches Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                {paginatedProducts.map((p) => (
+                  <FastenerCard
+                    key={p.id}
+                    product={p}
+                    currentUnit={getCardUnit(p.id)}
+                    currentQty={getCardQty(p.id)}
+                    onToggleUnit={(u) => toggleCardUnit(p.id, u)}
+                    onAdjustQty={(delta) => adjustCardQty(p.id, delta)}
+                    onAddToCart={handleAddToCart}
+                  />
+                ))}
+              </div>
+
+              {/* Responsive Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-sm">
+                  {/* Items Per Page Selector */}
+                  <div className="flex items-center gap-2 text-xs text-slate-600 w-full sm:w-auto justify-between sm:justify-start">
+                    <span>Fasteners per page:</span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none"
+                    >
+                      <option value={12}>12 / page</option>
+                      <option value={24}>24 / page</option>
+                      <option value={48}>48 / page</option>
+                      <option value={directMatches.length || 100}>All ({directMatches.length})</option>
+                    </select>
+                    <span className="text-slate-400 text-[11px]">
+                      (Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>)
+                    </span>
+                  </div>
+
+                  {/* Page Navigation Buttons */}
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={() => {
+                        setCurrentPage((prev) => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 380, behavior: 'smooth' });
+                      }}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
+                        currentPage === 1
+                          ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                          : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      <ChevronLeft size={14} />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {getPageNumbers().map((page, idx) => {
+                        if (page === '...') {
+                          return (
+                            <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs">
+                              ...
+                            </span>
+                          );
+                        }
+                        const isCurrent = page === currentPage;
+                        return (
+                          <button
+                            key={`page-${page}`}
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(Number(page));
+                              window.scrollTo({ top: 380, behavior: 'smooth' });
+                            }}
+                            className={`min-w-[32px] sm:min-w-[34px] h-8 sm:h-8.5 px-2 rounded-lg text-xs font-extrabold flex items-center justify-center transition-colors ${
+                              isCurrent
+                                ? 'bg-blue-700 text-white shadow-sm'
+                                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={currentPage === totalPages}
+                      onClick={() => {
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+                        window.scrollTo({ top: 380, behavior: 'smooth' });
+                      }}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
+                        currentPage === totalPages
+                          ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                          : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ============================================================== */}
+              {/* DEDICATED RELATED FASTENERS & COMPLEMENTARY SECTION            */}
+              {/* ============================================================== */}
+              {searchQuery && relatedProducts.length > 0 && (
+                <div className="pt-6 border-t-2 border-slate-200/80">
+                  <div className="bg-gradient-to-r from-blue-50/80 via-slate-50 to-indigo-50/80 rounded-2xl border border-blue-200/70 p-4 sm:p-5 mb-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link2 size={18} className="text-[#0052CC]" />
+                          <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                            Related Fasteners &amp; Complementary Specifications
+                          </h3>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          Fasteners with compatible {parsedSearch.diameter || 'matching'} diameter, mating hex nuts &amp; washers, and alternative DIN lengths for &ldquo;{searchQuery}&rdquo;.
+                        </p>
+                      </div>
+
+                      {relatedProducts.length > 8 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRelated((prev) => !prev)}
+                          className="self-start sm:self-center px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 text-[#0052CC] font-bold text-xs rounded-xl transition-colors shadow-2xs whitespace-nowrap"
+                        >
+                          {showAllRelated ? 'Show Fewer' : `View All (${relatedProducts.length})`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                    {(showAllRelated ? relatedProducts : relatedProducts.slice(0, 8)).map(
+                      ({ product: p, reason, tone }) => (
+                        <FastenerCard
+                          key={`related-${p.id}`}
+                          product={p}
+                          currentUnit={getCardUnit(p.id)}
+                          currentQty={getCardQty(p.id)}
+                          onToggleUnit={(u) => toggleCardUnit(p.id, u)}
+                          onAdjustQty={(delta) => adjustCardQty(p.id, delta)}
+                          onAddToCart={handleAddToCart}
+                          relatedBadge={reason}
+                          badgeTone={tone}
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -1078,9 +1516,31 @@ export default function ProductsPage() {
         isOpen={isCustomRequestOpen}
         onClose={() => setIsCustomRequestOpen(false)}
         sourceContext="CATALOG"
-        initialCategory={selectedCategory !== 'all' ? selectedCategory : undefined}
+        initialCategory={parsedSearch.category || (selectedCategory !== 'all' ? selectedCategory : undefined)}
+        initialDiameter={parsedSearch.diameter}
+        initialLengthMm={parsedSearch.lengthMm}
+        initialStandard={parsedSearch.standard}
         initialSearchQuery={searchQuery || undefined}
       />
     </div>
+  );
+}
+
+// ============================================================================
+// MAIN PAGE EXPORT WITH SUSPENSE BOUNDARY (NEXT.JS APP ROUTER)
+// ============================================================================
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+          <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-xs font-bold text-slate-600 font-mono">Loading Fasteners Catalog Grid...</p>
+        </div>
+      }
+    >
+      <ProductsPageInner />
+    </Suspense>
   );
 }
