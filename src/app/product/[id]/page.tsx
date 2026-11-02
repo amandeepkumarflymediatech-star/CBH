@@ -55,6 +55,12 @@ export default function ProductDetailPage() {
   const [selectedGrade, setSelectedGrade] = useState('8.8');
   const [selectedFinish, setSelectedFinish] = useState('Black Passivated (BP)');
   const [quantity, setQuantity] = useState(500);
+  const [quantityInput, setQuantityInput] = useState<string>('500');
+
+  const updateQuantity = (newQty: number) => {
+    setQuantity(newQty);
+    setQuantityInput(String(newQty));
+  };
 
   // Tab States
   const [activeMediaTab, setActiveMediaTab] = useState<'photo' | 'cad' | 'cert'>('photo');
@@ -93,7 +99,7 @@ export default function ProductDetailPage() {
             setSelectedFinish(apiFound.finish || 'Black Passivated (BP)');
             if (apiFound.pcsPerBox) {
               const b = typeof apiFound.pcsPerBox === 'number' ? apiFound.pcsPerBox : parseInt(String(apiFound.pcsPerBox)) || 500;
-              setQuantity(b);
+              updateQuantity(b);
             }
             setNotFound(false);
             return;
@@ -215,12 +221,14 @@ export default function ProductDetailPage() {
     if (newUnit === 'KGS') {
       // Switching from PCS to KGS: convert approx weight or default to min 0.25 KG (250 gm)
       const approxKg = Math.round((quantity * (product?.weightPerPcKg || 0.05)) * 100) / 100;
-      setQuantity(approxKg >= MIN_QTY_KGS ? approxKg : MIN_QTY_KGS);
+      const nextKg = approxKg >= MIN_QTY_KGS ? approxKg : MIN_QTY_KGS;
+      updateQuantity(nextKg);
     } else {
-      // Switching from KGS to PCS: convert approx pieces or default to min 100 PCS
+      // Switching from KGS to PCS: convert approx pieces or default to min 100 PCS rounded to 10s
       const approxPcs = Math.round(quantity / (product?.weightPerPcKg || 0.05));
-      const roundedPcs = Math.round(approxPcs / 50) * 50;
-      setQuantity(roundedPcs >= MIN_QTY_PCS ? roundedPcs : MIN_QTY_PCS);
+      const roundedPcs = Math.round(approxPcs / 10) * 10;
+      const nextPcs = roundedPcs >= MIN_QTY_PCS ? roundedPcs : MIN_QTY_PCS;
+      updateQuantity(nextPcs);
     }
   };
 
@@ -230,21 +238,22 @@ export default function ProductDetailPage() {
         if (quantity <= MIN_QTY_KGS) return;
         const step = quantity <= 1 ? 0.25 : 0.5;
         const next = Math.max(MIN_QTY_KGS, Math.round((quantity - step) * 100) / 100);
-        setQuantity(next);
+        updateQuantity(next);
       } else {
         const step = quantity < 1 ? 0.25 : 0.5;
         const next = Math.round((quantity + step) * 100) / 100;
-        setQuantity(next);
+        updateQuantity(next);
       }
     } else {
+      // Step PCS by 10 (100 -> 110 -> 120 -> 130...)
+      const step = 10;
       if (delta < 0) {
         if (quantity <= MIN_QTY_PCS) return;
-        const step = quantity > 1000 ? 500 : 100;
         const next = Math.max(MIN_QTY_PCS, quantity - step);
-        setQuantity(next);
+        updateQuantity(next);
       } else {
-        const step = quantity >= 1000 ? 500 : 100;
-        setQuantity(quantity + step);
+        const next = Math.max(MIN_QTY_PCS, quantity + step);
+        updateQuantity(next);
       }
     }
   };
@@ -927,35 +936,39 @@ export default function ProductDetailPage() {
                         color: '#0F172A',
                         transition: 'opacity 0.15s ease'
                       }}
-                      title={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${globalUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+                      title={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${globalUnit === 'KGS' ? '250 gm' : '100 pcs'})` : `Decrease by ${globalUnit === 'KGS' ? '0.25 Kg' : '10 Pcs'}`}
                     >
                       -
                     </button>
                     <input
                       type="number"
-                      step={globalUnit === 'KGS' ? '0.05' : '10'}
+                      step={globalUnit === 'KGS' ? '0.25' : '10'}
                       min={globalUnit === 'KGS' ? 0.25 : 100}
-                      value={quantity}
+                      value={quantityInput}
                       onChange={(e) => {
+                        setQuantityInput(e.target.value);
                         const val = parseFloat(e.target.value);
-                        if (!isNaN(val)) {
+                        if (!isNaN(val) && val > 0) {
                           setQuantity(val);
                         }
                       }}
                       onBlur={() => {
-                        const clamped = clampQty(quantity, globalUnit);
-                        if (clamped !== quantity) {
-                          setQuantity(clamped);
+                        const parsed = parseFloat(quantityInput);
+                        const clamped = isNaN(parsed) ? (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) : clampQty(parsed, globalUnit);
+                        updateQuantity(clamped);
+                        if (!isNaN(parsed) && clamped !== parsed) {
                           showToast(`Minimum order is ${formatQtyDisplay(clamped, globalUnit)}`, 'info');
                         }
                       }}
-                      style={{ width: '85px', height: '42px', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px' }}
+                      placeholder={globalUnit === 'KGS' ? 'Kg' : 'Pcs'}
+                      title="Type any custom quantity directly"
+                      style={{ width: '90px', height: '42px', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '15px', color: '#0F172A' }}
                     />
                     <button
                       type="button"
                       onClick={() => handleStepPDPQty(1)}
                       style={{ width: '38px', height: '42px', background: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 700, cursor: 'pointer', color: '#0F172A' }}
-                      title="Increase quantity"
+                      title={`Increase by ${globalUnit === 'KGS' ? '0.25 Kg' : '10 Pcs'}`}
                     >
                       +
                     </button>
@@ -973,12 +986,14 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Clear MOQ Helper Hint */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748B' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748B', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: '#0052CC' }}>
-                    {globalUnit === 'KGS' ? '⚡ Minimum Order: 250 gm (0.25 Kg)' : '⚡ Minimum Order: 100 Pcs'}
+                    {globalUnit === 'KGS' ? '⚡ Minimum Order: 250 gm (0.25 Kg)' : '⚡ Minimum Order: 100 Pcs (Step +10)'}
                   </span>
                   <span>•</span>
                   <span>Configured: <strong>{formatQtyDisplay(quantity, globalUnit)}</strong></span>
+                  <span>•</span>
+                  <span style={{ color: '#059669', fontWeight: 600 }}>Click number to enter custom quantity directly</span>
                 </div>
               </div>
 
@@ -989,7 +1004,7 @@ export default function ProductDetailPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setQuantity(0.25)}
+                      onClick={() => updateQuantity(0.25)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1004,7 +1019,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(0.5)}
+                      onClick={() => updateQuantity(0.5)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1019,7 +1034,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(1)}
+                      onClick={() => updateQuantity(1)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1034,7 +1049,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(5)}
+                      onClick={() => updateQuantity(5)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1049,7 +1064,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(25)}
+                      onClick={() => updateQuantity(25)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1064,7 +1079,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(50)}
+                      onClick={() => updateQuantity(50)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1082,7 +1097,7 @@ export default function ProductDetailPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setQuantity(100)}
+                      onClick={() => updateQuantity(100)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1097,7 +1112,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(boxQty)}
+                      onClick={() => updateQuantity(boxQty)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1112,7 +1127,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(ctnQty)}
+                      onClick={() => updateQuantity(ctnQty)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
@@ -1127,7 +1142,7 @@ export default function ProductDetailPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setQuantity(10000)}
+                      onClick={() => updateQuantity(10000)}
                       style={{
                         padding: '4px 9px',
                         borderRadius: '6px',
