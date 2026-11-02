@@ -267,6 +267,15 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
     setTimeout(() => setAddedToast(''), 2500);
   };
 
+  const handleHomeSearch = (overrideQuery?: string) => {
+    const q = (overrideQuery !== undefined ? overrideQuery : searchQuery).trim();
+    if (q) {
+      onNavigate('catalog', { search: q });
+    } else {
+      onNavigate('catalog');
+    }
+  };
+
   return (
     <ScrollView
       contentContainerStyle={styles.container}
@@ -312,15 +321,48 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           </View>
         </View>
 
-        <View style={{ marginTop: 8 }}>
-          <MobileSearch
-            value={searchQuery}
-            onChange={(val) => {
-              setSearchQuery(val);
-              if (val.trim()) onNavigate('catalog');
-            }}
-            placeholder="Search DIN standard, Grade, Diameter..."
-          />
+        <View style={{ marginTop: 10 }}>
+          <View style={styles.homeSearchRow}>
+            <View style={{ flex: 1 }}>
+              <MobileSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSubmit={() => handleHomeSearch()}
+                returnKeyType="search"
+                placeholder="Search DIN, Grade, Diameter, SKU..."
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.homeSearchBtn}
+              onPress={() => handleHomeSearch()}
+              activeOpacity={0.82}
+            >
+              <Text style={styles.homeSearchBtnText}>Search</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Quick trending search tags */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.searchTagsScroll}
+            contentContainerStyle={styles.searchTagsContent}
+          >
+            <Text style={styles.searchTagLabel}>Popular:</Text>
+            {['DIN 933', 'DIN 912', 'Class 8.8', 'Grade 10.9', 'SS 304', 'M10 Bolt', 'Flange Nut'].map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={styles.searchTagPill}
+                onPress={() => {
+                  setSearchQuery(tag);
+                  handleHomeSearch(tag);
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.searchTagText}>{tag}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       </View>
 
@@ -360,7 +402,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
 
       {/* Fastener Standards Carousel (Populated from Live Backend Standards) */}
       <View style={styles.sectionHeader}>
-        <View>
+        <View style={styles.sectionTitleCol}>
           <Text style={styles.sectionTitle}>Fastener Standards</Text>
           <Text style={styles.sectionSubtitle}>Select standard to filter live inventory</Text>
         </View>
@@ -401,9 +443,9 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
       </TouchableOpacity>
 
       {/* SECTION: Visual Fastener Categories (Matching Website SimpleVisualCategories) */}
-      <View style={{ marginTop: 8 }}>
+      <View style={{ marginTop: 12 }}>
         <View style={styles.sectionHeader}>
-          <View>
+          <View style={styles.sectionTitleCol}>
             <Text style={styles.sectionTitle}>Fasteners by Type (तस्वीर देखकर चुनें)</Text>
             <Text style={styles.sectionSubtitle}>Factory wholesale rates • Click to view all sizes &amp; rates</Text>
           </View>
@@ -442,9 +484,9 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
 
       {/* SECTION: Factory Surplus Clearance Lots (Matching Website SurplusSection) */}
       {surplusLots.length > 0 ? (
-        <View style={{ marginTop: 8 }}>
+        <View style={{ marginTop: 16 }}>
           <View style={styles.sectionHeader}>
-            <View>
+            <View style={styles.sectionTitleCol}>
               <Text style={styles.sectionTitle}>🔥 Factory Surplus Clearance</Text>
               <Text style={styles.sectionSubtitle}>
                 Overstock liquidation lots up to 45% off standard rates
@@ -508,8 +550,8 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
       ) : null}
 
       {/* Trending Standard Fasteners (Live from Backend) */}
-      <View style={[styles.sectionHeader, { marginTop: 14 }]}>
-        <View>
+      <View style={[styles.sectionHeader, { marginTop: 16 }]}>
+        <View style={styles.sectionTitleCol}>
           <Text style={styles.sectionTitle}>Live Factory Catalog</Text>
           <Text style={styles.sectionSubtitle}>Direct Mill Pricing &amp; Dual Unit (Pc / Kg)</Text>
         </View>
@@ -917,6 +959,59 @@ const styles = StyleSheet.create({
     height: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
+  homeSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  homeSearchBtn: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 14,
+    height: 42,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  homeSearchBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  searchTagsScroll: {
+    marginTop: 8,
+  },
+  searchTagsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  searchTagLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#93C5FD',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginRight: 2,
+  },
+  searchTagPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  searchTagText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   toast: {
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
@@ -970,22 +1065,30 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  sectionTitleCol: {
+    flex: 1,
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
+    lineHeight: 20,
   },
   sectionSubtitle: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 1,
+    marginTop: 2,
+    lineHeight: 15,
   },
   viewAllText: {
     fontSize: 12,
     color: '#0052CC',
     fontWeight: '700',
+    paddingTop: 2,
   },
   catScroll: {
     flexDirection: 'row',

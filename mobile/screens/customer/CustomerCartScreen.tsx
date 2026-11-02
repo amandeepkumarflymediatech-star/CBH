@@ -25,7 +25,7 @@ import { MobileCartItem, MobileAuthUser, GlobalUnit } from '../../types';
 interface CustomerCartScreenProps {
   cartItems: MobileCartItem[];
   user?: MobileAuthUser | null;
-  onRequireAuth?: () => void;
+  onRequireAuth?: (initialView?: 'login' | 'register') => void;
   onUpdateQuantity: (productId: number, unit: GlobalUnit, newQty: number) => void;
   onRemoveItem: (productId: number, unit: GlobalUnit) => void;
   onClearCart: () => void;
@@ -156,6 +156,12 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
 
   // Submit Direct Order & Dispatch
   const handleCheckout = async () => {
+    if (!user) {
+      setIsCheckoutModalOpen(false);
+      onRequireAuth?.('register');
+      return;
+    }
+
     setIsProcessingOrder(true);
     try {
       const res = await mobileApi.orders.create({
@@ -477,10 +483,39 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
           </Text>
         </View>
 
+        {/* Guest Authentication Notice if not logged in */}
+        {!user && (
+          <View style={styles.guestNoticeBox}>
+            <View style={styles.guestNoticeTop}>
+              <View style={styles.guestNoticeBadge}>
+                <Text style={styles.guestNoticeBadgeText}>VERIFICATION REQUIRED</Text>
+              </View>
+              <Text style={styles.guestNoticeIcon}>🛡️</Text>
+            </View>
+            <Text style={styles.guestNoticeTitle}>Please Register Account to Checkout</Text>
+            <Text style={styles.guestNoticeDesc}>
+              Direct factory procurement, tax invoicing (GST), and mill test reports require a verified enterprise registration.
+            </Text>
+            <TouchableOpacity
+              style={styles.guestRegisterBtn}
+              onPress={() => onRequireAuth?.('register')}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.guestRegisterBtnText}>Register Company Account to Proceed →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Action Buttons: 1. Official RFQ, 2. Place Order */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            onPress={() => setIsRfqModalOpen(true)}
+            onPress={() => {
+              if (!user) {
+                onRequireAuth?.('register');
+                return;
+              }
+              setIsRfqModalOpen(true);
+            }}
             style={styles.rfqActionBtn}
             activeOpacity={0.85}
           >
@@ -488,12 +523,20 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setIsCheckoutModalOpen(true)}
+            onPress={() => {
+              if (!user) {
+                onRequireAuth?.('register');
+                return;
+              }
+              setIsCheckoutModalOpen(true);
+            }}
             style={styles.checkoutActionBtn}
             activeOpacity={0.88}
           >
             <Text style={styles.checkoutActionBtnText}>
-              ⚡ Instant Factory Order (₹{netTotal.toLocaleString('en-IN')})
+              {user
+                ? `⚡ Instant Factory Order (₹${netTotal.toLocaleString('en-IN')})`
+                : '🔒 Register to Checkout'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1138,6 +1181,63 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 15,
     fontWeight: '500',
+  },
+
+  // Guest Checkout Notice
+  guestNoticeBox: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#93C5FD',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 4,
+  },
+  guestNoticeTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  guestNoticeBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  guestNoticeBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  guestNoticeIcon: {
+    fontSize: 16,
+  },
+  guestNoticeTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  guestNoticeDesc: {
+    fontSize: 11.5,
+    color: '#475569',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  guestRegisterBtn: {
+    backgroundColor: '#0047AB',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+  },
+  guestRegisterBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 
   // Actions

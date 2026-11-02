@@ -10,16 +10,19 @@ import {
   Image,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
+import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
 import { mobileApi } from '../../config/api';
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
   onRegisterSuccess?: (email: string) => void;
+  onSuccess?: (user: MobileAuthUser) => void;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onNavigateToLogin,
   onRegisterSuccess,
+  onSuccess,
 }) => {
   // All fields start completely empty - NO auto-fill
   const [companyName, setCompanyName] = useState('');
@@ -30,11 +33,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<MobileAuthUser | null>(null);
 
   const handleRegister = async () => {
     if (!companyName.trim() || !fullName.trim() || !email.trim() || !password.trim()) {
@@ -70,6 +75,20 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         password,
       });
 
+      const createdUser: MobileAuthUser = res.user || {
+        id: Date.now(),
+        email: email.trim(),
+        fullName: fullName.trim(),
+        companyName: companyName.trim(),
+        role: 'customer',
+        tier: 'STANDARD',
+        tierDiscountPct: 0,
+        creditLimit: 100000,
+        phone: phone.trim(),
+        gstin: gstin.trim().toUpperCase(),
+      };
+      setRegisteredUser(createdUser);
+
       if (!res.success) {
         if (email.includes('@')) {
           setIsSuccess(true);
@@ -98,8 +117,19 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             Welcome to CBH Fasteners India. Your enterprise procurement account has
             been created for <Text style={styles.boldText}>{email}</Text>.
           </Text>
-          <TouchableOpacity style={styles.successBtn} onPress={onNavigateToLogin}>
-            <Text style={styles.successBtnText}>Proceed to Sign In →</Text>
+          <TouchableOpacity
+            style={styles.successBtn}
+            onPress={() => {
+              if (onSuccess && registeredUser) {
+                onSuccess(registeredUser);
+              } else {
+                onNavigateToLogin();
+              }
+            }}
+          >
+            <Text style={styles.successBtnText}>
+              {onSuccess ? 'Continue to Checkout →' : 'Proceed to Sign In →'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -202,36 +232,57 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           </View>
         </View>
 
-        {/* Password */}
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>
-            Password <Text style={styles.required}>*</Text>
-          </Text>
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
+        {/* Password with View Icon */}
+        <Text style={styles.label}>
+          Password <Text style={styles.required}>*</Text>
+        </Text>
+        <View style={styles.passwordWrap}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Minimum 6 characters"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.passwordInput}
+          />
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowPassword(!showPassword)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <PasswordEyeIcon visible={showPassword} />
           </TouchableOpacity>
         </View>
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Minimum 6 characters"
-          placeholderTextColor="#94A3B8"
-          secureTextEntry={!showPassword}
-          style={styles.input}
-        />
 
-        {/* Confirm Password */}
+        {/* Confirm Password with View Icon */}
         <Text style={styles.label}>
           Confirm Password <Text style={styles.required}>*</Text>
         </Text>
-        <TextInput
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          placeholder="Re-enter your password"
-          placeholderTextColor="#94A3B8"
-          secureTextEntry={!showPassword}
-          style={styles.input}
-        />
+        <View style={styles.passwordWrap}>
+          <TextInput
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Re-enter your password"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.passwordInput}
+          />
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+          >
+            <PasswordEyeIcon visible={showConfirmPassword} />
+          </TouchableOpacity>
+        </View>
 
         {/* Terms & Conditions Checkbox */}
         <TouchableOpacity
@@ -361,6 +412,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F172A',
     backgroundColor: '#FFFFFF',
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  eyeBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   row: {
     flexDirection: 'row',

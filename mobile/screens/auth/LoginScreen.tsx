@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
+import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
 import { mobileApi } from '../../config/api';
 import {
   DEMO_MOBILE_CUSTOMER,
@@ -187,9 +188,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <TouchableOpacity
             style={styles.eyeBtn}
             onPress={() => setShowPassword(!showPassword)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.eyeBtnText}>{showPassword ? '👁' : '👁‍🗨'}</Text>
+            <PasswordEyeIcon visible={showPassword} />
           </TouchableOpacity>
         </View>
 
@@ -331,6 +334,8 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   eyeBtnText: {
     fontSize: 16,

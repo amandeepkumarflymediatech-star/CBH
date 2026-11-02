@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
+import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
 import { mobileApi } from '../../config/api';
 
 interface OtpVerificationScreenProps {
@@ -25,6 +26,8 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -141,25 +144,51 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
 
         {/* New Password */}
         <Text style={styles.label}>New Secure Password</Text>
-        <TextInput
-          value={newPassword}
-          onChangeText={setNewPassword}
-          placeholder="••••••••••••"
-          placeholderTextColor="#94A3B8"
-          secureTextEntry
-          style={styles.input}
-        />
+        <View style={styles.passwordWrap}>
+          <TextInput
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="••••••••••••"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.passwordInput}
+          />
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowPassword(!showPassword)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <PasswordEyeIcon visible={showPassword} />
+          </TouchableOpacity>
+        </View>
 
         {/* Confirm New Password */}
         <Text style={styles.label}>Confirm New Password</Text>
-        <TextInput
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          placeholder="••••••••••••"
-          placeholderTextColor="#94A3B8"
-          secureTextEntry
-          style={styles.input}
-        />
+        <View style={styles.passwordWrap}>
+          <TextInput
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="••••••••••••"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.passwordInput}
+          />
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+          >
+            <PasswordEyeIcon visible={showConfirmPassword} />
+          </TouchableOpacity>
+        </View>
 
         {/* Resend Code Section */}
         <View style={styles.resendRow}>
@@ -323,6 +352,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderWidth: 1,
     borderColor: '#CBD5E1',
+  },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  eyeBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   otpInput: {
     fontSize: 18,

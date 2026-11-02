@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
 import { LoginScreen } from './LoginScreen';
 import { RegisterScreen } from './RegisterScreen';
@@ -23,6 +23,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 }) => {
   const [currentView, setCurrentView] = useState<AuthView>(initialView);
   const [resetEmail, setResetEmail] = useState('');
+
+  useEffect(() => {
+    if (initialView) {
+      setCurrentView(initialView);
+    }
+  }, [initialView]);
 
   const handleCodeSent = (email: string) => {
     setResetEmail(email);
@@ -51,6 +57,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           <RegisterScreen
             onNavigateToLogin={() => setCurrentView('login')}
             onRegisterSuccess={() => setCurrentView('login')}
+            onSuccess={onSuccess}
           />
         )}
 
@@ -58,6 +65,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           <ForgotPasswordScreen
             onNavigateToLogin={() => setCurrentView('login')}
             onCodeSent={handleCodeSent}
+            onNavigateToRegister={() => setCurrentView('register')}
           />
         )}
 

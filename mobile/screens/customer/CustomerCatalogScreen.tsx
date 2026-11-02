@@ -291,6 +291,26 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
     fetchCatalogData(1, false);
   }, [debouncedQuery, selectedCategory, selectedStandard, selectedGrade, selectedDiameter, selectedFinish, inStockOnly]);
 
+  // Synchronize incoming navigation parameters
+  useEffect(() => {
+    if (initialSearch !== undefined) {
+      setSearchQuery(initialSearch);
+      setDebouncedQuery(initialSearch);
+    }
+  }, [initialSearch]);
+
+  useEffect(() => {
+    if (initialStandard !== undefined) {
+      setSelectedStandard(initialStandard);
+    }
+  }, [initialStandard]);
+
+  useEffect(() => {
+    if (initialGrade !== undefined) {
+      setSelectedGrade(initialGrade);
+    }
+  }, [initialGrade]);
+
   const handleRefresh = () => {
     fetchCatalogData(1, true);
   };

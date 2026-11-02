@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
+  ReturnKeyTypeOptions,
 } from 'react-native';
 
 interface MobileSearchProps {
@@ -13,6 +14,9 @@ interface MobileSearchProps {
   placeholder?: string;
   onFilterPress?: () => void;
   isFilterActive?: boolean;
+  onSubmit?: () => void;
+  returnKeyType?: ReturnKeyTypeOptions;
+  autoFocus?: boolean;
 }
 
 export const MobileSearch: React.FC<MobileSearchProps> = ({
@@ -21,6 +25,9 @@ export const MobileSearch: React.FC<MobileSearchProps> = ({
   placeholder = 'Search DIN, ISO, Grade, SKU...',
   onFilterPress,
   isFilterActive = false,
+  onSubmit,
+  returnKeyType = 'search',
+  autoFocus = false,
 }) => {
   return (
     <View style={styles.container}>
@@ -32,9 +39,18 @@ export const MobileSearch: React.FC<MobileSearchProps> = ({
           placeholder={placeholder}
           placeholderTextColor="#94A3B8"
           style={styles.input}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmit}
+          autoFocus={autoFocus}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
         {value ? (
-          <TouchableOpacity onPress={() => onChange('')} style={styles.clearBtn}>
+          <TouchableOpacity
+            onPress={() => onChange('')}
+            style={styles.clearBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Text style={styles.clearText}>✕</Text>
           </TouchableOpacity>
         ) : null}
@@ -44,6 +60,7 @@ export const MobileSearch: React.FC<MobileSearchProps> = ({
         <TouchableOpacity
           onPress={onFilterPress}
           style={[styles.filterBtn, isFilterActive ? styles.filterBtnActive : null]}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <Text style={styles.filterIcon}>⚙</Text>
         </TouchableOpacity>

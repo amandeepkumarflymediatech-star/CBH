@@ -27,6 +27,7 @@ import { mobileApi, FALLBACK_PRODUCTS } from './config/api';
 // Components
 import { MobileHeader } from './components/MobileHeader';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { CartPopupModal, CartPopupData } from './components/CartPopupModal';
 
 // Screens (Direct explicit imports - prevents Metro bundle bloat & circular dependencies)
 import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
@@ -66,6 +67,14 @@ export default function App() {
   // Dynamic Cart State (starts empty - no hardcoded items)
   const [cartItems, setCartItems] = useState<MobileCartItem[]>([]);
 
+  // Cart Popup Screen / Modal State
+  const [cartPopupData, setCartPopupData] = useState<CartPopupData | null>(null);
+  const [isCartPopupVisible, setIsCartPopupVisible] = useState<boolean>(false);
+
+  // Auth navigation intent
+  const [authInitialView, setAuthInitialView] = useState<'login' | 'register'>('login');
+  const [postAuthRedirectTab, setPostAuthRedirectTab] = useState<string>('home');
+
   // Auth sync
   useEffect(() => {
     // 1. Immediate memory check
@@ -97,14 +106,11 @@ export default function App() {
     setRole(u.role);
     setMobileStoredUser(u);
     mobileApi.auth.saveSession(u).catch(() => {});
-    setMobileStoredUser(u);
-    mobileApi.auth.saveSession(u).catch(() => {});
     setIsWelcome(false);
-    if (u.role === 'admin') {
-      setActiveTab('dashboard');
-    } else {
-      setActiveTab(fallbackTab);
-    }
+    const destination = postAuthRedirectTab || (u.role === 'admin' ? 'dashboard' : fallbackTab);
+    setPostAuthRedirectTab('home');
+    setAuthInitialView('login');
+    setActiveTab(destination);
   };
 
   const handleRoleSwitch = (newRole: UserRole) => {
@@ -140,6 +146,14 @@ export default function App() {
     const totalWeightKg = unit === 'PCS' ? +(qty * weightPerPc).toFixed(2) : qty;
     const lineTotal = +(qty * unitPrice).toFixed(2);
 
+    const existingItem = cartItems.find(
+      (item) => item.product.id === product.id && item.unit === unit
+    );
+    const wasAlreadyInCart = Boolean(existingItem);
+    const finalTotalQty = wasAlreadyInCart ? existingItem!.quantity + qty : qty;
+    const finalLineTotal = +(finalTotalQty * unitPrice).toFixed(2);
+    const finalCartCount = wasAlreadyInCart ? cartItems.length : cartItems.length + 1;
+
     setCartItems((prev) => {
       const existingIdx = prev.findIndex(
         (item) => item.product.id === product.id && item.unit === unit
@@ -157,6 +171,18 @@ export default function App() {
       }
       return [...prev, { product, unit, quantity: qty, unitPrice, lineTotal, totalWeightKg }];
     });
+
+    // Show Add-to-Cart / Already-in-Cart Popup Screen
+    setCartPopupData({
+      product,
+      unit,
+      addedQty: qty,
+      totalQty: finalTotalQty,
+      wasAlreadyInCart,
+      lineTotal: finalLineTotal,
+      cartTotalCount: finalCartCount,
+    });
+    setIsCartPopupVisible(true);
   };
 
   const handleUpdateCartQty = (productId: number, unit: 'PCS' | 'KGS', newQty: number) => {
@@ -273,7 +299,8 @@ export default function App() {
     if (activeTab === 'auth' || activeTab === 'login') {
       return (
         <AuthScreen
-          onSuccess={(u) => handleAuthSuccess(u, 'home')}
+          initialView={authInitialView}
+          onSuccess={(u) => handleAuthSuccess(u, postAuthRedirectTab || 'home')}
           onBackToWelcome={() => setIsWelcome(true)}
         />
       );
@@ -330,6 +357,9 @@ export default function App() {
           return (
             <CustomerHomeScreen
               onNavigate={(tab, params) => {
+                if (params?.search !== undefined) {
+                  setCatalogSearchQuery(params.search);
+                }
                 if (params?.standard) {
                   setCatalogFilterStandard(params.standard);
                 } else if (tab === 'catalog' && !params?.standard) {
@@ -358,7 +388,11 @@ export default function App() {
             <CustomerCartScreen
               cartItems={cartItems}
               user={user}
-              onRequireAuth={() => setActiveTab('auth')}
+              onRequireAuth={(initialView = 'register') => {
+                setAuthInitialView(initialView);
+                setPostAuthRedirectTab('cart');
+                setActiveTab('auth');
+              }}
               onUpdateQuantity={handleUpdateCartQty}
               onRemoveItem={handleRemoveCartItem}
               onClearCart={handleClearCart}
@@ -418,7 +452,17 @@ export default function App() {
         default:
           return (
             <CustomerHomeScreen
-              onNavigate={setActiveTab}
+              onNavigate={(tab, params) => {
+                if (params?.search !== undefined) {
+                  setCatalogSearchQuery(params.search);
+                }
+                if (params?.standard) {
+                  setCatalogFilterStandard(params.standard);
+                } else if (tab === 'catalog' && !params?.standard) {
+                  setCatalogFilterStandard('All');
+                }
+                setActiveTab(tab);
+              }}
               onSelectProduct={setSelectedProduct}
               onAddToCart={handleAddToCart}
             />
@@ -520,6 +564,17 @@ export default function App() {
               pendingOrdersCount={role === 'admin' ? 3 : undefined}
             />
           ) : null}
+
+          {/* Universal Add-to-Cart & Already-in-Cart Popup Screen / Modal */}
+          <CartPopupModal
+            visible={isCartPopupVisible}
+            data={cartPopupData}
+            onClose={() => setIsCartPopupVisible(false)}
+            onNavigateToCart={() => {
+              setSelectedProduct(null);
+              setActiveTab('cart');
+            }}
+          />
         </>
       )}
     </SafeAreaView>
