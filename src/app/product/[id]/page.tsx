@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 import {
   CheckCircle2,
   ShieldCheck,
@@ -184,22 +184,81 @@ export default function ProductDetailPage() {
   }, [allProducts, product]);
 
   // Volume Slab Calculations
-  const getVolumeDiscount = (qty: number) => {
+  const getVolumeDiscount = (qty: number, unit: GlobalUnit) => {
+    if (unit === 'KGS') {
+      if (qty >= 1000) return { pct: 26, label: 'Master OEM Wholesale (-26%)' };
+      if (qty >= 250) return { pct: 20, label: 'Contractor Volume Tier (-20%)' };
+      if (qty >= 50) return { pct: 10, label: 'Bulk Batch Tier (-10%)' };
+      return { pct: 0, label: 'Standard Rate' };
+    }
+    // PCS
     if (qty >= 20000) return { pct: 26, label: 'Master OEM Wholesale (-26%)' };
     if (qty >= 5000) return { pct: 20, label: 'Contractor Volume Tier (-20%)' };
     if (qty >= 1000) return { pct: 10, label: 'Bulk Batch Tier (-10%)' };
     return { pct: 0, label: 'Standard Rate' };
   };
 
-  const currentDiscount = getVolumeDiscount(quantity);
+  const currentDiscount = getVolumeDiscount(quantity, globalUnit);
   const basePrice = product ? (globalUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg) : 0;
   const discountedRate = basePrice * (1 - currentDiscount.pct / 100);
   const grossTotal = quantity * discountedRate;
-  const weightTotalKg = product ? quantity * (product.weightPerPcKg || 0.06) : 0;
+  const weightTotalKg = product
+    ? globalUnit === 'PCS'
+      ? quantity * (product.weightPerPcKg || 0.06)
+      : quantity
+    : 0;
+
+  // Toggle Unit with smart conversion so user is never annoyed
+  const handleUnitToggle = (newUnit: GlobalUnit) => {
+    if (newUnit === globalUnit) return;
+    setGlobalUnit(newUnit);
+    if (newUnit === 'KGS') {
+      // Switching from PCS to KGS: convert approx weight or default to min 0.25 KG (250 gm)
+      const approxKg = Math.round((quantity * (product?.weightPerPcKg || 0.05)) * 100) / 100;
+      setQuantity(approxKg >= MIN_QTY_KGS ? approxKg : MIN_QTY_KGS);
+    } else {
+      // Switching from KGS to PCS: convert approx pieces or default to min 100 PCS
+      const approxPcs = Math.round(quantity / (product?.weightPerPcKg || 0.05));
+      const roundedPcs = Math.round(approxPcs / 50) * 50;
+      setQuantity(roundedPcs >= MIN_QTY_PCS ? roundedPcs : MIN_QTY_PCS);
+    }
+  };
+
+  const handleStepPDPQty = (delta: number) => {
+    if (globalUnit === 'KGS') {
+      if (delta < 0) {
+        if (quantity <= MIN_QTY_KGS) return;
+        const step = quantity <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((quantity - step) * 100) / 100);
+        setQuantity(next);
+      } else {
+        const step = quantity < 1 ? 0.25 : 0.5;
+        const next = Math.round((quantity + step) * 100) / 100;
+        setQuantity(next);
+      }
+    } else {
+      if (delta < 0) {
+        if (quantity <= MIN_QTY_PCS) return;
+        const step = quantity > 1000 ? 500 : 100;
+        const next = Math.max(MIN_QTY_PCS, quantity - step);
+        setQuantity(next);
+      } else {
+        const step = quantity >= 1000 ? 500 : 100;
+        setQuantity(quantity + step);
+      }
+    }
+  };
 
   // Add to RFQ Cart
   const handleAddToCart = () => {
     if (!product) return;
+    const finalQty = clampQty(quantity, globalUnit);
+    if (finalQty !== quantity) {
+      setQuantity(finalQty);
+    }
+    const finalGrossTotal = finalQty * discountedRate;
+    const finalWeightTotalKg = globalUnit === 'PCS' ? finalQty * (product.weightPerPcKg || 0.06) : finalQty;
+
     const newItem: RfqLineItem = {
       id: Date.now(),
       productId: product.id,
@@ -208,15 +267,15 @@ export default function ProductDetailPage() {
       standard: product.standard,
       unit: globalUnit,
       unitRate: discountedRate,
-      quantity: quantity,
+      quantity: finalQty,
       weightPerPcKg: product.weightPerPcKg || 0.06,
-      totalWeightKg: weightTotalKg,
-      rowTotal: grossTotal,
+      totalWeightKg: finalWeightTotalKg,
+      rowTotal: finalGrossTotal,
     };
 
     setCartItems((prev) => [newItem, ...prev]);
     setIsCartOpen(true);
-    showToast(`Added ${quantity.toLocaleString()} ${globalUnit} of ${product.sku} to RFQ Cart!`, 'success');
+    showToast(`Added ${formatQtyDisplay(finalQty, globalUnit)} of ${product.sku} to RFQ Cart!`, 'success');
   };
 
   // Add companion hardware to RFQ
@@ -750,7 +809,7 @@ export default function ProductDetailPage() {
                 <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                   <button
                     type="button"
-                    onClick={() => setGlobalUnit('PCS')}
+                    onClick={() => handleUnitToggle('PCS')}
                     style={{
                       padding: '6px 14px',
                       borderRadius: '6px',
@@ -767,7 +826,7 @@ export default function ProductDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setGlobalUnit('KGS')}
+                    onClick={() => handleUnitToggle('KGS')}
                     style={{
                       padding: '6px 14px',
                       borderRadius: '6px',
@@ -796,97 +855,293 @@ export default function ProductDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ background: quantity < 1000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: quantity < 1000 ? 700 : 500 }}>100 – 999 {globalUnit}</td>
-                      <td style={{ padding: '8px 12px' }}>Base Catalog Rate</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{formatINR(basePrice)} / {globalUnit === 'PCS' ? 'Pc' : 'Kg'}</td>
-                    </tr>
-                    <tr style={{ background: quantity >= 1000 && quantity < 5000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: quantity >= 1000 && quantity < 5000 ? 700 : 500 }}>1,000 – 4,999 {globalUnit}</td>
-                      <td style={{ padding: '8px 12px', color: '#0052CC', fontWeight: 700 }}>10% OFF (Contractor)</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.9)} / {globalUnit === 'PCS' ? 'Pc' : 'Kg'}</td>
-                    </tr>
-                    <tr style={{ background: quantity >= 5000 && quantity < 20000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: quantity >= 5000 && quantity < 20000 ? 700 : 500 }}>5,000 – 19,999 {globalUnit}</td>
-                      <td style={{ padding: '8px 12px', color: '#059669', fontWeight: 700 }}>20% OFF (OEM Bulk)</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.8)} / {globalUnit === 'PCS' ? 'Pc' : 'Kg'}</td>
-                    </tr>
-                    <tr style={{ background: quantity >= 20000 ? '#EFF6FF' : '#FFFFFF' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: quantity >= 20000 ? 700 : 500 }}>20,000+ {globalUnit}</td>
-                      <td style={{ padding: '8px 12px', color: '#B45309', fontWeight: 800 }}>26% OFF (Factory Master)</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#B45309' }}>{formatINR(basePrice * 0.74)} / {globalUnit === 'PCS' ? 'Pc' : 'Kg'}</td>
-                    </tr>
+                    {globalUnit === 'KGS' ? (
+                      <>
+                        <tr style={{ background: quantity < 50 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity < 50 ? 700 : 500 }}>250 gm – 49.9 Kg</td>
+                          <td style={{ padding: '8px 12px' }}>Base Catalog Rate</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{formatINR(basePrice)} / Kg</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 50 && quantity < 250 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 50 && quantity < 250 ? 700 : 500 }}>50 – 249 Kg</td>
+                          <td style={{ padding: '8px 12px', color: '#0052CC', fontWeight: 700 }}>10% OFF (Contractor)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.9)} / Kg</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 250 && quantity < 1000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 250 && quantity < 1000 ? 700 : 500 }}>250 – 999 Kg</td>
+                          <td style={{ padding: '8px 12px', color: '#059669', fontWeight: 700 }}>20% OFF (OEM Bulk)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.8)} / Kg</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 1000 ? '#EFF6FF' : '#FFFFFF' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 1000 ? 700 : 500 }}>1,000+ Kg</td>
+                          <td style={{ padding: '8px 12px', color: '#B45309', fontWeight: 800 }}>26% OFF (Factory Master)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#B45309' }}>{formatINR(basePrice * 0.74)} / Kg</td>
+                        </tr>
+                      </>
+                    ) : (
+                      <>
+                        <tr style={{ background: quantity < 1000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity < 1000 ? 700 : 500 }}>100 – 999 Pcs</td>
+                          <td style={{ padding: '8px 12px' }}>Base Catalog Rate</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{formatINR(basePrice)} / Pc</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 1000 && quantity < 5000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 1000 && quantity < 5000 ? 700 : 500 }}>1,000 – 4,999 Pcs</td>
+                          <td style={{ padding: '8px 12px', color: '#0052CC', fontWeight: 700 }}>10% OFF (Contractor)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.9)} / Pc</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 5000 && quantity < 20000 ? '#EFF6FF' : '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 5000 && quantity < 20000 ? 700 : 500 }}>5,000 – 19,999 Pcs</td>
+                          <td style={{ padding: '8px 12px', color: '#059669', fontWeight: 700 }}>20% OFF (OEM Bulk)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatINR(basePrice * 0.8)} / Pc</td>
+                        </tr>
+                        <tr style={{ background: quantity >= 20000 ? '#EFF6FF' : '#FFFFFF' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: quantity >= 20000 ? 700 : 500 }}>20,000+ Pcs</td>
+                          <td style={{ padding: '8px 12px', color: '#B45309', fontWeight: 800 }}>26% OFF (Factory Master)</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#B45309' }}>{formatINR(basePrice * 0.74)} / Pc</td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
 
               {/* Quantity Stepper & Add to RFQ Button */}
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', borderRadius: '8px', border: '1px solid #CBD5E1', padding: '2px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', borderRadius: '8px', border: '1px solid #CBD5E1', padding: '2px' }}>
+                    <button
+                      type="button"
+                      disabled={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                      onClick={() => handleStepPDPQty(-1)}
+                      style={{
+                        width: '38px',
+                        height: '42px',
+                        background: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '18px',
+                        fontWeight: 700,
+                        cursor: quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer',
+                        opacity: quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.35 : 1,
+                        color: '#0F172A',
+                        transition: 'opacity 0.15s ease'
+                      }}
+                      title={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${globalUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      step={globalUnit === 'KGS' ? '0.05' : '10'}
+                      min={globalUnit === 'KGS' ? 0.25 : 100}
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          setQuantity(val);
+                        }
+                      }}
+                      onBlur={() => {
+                        const clamped = clampQty(quantity, globalUnit);
+                        if (clamped !== quantity) {
+                          setQuantity(clamped);
+                          showToast(`Minimum order is ${formatQtyDisplay(clamped, globalUnit)}`, 'info');
+                        }
+                      }}
+                      style={{ width: '85px', height: '42px', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleStepPDPQty(1)}
+                      style={{ width: '38px', height: '42px', background: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 700, cursor: 'pointer', color: '#0F172A' }}
+                      title="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => Math.max(100, q - 500))}
-                    style={{ width: '38px', height: '42px', background: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 700, cursor: 'pointer', color: '#0F172A' }}
+                    className="btn-primary"
+                    onClick={handleAddToCart}
+                    style={{ flex: 1, minWidth: '220px', padding: '12px 20px', fontSize: '14px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(10, parseInt(e.target.value) || 10))}
-                    style={{ width: '80px', height: '42px', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => q + 500)}
-                    style={{ width: '38px', height: '42px', background: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 700, cursor: 'pointer', color: '#0F172A' }}
-                  >
-                    +
+                    <Zap size={18} />
+                    <span>Add to RFQ Cart ({formatINR(grossTotal)})</span>
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleAddToCart}
-                  style={{ flex: 1, minWidth: '220px', padding: '12px 20px', fontSize: '14px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Zap size={18} />
-                  <span>Add to RFQ Cart ({formatINR(grossTotal)})</span>
-                </button>
+                {/* Clear MOQ Helper Hint */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748B' }}>
+                  <span style={{ fontWeight: 700, color: '#0052CC' }}>
+                    {globalUnit === 'KGS' ? '⚡ Minimum Order: 250 gm (0.25 Kg)' : '⚡ Minimum Order: 100 Pcs'}
+                  </span>
+                  <span>•</span>
+                  <span>Configured: <strong>{formatQtyDisplay(quantity, globalUnit)}</strong></span>
+                </div>
               </div>
 
-              {/* Quick Preset Buttons (From Actual Box/Carton Sizes) */}
+              {/* Quick Preset Buttons */}
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: '#64748B' }}>
-                <span>Quick Quantities:</span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(boxQty)}
-                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
-                >
-                  Box ({boxQty.toLocaleString()} {globalUnit})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(ctnQty)}
-                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
-                >
-                  Carton ({ctnQty.toLocaleString()} {globalUnit})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(10000)}
-                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
-                >
-                  Bulk (10k)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(25000)}
-                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
-                >
-                  Pallet (25k)
-                </button>
+                <span style={{ fontWeight: 600 }}>Quick Quantities:</span>
+                {globalUnit === 'KGS' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(0.25)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 0.25 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 0.25 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 0.25 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 0.25 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      250 gm (Min)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(0.5)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 0.5 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 0.5 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 0.5 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 0.5 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      500 gm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(1)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 1 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 1 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 1 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 1 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      1 Kg
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(5)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 5 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 5 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 5 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 5 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      5 Kg
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(25)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 25 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 25 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 25 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 25 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      25 Kg (Bag)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(50)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 50 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 50 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 50 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 50 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      50 Kg (Drum)
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(100)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 100 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 100 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 100 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 100 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      100 Pcs (Min)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(boxQty)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === boxQty ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === boxQty ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === boxQty ? '#0052CC' : '#334155',
+                        fontWeight: quantity === boxQty ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Box ({boxQty.toLocaleString()} Pcs)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(ctnQty)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === ctnQty ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === ctnQty ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === ctnQty ? '#0052CC' : '#334155',
+                        fontWeight: quantity === ctnQty ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Carton ({ctnQty.toLocaleString()} Pcs)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(10000)}
+                      style={{
+                        padding: '4px 9px',
+                        borderRadius: '6px',
+                        border: quantity === 10000 ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
+                        background: quantity === 10000 ? '#EFF6FF' : '#FFFFFF',
+                        color: quantity === 10000 ? '#0052CC' : '#334155',
+                        fontWeight: quantity === 10000 ? 800 : 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      10,000 Pcs
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Secondary Action Strip (WhatsApp + Datasheet) */}
@@ -1397,7 +1652,19 @@ export default function ProductDetailPage() {
         items={cartItems}
         onUpdateQty={(id, qty) => {
           setCartItems((prev) =>
-            prev.map((item) => (item.id === id ? { ...item, quantity: qty, rowTotal: qty * item.unitRate } : item))
+            prev.map((item) => {
+              if (item.id === id) {
+                const nextQty = clampQty(qty, item.unit);
+                const nextWeight = item.unit === 'PCS' ? nextQty * item.weightPerPcKg : nextQty;
+                return {
+                  ...item,
+                  quantity: nextQty,
+                  totalWeightKg: nextWeight,
+                  rowTotal: nextQty * item.unitRate,
+                };
+              }
+              return item;
+            })
           );
         }}
         onRemoveItem={(id) => {

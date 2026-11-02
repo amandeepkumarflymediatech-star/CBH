@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 import {
   Search,
   CheckCircle2,
@@ -247,8 +247,8 @@ function FastenerCard({
           <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
             Box: {p.pcsPerBox || '500'} pcs
           </span>
-          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-            MOQ: {p.moq || '25 KGS'}
+          <span className="bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded font-mono font-bold border border-blue-200">
+            MOQ: 100 PCS / 250g
           </span>
           <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
             Lead: {p.leadTimeDays || 10}d
@@ -283,6 +283,14 @@ function FastenerCard({
           </div>
         </div>
 
+        {/* MOQ Guidance Label */}
+        <div className="text-[10px] font-semibold text-slate-500 mb-1 flex justify-between items-center px-0.5">
+          <span>Select Unit:</span>
+          <span className="text-blue-700 font-bold">
+            {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+          </span>
+        </div>
+
         {/* Procurement Configurator (Unit Toggle + Stepper) */}
         <div className="flex items-center gap-1.5 mb-2.5">
           {/* Unit Switcher */}
@@ -290,7 +298,7 @@ function FastenerCard({
             <button
               type="button"
               onClick={() => onToggleUnit('PCS')}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
                 currentUnit === 'PCS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -299,7 +307,7 @@ function FastenerCard({
             <button
               type="button"
               onClick={() => onToggleUnit('KGS')}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
                 currentUnit === 'KGS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -311,18 +319,23 @@ function FastenerCard({
           <div className="flex-1 flex items-center justify-between border border-slate-300 rounded bg-white px-2 py-1 text-xs font-mono">
             <button
               type="button"
+              disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
               onClick={() => onAdjustQty(-1)}
-              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
+              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
               aria-label="Decrease quantity"
+              title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
             >
               -
             </button>
-            <span className="font-bold text-slate-900">{currentQty}</span>
+            <span className="font-bold text-slate-900 text-[11px] truncate px-1" title={formatQtyDisplay(currentQty, currentUnit)}>
+              {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty.toLocaleString()} Pcs`}
+            </span>
             <button
               type="button"
               onClick={() => onAdjustQty(1)}
-              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded"
+              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
               aria-label="Increase quantity"
+              title="Increase quantity"
             >
               +
             </button>
@@ -517,35 +530,60 @@ function ProductsPageInner() {
     return pages;
   };
 
-  // Unit and Qty Helpers
+  // Unit and Qty Helpers with strict MOQ compliance
   const getCardUnit = (id: number): GlobalUnit => cardUnits[id] || globalUnit;
-  const getCardQty = (id: number): number => cardQtys[id] || (getCardUnit(id) === 'PCS' ? 500 : 50);
+  const getCardQty = (id: number): number => {
+    const u = getCardUnit(id);
+    if (cardQtys[id] !== undefined) return cardQtys[id];
+    return u === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS;
+  };
 
   const toggleCardUnit = (id: number, u: GlobalUnit) => {
     setCardUnits((prev) => ({ ...prev, [id]: u }));
-    setCardQtys((prev) => ({ ...prev, [id]: u === 'PCS' ? 500 : 50 }));
+    setCardQtys((prev) => ({ ...prev, [id]: u === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS }));
   };
 
   const adjustCardQty = (id: number, delta: number) => {
     const u = getCardUnit(id);
-    const step = u === 'PCS' ? 100 : 10;
     const current = getCardQty(id);
-    setCardQtys((prev) => ({ ...prev, [id]: Math.max(step, current + delta * step) }));
+    if (u === 'KGS') {
+      if (delta < 0) {
+        if (current <= MIN_QTY_KGS) return;
+        const step = current <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((current - step) * 100) / 100);
+        setCardQtys((prev) => ({ ...prev, [id]: next }));
+      } else {
+        const step = current < 1 ? 0.25 : 0.5;
+        const next = Math.round((current + step) * 100) / 100;
+        setCardQtys((prev) => ({ ...prev, [id]: next }));
+      }
+    } else {
+      if (delta < 0) {
+        if (current <= MIN_QTY_PCS) return;
+        const step = current > 1000 ? 500 : 100;
+        const next = Math.max(MIN_QTY_PCS, current - step);
+        setCardQtys((prev) => ({ ...prev, [id]: next }));
+      } else {
+        const step = current >= 1000 ? 500 : 100;
+        setCardQtys((prev) => ({ ...prev, [id]: current + step }));
+      }
+    }
   };
 
   // Add To Quote Cart
   const handleAddToCart = (product: Product) => {
     const unit = getCardUnit(product.id);
-    const qty = getCardQty(product.id);
+    const rawQty = getCardQty(product.id);
+    const qty = clampQty(rawQty, unit);
     const rate = unit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
-    const weight = unit === 'PCS' ? qty * product.weightPerPcKg : qty;
+    const weight = unit === 'PCS' ? qty * (product.weightPerPcKg || 0.05) : qty;
 
     const existingIndex = cartItems.findIndex((it) => it.sku === product.sku && it.unit === unit);
     if (existingIndex > -1) {
       setCartItems((prev) => {
         const updated = [...prev];
         const nextQty = updated[existingIndex].quantity + qty;
-        const nextWeight = unit === 'PCS' ? nextQty * product.weightPerPcKg : nextQty;
+        const nextWeight = unit === 'PCS' ? nextQty * (product.weightPerPcKg || 0.05) : nextQty;
         updated[existingIndex] = {
           ...updated[existingIndex],
           quantity: nextQty,
@@ -564,7 +602,7 @@ function ProductsPageInner() {
         unit,
         unitRate: rate,
         quantity: qty,
-        weightPerPcKg: product.weightPerPcKg,
+        weightPerPcKg: product.weightPerPcKg || 0.05,
         totalWeightKg: weight,
         rowTotal: qty * rate,
       };
@@ -1728,8 +1766,8 @@ function ProductsPageInner() {
           setCartItems((prev) =>
             prev.map((item) => {
               if (item.id === id) {
-                const nextQty = Math.max(1, qty);
-                const nextWeight = item.unit === 'PCS' ? nextQty * item.weightPerPcKg : nextQty;
+                const nextQty = clampQty(qty, item.unit);
+                const nextWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
                 return {
                   ...item,
                   quantity: nextQty,

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, CheckCircle2, PackageCheck, ArrowRight } from 'lucide-react';
 import { Product, GlobalUnit } from '@/lib/types';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, formatQtyDisplay, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 
 interface CatalogMatrixProps {
   products: Product[];
@@ -28,22 +28,45 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
   const visibleProducts = filteredProducts.slice(0, 8);
 
   const getUnit = (id: number): GlobalUnit => cardUnits[id] || 'PCS';
-  const getQty = (id: number): number => cardQtys[id] || (getUnit(id) === 'PCS' ? 500 : 50);
+  const getQty = (id: number): number => {
+    const unit = getUnit(id);
+    if (cardQtys[id] !== undefined) return cardQtys[id];
+    return unit === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS;
+  };
 
   const toggleUnit = (id: number, unit: GlobalUnit) => {
     setCardUnits((prev) => ({ ...prev, [id]: unit }));
     setCardQtys((prev) => ({
       ...prev,
-      [id]: unit === 'PCS' ? 500 : 50,
+      [id]: unit === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS,
     }));
   };
 
   const adjustQty = (id: number, delta: number) => {
     const current = getQty(id);
     const unit = getUnit(id);
-    const step = unit === 'PCS' ? 100 : 10;
-    const nextVal = Math.max(step, current + delta * step);
-    setCardQtys((prev) => ({ ...prev, [id]: nextVal }));
+    if (unit === 'KGS') {
+      if (delta < 0) {
+        if (current <= MIN_QTY_KGS) return;
+        const step = current <= 1 ? 0.25 : 0.5;
+        const nextVal = Math.max(MIN_QTY_KGS, Math.round((current - step) * 100) / 100);
+        setCardQtys((prev) => ({ ...prev, [id]: nextVal }));
+      } else {
+        const step = current < 1 ? 0.25 : 0.5;
+        const nextVal = Math.round((current + step) * 100) / 100;
+        setCardQtys((prev) => ({ ...prev, [id]: nextVal }));
+      }
+    } else {
+      if (delta < 0) {
+        if (current <= MIN_QTY_PCS) return;
+        const step = current > 1000 ? 500 : 100;
+        const nextVal = Math.max(MIN_QTY_PCS, current - step);
+        setCardQtys((prev) => ({ ...prev, [id]: nextVal }));
+      } else {
+        const step = current >= 1000 ? 500 : 100;
+        setCardQtys((prev) => ({ ...prev, [id]: current + step }));
+      }
+    }
   };
 
   return (
@@ -205,18 +228,32 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
 
                 {/* Actions */}
                 <div className="card-actions">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#64748B', fontWeight: 600, marginBottom: '4px' }}>
+                    <span>Quantity:</span>
+                    <span style={{ color: '#0052CC', fontWeight: 700 }}>
+                      {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+                    </span>
+                  </div>
+
                   <div className="qty-unit-row">
                     <div className="qty-stepper">
-                      <button type="button" onClick={() => adjustQty(p.id, -1)}>
+                      <button
+                        type="button"
+                        disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                        onClick={() => adjustQty(p.id, -1)}
+                        style={{
+                          opacity: currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.35 : 1,
+                          cursor: currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer'
+                        }}
+                        title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'Minimum order reached' : 'Decrease'}
+                      >
                         -
                       </button>
                       <input
                         type="text"
-                        value={currentQty}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 100;
-                          setCardQtys((prev) => ({ ...prev, [p.id]: val }));
-                        }}
+                        value={currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty} Pcs`}
+                        readOnly
+                        style={{ textAlign: 'center', fontWeight: 700, fontSize: '11px', cursor: 'default' }}
                       />
                       <button type="button" onClick={() => adjustQty(p.id, 1)}>
                         +
@@ -234,6 +271,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                           borderRadius: '2px',
                           background: currentUnit === 'PCS' ? 'var(--color-dark-800)' : 'transparent',
                           color: currentUnit === 'PCS' ? '#FFFFFF' : 'var(--color-text-muted)',
+                          cursor: 'pointer'
                         }}
                         onClick={() => toggleUnit(p.id, 'PCS')}
                       >
@@ -249,6 +287,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                           borderRadius: '2px',
                           background: currentUnit === 'KGS' ? 'var(--color-dark-800)' : 'transparent',
                           color: currentUnit === 'KGS' ? '#FFFFFF' : 'var(--color-text-muted)',
+                          cursor: 'pointer'
                         }}
                         onClick={() => toggleUnit(p.id, 'KGS')}
                       >
@@ -260,7 +299,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                   <button
                     type="button"
                     className="btn-card-add"
-                    onClick={() => onAddToCart(p, currentQty, currentUnit)}
+                    onClick={() => onAddToCart(p, clampQty(currentQty, currentUnit), currentUnit)}
                   >
                     <span>Add to RFQ Cart</span>
                     <ShoppingCart size={15} />

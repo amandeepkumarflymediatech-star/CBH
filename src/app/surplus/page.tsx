@@ -25,7 +25,7 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, clampQty } from '@/lib/rfq-calculator';
 import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
 
 interface FormattedSurplusLot {
@@ -563,8 +563,8 @@ export default function SurplusPage() {
           setCartItems((prev) =>
             prev.map((item) => {
               if (item.id === id) {
-                const nextQty = Math.max(1, qty);
-                const nextWeight = item.unit === 'PCS' ? nextQty * item.weightPerPcKg : nextQty;
+                const nextQty = clampQty(qty, item.unit);
+                const nextWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
                 return {
                   ...item,
                   quantity: nextQty,
