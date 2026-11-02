@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -348,6 +348,22 @@ function ProductsPageInner() {
 
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [relatedProducts, setRelatedProducts] = useState<
+    { product: Product; reason: string; tone: 'blue' | 'amber' | 'emerald' | 'purple' }[]
+  >([]);
+  const [filterOptions, setFilterOptions] = useState<{
+    standards: string[];
+    grades: string[];
+    finishes: string[];
+    diameters: string[];
+  }>({
+    standards: [],
+    grades: [],
+    finishes: [],
+    diameters: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
 
@@ -395,250 +411,20 @@ function ProductsPageInner() {
     if (fin) setSelectedFinish(fin);
   }, [searchParams]);
 
-  // Fetch real products dynamically
+  // Debounce search query to prevent excessive queries while typing
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
   useEffect(() => {
-    setIsLoading(true);
-    fetch('/api/products')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.data)) {
-          setProducts(data.data);
-        }
-      })
-      .catch((err) => console.error('Failed fetching dynamic products:', err))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  // Compute available filter options dynamically from real products
-  const filterOptions = useMemo(() => {
-    const standards = new Set<string>();
-    const grades = new Set<string>();
-    const finishes = new Set<string>();
-    const diameters = new Set<string>();
-
-    products.forEach((p) => {
-      if (p.standard) standards.add(p.standard);
-      if (p.grade) grades.add(p.grade);
-      if (p.finish) finishes.add(p.finish);
-      if (p.diameter) diameters.add(p.diameter);
-    });
-
-    return {
-      standards: Array.from(standards).sort(),
-      grades: Array.from(grades).sort(),
-      finishes: Array.from(finishes).sort(),
-      diameters: Array.from(diameters).sort((a, b) => {
-        const numA = parseInt(a.replace(/\D/g, '')) || 0;
-        const numB = parseInt(b.replace(/\D/g, '')) || 0;
-        return numA - numB;
-      }),
-    };
-  }, [products]);
-
-  // Parsed Search Attributes
-  const parsedSearch = useMemo(() => {
-    return parseFastenerQuery(searchQuery);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  // Intelligent Search & Related Products Engine
-  const { directMatches, relatedProducts } = useMemo(() => {
-    if (!products.length) return { directMatches: [], relatedProducts: [] };
-
-    const query = searchQuery.trim();
-    if (!query) {
-      // No search active: all products filtered by category/dropdowns
-      let all = [...products];
-
-      // Category / Tab filter
-      if (selectedCategory !== 'all') {
-        if (selectedCategory === 'surplus') {
-          all = all.filter((p) => p.isSurplus);
-        } else if (selectedCategory === 'din933') {
-          all = all.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
-        } else if (selectedCategory === 'din931') {
-          all = all.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
-        } else if (selectedCategory === 'din912') {
-          all = all.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
-        } else if (selectedCategory === 'nuts') {
-          all = all.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
-        }
-      }
-
-      // Dropdown filters
-      if (selectedStandard !== 'all') all = all.filter((p) => p.standard === selectedStandard);
-      if (selectedGrade !== 'all') all = all.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
-      if (selectedFinish !== 'all') all = all.filter((p) => p.finish === selectedFinish);
-      if (selectedDiameter !== 'all') all = all.filter((p) => p.diameter === selectedDiameter);
-      if (inStockOnly) all = all.filter((p) => p.isInStock && p.stockPcs > 0);
-
-      // Sort
-      if (sortBy === 'price_asc') all.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
-      else if (sortBy === 'price_desc') all.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
-      else if (sortBy === 'stock_desc') all.sort((a, b) => b.stockPcs - a.stockPcs);
-
-      return { directMatches: all, relatedProducts: [] };
-    }
-
-    const { tokens, diameter: targetDia, lengthMm: targetLen, standard: targetStd, grade: targetGrd, category: targetCat } = parsedSearch;
-
-    const directList: { product: Product; score: number }[] = [];
-    const relatedList: { product: Product; score: number; reason: string; tone: 'blue' | 'amber' | 'emerald' | 'purple' }[] = [];
-
-    const lowerQuery = query.toLowerCase();
-
-    for (const p of products) {
-      const pSku = p.sku.toLowerCase();
-      const pName = p.name.toLowerCase();
-      const pCategory = (p.category || '').toLowerCase();
-      const pStandard = (p.standard || '').toLowerCase();
-      const pDin = (p.din || '').toLowerCase();
-      const pGrade = (p.grade || '').toLowerCase();
-      const pFinish = (p.finish || '').toLowerCase();
-      const pDia = (p.diameter || '').toLowerCase();
-      const pSize = (p.sizeFormatted || '').toLowerCase();
-      const pThread = (p.threadType || '').toLowerCase();
-
-      const haystack = `${pSku} ${pName} ${pCategory} ${pStandard} ${pDin} ${pGrade} ${pFinish} ${pDia} ${pSize} ${pThread}`;
-
-      // Check how many tokens match
-      const matchedTokens = tokens.filter((t) => haystack.includes(t));
-      const allTokensMatch = tokens.length > 0 && matchedTokens.length === tokens.length;
-
-      if (allTokensMatch) {
-        // DIRECT MATCH
-        let score = 100;
-        if (pSku === lowerQuery) score += 150;
-        if (pName.includes(lowerQuery)) score += 60;
-        if (targetDia && pDia === targetDia.toLowerCase()) score += 30;
-        if (targetLen && p.lengthMm === targetLen) score += 25;
-        if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) score += 20;
-        if (p.isInStock && p.stockPcs > 0) score += 10;
-
-        directList.push({ product: p, score });
-      } else {
-        // Check for RELATED Fasteners & Complementary Specifications
-        let isRelated = false;
-        let score = 0;
-        let reason = '';
-        let tone: 'blue' | 'amber' | 'emerald' | 'purple' = 'blue';
-
-        // 1. Same Metric Diameter (Crucial for Fastener Assembly)
-        if (targetDia && pDia === targetDia.toLowerCase()) {
-          isRelated = true;
-
-          // Mating Nut?
-          if (pCategory.includes('nut') || pStandard.includes('934') || pName.includes('nut')) {
-            reason = `🔗 Compatible ${p.diameter} Hex Nut (DIN 934)`;
-            score = 95;
-            tone = 'emerald';
-          }
-          // Mating Washer?
-          else if (pCategory.includes('washer') || pName.includes('washer')) {
-            reason = `⚙️ Compatible ${p.diameter} Plain Washer`;
-            score = 90;
-            tone = 'emerald';
-          }
-          // Same Standard, Alternative Length?
-          else if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) {
-            reason = `⚡ Same ${p.standard} · ${p.diameter}x${p.lengthMm}mm (Alt Length)`;
-            score = 80;
-            tone = 'blue';
-          }
-          // Same Diameter, Similar Category
-          else {
-            reason = `📏 Same ${p.diameter} Diameter (${p.standard || p.category})`;
-            score = 70;
-            tone = 'blue';
-          }
-        }
-        // 2. Same Standard (e.g. DIN 933 or DIN 912)
-        else if (targetStd && (pStandard.includes(targetStd.toLowerCase()) || pDin.includes(targetStd.toLowerCase()))) {
-          isRelated = true;
-          reason = `📋 Same ${p.standard} Specification (${p.sizeFormatted || p.diameter})`;
-          score = 60;
-          tone = 'purple';
-        }
-        // 3. High Token Overlap (e.g. matched 2 of 3 words)
-        else if (tokens.length >= 2 && matchedTokens.length >= Math.ceil(tokens.length * 0.5)) {
-          isRelated = true;
-          reason = `🔍 Matches ${matchedTokens.length}/${tokens.length} search specs`;
-          score = 50 + matchedTokens.length * 5;
-          tone = 'amber';
-        }
-        // 4. Same Grade & Category
-        else if (targetGrd && pGrade.includes(targetGrd.toLowerCase()) && targetCat && pCategory.includes(targetCat.toLowerCase())) {
-          isRelated = true;
-          reason = `🛡️ Same Grade ${p.grade} Fastener`;
-          score = 45;
-          tone = 'amber';
-        }
-
-        if (isRelated) {
-          relatedList.push({ product: p, score, reason, tone });
-        }
-      }
-    }
-
-    // Sort Direct Matches
-    directList.sort((a, b) => b.score - a.score);
-    let finalDirect = directList.map((d) => d.product);
-
-    // Apply active secondary filters to direct matches
-    if (selectedCategory !== 'all') {
-      if (selectedCategory === 'surplus') {
-        finalDirect = finalDirect.filter((p) => p.isSurplus);
-      } else if (selectedCategory === 'din933') {
-        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
-      } else if (selectedCategory === 'din931') {
-        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
-      } else if (selectedCategory === 'din912') {
-        finalDirect = finalDirect.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
-      } else if (selectedCategory === 'nuts') {
-        finalDirect = finalDirect.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
-      }
-    }
-    if (selectedStandard !== 'all') finalDirect = finalDirect.filter((p) => p.standard === selectedStandard);
-    if (selectedGrade !== 'all') finalDirect = finalDirect.filter((p) => p.grade.toLowerCase().includes(selectedGrade.toLowerCase()));
-    if (selectedFinish !== 'all') finalDirect = finalDirect.filter((p) => p.finish === selectedFinish);
-    if (selectedDiameter !== 'all') finalDirect = finalDirect.filter((p) => p.diameter === selectedDiameter);
-    if (inStockOnly) finalDirect = finalDirect.filter((p) => p.isInStock && p.stockPcs > 0);
-
-    // Sort direct matches according to sortBy
-    if (sortBy === 'price_asc') finalDirect.sort((a, b) => a.pricePerPiece - b.pricePerPiece);
-    else if (sortBy === 'price_desc') finalDirect.sort((a, b) => b.pricePerPiece - a.pricePerPiece);
-    else if (sortBy === 'stock_desc') finalDirect.sort((a, b) => b.stockPcs - a.stockPcs);
-
-    // Sort Related Products by Score
-    relatedList.sort((a, b) => b.score - a.score);
-
-    // Deduplicate related items (make sure none appear in direct)
-    const directIds = new Set(finalDirect.map((p) => p.id));
-    const finalRelated = relatedList
-      .filter((r) => !directIds.has(r.product.id))
-      .slice(0, 24);
-
-    return {
-      directMatches: finalDirect,
-      relatedProducts: finalRelated,
-    };
-  }, [
-    products,
-    searchQuery,
-    parsedSearch,
-    selectedCategory,
-    selectedStandard,
-    selectedGrade,
-    selectedFinish,
-    selectedDiameter,
-    inStockOnly,
-    sortBy,
-  ]);
 
   // Reset page to 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1);
   }, [
-    searchQuery,
+    debouncedSearch,
     selectedCategory,
     selectedStandard,
     selectedGrade,
@@ -649,12 +435,66 @@ function ProductsPageInner() {
     itemsPerPage,
   ]);
 
-  // Paginated slice for direct matches
-  const totalPages = Math.max(1, Math.ceil(directMatches.length / itemsPerPage));
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return directMatches.slice(start, start + itemsPerPage);
-  }, [directMatches, currentPage, itemsPerPage]);
+  // Fetch paginated products from separate /api/products/paginated endpoint
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(itemsPerPage),
+      });
+
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+      if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory);
+      if (selectedStandard && selectedStandard !== 'all') params.set('standard', selectedStandard);
+      if (selectedGrade && selectedGrade !== 'all') params.set('grade', selectedGrade);
+      if (selectedDiameter && selectedDiameter !== 'all') params.set('diameter', selectedDiameter);
+      if (selectedFinish && selectedFinish !== 'all') params.set('finish', selectedFinish);
+      if (inStockOnly) params.set('inStockOnly', 'true');
+      if (sortBy && sortBy !== 'featured') params.set('sortBy', sortBy);
+
+      const res = await fetch(`/api/products/paginated?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.data)) {
+        setProducts(data.data);
+        setTotalCount(data.total ?? 0);
+        setTotalPages(data.totalPages ?? 1);
+        if (data.filterOptions) {
+          setFilterOptions(data.filterOptions);
+        }
+        if (Array.isArray(data.relatedProducts)) {
+          setRelatedProducts(data.relatedProducts);
+        } else {
+          setRelatedProducts([]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed fetching paginated products:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    currentPage,
+    itemsPerPage,
+    debouncedSearch,
+    selectedCategory,
+    selectedStandard,
+    selectedGrade,
+    selectedDiameter,
+    selectedFinish,
+    inStockOnly,
+    sortBy,
+  ]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Parsed Search Attributes
+  const parsedSearch = useMemo(() => {
+    return parseFastenerQuery(searchQuery);
+  }, [searchQuery]);
 
   // Page Numbers generator
   const getPageNumbers = () => {
@@ -960,7 +800,7 @@ function ProductsPageInner() {
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              All Fasteners ({products.length})
+              All Fasteners ({totalCount > 0 ? totalCount.toLocaleString() : 'All'})
             </button>
             <button
               type="button"
@@ -1119,7 +959,7 @@ function ProductsPageInner() {
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="flex-1 py-2.5 px-3 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 shadow-sm"
               >
-                View ({directMatches.length}) Results
+                View ({totalCount}) Results
               </button>
             </div>
           </div>
@@ -1185,7 +1025,7 @@ function ProductsPageInner() {
             <div className="flex items-center gap-2 flex-wrap">
               {searchQuery ? (
                 <span>
-                  Search results for &ldquo;<strong className="text-slate-900">{searchQuery}</strong>&rdquo;: <strong className="text-blue-700">{directMatches.length}</strong> direct {directMatches.length === 1 ? 'match' : 'matches'}
+                  Search results for &ldquo;<strong className="text-slate-900">{searchQuery}</strong>&rdquo;: <strong className="text-blue-700">{totalCount}</strong> direct {totalCount === 1 ? 'match' : 'matches'}
                   {relatedProducts.length > 0 && (
                     <span className="text-slate-500 ml-1.5">
                       (+ <strong className="text-amber-700 font-semibold">{relatedProducts.length}</strong> related specifications)
@@ -1194,7 +1034,7 @@ function ProductsPageInner() {
                 </span>
               ) : (
                 <span>
-                  Showing <strong className="text-slate-900">{directMatches.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, directMatches.length)}</strong> of <strong className="text-slate-900">{directMatches.length}</strong> matching fasteners
+                  Showing <strong className="text-slate-900">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, totalCount)}</strong> of <strong className="text-slate-900">{totalCount}</strong> matching fasteners
                 </span>
               )}
             </div>
@@ -1232,7 +1072,7 @@ function ProductsPageInner() {
                 <div key={i} className="bg-white rounded-xl p-4 border border-slate-200 h-80 animate-pulse" />
               ))}
             </div>
-          ) : directMatches.length === 0 ? (
+          ) : totalCount === 0 ? (
             <div className="space-y-6">
               {/* Notice Banner */}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200/90 p-4 sm:p-6 shadow-sm">
@@ -1323,7 +1163,7 @@ function ProductsPageInner() {
             <div className="space-y-8">
               {/* Direct Matches Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-                {paginatedProducts.map((p) => (
+                {products.map((p) => (
                   <FastenerCard
                     key={p.id}
                     product={p}
@@ -1353,7 +1193,7 @@ function ProductsPageInner() {
                       <option value={12}>12 / page</option>
                       <option value={24}>24 / page</option>
                       <option value={48}>48 / page</option>
-                      <option value={directMatches.length || 100}>All ({directMatches.length})</option>
+                      <option value={totalCount || 48}>All ({totalCount})</option>
                     </select>
                     <span className="text-slate-400 text-[11px]">
                       (Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>)
