@@ -211,6 +211,7 @@ export interface SurplusLot {
   clearancePriceKg: number;
   locationHub: string;
   isActive: boolean;
+  imageUrl?: string | null;
 }
 
 

@@ -25,8 +25,9 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
-import { formatINR, clampQty } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
 
 interface FormattedSurplusLot {
   id: string;
@@ -54,6 +55,16 @@ export default function SurplusPage() {
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
   const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
   const [modalContext, setModalContext] = useState<'SURPLUS' | 'SURPLUS_VENDOR'>('SURPLUS');
+
+  // Hydrate cart from storage and sync across tabs/pages
+  useEffect(() => {
+    setCartItems(getStoredCart());
+    const onCartChange = (e: any) => {
+      if (e.detail?.items) setCartItems(e.detail.items);
+    };
+    window.addEventListener('cbh_cart_change', onCartChange);
+    return () => window.removeEventListener('cbh_cart_change', onCartChange);
+  }, []);
 
   // Dynamic Data State (100% Live Database Lots)
   const [lots, setLots] = useState<FormattedSurplusLot[]>([]);
@@ -204,7 +215,8 @@ export default function SurplusPage() {
       ? (lot.clearancePieceRate || +(lot.clearanceRate * 0.05).toFixed(2))
       : lot.clearanceRate;
 
-    const qty = isPcs ? Math.min(lot.stockPcs || 1000, 1000) : 50;
+    const rawQty = isPcs ? Math.min(lot.stockPcs || 1000, 1000) : 50;
+    const qty = clampQty(rawQty, globalUnit);
     const weightPerPc = lot.product?.weightPerPcKg || (lot.totalWeightKg / Math.max(1, lot.stockPcs)) || 0.05;
     const totalWeight = isPcs ? qty * weightPerPc : qty;
 
@@ -223,9 +235,10 @@ export default function SurplusPage() {
     };
 
     setCartItems((prev) => {
+      let updated: RfqLineItem[];
       const existingIdx = prev.findIndex((item) => item.sku === newItem.sku && item.unit === newItem.unit);
       if (existingIdx > -1) {
-        const updated = [...prev];
+        updated = [...prev];
         const nextQty = updated[existingIdx].quantity + qty;
         const nextWeight = isPcs ? nextQty * weightPerPc : nextQty;
         updated[existingIdx] = {
@@ -234,9 +247,11 @@ export default function SurplusPage() {
           totalWeightKg: nextWeight,
           rowTotal: nextQty * unitRate,
         };
-        return updated;
+      } else {
+        updated = [newItem, ...prev];
       }
-      return [newItem, ...prev];
+      setStoredCart(updated);
+      return updated;
     });
 
     setIsCartOpen(true);
@@ -560,8 +575,8 @@ export default function SurplusPage() {
         onClose={() => setIsCartOpen(false)}
         items={cartItems}
         onUpdateQty={(id, qty) => {
-          setCartItems((prev) =>
-            prev.map((item) => {
+          setCartItems((prev) => {
+            const updated = prev.map((item) => {
               if (item.id === id) {
                 const nextQty = clampQty(qty, item.unit);
                 const nextWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
@@ -573,11 +588,17 @@ export default function SurplusPage() {
                 };
               }
               return item;
-            })
-          );
+            });
+            setStoredCart(updated);
+            return updated;
+          });
         }}
         onRemoveItem={(id) => {
-          setCartItems((prev) => prev.filter((item) => item.id !== id));
+          setCartItems((prev) => {
+            const updated = prev.filter((item) => item.id !== id);
+            setStoredCart(updated);
+            return updated;
+          });
         }}
       />
 

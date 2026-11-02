@@ -232,7 +232,7 @@ export default function CustomProductRequestModal({
         finish,
         threadType,
         diameter,
-        lengthMm: isNutOrWasher ? 0 : Number(lengthMm) || 50,
+        lengthMm: isNutOrWasher ? 0 : (Number(lengthMm) || 0),
         pitchMm: parseFloat(String(pitchMm)) || 1.5,
         sizeFormatted: formattedSize,
         quantityRequired: Number(quantity) || 1000,

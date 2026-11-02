@@ -152,8 +152,27 @@ async function runMigration() {
     console.log('📄 Executing db/schema.sql...');
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
-    // Execute schema statements
-    await connection.query(schemaSql);
+    // Execute schema statements safely (ignoring duplicate index / constraint errors)
+    const statements = schemaSql
+      .split(/;\s*$/m)
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    for (const stmt of statements) {
+      try {
+        await connection.query(stmt);
+      } catch (stmtErr) {
+        // Ignore duplicate index errors (code 1061 or ER_DUP_KEYNAME)
+        if (
+          stmtErr.errno === 1061 ||
+          stmtErr.code === 'ER_DUP_KEYNAME' ||
+          (stmtErr.message && stmtErr.message.includes('Duplicate key name'))
+        ) {
+          continue;
+        }
+        throw stmtErr;
+      }
+    }
     console.log('✓ Database schema tables and indexes successfully verified/created:');
     console.log('   - users');
     console.log('   - categories');
@@ -228,6 +247,41 @@ async function runMigration() {
         }
         console.log(`✓ Seeded ${blogsData.length} technical blog articles into MySQL.`);
       }
+    }
+
+    // 6. Seed Surplus Liquidation Lots if empty
+    const [surplusRows] = await connection.query('SELECT COUNT(*) as count FROM surplus_lots');
+    if (surplusRows[0].count === 0) {
+      console.log('🌱 Seeding verified surplus liquidation lots...');
+      await connection.query(`
+        INSERT INTO surplus_lots (
+          lot_number, title, description, spec_standard, total_weight_tonnes, market_price_per_kg,
+          clearance_price_per_kg, discount_pct, depot_location, status, image_url
+        ) VALUES 
+        ('SURP-DIN933-M12-100-8.8', 'Hex Head Screws DIN 933 M12x100mm Grade 8.8 Black Phosphate', 'Certified EPC surplus lot from Solar Plant construction. 100% mill inspected with 3.1 NABL certs.', 'DIN 933 / IS 1364 Grade 8.8 M12x100mm', 1.09, 165.00, 99.00, 40, 'Bhiwandi Logistics Hub, Maharashtra', 'AVAILABLE', '/assets/bolt_zinc.jpg'),
+        ('SURP-DIN912-M16-80-12.9', 'Socket Head Cap Screws DIN 912 M16x80mm Grade 12.9 High Tensile', 'Heavy machinery manufacturing excess inventory. Unopened factory barrels with rust-preventive oil coating.', 'DIN 912 / ISO 4762 Grade 12.9 M16x80mm', 1.15, 210.00, 115.50, 45, 'Ludhiana Central Depot, Punjab', 'AVAILABLE', '/assets/bolt_zinc.jpg'),
+        ('SURP-SS316-M10-60-A4', 'Marine Grade Stainless Hex Bolts SS 316 (A4-70) M10x60mm', 'High corrosion resistance austenitic stainless fasteners for coastal dockyards and chemical plants.', 'ISO 4017 / DIN 933 SS316 (A4-70)', 0.62, 420.00, 252.00, 40, 'Hazira Port Warehouse, Gujarat', 'AVAILABLE', '/assets/bolt_zinc.jpg'),
+        ('SURP-ASTM-B7-M24-3000', 'ASTM A193 Grade B7 Heavy Continuous Studs M24x3000mm', 'Refinery expansion surplus studs. Heat treated chrome-moly steel for high temperature flanged joints.', 'ASTM A193 B7 / IS 1862 M24x3000mm', 3.50, 195.00, 117.00, 40, 'Jamnagar Refinery Ancillary Yard, Gujarat', 'RESERVED', '/assets/bolt_zinc.jpg');
+      `);
+      console.log('✓ 4 verified surplus liquidation lots seeded into MySQL.');
+    }
+
+    // 7. Ensure at least a few catalog products are flagged as surplus for dual surplus showcase
+    try {
+      const [surplusProdRows] = await connection.query('SELECT COUNT(*) as count FROM products WHERE is_surplus = 1');
+      if (surplusProdRows[0].count === 0) {
+        console.log('🌱 Tagging sample catalog products with surplus clearance discount...');
+        await connection.query(`
+          UPDATE products 
+          SET is_surplus = 1, surplus_discount_pct = 40 
+          WHERE id IN (
+            SELECT id FROM (SELECT id FROM products LIMIT 3) as tmp
+          );
+        `);
+        console.log('✓ Catalog surplus products tagged.');
+      }
+    } catch (e) {
+      // Products table might be populated in a later step
     }
 
     console.log('\n======================================================');
