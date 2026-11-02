@@ -872,18 +872,18 @@ export default function CustomerOrdersPage() {
 
       {/* Order Details Modal */}
       {activeViewModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in overflow-hidden">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-2xl w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-50 text-[#0052CC] rounded-xl">
+                <div className="p-2 bg-blue-50 text-[#0052CC] rounded-xl shrink-0">
                   <Package className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-[#0F172A] text-base">
+                  <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">
                     Purchase Order: {activeViewModal.orderNumber}
                   </h3>
-                  <span className="text-xs text-slate-500 font-mono">
+                  <span className="text-xs text-slate-500 font-mono block">
                     Placed: {activeViewModal.date || 'Recent'} • Status: {activeViewModal.status}
                   </span>
                 </div>
@@ -926,8 +926,8 @@ export default function CustomerOrdersPage() {
                 <h4 className="font-bold text-slate-700 text-xs mb-2 uppercase tracking-wider">
                   Procured Line Items ({activeViewModal.itemsCount || activeViewModal.items?.length || 1})
                 </h4>
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto -webkit-overflow-scrolling-touch">
+                  <table className="w-full text-left text-xs min-w-[340px]">
                     <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Item / SKU</th>
@@ -989,8 +989,8 @@ export default function CustomerOrdersPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center gap-2 pt-4 border-t border-slate-200">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 pt-4 border-t border-slate-200">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1020,7 +1020,7 @@ export default function CustomerOrdersPage() {
               <button
                 type="button"
                 onClick={() => setActiveViewModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors text-center"
               >
                 Close
               </button>
@@ -1031,8 +1031,8 @@ export default function CustomerOrdersPage() {
 
       {/* Invoice Modal */}
       {activeInvoiceModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-xl w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in overflow-hidden">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-xl w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div>
                 <h3 className="font-extrabold text-[#0F172A] text-base">
@@ -1074,18 +1074,18 @@ export default function CustomerOrdersPage() {
                 <span className="font-mono text-[#0052CC]">{formatINR(activeInvoiceModal.netAmount)}</span>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveInvoiceModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
+                className="w-full sm:w-auto px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
               >
                 <Printer size={14} /> Print Formal Invoice
               </button>
@@ -1096,12 +1096,12 @@ export default function CustomerOrdersPage() {
 
       {/* MTC Modal */}
       {activeMtcModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-xl w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in overflow-hidden">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-xl w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={20} className="text-emerald-600" />
-                <h3 className="font-extrabold text-[#0F172A] text-base">NABL MTC 3.1 Inspection Report</h3>
+                <ShieldCheck size={20} className="text-emerald-600 shrink-0" />
+                <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">NABL MTC 3.1 Inspection Report</h3>
               </div>
               <button
                 type="button"
@@ -1121,18 +1121,18 @@ export default function CustomerOrdersPage() {
                 <div>Accreditation: <strong>NABL TC-8842 Certified Lab</strong></div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveMtcModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => showToast('MTC 3.1 PDF Certificate downloaded.', 'success')}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
+                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
               >
                 <Download size={14} /> Download Verified PDF
               </button>

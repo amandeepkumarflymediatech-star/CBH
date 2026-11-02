@@ -504,16 +504,16 @@ export default function AdminSeoPage() {
 
           {/* Edit / Create Page Modal */}
           {editingPage && (
-            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full p-6 space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
+              <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b pb-4">
-                  <h3 className="text-lg font-black text-[#0F172A]">
+                  <h3 className="text-base sm:text-lg font-black text-[#0F172A] leading-tight">
                     {isCreatingPage ? 'Add Dynamic On-Page SEO Route' : `Configure SEO for ${editingPage.path}`}
                   </h3>
                   <button
                     type="button"
                     onClick={() => setEditingPage(null)}
-                    className="text-slate-400 hover:text-black font-bold text-sm"
+                    className="text-slate-400 hover:text-black font-bold text-sm p-1"
                   >
                     ✕
                   </button>
@@ -693,18 +693,18 @@ export default function AdminSeoPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-4 border-t">
                   <button
                     type="button"
                     onClick={() => setEditingPage(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold text-center"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSavePage(editingPage)}
-                    className="px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold"
+                    className="w-full sm:w-auto px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold text-center"
                   >
                     Save Route SEO
                   </button>

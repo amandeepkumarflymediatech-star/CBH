@@ -6813,4 +6813,56 @@ body.dark {
   color: #0F172A !important;
 }
 
+/* ==========================================================================
+   GLOBAL RESPONSIVE MODAL & DIALOG UNIVERSAL OVERRIDES (MOBILE & TABLET)
+   ========================================================================== */
+@media (max-width: 640px) {
+  /* 1. Global Modal Overlays transform into bottom sheets on mobile */
+  .modal-overlay,
+  .cbh-dialog-backdrop,
+  .fixed.inset-0.z-50.flex.items-center.justify-center,
+  .fixed.inset-0.z-\[9999\].flex.items-center.justify-center,
+  .fixed.inset-0.z-\[99999\].flex.items-center.justify-center {
+    padding: 0 !important;
+    align-items: flex-end !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* 2. Modal Windows & Dialog Cards expand smoothly without top cutoff */
+  .modal-window,
+  .cbh-dialog-content,
+  .fixed.inset-0.flex.items-center.justify-center > .bg-white,
+  .fixed.inset-0.flex.items-center.justify-center > div > .bg-white,
+  .fixed.inset-0.flex.items-center.justify-center > form > .bg-white {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 92dvh !important;
+    margin: 0 !important;
+    padding: 18px 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
+    border-bottom: none !important;
+  }
+
+  /* 3. Collapse multi-column modal grids to single column on mobile */
+  .admin-modal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* 4. Ensure tables or large spec matrices inside modals scroll horizontally */
+  .modal-window table,
+  .cbh-dialog-content table,
+  .fixed.inset-0 table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+
 
