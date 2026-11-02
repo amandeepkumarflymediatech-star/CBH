@@ -4,25 +4,55 @@
 
 import { API_ENDPOINTS } from './endpoints';
 import { getMobileAuthToken } from './auth';
-import { API_BASE_URL, API_URL, ENV } from './env';
+import {
+  API_BASE_URL,
+  API_URL,
+  ENV,
+  ApiEnvironment,
+  getApiBaseUrl,
+  getHostRootUrl,
+  setApiEnvironment,
+  getApiEnvironment,
+} from './env';
 import {
   MobileProduct,
   MobileOrder,
   MobileRfq,
   MobileUserAccount,
+  MobileAuthUser,
   MobileSurplusLot,
   MobileApiResponse,
 } from '../types';
 
+export {
+  ApiEnvironment,
+  setApiEnvironment,
+  getApiEnvironment,
+  getApiBaseUrl,
+  getHostRootUrl,
+};
+
 /**
  * Builds the full URL using API_BASE_URL from env config,
  * preventing any duplicate /api prefixes.
+ *
+ * @param endpoint - Relative path (e.g. '/api/products' or 'orders') or full URL
+ * @param targetEnv - Optional environment override: 'local' | 'prod' | 'lan'
+ *
+ * Examples:
+ *   buildApiUrl('/api/products')            // uses active env (e.g. http://10.0.2.2:3000/api/products)
+ *   buildApiUrl('/api/products', 'prod')    // https://cbh.socialflymediatech.com/api/products
+ *   buildApiUrl('/api/products', 'local')   // http://10.0.2.2:3000/api/products
+ *   buildApiUrl('/api/products', 'lan')     // http://192.168.1.6:3000/api/products
  */
-export function buildApiUrl(endpoint: string): string {
+export function buildApiUrl(
+  endpoint: string,
+  targetEnv?: ApiEnvironment
+): string {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint;
   }
-  const base = (API_BASE_URL || 'http://10.0.2.2:3000/api').replace(/\/+$/, '');
+  const base = (getApiBaseUrl(targetEnv) || 'http://10.0.2.2:3000/api').replace(/\/+$/, '');
   let path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
   if (base.endsWith('/api') && path.startsWith('/api/')) {
@@ -30,6 +60,28 @@ export function buildApiUrl(endpoint: string): string {
   }
 
   return `${base}${path}`;
+}
+
+/**
+ * Resolves relative media and asset URLs (e.g. '/assets/bolt_zinc.jpg')
+ * against the local host or live production server.
+ *
+ * @param url - Relative path or full remote URL
+ * @param targetEnv - Optional target: 'local' | 'prod' | 'lan'
+ */
+export function resolveMediaUrl(
+  url?: string,
+  targetEnv?: ApiEnvironment
+): string {
+  if (!url) {
+    return 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400';
+  }
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const host = getHostRootUrl(targetEnv).replace(/\/+$/, '');
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${host}${cleanPath}`;
 }
 
 /**
@@ -97,6 +149,25 @@ async function request<T = any>(
 // 1. AUTHENTICATION APIS
 // ============================================================================
 export const authApi = {
+  getSession: async () => {
+    return request<{ success: boolean; user: MobileAuthUser | null; token: string | null }>(
+      API_ENDPOINTS.AUTH.SESSION
+    );
+  },
+
+  saveSession: async (user: MobileAuthUser | null, token?: string) => {
+    return request(API_ENDPOINTS.AUTH.SESSION, {
+      method: 'POST',
+      body: JSON.stringify({ user, token: token || 'token_live' }),
+    });
+  },
+
+  clearSession: async () => {
+    return request(API_ENDPOINTS.AUTH.SESSION, {
+      method: 'DELETE',
+    });
+  },
+
   login: async (credentials: {
     email: string;
     password: string;
@@ -580,7 +651,7 @@ export const usersApi = {
     });
   },
 
-  update: async (userData: Partial<MobileUserAccount> & { id: number }) => {
+  update: async (userData: Partial<MobileUserAccount> & { id: number | string }) => {
     return request(API_ENDPOINTS.USERS.UPDATE, {
       method: 'PUT',
       body: JSON.stringify(userData),
@@ -779,7 +850,7 @@ export const FALLBACK_PRODUCTS: MobileProduct[] = [
     moq: '1,000 Pcs (43 Kg)',
     leadTimeDays: 2,
     brand: 'CBH Fasteners',
-    imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60',
+    imageUrl: '/assets/hex_bolt_3d.jpg',
     description: 'Precision forged Class 8.8 medium carbon steel hex bolts per DIN 933 / ISO 4017 standard. NABL test certified for high tensile structural connections.',
   },
   {
@@ -869,7 +940,7 @@ export const FALLBACK_PRODUCTS: MobileProduct[] = [
     moq: '1,500 Pcs (49.5 Kg)',
     leadTimeDays: 2,
     brand: 'CBH Fasteners',
-    imageUrl: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=500&auto=format&fit=crop&q=60',
+    imageUrl: '/assets/hex_nut_3d.jpg',
     description: 'High tensile matching hex nuts for M16 structural assemblies with corrosion-resistant hot dip galvanized coating.',
   },
   {
@@ -899,7 +970,7 @@ export const FALLBACK_PRODUCTS: MobileProduct[] = [
     moq: '5,000 Pcs (31.5 Kg)',
     leadTimeDays: 1,
     brand: 'CBH Fasteners',
-    imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60',
+    imageUrl: '/assets/flat_washer_3d.jpg',
     description: 'Austenitic stainless steel plain washers for marine, chemical, food processing, and corrosive outdoor infrastructure.',
   },
 ];

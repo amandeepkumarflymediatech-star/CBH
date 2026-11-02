@@ -1,29 +1,102 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
+  FlatList,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  Modal,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
-import { MobileSearch } from '../../components/MobileSearch';
+import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { mobileApi } from '../../config/api';
 import { MobileProduct, GlobalUnit } from '../../types';
 
 interface CustomerCatalogScreenProps {
   initialStandard?: string;
   initialGrade?: string;
+  initialSearch?: string;
+  cartCount?: number;
+  onNavigateToCart?: () => void;
+  onNavigateHome?: () => void;
   onSelectProduct: (product: MobileProduct) => void;
   onAddToCart: (product: MobileProduct, unit: GlobalUnit, qty: number) => void;
+}
+
+function getCleanFastenerTitle(name: string, subGroup?: string): string {
+  if (!name) {
+    if (subGroup === 'BOLTS') return 'Hex Bolt';
+    if (subGroup === 'NUTS') return 'Hex Nut';
+    if (subGroup === 'SCREW') return 'CSK Screw';
+    if (subGroup === 'WASHERS') return 'Flat Washer';
+    return 'Precision Fastener';
+  }
+
+  // Strip anything starting from '-(Din', '-(ISO', '(DIN', '(Din', 'DIN', 'ISO', 'Grade', 'Property Class', etc.
+  let clean = name.split(/\s*[-–(]?\s*(?:DIN|Din|ISO|Standard|Grade|Class|Property|\()/i)[0].trim();
+  clean = clean.replace(/[-–_]+$/, '').trim();
+
+  // If clean string is too generic, short, or long
+  if (clean.length < 3 || clean.length > 25) {
+    const sg = (subGroup || '').toUpperCase();
+    if (sg.includes('BOLT')) return 'Hex Bolt';
+    if (sg.includes('NUT')) return 'Hex Nut';
+    if (sg.includes('SCREW')) return 'CSK Screw';
+    if (sg.includes('WASHER')) return 'Flat Washer';
+    if (sg.includes('SOCKET')) return 'Socket Cap Screw';
+    if (sg.includes('FLANGE')) return 'Flange Bolt';
+    if (sg.includes('STUD')) return 'Threaded Stud';
+  }
+
+  // Normalize common catalog names for clean typography matching mockup
+  if (/^hex\s+screws?$/i.test(clean)) return 'Hex Bolt';
+  if (/^hexagon\s+full\s+nuts?$/i.test(clean)) return 'Hex Nut';
+  if (/^hexagon\s+nuts?$/i.test(clean)) return 'Hex Nut';
+  if (/^flat\s+washers?$/i.test(clean)) return 'Flat Washer';
+  if (/^countersunk\s+screws?$/i.test(clean)) return 'CSK Screw';
+  if (/^socket\s+head\s+cap\s+screws?$/i.test(clean)) return 'Socket Cap';
+
+  return clean;
+}
+
+function getFastenerFeature(item: MobileProduct): string {
+  if (item.grade) {
+    const gr = item.grade.toLowerCase();
+    if (gr.includes('8.8') || gr.includes('10.9') || gr.includes('12.9')) {
+      return 'High Strength';
+    }
+    if (gr.includes('304') || gr.includes('316') || gr.includes('a2') || gr.includes('a4')) {
+      return 'Corrosion Resistant';
+    }
+    if (gr.includes('5.8') || gr.includes('4.6')) {
+      return 'Durable Quality';
+    }
+    if (gr.includes('class 8') || gr.includes('class 10')) {
+      return 'High Tensile';
+    }
+  }
+  if (item.finish) {
+    const fn = item.finish.toLowerCase();
+    if (fn.includes('zinc') || fn.includes('passivated') || fn.includes('bp') || fn.includes('bzp')) {
+      return 'Precision Finish';
+    }
+    if (fn.includes('galv') || fn.includes('hdg')) {
+      return 'Corrosion Resistant';
+    }
+  }
+  return 'High Strength';
 }
 
 export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   initialStandard,
   initialGrade,
+  initialSearch,
+  cartCount = 0,
+  onNavigateToCart,
+  onNavigateHome,
   onSelectProduct,
   onAddToCart,
 }) => {
@@ -31,39 +104,100 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   const [totalCount, setTotalCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const PAGE_SIZE = 12;
+
+  // Search state with debouncing (never loses focus!)
+  const [searchQuery, setSearchQuery] = useState(initialSearch || '');
+  const [debouncedQuery, setDebouncedQuery] = useState(initialSearch || '');
+
+  // All standard industrial fastener categories
+  const DEFAULT_CATEGORIES: Array<{ id: string; label: string }> = [
+    { id: 'All', label: 'All Products' },
+    { id: 'BOLTS', label: 'Bolts' },
+    { id: 'NUTS', label: 'Nuts' },
+    { id: 'SCREWS', label: 'Screws' },
+    { id: 'WASHERS', label: 'Washers' },
+    { id: 'STUDS', label: 'Studs' },
+    { id: 'ANCHORS', label: 'Anchors' },
+  ];
+
+  // Dynamic filter states: All categories available with initial first view focus
+  const [categoriesList, setCategoriesList] = useState<Array<{ id: string; label: string }>>(DEFAULT_CATEGORIES);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedStandard, setSelectedStandard] = useState<string>(initialStandard || 'All');
   const [selectedGrade, setSelectedGrade] = useState<string>(initialGrade || 'All');
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
-  const [displayUnit, setDisplayUnit] = useState<GlobalUnit>('PCS');
-  const [toastMsg, setToastMsg] = useState('');
 
-  // Dynamic filter options loaded from backend API
+  // Favorites & Added states
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
+
+  // Filter drawer modal
+  const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [standardsList, setStandardsList] = useState<string[]>(['All']);
   const [gradesList, setGradesList] = useState<string[]>(['All']);
 
-  const fetchCatalog = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
+  // Floating Toast
+  const [toastMsg, setToastMsg] = useState('');
+
+  // Debounce search query by 300ms to avoid firing on every keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const fetchCatalogData = async (pageNum = 1, isRefresh = false) => {
+    if (pageNum === 1) {
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
     } else {
-      setIsLoading(true);
+      setIsLoadingMore(true);
     }
 
     try {
       const res = await mobileApi.products.getAll({
-        search: searchQuery.trim() || undefined,
+        search: debouncedQuery || undefined,
+        subGroup: selectedCategory === 'All' ? undefined : selectedCategory,
         standard: selectedStandard === 'All' ? undefined : selectedStandard,
         grade: selectedGrade === 'All' ? undefined : selectedGrade,
         stockStatus: inStockOnly ? 'in_stock' : undefined,
-        limit: 50,
+        page: pageNum,
+        limit: PAGE_SIZE,
       });
 
-      if (res.products) {
-        setProducts(res.products);
-        setTotalCount(res.total ?? res.count ?? res.products.length);
+      const newItems = res.products || [];
+      const total = res.total ?? res.count ?? newItems.length;
+      setTotalCount(total);
+
+      if (pageNum === 1) {
+        setProducts(newItems);
+      } else {
+        setProducts((prev) => {
+          const ids = new Set(prev.map((p) => p.id));
+          const unique = newItems.filter((p) => !ids.has(p.id));
+          return [...prev, ...unique];
+        });
       }
 
-      // Update dynamic filter options from backend
+      setHasMore(pageNum * PAGE_SIZE < total);
+      setPage(pageNum);
+
+      // Populate all categories dynamically while preserving friendly labels
+      if (res.filterOptions?.subGroups && res.filterOptions.subGroups.length > 0) {
+        const knownIds = new Set(DEFAULT_CATEGORIES.map((c) => c.id.toUpperCase()));
+        const extraGroups = res.filterOptions.subGroups
+          .filter((sg: string) => Boolean(sg) && !knownIds.has(sg.toUpperCase()))
+          .map((sg: string) => ({
+            id: sg.toUpperCase(),
+            label: sg.charAt(0).toUpperCase() + sg.slice(1).toLowerCase(),
+          }));
+        setCategoriesList([...DEFAULT_CATEGORIES, ...extraGroups]);
+      }
       if (res.filterOptions?.standards && res.filterOptions.standards.length > 0) {
         setStandardsList(['All', ...res.filterOptions.standards]);
       }
@@ -75,430 +209,884 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+      setIsLoadingMore(false);
     }
   };
 
+  // Re-fetch when debounced search or filter criteria change
   useEffect(() => {
-    fetchCatalog();
-  }, [searchQuery, selectedStandard, selectedGrade, inStockOnly]);
+    fetchCatalogData(1, false);
+  }, [debouncedQuery, selectedCategory, selectedStandard, selectedGrade, inStockOnly]);
 
-  const handleQuickAdd = (product: MobileProduct) => {
-    const qty = displayUnit === 'PCS' ? 1000 : 50;
-    onAddToCart(product, displayUnit, qty);
-    setToastMsg(`Added ${qty.toLocaleString()} ${displayUnit} of ${product.sku} to cart`);
-    setTimeout(() => setToastMsg(''), 2500);
+  const handleRefresh = () => {
+    fetchCatalogData(1, true);
   };
 
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchCatalog(true)} colors={['#0052CC']} />
-      }
-    >
-      {/* Search Header */}
-      <MobileSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Search DIN standard, Grade, Diameter (e.g. M10, 8.8)..."
-      />
+  const handleLoadMore = () => {
+    if (!isLoading && !isLoadingMore && hasMore) {
+      fetchCatalogData(page + 1, false);
+    }
+  };
 
-      {/* Procurement Unit & In Stock Filters Row */}
-      <View style={styles.topControlsRow}>
-        <View style={styles.unitToggleContainer}>
-          <Text style={styles.controlLabel}>PRICE MODE:</Text>
-          <View style={styles.unitPillsWrap}>
+  const toggleFavorite = (productId: number) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
+
+  const handleQuickAdd = (product: MobileProduct) => {
+    onAddToCart(product, 'PCS', 1000);
+    setRecentlyAddedId(product.id);
+    setToastMsg(`Added 1,000 Pcs of ${product.sku} to cart`);
+    setTimeout(() => {
+      setRecentlyAddedId(null);
+      setToastMsg('');
+    }, 2500);
+  };
+
+  // 100% Dynamic Card Rendering (Faithful to UI Mockup, NO "Get Quote >")
+  const renderProductItem = ({ item }: { item: MobileProduct }) => {
+    const isFav = favorites.has(item.id);
+    const isAdded = recentlyAddedId === item.id;
+    const cleanTitle = getCleanFastenerTitle(item.name, item.subGroup);
+    const standardDisplay = item.standard || item.din || item.isoStandard || 'DIN 933';
+    const cleanDin = standardDisplay.replace(/^DIN\s*/i, 'DIN: ');
+    const sizeDisplay = item.sizeFormatted
+      ? item.sizeFormatted
+      : `${item.diameter || 'M6'} – ${item.lengthMm ? item.lengthMm + 'mm' : 'M20'}`;
+    const featureText = getFastenerFeature(item);
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onSelectProduct(item)}
+        style={[styles.card, item.isSurplus ? styles.surplusCardBorder : null]}
+      >
+        {/* Left Image Thumbnail Container with soft sky-blue background */}
+        <View style={styles.cardImgBox}>
+          <FastenerProductImage
+            imageUrl={item.imageUrl}
+            category={item.category || item.subGroup}
+            productName={item.name}
+            standard={standardDisplay}
+            drawingUrl={item.drawingUrl}
+            height={98}
+            containerStyle={styles.fastenerImageStyle}
+            showCadBadge={Boolean(item.drawingUrl)}
+          />
+          {item.isSurplus ? (
+            <View style={styles.surplusBadge}>
+              <Text style={styles.surplusBadgeText}>🔥 -{item.surplusDiscountPct || 35}%</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Right Info Section */}
+        <View style={styles.cardInfo}>
+          {/* Row 1: Clean Title + Heart Wishlist Button */}
+          <View style={styles.cardTopRow}>
+            <Text style={styles.productTitle} numberOfLines={1}>
+              {cleanTitle}
+            </Text>
+
             <TouchableOpacity
-              onPress={() => setDisplayUnit('PCS')}
-              style={[styles.unitPill, displayUnit === 'PCS' ? styles.unitPillActive : styles.unitPillInactive]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                toggleFavorite(item.id);
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.heartBtn}
             >
-              <Text style={[styles.unitPillText, displayUnit === 'PCS' ? styles.unitPillTextActive : null]}>
-                ₹ / Pc
+              <Text style={[styles.heartIcon, isFav && styles.heartIconActive]}>
+                {isFav ? '♥' : '♡'}
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Row 2: Size & DIN Standard */}
+          <View style={styles.specLineRow}>
+            <Text style={styles.specText}>
+              Size: <Text style={styles.specValueText}>{sizeDisplay}</Text>
+              <Text style={styles.specDivider}>  |  </Text>
+              <Text style={styles.specValueText}>{cleanDin.startsWith('DIN') ? cleanDin : `DIN: ${cleanDin}`}</Text>
+            </Text>
+          </View>
+
+          {/* Row 3: Feature Check & Live Stock Status */}
+          <View style={styles.featureStockRow}>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureCheck}>✔</Text>
+              <Text style={styles.featureText}>{featureText}</Text>
+            </View>
+            <Text style={styles.specDivider}>  |  </Text>
+            <View style={styles.stockItem}>
+              <Text style={styles.stockBoxIcon}>📦</Text>
+              <Text
+                style={[
+                  styles.stockText,
+                  item.isInStock ? styles.stockTextIn : styles.stockTextPre,
+                ]}
+              >
+                {item.isInStock ? 'In Stock' : 'Pre-Order'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Row 4: Price & Action Pill Button */}
+          <View style={styles.cardActionRow}>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceSymbol}>₹</Text>
+              <Text style={styles.priceAmount}>{item.pricePerPiece}</Text>
+              <Text style={styles.priceUnit}> / Piece</Text>
+            </View>
+
             <TouchableOpacity
-              onPress={() => setDisplayUnit('KGS')}
-              style={[styles.unitPill, displayUnit === 'KGS' ? styles.unitPillActive : styles.unitPillInactive]}
+              activeOpacity={0.82}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                handleQuickAdd(item);
+              }}
+              style={[styles.quickAddBtn, isAdded ? styles.quickAddBtnSuccess : null]}
             >
-              <Text style={[styles.unitPillText, displayUnit === 'KGS' ? styles.unitPillTextActive : null]}>
-                ₹ / Kg
+              <Text style={[styles.quickAddBtnText, isAdded ? styles.quickAddBtnTextSuccess : null]}>
+                {isAdded ? '✓ Added' : '+ Add to Cart'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFooter = () => {
+    if (!isLoadingMore) return <View style={{ height: 24 }} />;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#0047AB" />
+        <Text style={styles.footerLoaderText}>Loading more fasteners from depot...</Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.screen}>
+      {/* ===================================================================== */}
+      {/* 1. TOP BRAND HEADER BAR (Fixed at top with dynamic RFQ count)         */}
+      {/* ===================================================================== */}
+      <View style={styles.topBlueHeader}>
+        <TouchableOpacity
+          onPress={onNavigateHome}
+          style={styles.headerMenuBtn}
+          activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.headerMenuIcon}>←</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setInStockOnly(!inStockOnly)}
-          style={[styles.stockToggle, inStockOnly ? styles.stockToggleActive : styles.stockToggleInactive]}
+          onPress={onNavigateHome}
+          style={styles.brandRow}
+          activeOpacity={0.85}
         >
-          <View style={[styles.stockDot, inStockOnly ? styles.stockDotActive : styles.stockDotInactive]} />
-          <Text style={[styles.stockToggleText, inStockOnly ? styles.stockToggleTextActive : null]}>
-            In Stock Only
-          </Text>
+          {/* <View style={styles.logoHex}>
+            <Text style={styles.logoHexText}>⬡</Text>
+          </View> */}
+          <Text style={styles.brandTitle}>CBH Fasteners</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onNavigateToCart}
+          style={styles.rfqIconBtn}
+          activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.rfqIcon}>🛒</Text>
+          <View style={styles.rfqBadge}>
+            <Text style={styles.rfqBadgeText}>{cartCount}</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* Dynamic Standards Chips */}
-      <View style={styles.filterSection}>
-        <View style={styles.filterHeaderRow}>
-          <Text style={styles.filterTitle}>STANDARDS (DIN / ISO)</Text>
-          {selectedStandard !== 'All' && (
-            <TouchableOpacity onPress={() => setSelectedStandard('All')}>
-              <Text style={styles.resetFilterText}>Clear</Text>
+      {/* ===================================================================== */}
+      {/* 2. WHITE ROUNDED SEARCH BAR (Fixed at top - typing NEVER loses focus) */}
+      {/* ===================================================================== */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {searchQuery ? (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.clearSearchIcon}>✕</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
-          {standardsList.map((std) => {
-            const isActive = selectedStandard === std;
-            return (
-              <TouchableOpacity
-                key={std}
-                onPress={() => setSelectedStandard(std)}
-                style={[styles.chip, isActive ? styles.chipActive : styles.chipInactive]}
-              >
-                <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                  {std}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
       </View>
 
-      {/* Dynamic Grades Chips */}
-      <View style={styles.filterSection}>
-        <View style={styles.filterHeaderRow}>
-          <Text style={styles.filterTitle}>MATERIAL GRADE</Text>
-          {selectedGrade !== 'All' && (
-            <TouchableOpacity onPress={() => setSelectedGrade('All')}>
-              <Text style={styles.resetFilterText}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
-          {gradesList.map((gr) => {
-            const isActive = selectedGrade === gr;
+      {/* ===================================================================== */}
+      {/* 3. DYNAMIC CATEGORY PILLS BAR (All Categories with smooth scroll)     */}
+      {/* ===================================================================== */}
+      <View style={styles.categoriesRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryPillsScroll}
+        >
+          {categoriesList.map((item) => {
+            const isSelected = selectedCategory === item.id;
             return (
-              <TouchableOpacity
-                key={gr}
-                onPress={() => setSelectedGrade(gr)}
-                style={[
-                  styles.gradeChip,
-                  isActive ? styles.gradeChipActive : styles.gradeChipInactive,
-                ]}
-              >
-                <Text
+              <View key={item.id} style={styles.pillWrapper}>
+                <TouchableOpacity
+                  onPress={() => setSelectedCategory(item.id)}
                   style={[
-                    styles.gradeChipText,
-                    isActive ? styles.gradeChipTextActive : null,
+                    styles.categoryPill,
+                    isSelected ? styles.categoryPillActive : styles.categoryPillInactive,
                   ]}
+                  activeOpacity={0.8}
                 >
-                  {gr}
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.categoryPillText,
+                      isSelected ? styles.categoryPillTextActive : null,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+                {isSelected ? <View style={styles.activeOrangeUnderline} /> : null}
+              </View>
             );
           })}
         </ScrollView>
-      </View>
 
-      {/* Toast Notification */}
-      {toastMsg ? (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ {toastMsg}</Text>
-        </View>
-      ) : null}
-
-      {/* Results Count & Reload */}
-      <View style={styles.resultsHeader}>
-        <Text style={styles.resultsCount}>
-          Showing {products.length} of {totalCount} industrial fasteners
-        </Text>
-        <TouchableOpacity onPress={() => fetchCatalog(true)}>
-          <Text style={styles.reloadText}>↻ Refresh</Text>
+        <TouchableOpacity
+          onPress={() => setIsFilterOpen(true)}
+          style={styles.filterBtn}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.filterBtnIcon}>⧩</Text>
+          <Text style={styles.filterBtnText}>Filter</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Loading Indicator */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0052CC" />
-          <Text style={styles.loadingText}>Loading dynamic fasteners...</Text>
-        </View>
-      ) : products.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>🔍</Text>
-          <Text style={styles.emptyTitle}>No Fasteners Found</Text>
-          <Text style={styles.emptySubtitle}>
-            Try clearing filters or searching by DIN standard, diameter, or grade.
+      {/* Results Count Meta Row (shown when filters/search are active) */}
+      {(selectedStandard !== 'All' || selectedGrade !== 'All' || selectedCategory !== 'All' || inStockOnly || debouncedQuery) ? (
+        <View style={styles.resultsMetaRow}>
+          <Text style={styles.resultsCountText}>
+            Showing {products.length} of {totalCount} fasteners
           </Text>
           <TouchableOpacity
             onPress={() => {
-              setSearchQuery('');
+              setSelectedCategory('All');
               setSelectedStandard('All');
               setSelectedGrade('All');
               setInStockOnly(false);
+              setSearchQuery('');
             }}
-            style={styles.clearBtn}
           >
-            <Text style={styles.clearBtnText}>Reset All Filters</Text>
+            <Text style={styles.resetFiltersLink}>Reset All Filters</Text>
           </TouchableOpacity>
         </View>
+      ) : null}
+
+      {/* ===================================================================== */}
+      {/* 4. INFINITE SCROLL PRODUCTS LIST (FlatList with onEndReached)         */}
+      {/* ===================================================================== */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0047AB" />
+          <Text style={styles.loadingText}>Connecting to warehouse depot...</Text>
+        </View>
       ) : (
-        /* Products List */
-        products.map((product) => {
-          const displayPrice = displayUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
-          const secondaryPrice = displayUnit === 'PCS' ? `₹${product.pricePerKg}/Kg` : `₹${product.pricePerPiece}/Pc`;
-
-          return (
-            <MobileCard key={product.id} onPress={() => onSelectProduct(product)}>
-              <View style={styles.cardTop}>
-                <View style={styles.skuRow}>
-                  <Text style={styles.skuPill}>{product.sku}</Text>
-                  {product.standard ? (
-                    <Text style={styles.standardPill}>{product.standard}</Text>
-                  ) : null}
-                </View>
-                <MobileBadge
-                  label={product.isInStock ? 'IN STOCK' : 'PRE-ORDER'}
-                  variant={product.isInStock ? 'success' : 'warning'}
-                  size="sm"
-                />
-              </View>
-
-              <Text style={styles.productName}>{product.name}</Text>
-              
-              <View style={styles.specsRow}>
-                <Text style={styles.specBadge}>Grade: {product.grade || '8.8'}</Text>
-                {product.diameter ? (
-                  <Text style={styles.specBadge}>Dia: {product.diameter}</Text>
-                ) : null}
-                {product.lengthMm ? (
-                  <Text style={styles.specBadge}>Len: {product.lengthMm}mm</Text>
-                ) : null}
-              </View>
-
-              {product.stockPcs ? (
-                <Text style={styles.stockText}>
-                  🏭 Warehouse Stock: {product.stockPcs.toLocaleString()} Pcs ({product.stockKg || 0} Kg)
-                </Text>
-              ) : null}
-
-              <View style={styles.cardDivider} />
-
-              <View style={styles.cardBottom}>
-                <View>
-                  <Text style={styles.mainPrice}>
-                    ₹{displayPrice}
-                    <Text style={styles.priceSub}> / {displayUnit}</Text>
-                  </Text>
-                  <Text style={styles.secondaryPrice}>{secondaryPrice}</Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => handleQuickAdd(product)}
-                  style={styles.addBtn}
-                >
-                  <Text style={styles.addBtnText}>+ Add to Cart</Text>
-                </TouchableOpacity>
-              </View>
-            </MobileCard>
-          );
-        })
+        <FlatList
+          data={products}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={renderProductItem}
+          ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={['#0047AB', '#EA580C']}
+            />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.4}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>🔍</Text>
+              <Text style={styles.emptyTitle}>No Fasteners Found</Text>
+              <Text style={styles.emptySubtitle}>
+                No products match "{debouncedQuery}" under {selectedCategory}. Try resetting your search filters.
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('All');
+                  setSelectedStandard('All');
+                  setSelectedGrade('All');
+                  setInStockOnly(false);
+                }}
+                style={styles.emptyResetBtn}
+              >
+                <Text style={styles.emptyResetBtnText}>Reset All Filters</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
       )}
-    </ScrollView>
+
+      {/* ===================================================================== */}
+      {/* 5. FILTER BOTTOM SHEET MODAL                                          */}
+      {/* ===================================================================== */}
+      <Modal
+        visible={isFilterOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsFilterOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Fastener Catalog</Text>
+              <TouchableOpacity onPress={() => setIsFilterOpen(false)}>
+                <Text style={styles.modalCloseIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category Chips */}
+            <Text style={styles.modalSectionLabel}>CATEGORY</Text>
+            <View style={styles.modalChipsWrap}>
+              {categoriesList.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setSelectedCategory(cat.id)}
+                  style={[
+                    styles.modalChip,
+                    selectedCategory === cat.id ? styles.modalChipActive : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modalChipText,
+                      selectedCategory === cat.id ? styles.modalChipTextActive : null,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Standards Chips */}
+            <Text style={styles.modalSectionLabel}>STANDARD (DIN / ISO)</Text>
+            <View style={styles.modalChipsWrap}>
+              {standardsList.slice(0, 10).map((std) => (
+                <TouchableOpacity
+                  key={std}
+                  onPress={() => setSelectedStandard(std)}
+                  style={[
+                    styles.modalChip,
+                    selectedStandard === std ? styles.modalChipActive : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modalChipText,
+                      selectedStandard === std ? styles.modalChipTextActive : null,
+                    ]}
+                  >
+                    {std}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Grade Chips */}
+            <Text style={styles.modalSectionLabel}>PROPERTY CLASS / GRADE</Text>
+            <View style={styles.modalChipsWrap}>
+              {gradesList.slice(0, 8).map((gr) => (
+                <TouchableOpacity
+                  key={gr}
+                  onPress={() => setSelectedGrade(gr)}
+                  style={[
+                    styles.modalChip,
+                    selectedGrade === gr ? styles.modalChipActive : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modalChipText,
+                      selectedGrade === gr ? styles.modalChipTextActive : null,
+                    ]}
+                  >
+                    {gr}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* In stock toggle */}
+            <TouchableOpacity
+              onPress={() => setInStockOnly(!inStockOnly)}
+              style={styles.inStockToggleRow}
+            >
+              <View style={[styles.checkbox, inStockOnly && styles.checkboxActive]}>
+                {inStockOnly && <Text style={styles.checkboxCheck}>✓</Text>}
+              </View>
+              <Text style={styles.inStockToggleLabel}>In Stock Only (Factory Ready)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsFilterOpen(false)}
+              style={styles.applyFilterBtn}
+            >
+              <Text style={styles.applyFilterBtnText}>Apply Filters</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Floating Toast Notification */}
+      {toastMsg ? (
+        <View style={styles.floatingToast}>
+          <Text style={styles.floatingToastText}>✓ {toastMsg}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
+  screen: {
+    flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  topControlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  listContent: {
+    paddingBottom: 28,
   },
-  unitToggleContainer: {
+  // Top Blue Header Bar
+  topBlueHeader: {
+    backgroundColor: '#0047AB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerMenuBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerMenuIcon: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  controlLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.5,
-  },
-  unitPillsWrap: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+  logoHex: {
+    width: 24,
+    height: 24,
     borderRadius: 6,
-    padding: 2,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  unitPill: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+  logoHexText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  brandTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  rfqIconBtn: {
+    position: 'relative',
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rfqIcon: {
+    fontSize: 21,
+    color: '#FFFFFF',
+  },
+  rfqBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF6B00',
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rfqBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+
+  // Fixed Search Bar
+  searchBarWrapper: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    height: 42,
+    gap: 8,
+  },
+  searchIcon: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 0,
+  },
+  clearSearchIcon: {
+    fontSize: 14,
+    color: '#94A3B8',
+    padding: 4,
+  },
+
+  // Categories Row
+  categoriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  categoryPillsScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
+    gap: 8,
+  },
+  pillWrapper: {
+    alignItems: 'center',
+    position: 'relative',
+    paddingBottom: 4,
+  },
+  categoryPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  categoryPillActive: {
+    backgroundColor: '#0047AB',
+  },
+  categoryPillInactive: {
+    backgroundColor: '#F1F5F9',
+  },
+  categoryPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  categoryPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  activeOrangeUnderline: {
+    position: 'absolute',
+    bottom: -2,
+    width: '60%',
+    height: 3,
+    backgroundColor: '#FF6B00',
+    borderRadius: 2,
+  },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  filterBtnIcon: {
+    fontSize: 12,
+    color: '#0047AB',
+  },
+  filterBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  // Results Meta Row
+  resultsMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  resultsCountText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  resetFiltersLink: {
+    fontSize: 12,
+    color: '#0047AB',
+    fontWeight: '700',
+  },
+
+  // =========================================================================
+  // 100% Dynamic Product Card (Faithful to UI Mockup, NO "Get Quote >")
+  // =========================================================================
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: '#E8EFF7',
+    elevation: 2,
+    shadowColor: '#002B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    alignItems: 'center',
+  },
+  surplusCardBorder: {
+    borderColor: '#F59E0B',
+    borderWidth: 1.5,
+  },
+  cardImgBox: {
+    width: 104,
+    height: 104,
+    borderRadius: 14,
+    backgroundColor: '#EEF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E0EEFB',
+    flexShrink: 0,
+    position: 'relative',
+  },
+  fastenerImageStyle: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  surplusBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     borderRadius: 4,
   },
-  unitPillActive: {
-    backgroundColor: '#0052CC',
-  },
-  unitPillInactive: {
-    backgroundColor: 'transparent',
-  },
-  unitPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  unitPillTextActive: {
+  surplusBadgeText: {
     color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
-  stockToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
+  cardInfo: {
+    flex: 1,
+    marginLeft: 13,
+    justifyContent: 'space-between',
+    height: 104,
   },
-  stockToggleActive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#34D399',
-  },
-  stockToggleInactive: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#E2E8F0',
-  },
-  stockDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  stockDotActive: {
-    backgroundColor: '#10B981',
-  },
-  stockDotInactive: {
-    backgroundColor: '#94A3B8',
-  },
-  stockToggleText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  stockToggleTextActive: {
-    color: '#065F46',
-    fontWeight: '700',
-  },
-  filterSection: {
-    gap: 6,
-  },
-  filterHeaderRow: {
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  filterTitle: {
-    fontSize: 11,
+  productTitle: {
+    fontSize: 17,
     fontWeight: '800',
-    color: '#475569',
-    letterSpacing: 0.5,
+    color: '#0F172A',
+    flex: 1,
+    marginRight: 6,
   },
-  resetFilterText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0052CC',
+  heartBtn: {
+    padding: 2,
   },
-  chipsRow: {
+  heartIcon: {
+    fontSize: 19,
+    color: '#94A3B8',
+  },
+  heartIconActive: {
+    color: '#EF4444',
+  },
+  specLineRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
   },
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+  specText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  specValueText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '700',
+  },
+  specDivider: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    marginHorizontal: 3,
+  },
+  featureStockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featureCheck: {
+    color: '#0052CC',
+    fontSize: 12,
+    marginRight: 4,
+    fontWeight: '800',
+  },
+  featureText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  stockItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stockBoxIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  stockText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stockTextIn: {
+    color: '#16A34A',
+  },
+  stockTextPre: {
+    color: '#D97706',
+  },
+  cardActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  priceSymbol: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0047AB',
+  },
+  priceAmount: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: '#0047AB',
+  },
+  priceUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginLeft: 2,
+  },
+  quickAddBtn: {
     borderWidth: 1.5,
-    marginRight: 6,
-  },
-  chipActive: {
-    backgroundColor: '#0052CC',
-    borderColor: '#0052CC',
-  },
-  chipInactive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
-  gradeChip: {
+    borderColor: '#EA580C',
+    borderRadius: 20,
+    paddingHorizontal: 13,
     paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    marginRight: 6,
-  },
-  gradeChipActive: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FF6B00',
-  },
-  gradeChipInactive: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
   },
-  gradeChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
+  quickAddBtnSuccess: {
+    backgroundColor: '#16A34A',
+    borderColor: '#16A34A',
   },
-  gradeChipTextActive: {
-    color: '#C2410C',
+  quickAddBtnText: {
+    color: '#EA580C',
+    fontSize: 12,
     fontWeight: '800',
   },
-  toast: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#34D399',
-    borderRadius: 8,
-    padding: 10,
+  quickAddBtnTextSuccess: {
+    color: '#FFFFFF',
   },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+
+  // Footer Loader
+  footerLoader: {
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
-  resultsCount: {
+  footerLoaderText: {
     fontSize: 12,
     color: '#64748B',
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  reloadText: {
-    fontSize: 11,
-    color: '#0052CC',
-    fontWeight: '700',
-  },
+
+  // Loading Container
   loadingContainer: {
-    padding: 40,
+    padding: 60,
     alignItems: 'center',
     gap: 12,
   },
@@ -507,17 +1095,15 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '600',
   },
+
+  // Empty State
   emptyContainer: {
-    padding: 32,
+    padding: 40,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     gap: 8,
   },
   emptyIcon: {
-    fontSize: 32,
+    fontSize: 36,
   },
   emptyTitle: {
     fontSize: 16,
@@ -528,110 +1114,151 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     textAlign: 'center',
+    lineHeight: 18,
   },
-  clearBtn: {
+  emptyResetBtn: {
     marginTop: 8,
-    backgroundColor: '#0052CC',
-    paddingVertical: 8,
+    backgroundColor: '#0047AB',
     paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
   },
-  clearBtnText: {
+  emptyResetBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  cardTop: {
+
+  // Filter Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+    gap: 12,
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  skuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  skuPill: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0052CC',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  standardPill: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginTop: 6,
-  },
-  specsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  specBadge: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#475569',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  stockText: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  mainPrice: {
+  modalTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0052CC',
+    color: '#0F172A',
   },
-  priceSub: {
-    fontSize: 11,
+  modalCloseIcon: {
+    fontSize: 16,
     color: '#64748B',
+    padding: 4,
+  },
+  modalSectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+    marginTop: 6,
+  },
+  modalChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  modalChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalChipActive: {
+    backgroundColor: '#0047AB',
+    borderColor: '#0047AB',
+  },
+  modalChipText: {
+    fontSize: 11,
+    color: '#475569',
     fontWeight: '600',
   },
-  secondaryPrice: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
+  modalChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  addBtn: {
-    backgroundColor: '#0052CC',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+  inStockToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
   },
-  addBtnText: {
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: '#0047AB',
+    borderColor: '#0047AB',
+  },
+  checkboxCheck: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '900',
+  },
+  inStockToggleLabel: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  applyFilterBtn: {
+    backgroundColor: '#0047AB',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  applyFilterBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Floating Toast
+  floatingToast: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    zIndex: 999,
+  },
+  floatingToastText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 });
 

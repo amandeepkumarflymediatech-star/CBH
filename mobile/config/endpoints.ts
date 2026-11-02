@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   // Authentication & Security
   AUTH: {
     LOGIN: '/api/auth/login',
+    SESSION: '/api/auth/session',
     REGISTER: '/api/auth/register',
     FORGOT_PASSWORD: '/api/auth/forgot-password',
     CHECK_EMAIL: '/api/auth/check-email',

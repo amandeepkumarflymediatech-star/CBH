@@ -151,6 +151,7 @@ export interface MobileUserAccount {
   creditLimit: number;
   isVerified: boolean;
   city?: string;
+  address?: string;
   createdAt: string;
   ordersCount?: number;
 }

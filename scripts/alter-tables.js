@@ -196,6 +196,7 @@ async function main() {
 
   await safeAddColumn(connection, targetDb, 'bulk_rfqs', 'erpnext_quote_id', 'VARCHAR(100) DEFAULT NULL');
   await safeAddColumn(connection, targetDb, 'bulk_rfqs', 'erpnext_sales_order_id', 'VARCHAR(100) DEFAULT NULL');
+  await safeAddColumn(connection, targetDb, 'users', 'address', 'TEXT DEFAULT NULL');
   console.log('✓ Orders and RFQs verification complete.\n');
 
   // ==========================================================================

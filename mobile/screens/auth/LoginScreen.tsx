@@ -68,10 +68,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
 
         if (lower.includes('@')) {
+          const parts = cleanEmail.split('@');
+          const derivedName = parts[0]
+            .replace(/[._-]/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          const domain = parts[1] || 'company.com';
+          const companyBase = domain.split('.')[0].replace(/[-_]/g, ' ');
+          const derivedCompany = companyBase.charAt(0).toUpperCase() + companyBase.slice(1) + ' Industrial Corp';
+
           const mockUser: MobileAuthUser = {
-            ...DEMO_MOBILE_CUSTOMER,
+            id: Date.now(),
             email: cleanEmail,
+            fullName: derivedName || 'Enterprise Partner',
+            companyName: derivedCompany,
             role: 'customer',
+            tier: 'GOLD',
+            tierDiscountPct: 10,
+            creditLimit: 500000,
+            phone: '+91 98880 21000',
+            gstin: '07AAACT0012P1Z8',
           };
           setMobileStoredUser(mockUser, 'token_live');
           onSuccess(mockUser);
@@ -86,6 +101,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       // Backend authenticated user with exact database role ('admin' | 'customer')
       const authenticatedUser: MobileAuthUser = res.user;
       setMobileStoredUser(authenticatedUser, res.token || 'token_live');
+      mobileApi.auth.saveSession(authenticatedUser, res.token).catch(() => {});
       onSuccess(authenticatedUser);
     } catch (err: any) {
       setErrorMsg(

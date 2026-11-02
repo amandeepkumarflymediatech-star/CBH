@@ -227,8 +227,10 @@ export async function GET(request: Request) {
     }
 
     if (subGroup && subGroup !== 'all') {
-      whereClauses.push('LOWER(sub_group) = ?');
-      params.push(subGroup.toLowerCase());
+      const cleanSg = subGroup.toLowerCase().replace(/s$/, '');
+      whereClauses.push('(LOWER(sub_group) LIKE ? OR LOWER(category) LIKE ? OR LOWER(name) LIKE ?)');
+      const sgParam = `%${cleanSg}%`;
+      params.push(sgParam, sgParam, sgParam);
     }
 
     if (category && category !== 'all') {

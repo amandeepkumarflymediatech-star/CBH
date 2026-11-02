@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,28 +6,65 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
+import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { MobileProduct, GlobalUnit } from '../../types';
+import { mobileApi } from '../../config/api';
 
 interface CustomerProductDetailScreenProps {
   product: MobileProduct;
+  cartCount?: number;
   onBack: () => void;
   onAddToCart: (product: MobileProduct, unit: GlobalUnit, qty: number) => void;
   onNavigateToCart: () => void;
+  onSearch?: (query: string) => void;
+  onSelectProduct?: (product: MobileProduct) => void;
 }
 
 export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenProps> = ({
   product,
+  cartCount = 0,
   onBack,
   onAddToCart,
   onNavigateToCart,
+  onSearch,
+  onSelectProduct,
 }) => {
   const [selectedUnit, setSelectedUnit] = useState<GlobalUnit>('PCS');
   const [quantity, setQuantity] = useState<number>(1000);
   const [isAddedToast, setIsAddedToast] = useState(false);
   const [deliveryPincode, setDeliveryPincode] = useState('560058');
+
+  // Top Search Bar State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MobileProduct[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Live Autocomplete on typing
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const handler = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const res = await mobileApi.products.getAll({ search: searchQuery.trim(), limit: 4 });
+        setSearchResults(res.products || []);
+        setShowDropdown(true);
+      } catch (err) {
+        console.warn('[Detail Screen] Search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 280);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Fastener calculations
   const weightPerPc = product.weightPerPcKg || 0.054;
@@ -61,10 +98,136 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
 
   return (
     <View style={styles.screen}>
+      {/* ===================================================================== */}
+      {/* 1. TOP BRAND HEADER BAR (Fixed at top)                                */}
+      {/* ===================================================================== */}
+      <View style={styles.topBlueHeader}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.headerMenuBtn}
+          activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.headerMenuIcon}>←</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.brandRow}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.brandTitle}>CBH Fasteners</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onNavigateToCart}
+          style={styles.rfqIconBtn}
+          activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.rfqIcon}>🛒</Text>
+          <View style={styles.rfqBadge}>
+            <Text style={styles.rfqBadgeText}>{cartCount}</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* ===================================================================== */}
+      {/* 2. WHITE ROUNDED SEARCH BAR (With Live Autocomplete & Catalog Nav)     */}
+      {/* ===================================================================== */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (onSearch && searchQuery.trim()) {
+                setShowDropdown(false);
+                onSearch(searchQuery.trim());
+              }
+            }}
+          />
+          {isSearching ? (
+            <ActivityIndicator size="small" color="#0047AB" style={{ marginRight: 4 }} />
+          ) : searchQuery ? (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setShowDropdown(false);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.clearSearchIcon}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* Floating Autocomplete Dropdown */}
+        {showDropdown && searchResults.length > 0 ? (
+          <View style={styles.searchDropdown}>
+            {searchResults.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.searchDropdownItem}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setShowDropdown(false);
+                  setSearchQuery('');
+                  if (onSelectProduct) {
+                    onSelectProduct(item);
+                  } else if (onSearch) {
+                    onSearch(item.name);
+                  }
+                }}
+              >
+                <View style={styles.searchDropdownImgBox}>
+                  <FastenerProductImage
+                    imageUrl={item.imageUrl}
+                    category={item.category || item.subGroup}
+                    productName={item.name}
+                    standard={item.standard}
+                    height={38}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.searchDropdownTitle} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.searchDropdownSub}>
+                    {item.standard || 'DIN 933'} • ₹{item.pricePerPiece}/pc
+                  </Text>
+                </View>
+                <Text style={styles.searchDropdownArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.searchDropdownFooter}
+              onPress={() => {
+                setShowDropdown(false);
+                if (onSearch && searchQuery.trim()) {
+                  onSearch(searchQuery.trim());
+                }
+              }}
+            >
+              <Text style={styles.searchDropdownFooterText}>
+                View all results for "{searchQuery}" in Catalog →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+
       <ScrollView contentContainerStyle={styles.container}>
         {/* Top Header Card (Clean White B2B Style) */}
         <View style={styles.headerCard}>
-          <View style={styles.headerTopRow}>
+          {/* <View style={styles.headerTopRow}>
             <TouchableOpacity onPress={onBack} style={styles.backBtn}>
               <Text style={styles.backBtnText}>← Back to Catalog</Text>
             </TouchableOpacity>
@@ -73,7 +236,7 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
               variant={product.isInStock ? 'success' : 'warning'}
               size="sm"
             />
-          </View>
+          </View> */}
 
           <View style={styles.badgeRow}>
             <Text style={styles.skuTag}>{product.sku}</Text>
@@ -84,6 +247,15 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
               <Text style={styles.isoTag}>{product.isoStandard}</Text>
             ) : null}
           </View>
+
+          {/* Hero Fastener Photo */}
+          <FastenerProductImage
+            imageUrl={product.imageUrl}
+            drawingUrl={product.drawingUrl}
+            height={180}
+            showCadBadge
+            containerStyle={{ marginVertical: 10 }}
+          />
 
           <Text style={styles.productTitle}>{product.name}</Text>
           <Text style={styles.categorySub}>
@@ -368,6 +540,166 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+
+  // Fixed Top Brand Header
+  topBlueHeader: {
+    backgroundColor: '#0047AB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  headerMenuBtn: {
+    padding: 6,
+    borderRadius: 8,
+  },
+  headerMenuIcon: {
+    fontSize: 22,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+  },
+  rfqIconBtn: {
+    position: 'relative',
+    padding: 6,
+  },
+  rfqIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  rfqBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF6B00',
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rfqBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+
+  // White Rounded Search Bar
+  searchBarWrapper: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    position: 'relative',
+    zIndex: 50,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    height: 40,
+    gap: 8,
+  },
+  searchIcon: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 0,
+  },
+  clearSearchIcon: {
+    fontSize: 14,
+    color: '#94A3B8',
+    padding: 4,
+  },
+
+  // Floating Autocomplete Dropdown
+  searchDropdown: {
+    position: 'absolute',
+    top: 54,
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    zIndex: 100,
+  },
+  searchDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  searchDropdownImgBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#EEF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  searchDropdownTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  searchDropdownSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  searchDropdownArrow: {
+    fontSize: 14,
+    color: '#0047AB',
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  searchDropdownFooter: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+  },
+  searchDropdownFooterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0047AB',
   },
   container: {
     padding: 16,

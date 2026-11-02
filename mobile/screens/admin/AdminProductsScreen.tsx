@@ -14,6 +14,7 @@ import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { mobileApi } from '../../config/api';
 import { MobileProduct } from '../../types';
 
@@ -301,14 +302,9 @@ export const AdminProductsScreen: React.FC = () => {
       ) : (
         products.map((product) => (
           <MobileCard key={product.id}>
-            {/* Header: SKU & Status */}
-            <View style={styles.rowBetween}>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={styles.skuText}>{product.sku}</Text>
-                <Text style={styles.productName} numberOfLines={2}>
-                  {product.name}
-                </Text>
-              </View>
+            {/* Header: Status */}
+            <View style={[styles.rowBetween, { marginBottom: 8 }]}>
+              <Text style={styles.skuText}>{product.sku}</Text>
               <MobileBadge
                 label={product.isInStock ? 'IN STOCK' : 'OUT OF STOCK'}
                 variant={product.isInStock ? 'success' : 'danger'}
@@ -316,19 +312,35 @@ export const AdminProductsScreen: React.FC = () => {
               />
             </View>
 
-            {/* Technical Specs Tags */}
-            <View style={styles.specsRow}>
-              <View style={styles.specTag}>
-                <Text style={styles.specTagLabel}>STD:</Text>
-                <Text style={styles.specTagVal}>{product.standard || 'DIN 933'}</Text>
-              </View>
-              <View style={styles.specTag}>
-                <Text style={styles.specTagLabel}>GR:</Text>
-                <Text style={styles.specTagVal}>{product.grade || '8.8'}</Text>
-              </View>
-              <View style={styles.specTag}>
-                <Text style={styles.specTagLabel}>SIZE:</Text>
-                <Text style={styles.specTagVal}>{product.diameter}x{product.lengthMm}mm</Text>
+            {/* Product Photo & Details Row matching website */}
+            <View style={styles.adminProductRow}>
+              <FastenerProductImage
+                imageUrl={product.imageUrl}
+                drawingUrl={product.drawingUrl}
+                height={74}
+                containerStyle={styles.adminThumbContainer}
+                showCadBadge
+              />
+              <View style={styles.adminProductInfo}>
+                <Text style={styles.productName} numberOfLines={2}>
+                  {product.name}
+                </Text>
+
+                {/* Technical Specs Tags */}
+                <View style={styles.specsRow}>
+                  <View style={styles.specTag}>
+                    <Text style={styles.specTagLabel}>STD:</Text>
+                    <Text style={styles.specTagVal}>{product.standard || 'DIN 933'}</Text>
+                  </View>
+                  <View style={styles.specTag}>
+                    <Text style={styles.specTagLabel}>GR:</Text>
+                    <Text style={styles.specTagVal}>{product.grade || '8.8'}</Text>
+                  </View>
+                  <View style={styles.specTag}>
+                    <Text style={styles.specTagLabel}>SIZE:</Text>
+                    <Text style={styles.specTagVal}>{product.diameter}x{product.lengthMm}mm</Text>
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -972,6 +984,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13,
+  },
+  adminProductRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  adminThumbContainer: {
+    width: 74,
+    height: 74,
+    borderRadius: 8,
+    flexShrink: 0,
+  },
+  adminProductInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
 });
 

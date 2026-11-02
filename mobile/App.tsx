@@ -22,7 +22,7 @@ import {
   MobileAuthUser,
   UserRole,
 } from './types';
-import { FALLBACK_PRODUCTS } from './config/api';
+import { mobileApi, FALLBACK_PRODUCTS } from './config/api';
 
 // Components
 import { MobileHeader } from './components/MobileHeader';
@@ -61,23 +61,44 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<MobileProduct | null>(null);
 
   const [catalogFilterStandard, setCatalogFilterStandard] = useState<string>('All');
+  const [catalogSearchQuery, setCatalogSearchQuery] = useState<string>('');
 
   // Dynamic Cart State (starts empty - no hardcoded items)
   const [cartItems, setCartItems] = useState<MobileCartItem[]>([]);
 
   // Auth sync
   useEffect(() => {
+    // 1. Immediate memory check
     const stored = getMobileStoredUser();
     if (stored) {
       setUser(stored);
       setRole(stored.role);
+      setIsWelcome(false);
       setActiveTab(stored.role === 'admin' ? 'dashboard' : 'home');
     }
+
+    // 2. Persistent session sync from server (survives app refresh & Metro reload)
+    mobileApi.auth
+      .getSession()
+      .then((res) => {
+        if (res && res.success && res.user) {
+          setUser(res.user);
+          setRole(res.user.role);
+          setMobileStoredUser(res.user, res.token || 'token_live');
+          setIsWelcome(false);
+          setActiveTab(res.user.role === 'admin' ? 'dashboard' : 'home');
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleAuthSuccess = (u: MobileAuthUser, fallbackTab: string = 'home') => {
     setUser(u);
     setRole(u.role);
+    setMobileStoredUser(u);
+    mobileApi.auth.saveSession(u).catch(() => {});
+    setMobileStoredUser(u);
+    mobileApi.auth.saveSession(u).catch(() => {});
     setIsWelcome(false);
     if (u.role === 'admin') {
       setActiveTab('dashboard');
@@ -93,15 +114,18 @@ export default function App() {
     if (newRole === 'admin') {
       setUser(DEMO_MOBILE_ADMIN);
       setMobileStoredUser(DEMO_MOBILE_ADMIN);
+      mobileApi.auth.saveSession(DEMO_MOBILE_ADMIN).catch(() => {});
       setActiveTab('dashboard');
     } else {
       setUser(DEMO_MOBILE_CUSTOMER);
       setMobileStoredUser(DEMO_MOBILE_CUSTOMER);
+      mobileApi.auth.saveSession(DEMO_MOBILE_CUSTOMER).catch(() => {});
       setActiveTab('home');
     }
   };
 
   const handleLogout = () => {
+    mobileApi.auth.clearSession().catch(() => {});
     setMobileStoredUser(null);
     setUser(null);
     setRole('customer');
@@ -226,11 +250,20 @@ export default function App() {
       return (
         <CustomerProductDetailScreen
           product={selectedProduct}
+          cartCount={cartItems.length}
           onBack={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
           onNavigateToCart={() => {
             setSelectedProduct(null);
             setActiveTab('cart');
+          }}
+          onSearch={(query) => {
+            setCatalogSearchQuery(query);
+            setSelectedProduct(null);
+            setActiveTab('catalog');
+          }}
+          onSelectProduct={(prod) => {
+            setSelectedProduct(prod);
           }}
         />
       );
@@ -312,6 +345,10 @@ export default function App() {
           return (
             <CustomerCatalogScreen
               initialStandard={catalogFilterStandard}
+              initialSearch={catalogSearchQuery}
+              cartCount={cartItems.length}
+              onNavigateToCart={() => setActiveTab('cart')}
+              onNavigateHome={() => setActiveTab('home')}
               onSelectProduct={setSelectedProduct}
               onAddToCart={handleAddToCart}
             />
@@ -326,6 +363,7 @@ export default function App() {
               onRemoveItem={handleRemoveCartItem}
               onClearCart={handleClearCart}
               onNavigateToCatalog={() => setActiveTab('catalog')}
+              onNavigateHome={() => setActiveTab('home')}
               onOrderSuccess={(orderId) => {
                 setActiveTab('orders');
               }}
@@ -367,6 +405,11 @@ export default function App() {
           }
           return (
             <CustomerProfileScreen
+              user={user}
+              onUpdateUser={(updated) => {
+                setUser(updated);
+                setMobileStoredUser(updated);
+              }}
               onLogout={handleLogout}
               onSwitchToAdmin={() => handleRoleSwitch('admin')}
               onNavigateToCertificates={() => setActiveTab('certificates')}
@@ -384,11 +427,13 @@ export default function App() {
     }
   };
 
+  const isCustomBlueHeader = (activeTab === 'catalog' || Boolean(selectedProduct) || activeTab === 'cart');
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, isCustomBlueHeader ? { backgroundColor: '#0047AB' } : null]}>
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#FFFFFF"
+        barStyle={isCustomBlueHeader ? 'light-content' : 'dark-content'}
+        backgroundColor={isCustomBlueHeader ? '#0047AB' : '#FFFFFF'}
       />
 
       {/* Screen Viewport */}
@@ -396,15 +441,11 @@ export default function App() {
         <View style={styles.viewport}>
           <WelcomeScreen
             onExplore={() => {
-              setMobileStoredUser(null);
-              setUser(null);
               setIsWelcome(false);
-              setRole('customer');
               setActiveTab('home');
             }}
             onSignIn={() => {
               setIsWelcome(false);
-              setRole('customer');
               setActiveTab('auth');
             }}
           />
@@ -412,53 +453,56 @@ export default function App() {
       ) : (
         <>
           {/* Mobile App Bar */}
-          <MobileHeader
-            title={headerInfo.title}
-            subtitle={headerInfo.subtitle}
-            showBack={
-              Boolean(selectedProduct) ||
-              activeTab === 'auth' ||
-              (role === 'admin' && activeTab !== 'dashboard')
-            }
-            showLogo={
-              role === 'admin'
-                ? activeTab === 'dashboard'
-                : !selectedProduct && activeTab !== 'auth'
-            }
-            onBack={() => {
-              if (selectedProduct) {
-                setSelectedProduct(null);
-              } else if (role === 'admin' && activeTab !== 'dashboard') {
-                setActiveTab('dashboard');
-              } else if (activeTab === 'auth') {
-                setActiveTab('home');
-              } else {
-                setActiveTab('home');
+          {/* Top App Header (suppressed on custom-branded catalog screen and product detail screen) */}
+          {(!isCustomBlueHeader) && (
+            <MobileHeader
+              title={headerInfo.title}
+              subtitle={headerInfo.subtitle}
+              showBack={
+                Boolean(selectedProduct) ||
+                activeTab === 'auth' ||
+                (role === 'admin' && activeTab !== 'dashboard')
               }
-            }}
-            role={role}
-            cartCount={cartItems.length}
-            onCartClick={() => setActiveTab('cart')}
-            onLogoClick={() => {
-              // Navigates to home/dashboard - does NOT kick user out to Welcome Gateway
-              if (role === 'admin') {
-                setActiveTab('dashboard');
-              } else {
-                setActiveTab('home');
+              showLogo={
+                role === 'admin'
+                  ? activeTab === 'dashboard'
+                  : !selectedProduct && activeTab !== 'auth'
               }
-            }}
-            rightAction={
-              role === 'admin' ? (
-                <TouchableOpacity
-                  onPress={handleLogout}
-                  style={styles.adminHeaderLogoutBtn}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.adminHeaderLogoutText}>Logout</Text>
-                </TouchableOpacity>
-              ) : undefined
-            }
-          />
+              onBack={() => {
+                if (selectedProduct) {
+                  setSelectedProduct(null);
+                } else if (role === 'admin' && activeTab !== 'dashboard') {
+                  setActiveTab('dashboard');
+                } else if (activeTab === 'auth') {
+                  setActiveTab('home');
+                } else {
+                  setActiveTab('home');
+                }
+              }}
+              role={role}
+              cartCount={cartItems.length}
+              onCartClick={() => setActiveTab('cart')}
+              onLogoClick={() => {
+                // Navigates to home/dashboard - does NOT kick user out to Welcome Gateway
+                if (role === 'admin') {
+                  setActiveTab('dashboard');
+                } else {
+                  setActiveTab('home');
+                }
+              }}
+              rightAction={
+                role === 'admin' ? (
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    style={styles.adminHeaderLogoutBtn}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.adminHeaderLogoutText}>Logout</Text>
+                  </TouchableOpacity>
+                ) : undefined
+              }
+            />
+          )}
 
           {/* Screen Viewport */}
           <View style={styles.viewport}>{renderScreen()}</View>
@@ -469,10 +513,6 @@ export default function App() {
               role={role}
               activeTab={activeTab}
               onTabChange={(tabId) => {
-                if ((tabId === 'orders' || tabId === 'profile') && !user) {
-                  setActiveTab('auth');
-                  return;
-                }
                 setActiveTab(tabId);
               }}
               cartCount={cartItems.length}
