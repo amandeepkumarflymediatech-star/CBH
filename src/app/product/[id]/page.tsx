@@ -1233,11 +1233,11 @@ export default function ProductDetailPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '11px' }}>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Small Box:</span>
-                    <strong>{product.pcsPerBox || 500} pcs ({product.smallBoxWeightKg || 2.5} kg)</strong>
+                    <strong>{Math.round(Number(product.pcsPerBox)) || 500} pcs ({product.smallBoxWeightKg || 2.5} kg)</strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Master Carton:</span>
-                    <strong>{product.pcsPerMasterCtn || 4000} pcs ({product.masterCtnWeightKg || 20} kg)</strong>
+                    <strong>{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs ({product.masterCtnWeightKg || 20} kg)</strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Minimum Order (MOQ):</span>
@@ -1372,7 +1372,7 @@ export default function ProductDetailPage() {
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Packaging & Box Units</th>
                       <td style={{ padding: '10px 14px' }}>
-                        Small Box: <strong>{product.pcsPerBox || 500} pcs</strong> ({product.smallBoxWeightKg || 2.5} kg) • Master Carton: <strong>{product.pcsPerMasterCtn || 4000} pcs</strong> ({product.masterCtnWeightKg || 20} kg)
+                        Small Box: <strong>{Math.round(Number(product.pcsPerBox)) || 500} pcs</strong> ({product.smallBoxWeightKg || 2.5} kg) • Master Carton: <strong>{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs</strong> ({product.masterCtnWeightKg || 20} kg)
                       </td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>

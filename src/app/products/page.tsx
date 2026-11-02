@@ -155,6 +155,8 @@ function FastenerCard({
   badgeTone = 'blue',
 }: FastenerCardProps) {
   const currentPrice = currentUnit === 'PCS' ? p.pricePerPiece : p.pricePerKg;
+  const pcsPerBox = Math.round(Number(p.pcsPerBox)) || 500;
+  const leadDays = p.leadTimeDays || 10;
 
   const toneClass = {
     blue: 'bg-blue-50 text-blue-800 border-blue-200',
@@ -169,27 +171,33 @@ function FastenerCard({
         p.isSurplus
           ? 'border-amber-300 ring-1 ring-amber-200'
           : relatedBadge
-          ? 'border-blue-200 shadow-sm'
+          ? 'border-blue-200 shadow-xs'
           : 'border-slate-200'
-      } p-3.5 sm:p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative`}
+      } p-3.5 sm:p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 relative h-full`}
     >
-      <div>
+      <div className="flex flex-col flex-1">
         {/* Top Badges */}
         <div className="flex justify-between items-center mb-2 gap-1.5 flex-wrap">
-          <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold font-mono tracking-wider">
-            {p.standard}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold font-mono tracking-wider">
+              {p.standard}
+            </span>
 
-          {p.isSurplus ? (
-            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide">
-              -{p.surplusDiscountPct || 60}% SURPLUS
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-emerald-600 text-[11px] font-bold">
-              <CheckCircle2 size={13} />
-              <span>In Stock</span>
-            </span>
-          )}
+            {p.isSurplus ? (
+              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide">
+                -{p.surplusDiscountPct || 60}% SURPLUS
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-emerald-600 text-[10px] sm:text-[11px] font-bold">
+                <CheckCircle2 size={12} />
+                <span>In Stock</span>
+              </span>
+            )}
+          </div>
+
+          <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold font-mono border border-blue-200 whitespace-nowrap">
+            MOQ: 100 Pcs / 250g
+          </span>
         </div>
 
         {/* Optional Related Reason Badge */}
@@ -201,15 +209,15 @@ function FastenerCard({
         )}
 
         {/* Product Image */}
-        <Link href={`/product/${p.id}`} className="block text-center my-2 sm:my-3 group">
-          <div className="relative w-full h-32 sm:h-36 transition-transform group-hover:scale-105 duration-200">
+        <Link href={`/product/${p.id}`} className="block text-center my-1.5 group">
+          <div className="relative w-full h-28 sm:h-32 bg-slate-50/70 rounded-lg p-2 transition-transform group-hover:scale-102 duration-200">
             <Image
               src={p.imageUrl || '/assets/bolt_zinc.jpg'}
               alt={p.name}
               fill
               unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-contain"
+              className="object-contain p-1"
               onError={(e) => {
                 try {
                   (e.target as any).src = '/assets/bolt_zinc.jpg';
@@ -220,125 +228,127 @@ function FastenerCard({
         </Link>
 
         {/* Specs Matrix Strip */}
-        <div className="grid grid-cols-3 text-center bg-slate-50 rounded-lg p-2 text-[10px] font-mono border border-slate-100 mb-2">
+        <div className="grid grid-cols-3 text-center bg-slate-50/90 rounded-lg p-1.5 text-[10px] font-mono border border-slate-100 mb-2">
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase">GRADE</span>
+            <span className="text-slate-400 block text-[9px] uppercase font-sans">GRADE</span>
             <strong className="text-slate-900 truncate block">{p.grade}</strong>
           </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase">SIZE</span>
-            <strong className="text-slate-900 truncate block">{p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}</strong>
+            <span className="text-slate-400 block text-[9px] uppercase font-sans">SIZE</span>
+            <strong className="text-slate-900 truncate block" title={p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}>
+              {p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}
+            </strong>
           </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase">PITCH</span>
+            <span className="text-slate-400 block text-[9px] uppercase font-sans">PITCH</span>
             <strong className="text-slate-900 truncate block">{p.pitchMm}mm</strong>
           </div>
         </div>
 
         {/* Title */}
-        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 min-h-[2rem] sm:min-h-[2.4rem] leading-snug mb-1">
+        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 min-h-[2.4rem] leading-snug mb-2">
           <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
             {p.name}
           </Link>
         </h3>
 
-        {/* Meta details */}
-        <div className="flex flex-wrap gap-1 mb-2.5 text-[10px]">
-          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-            Box: {p.pcsPerBox || '500'} pcs
+        {/* Packaging & Lead Meta Details Strip */}
+        <div className="flex items-center gap-1.5 text-[10px] text-slate-600 mb-2 font-mono flex-wrap">
+          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium whitespace-nowrap">
+            Box: {pcsPerBox.toLocaleString()} pcs
           </span>
-          <span className="bg-blue-50 text-blue-800 px-1.5 py-0.5 rounded font-mono font-bold border border-blue-200">
-            MOQ: 100 PCS / 250g
+          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium whitespace-nowrap">
+            Lead: {leadDays}d
           </span>
-          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-mono">
-            Lead: {p.leadTimeDays || 10}d
+          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium truncate max-w-[110px]" title={p.finish || 'Standard'}>
+            Finish: {p.finish || 'Standard'}
           </span>
-        </div>
-
-        {/* Finish */}
-        <div className="text-[11px] text-slate-500 mb-2 truncate">
-          Finish: <strong className="text-slate-700">{p.finish}</strong>
         </div>
       </div>
 
       {/* Bottom Commercial Section */}
-      <div>
+      <div className="mt-auto pt-2.5 border-t border-slate-100 space-y-2">
         {/* Dual Pricing Box */}
-        <div className="bg-slate-50 rounded-lg p-2.5 mb-2.5 border border-slate-200/80">
+        <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-200/80">
           <div className="flex justify-between items-baseline mb-1">
-            <span className="text-[10px] sm:text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-wider">
               {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
             </span>
             <span className="text-base sm:text-lg font-black text-blue-700 font-mono">
               {formatINR(currentPrice)}
             </span>
           </div>
-          <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200">
-            <span>
+          <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200/60">
+            <span className="truncate">
               Alt: {formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)} / {currentUnit === 'PCS' ? 'Kg' : 'Pc'}
             </span>
-            <span>
+            <span className="shrink-0 ml-1">
               Wt: {(p.weightPerPcKg * 1000).toFixed(1)}g / pc
             </span>
           </div>
         </div>
 
-        {/* MOQ Guidance Label */}
-        <div className="text-[10px] font-semibold text-slate-500 mb-1 flex justify-between items-center px-0.5">
-          <span>Select Unit:</span>
-          <span className="text-blue-700 font-bold">
-            {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
-          </span>
-        </div>
-
-        {/* Procurement Configurator (Unit Toggle + Stepper) */}
-        <div className="flex items-center gap-1.5 mb-2.5">
-          {/* Unit Switcher */}
-          <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold shrink-0">
-            <button
-              type="button"
-              onClick={() => onToggleUnit('PCS')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                currentUnit === 'PCS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              PCS
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleUnit('KGS')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                currentUnit === 'KGS' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              KGS
-            </button>
+        {/* Unit Switcher & Quantity Stepper */}
+        <div className="space-y-1">
+          <div className="text-[10px] font-semibold text-slate-500 flex justify-between items-center px-0.5">
+            <span>Order Unit:</span>
+            <span className="text-blue-700 font-bold font-mono">
+              {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+            </span>
           </div>
 
-          {/* Quantity Stepper */}
-          <div className="flex-1 flex items-center justify-between border border-slate-300 rounded bg-white px-2 py-1 text-xs font-mono">
-            <button
-              type="button"
-              disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
-              onClick={() => onAdjustQty(-1)}
-              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              aria-label="Decrease quantity"
-              title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
-            >
-              -
-            </button>
-            <span className="font-bold text-slate-900 text-[11px] truncate px-1" title={formatQtyDisplay(currentQty, currentUnit)}>
-              {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty.toLocaleString()} Pcs`}
-            </span>
-            <button
-              type="button"
-              onClick={() => onAdjustQty(1)}
-              className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
-              aria-label="Increase quantity"
-              title="Increase quantity"
-            >
-              +
-            </button>
+          <div className="flex items-center gap-1.5">
+            {/* Unit Switcher */}
+            <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-[10px] font-bold shrink-0">
+              <button
+                type="button"
+                onClick={() => onToggleUnit('PCS')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  currentUnit === 'PCS'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                PCS
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleUnit('KGS')}
+                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  currentUnit === 'KGS'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                KGS
+              </button>
+            </div>
+
+            {/* Quantity Stepper */}
+            <div className="flex-1 flex items-center justify-between border border-slate-300 rounded-lg bg-white px-2 py-1 text-xs font-mono shadow-2xs">
+              <button
+                type="button"
+                disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                onClick={() => onAdjustQty(-1)}
+                className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                aria-label="Decrease quantity"
+                title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+              >
+                -
+              </button>
+              <span className="font-bold text-slate-900 text-[11px] truncate px-1" title={formatQtyDisplay(currentQty, currentUnit)}>
+                {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty.toLocaleString()} Pcs`}
+              </span>
+              <button
+                type="button"
+                onClick={() => onAdjustQty(1)}
+                className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded cursor-pointer transition-colors"
+                aria-label="Increase quantity"
+                title="Increase quantity"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
@@ -346,7 +356,7 @@ function FastenerCard({
         <button
           type="button"
           onClick={() => onAddToCart(p)}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 sm:py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm active:scale-[0.98]"
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 sm:py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
         >
           <ShoppingCart size={14} />
           <span>Add to RFQ Quote</span>
@@ -531,6 +541,12 @@ function ProductsPageInner() {
   };
 
   // Unit and Qty Helpers with strict MOQ compliance
+  const handleGlobalUnitChange = (u: GlobalUnit) => {
+    setGlobalUnit(u);
+    setCardUnits({});
+    setCardQtys({});
+  };
+
   const getCardUnit = (id: number): GlobalUnit => cardUnits[id] || globalUnit;
   const getCardQty = (id: number): number => {
     const u = getCardUnit(id);
@@ -1077,7 +1093,7 @@ function ProductsPageInner() {
     <div className="bg-slate-50 min-h-screen flex flex-col antialiased">
       <MainHeader
         unit={globalUnit}
-        onUnitToggle={(u) => setGlobalUnit(u)}
+        onUnitToggle={handleGlobalUnitChange}
         cartCount={cartItems.length}
         onOpenCart={() => setIsCartOpen(true)}
       />
@@ -1116,7 +1132,7 @@ function ProductsPageInner() {
               <div className="flex bg-black/30 p-1 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => setGlobalUnit('PCS')}
+                  onClick={() => handleGlobalUnitChange('PCS')}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all text-center ${
                     globalUnit === 'PCS'
                       ? 'bg-[#FF6B00] text-white shadow-sm'
@@ -1127,7 +1143,7 @@ function ProductsPageInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGlobalUnit('KGS')}
+                  onClick={() => handleGlobalUnitChange('KGS')}
                   className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all text-center ${
                     globalUnit === 'KGS'
                       ? 'bg-[#FF6B00] text-white shadow-sm'
@@ -1192,9 +1208,9 @@ function ProductsPageInner() {
       </section>
 
       {/* ============================================================== */}
-      {/* CATEGORY TABS & MOBILE FILTER TRIGGER (STICKY BAR)             */}
+      {/* CATEGORY TABS & MOBILE FILTER TRIGGER                         */}
       {/* ============================================================== */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 px-3 sm:px-6 py-2.5 shadow-sm">
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           {/* Category Horizontal Scrolling Pills */}
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1">
@@ -1393,7 +1409,7 @@ function ProductsPageInner() {
         {/* ============================================================== */}
         {/* DESKTOP SIDEBAR FILTERS (Hidden on Mobile/Tablet)               */}
         {/* ============================================================== */}
-        <aside className="hidden lg:flex flex-col w-80 shrink-0 gap-4 sticky top-16 self-start">
+        <aside className="hidden lg:flex flex-col w-80 shrink-0 gap-4 sticky top-20 self-start">
           <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
             <div className="flex justify-between items-center pb-3.5 mb-3.5 border-b border-slate-100">
               <div className="flex items-center gap-2.5">

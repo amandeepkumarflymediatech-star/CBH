@@ -3483,7 +3483,7 @@ export default function AdminProductsSection({
                   <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Rate / Kg</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#059669' }}>{formatINR(inspectProduct.pricePerKg)}</td></tr>
                   <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Price 100 Pcs (Col 136)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price100Pcs || inspectProduct.pricePerPiece * 100)}</td></tr>
                   <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Price 1000 Pcs (Col 137)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontFamily: 'var(--font-mono)' }}>{formatINR(inspectProduct.price1000Pcs || inspectProduct.pricePerPiece * 1000)}</td></tr>
-                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Small Box Packaging (Col 60)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.pcsPerBox || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg box)</td></tr>
+                  <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Small Box Packaging (Col 60)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{Math.round(Number(inspectProduct.pcsPerBox)) || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg box)</td></tr>
                   <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Master Carton Packaging (Col 63)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.pcsPerMasterCtn || '4000'} pcs ({inspectProduct.masterCtnWeightKg || 20} kg carton)</td></tr>
                   <tr><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>MOQ (Col 69)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>{inspectProduct.moq || '25 KGS'}</td></tr>
                   <tr style={{ background: '#F8FAFC' }}><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0', fontWeight: 700 }}>Lead Time (Col 33/35)</td><td style={{ padding: '6px 12px', border: '1px solid #E2E8F0' }}>{inspectProduct.leadTimeDays || 10} Days (Production: {inspectProduct.productionDays || 7}d, Packing: {inspectProduct.packingDays || 3}d)</td></tr>
@@ -4242,7 +4242,7 @@ export default function AdminProductsSection({
                       <tbody>
                         <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '8px 14px', color: '#64748B', width: '45%' }}>Small Box Pack</td>
-                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{inspectProduct.pcsPerBox || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg)</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 600 }}>{Math.round(Number(inspectProduct.pcsPerBox)) || '500'} pcs ({inspectProduct.smallBoxWeightKg || 2.5} kg)</td>
                         </tr>
                         <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '8px 14px', color: '#64748B' }}>Master Carton Pack</td>
