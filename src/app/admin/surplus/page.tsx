@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import AdminSurplusSection from '@/components/admin/AdminSurplusSection';
 import { SurplusLot } from '@/lib/types';
-import { INITIAL_SURPLUS_LOTS } from '@/lib/mock-data';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function AdminSurplusPage() {
-  const [lots, setLots] = useState<SurplusLot[]>(INITIAL_SURPLUS_LOTS);
+  const [lots, setLots] = useState<SurplusLot[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {

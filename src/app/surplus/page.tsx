@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import MainHeader from '@/components/header/MainHeader';
-import SurplusSection from '@/components/home/SurplusSection';
 import CartDrawer from '@/components/cart/CartDrawer';
 import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 import { GlobalUnit, Product, RfqLineItem } from '@/lib/types';
@@ -49,57 +48,6 @@ interface FormattedSurplusLot {
   product?: Product;
 }
 
-const DEFAULT_VERIFIED_LOTS: FormattedSurplusLot[] = [
-  {
-    id: 'LOT-889',
-    sku: 'SUR-STUD-B7-M24-HDG',
-    title: 'ASTM A193 B7 Continuous Stud Rods + 2H Nuts',
-    category: 'Studs & Rods',
-    spec: 'M24 x 3000mm • Hot Dip Galvanized • Class 2A/2B',
-    location: 'Hazira Logistics Depot, Gujarat',
-    weight: '18.4 Metric Tonnes (4,200 Sets)',
-    totalWeightKg: 18400,
-    stockPcs: 4200,
-    marketRate: 182,
-    clearanceRate: 114,
-    clearancePieceRate: 498.0,
-    discount: 37,
-    status: 'AVAILABLE',
-  },
-  {
-    id: 'LOT-904',
-    sku: 'SUR-HEX-DIN933-M16-BP',
-    title: 'DIN 933 Grade 10.9 Structural Hex Screws BP',
-    category: 'Hex Screws',
-    spec: 'M16 x 2.0 x 120mm • Black Passivated • 10.9 HT',
-    location: 'Peenya Industrial Yard, Bengaluru',
-    weight: '9.2 Metric Tonnes (42,500 Pcs)',
-    totalWeightKg: 9200,
-    stockPcs: 42500,
-    marketRate: 195,
-    clearanceRate: 122,
-    clearancePieceRate: 26.4,
-    discount: 37,
-    status: 'AVAILABLE',
-  },
-  {
-    id: 'LOT-912',
-    sku: 'SUR-SOC-DIN912-M12-SS316',
-    title: 'Stainless Steel SS-316 Socket Cap Screws DIN 912',
-    category: 'Socket Caps',
-    spec: 'M12 x 1.75 x 80mm • Pickled & Passivated • Marine A4',
-    location: 'Manesar Central Warehouse, NCR',
-    weight: '4.8 Metric Tonnes (56,000 Pcs)',
-    totalWeightKg: 4800,
-    stockPcs: 56000,
-    marketRate: 460,
-    clearanceRate: 285,
-    clearancePieceRate: 24.5,
-    discount: 38,
-    status: 'AVAILABLE',
-  },
-];
-
 export default function SurplusPage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -107,8 +55,8 @@ export default function SurplusPage() {
   const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
   const [modalContext, setModalContext] = useState<'SURPLUS' | 'SURPLUS_VENDOR'>('SURPLUS');
 
-  // Dynamic Data State
-  const [lots, setLots] = useState<FormattedSurplusLot[]>(DEFAULT_VERIFIED_LOTS);
+  // Dynamic Data State (100% Live Database Lots)
+  const [lots, setLots] = useState<FormattedSurplusLot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters State
@@ -160,20 +108,41 @@ export default function SurplusPage() {
           surplusRes.data.forEach((sl: any) => {
             // Avoid duplicate SKUs if already added from products
             if (!dynamicLots.some((d) => d.sku === sl.sku)) {
+              let lotCat = sl.category || 'Industrial Fasteners';
+              const stdLower = (sl.standard || '').toLowerCase();
+              const nameLower = (sl.name || '').toLowerCase();
+              if (stdLower.includes('934') || nameLower.includes('nut')) {
+                lotCat = 'Hex Nuts';
+              } else if (stdLower.includes('933') || nameLower.includes('screw')) {
+                lotCat = 'Hex Screws';
+              } else if (stdLower.includes('931') || nameLower.includes('bolt')) {
+                lotCat = 'Hex Bolts';
+              } else if (stdLower.includes('b7') || nameLower.includes('stud') || nameLower.includes('rod')) {
+                lotCat = 'Studs & Rods';
+              } else if (stdLower.includes('912') || nameLower.includes('socket')) {
+                lotCat = 'Socket Caps';
+              }
+
+              const totalKg = Number(sl.excessQtyKg) || 1000;
+              const totalPcs = Number(sl.excessQtyPcs) || 10000;
+              const estWeightPerPc = totalKg / Math.max(1, totalPcs);
+              const clRateKg = Number(sl.clearancePriceKg) || 110;
+              const clPieceRate = +(clRateKg * estWeightPerPc).toFixed(2);
+
               dynamicLots.push({
                 id: sl.sku || `LOT-${sl.id}`,
                 sku: sl.sku || `LOT-${sl.id}`,
                 title: sl.name,
-                category: sl.category || 'Industrial Fasteners',
-                spec: `${sl.standard} • Grade ${sl.grade}`,
+                category: lotCat,
+                spec: sl.grade ? `${sl.standard} • Grade ${sl.grade}` : sl.standard,
                 location: sl.locationHub || 'Central Clearance Yard',
-                weight: `${((sl.excessQtyKg || 5000) / 1000).toFixed(2)} MT (${(sl.excessQtyPcs || 10000).toLocaleString()} Pcs)`,
-                totalWeightKg: sl.excessQtyKg || 5000,
-                stockPcs: sl.excessQtyPcs || 10000,
-                marketRate: sl.regularPriceKg || 180,
-                clearanceRate: sl.clearancePriceKg || 110,
-                clearancePieceRate: +(sl.clearancePriceKg * 0.05).toFixed(2),
-                discount: sl.clearanceDiscountPct || 35,
+                weight: `${(totalKg / 1000).toFixed(2)} MT (${totalPcs.toLocaleString()} Pcs)`,
+                totalWeightKg: totalKg,
+                stockPcs: totalPcs,
+                marketRate: Number(sl.regularPriceKg) || Math.round(clRateKg * 1.5),
+                clearanceRate: clRateKg,
+                clearancePieceRate: clPieceRate,
+                discount: Number(sl.clearanceDiscountPct) || 35,
                 status: sl.isActive ? 'AVAILABLE' : 'ALLOCATED',
                 isDynamic: true,
               });
@@ -181,9 +150,8 @@ export default function SurplusPage() {
           });
         }
 
-        // Merge: Dynamic Live Lots first, then Verified Platform Lots
-        const merged = [...dynamicLots, ...DEFAULT_VERIFIED_LOTS];
-        setLots(merged);
+        // Strictly live dynamic lots from database
+        setLots(dynamicLots);
       })
       .catch((err) => {
         console.error('Failed to load dynamic surplus lots:', err);
@@ -355,7 +323,7 @@ export default function SurplusPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search surplus lots by SKU (LOT-889), Standard (DIN 934, B7), Diameter (M12, M24), or Hub location..."
+                placeholder="Search surplus lots by SKU (SURP-DIN933), Standard (DIN 934, B7), Diameter (M12, M24), or Hub location..."
                 className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-white/95 text-slate-900 text-xs placeholder-slate-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
               {searchQuery && (
@@ -584,9 +552,6 @@ export default function SurplusPage() {
             })}
           </div>
         )}
-
-        {/* Existing High-Impact Surplus Section Graphic Component */}
-        <SurplusSection />
       </div>
 
       {/* Cart Drawer */}

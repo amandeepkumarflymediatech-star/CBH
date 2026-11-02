@@ -9,20 +9,38 @@ async function getSurplusLots(): Promise<SurplusLot[]> {
     const rows = await query<any>(`SELECT * FROM surplus_lots ORDER BY created_at DESC`);
     if (Array.isArray(rows)) {
       if (rows.length === 0) return [];
-      return rows.map((r: any) => ({
-        id: r.id,
-        sku: r.lot_number,
-        name: r.title,
-        standard: r.spec_standard,
-        grade: r.spec_standard.includes('8.8') ? '8.8 HT' : r.spec_standard.includes('12.9') ? '12.9 Alloy' : r.spec_standard.includes('SS316') || r.spec_standard.includes('SS 316') ? 'SS 316' : 'B7 Alloy',
-        excessQtyPcs: Math.round(parseFloat(r.total_weight_tonnes) * 1000 / 0.08),
-        excessQtyKg: parseFloat(r.total_weight_tonnes) * 1000,
-        regularPriceKg: parseFloat(r.market_price_per_kg),
-        clearanceDiscountPct: r.discount_pct,
-        clearancePriceKg: parseFloat(r.clearance_price_per_kg),
-        locationHub: r.depot_location,
-        isActive: r.status === 'AVAILABLE',
-      }));
+      return rows.map((r: any) => {
+        const std = String(r.spec_standard || '');
+        const gradeStr = std.includes('8.8')
+          ? '8.8 HT'
+          : std.includes('12.9')
+          ? '12.9 Alloy'
+          : std.includes('SS316') || std.includes('SS 316')
+          ? 'SS 316'
+          : std.includes('B7')
+          ? 'B7 Alloy'
+          : 'High Tensile';
+
+        const weightTonnes = parseFloat(r.total_weight_tonnes) || 1.0;
+        const excessKg = weightTonnes * 1000;
+        const estQtyPcs = Math.round(excessKg / 0.08);
+
+        return {
+          id: r.id,
+          sku: r.lot_number,
+          name: r.title,
+          standard: std,
+          grade: gradeStr,
+          excessQtyPcs: estQtyPcs,
+          excessQtyKg: excessKg,
+          regularPriceKg: parseFloat(r.market_price_per_kg) || 180,
+          clearanceDiscountPct: r.discount_pct || 35,
+          clearancePriceKg: parseFloat(r.clearance_price_per_kg) || 110,
+          locationHub: r.depot_location || 'Central Clearance Yard',
+          isActive: r.status === 'AVAILABLE',
+          imageUrl: r.image_url || null,
+        };
+      });
     }
   } catch (err) {
     console.warn('[Surplus API] MySQL query fallback:', err);
