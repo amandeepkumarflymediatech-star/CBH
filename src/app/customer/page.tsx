@@ -1837,14 +1837,14 @@ export default function CustomerDashboardPage() {
       {/* EN 10204 3.1 MTC INSPECTION CERTIFICATE PREVIEW MODAL            */}
       {/* ================================================================ */}
       {activeMtcModal && (
-        <div className="fixed inset-0 z-[99999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden my-6 animate-in fade-in zoom-in-95">
-            <div className="bg-[#0F172A] text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[99999] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto my-0 sm:my-6 animate-in fade-in zoom-in-95">
+            <div className="bg-[#0F172A] text-white p-4 sm:p-5 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-mono uppercase text-[#FF8533] font-bold">
                   EN 10204 3.1 INSPECTION CERTIFICATE
                 </span>
-                <h3 className="text-base font-black">NABL Metallurgical Test Report</h3>
+                <h3 className="text-base font-black leading-tight">NABL Metallurgical Test Report</h3>
               </div>
               <button
                 type="button"
@@ -1855,7 +1855,7 @@ export default function CustomerDashboardPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs font-sans">
+            <div className="p-4 sm:p-6 space-y-4 text-xs font-sans">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 font-mono">
                 <div>
                   <span className="text-[10px] text-slate-400 block">Certificate #</span>
@@ -1877,8 +1877,8 @@ export default function CustomerDashboardPage() {
 
               <div>
                 <h4 className="font-bold text-[#0F172A] mb-1.5">Chemical Composition Analysis (%)</h4>
-                <div className="border border-slate-200 rounded-xl overflow-hidden font-mono text-[11px]">
-                  <table className="w-full text-left">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto font-mono text-[11px] -webkit-overflow-scrolling-touch">
+                  <table className="w-full text-left min-w-[420px]">
                     <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
                       <tr>
                         <th className="p-2">Element</th>
@@ -1913,7 +1913,7 @@ export default function CustomerDashboardPage() {
 
               <div>
                 <h4 className="font-bold text-[#0F172A] mb-1.5">Mechanical Strength Calibration</h4>
-                <div className="grid grid-cols-3 gap-2.5 font-mono text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-center">
                   <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                     <span className="text-[10px] text-slate-400 block">Tensile Strength (Rm)</span>
                     <strong className="text-xs text-[#0F172A]">840 N/mm²</strong>
@@ -1932,9 +1932,9 @@ export default function CustomerDashboardPage() {
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-[11px]">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px]">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-emerald-600" />
+                  <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
                   <span>Authorized QC Inspector: <strong>Harpreet Singh, NABL Lab Ludhiana</strong></span>
                 </div>
                 <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
@@ -1942,21 +1942,21 @@ export default function CustomerDashboardPage() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Printer size={14} />
-                  <span>Print MTC</span>
-                </button>
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setActiveMtcModal(null)}
-                  className="px-4 py-2 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors text-center"
                 >
                   Close Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer size={14} />
+                  <span>Print MTC</span>
                 </button>
               </div>
             </div>
@@ -1968,14 +1968,14 @@ export default function CustomerDashboardPage() {
       {/* GST TAX INVOICE PREVIEW MODAL                                    */}
       {/* ================================================================ */}
       {activeInvoiceModal && (
-        <div className="fixed inset-0 z-[99999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden my-6 animate-in fade-in zoom-in-95">
-            <div className="bg-[#0052CC] text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[99999] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto my-0 sm:my-6 animate-in fade-in zoom-in-95">
+            <div className="bg-[#0052CC] text-white p-4 sm:p-5 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-mono uppercase text-blue-200 font-bold">
                   TAX INVOICE • HSN 7318
                 </span>
-                <h3 className="text-base font-black">Capital Bolts &amp; Hardwares (CBH)</h3>
+                <h3 className="text-base font-black leading-tight">Capital Bolts &amp; Hardwares (CBH)</h3>
               </div>
               <button
                 type="button"
@@ -1986,14 +1986,14 @@ export default function CustomerDashboardPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs font-mono">
-              <div className="flex justify-between border-b pb-3 text-slate-600">
+            <div className="p-4 sm:p-6 space-y-4 text-xs font-mono">
+              <div className="flex flex-col sm:flex-row justify-between gap-3 border-b pb-3 text-slate-600">
                 <div>
                   <strong className="text-sm text-[#0F172A] block font-sans">CBH Central Fastener Works</strong>
                   <span>G.T. Road, Industrial Area-A, Ludhiana, Punjab - 141003</span>
                   <span className="block mt-0.5">GSTIN: 03AAACL1206M1ZN</span>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <span className="font-bold text-[#0052CC] text-sm block">Invoice #{activeInvoiceModal.orderNumber}</span>
                   <span>Date: {activeInvoiceModal.date}</span>
                   <span className="block text-emerald-600 font-bold">Paid via Gateway</span>
@@ -2007,8 +2007,8 @@ export default function CustomerDashboardPage() {
                 <p className="text-[11px] font-bold mt-0.5">Buyer GSTIN: {clientGstin}</p>
               </div>
 
-              <div className="border border-slate-200 rounded-xl overflow-hidden text-[11px]">
-                <table className="w-full text-left">
+              <div className="border border-slate-200 rounded-xl overflow-x-auto text-[11px] -webkit-overflow-scrolling-touch">
+                <table className="w-full text-left min-w-[420px]">
                   <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
                       <th className="p-2">HSN Code</th>
@@ -2040,21 +2040,21 @@ export default function CustomerDashboardPage() {
                 </table>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Printer size={14} />
-                  <span>Print Tax Invoice</span>
-                </button>
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setActiveInvoiceModal(null)}
-                  className="px-4 py-2 rounded-xl bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold text-xs transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors text-center"
                 >
                   Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer size={14} />
+                  <span>Print Tax Invoice</span>
                 </button>
               </div>
             </div>

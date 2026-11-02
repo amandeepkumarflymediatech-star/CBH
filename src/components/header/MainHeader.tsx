@@ -25,7 +25,8 @@ import {
   ChevronDown,
   LogOut,
   ShieldAlert,
-  Images
+  Images,
+  MessageCircle
 } from 'lucide-react';
 import { GlobalUnit } from '@/lib/types';
 import { getStoredUser, logout, AuthUser } from '@/lib/auth';
@@ -162,7 +163,7 @@ export default function MainHeader({
                   onBlur={() => {
                     if (!searchQuery) setIsSearchExpanded(false);
                   }}
-                  placeholder="Search DIN, M3-M64..."
+                  placeholder="Search Bolts, Nuts, Screws (e.g. M12 Bolt, DIN 933)..."
                   className="header-search-field"
                 />
               </div>
@@ -451,7 +452,7 @@ export default function MainHeader({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search DIN, bolts, anchors..."
+                    placeholder="Search Bolts, Nuts, Screws (e.g. M12, नट, बोल्ट)..."
                     style={{ border: 'none', background: 'transparent', outline: 'none', marginLeft: '8px', fontSize: '13px', width: '100%', color: '#0F172A' }}
                   />
                   <button type="submit" style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', padding: '0 4px' }}>Go</button>
@@ -477,6 +478,51 @@ export default function MainHeader({
                     KGS
                   </button>
                 </div>
+              </div>
+
+              {/* WhatsApp Quick Order & Helpline Bar in Mobile Drawer */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                <a
+                  href="https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20want%20to%20order%20nuts%20and%20bolts.%20Please%20help%20me."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: '#25D366',
+                    color: '#FFFFFF',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <MessageCircle size={18} />
+                  <span>WhatsApp Order (फोटो भेजें)</span>
+                </a>
+                <a
+                  href="tel:+919888021000"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: '#F1F5F9',
+                    color: '#0F172A',
+                    padding: '9px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    textDecoration: 'none',
+                    border: '1px solid #CBD5E1'
+                  }}
+                >
+                  <Phone size={15} color="#0052CC" />
+                  <span>Helpline: +91 98880 21000</span>
+                </a>
               </div>
 
               {/* Primary RFQ CTA */}

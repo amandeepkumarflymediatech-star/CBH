@@ -259,12 +259,12 @@ export default function CustomerRfqsPage() {
 
       {/* Quote Detail Modal */}
       {activeQuoteModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-2xl w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div>
-                <h3 className="font-extrabold text-[#0F172A] text-base">Formal Wholesale Quotation: {activeQuoteModal.rfqNumber}</h3>
-                <span className="text-xs text-slate-500">Status: {activeQuoteModal.status} • Valid until {activeQuoteModal.validUntil || '14 Days'}</span>
+                <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">Formal Wholesale Quotation: {activeQuoteModal.rfqNumber}</h3>
+                <span className="text-xs text-slate-500 block mt-0.5">Status: {activeQuoteModal.status} • Valid until {activeQuoteModal.validUntil || '14 Days'}</span>
               </div>
               <button
                 type="button"
@@ -276,7 +276,7 @@ export default function CustomerRfqsPage() {
             </div>
 
             <div className="py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-bold">Consignee Enterprise</span>
                   <strong className="text-[#0F172A]">{activeQuoteModal.companyName || 'Corporate Client'}</strong>
@@ -344,16 +344,16 @@ export default function CustomerRfqsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200 flex-wrap">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveQuoteModal(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer text-center"
               >
                 Close
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 {activeQuoteModal.status === 'QUOTED' ? (
                   <button
                     type="button"
@@ -381,7 +381,7 @@ export default function CustomerRfqsPage() {
                       }
                       setActiveQuoteModal(null);
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow cursor-pointer"
                   >
                     <CheckCircle2 size={14} /> Accept Quote &amp; Generate PO
                   </button>
@@ -389,14 +389,14 @@ export default function CustomerRfqsPage() {
                   <Link
                     href="/customer/orders"
                     onClick={() => setActiveQuoteModal(null)}
-                    className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow no-underline"
+                    className="w-full sm:w-auto px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow no-underline"
                   >
                     <span>View in Purchase Orders</span>
                     <ArrowRight size={14} />
                   </Link>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 font-semibold">
-                    <Clock size={14} className="text-amber-600" />
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 font-semibold text-center">
+                    <Clock size={14} className="text-amber-600 shrink-0" />
                     <span>Awaiting CBH Metallurgy Review &amp; Quotation</span>
                   </div>
                 )}
@@ -408,12 +408,12 @@ export default function CustomerRfqsPage() {
 
       {/* BOM Uploader Modal */}
       {isBOMModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-300 max-w-lg w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <FileSpreadsheet size={20} className="text-[#0052CC]" />
-                <h3 className="font-extrabold text-[#0F172A] text-base">Upload Bill of Materials (BOM)</h3>
+                <FileSpreadsheet size={20} className="text-[#0052CC] shrink-0" />
+                <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">Upload Bill of Materials (BOM)</h3>
               </div>
               <button
                 type="button"
@@ -429,7 +429,7 @@ export default function CustomerRfqsPage() {
                 Upload your project procurement spreadsheet (.XLSX, .CSV, or .PDF). Our automated parsing engine will match standard metric fastener sizes, compute dual PCS/KGS weights, and apply maximum volume tier discounts.
               </p>
 
-              <div className="border-2 border-dashed border-slate-300 hover:border-[#0052CC] p-8 rounded-2xl text-center bg-slate-50 transition-colors cursor-pointer">
+              <div className="border-2 border-dashed border-slate-300 hover:border-[#0052CC] p-6 sm:p-8 rounded-2xl text-center bg-slate-50 transition-colors cursor-pointer">
                 <UploadCloud size={36} className="text-[#0052CC] mx-auto mb-2" />
                 <span className="text-xs font-bold text-slate-700 block">Drag &amp; drop your BOM file here</span>
                 <span className="text-[11px] text-slate-400 mt-1 block">Supports .xlsx, .xls, .csv, .pdf (Max 25 MB)</span>
@@ -442,18 +442,18 @@ export default function CustomerRfqsPage() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsBOMModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isUploading}
-                  className="px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow"
+                  className="w-full sm:w-auto px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
                 >
                   {isUploading ? 'Parsing BOM File...' : 'Submit BOM for Quotation'}
                 </button>

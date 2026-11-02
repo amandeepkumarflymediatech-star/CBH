@@ -20,8 +20,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { RfqLineItem, GlobalUnit } from '@/lib/types';
-import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
-import { getStoredCart } from '@/lib/cart';
+import { calculateRfqSummary, formatINR, clampQty, formatQtyDisplay, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
 import { getStoredUser } from '@/lib/auth';
 import { showErrorAlert, showWarningAlert, showLoadingAlert } from '@/lib/swal';
 
@@ -51,11 +51,29 @@ export default function CheckoutPage() {
   // Order Items (starts empty, populated from live cart)
   const [items, setItems] = useState<RfqLineItem[]>([]);
 
-  // Load persisted cart from home page and populate customer info if logged in
+  // Load persisted cart from home page and ensure MOQ compliance seamlessly
   useEffect(() => {
     const savedCart = getStoredCart();
     if (savedCart && savedCart.length > 0) {
-      setItems(savedCart);
+      let modified = false;
+      const validated = savedCart.map((item) => {
+        const clamped = clampQty(item.quantity, item.unit);
+        if (clamped !== item.quantity) {
+          modified = true;
+          const totalWeight = item.unit === 'PCS' ? clamped * (item.weightPerPcKg || 0.05) : clamped;
+          return {
+            ...item,
+            quantity: clamped,
+            totalWeightKg: totalWeight,
+            rowTotal: clamped * item.unitRate,
+          };
+        }
+        return item;
+      });
+      setItems(validated);
+      if (modified) {
+        setStoredCart(validated);
+      }
     } else {
       setItems([]);
     }
@@ -509,7 +527,7 @@ export default function CheckoutPage() {
                         <div className="min-w-0">
                           <span className="font-bold text-[#0F172A] block line-clamp-1">{item.name}</span>
                           <span className="text-[11px] text-slate-500 font-mono">
-                            {item.quantity.toLocaleString()} {item.unit} • ₹{item.unitRate}/{item.unit}
+                            {formatQtyDisplay(item.quantity, item.unit)} • ₹{item.unitRate}/{item.unit === 'KGS' ? 'Kg' : 'Pc'}
                           </span>
                         </div>
                       </div>

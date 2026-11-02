@@ -1155,9 +1155,10 @@ export default function AdminOrdersSection({
 
             {/* Modal Body: 2-Column Info Cards */}
             <div
+              className="admin-modal-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                 gap: '16px',
                 marginBottom: '20px',
               }}
@@ -1351,10 +1352,11 @@ export default function AdminOrdersSection({
                 style={{
                   border: '1px solid #E2E8F0',
                   borderRadius: '10px',
-                  overflow: 'hidden',
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <table style={{ width: '100%', minWidth: '520px', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' }}>
                       <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Fastener SKU &amp; Spec</th>

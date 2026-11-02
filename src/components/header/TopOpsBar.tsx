@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Phone, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Phone, CheckCircle, ShieldCheck, MessageCircle, Factory } from 'lucide-react';
 import { getStoredUser, AuthUser } from '@/lib/auth';
 
 export default function TopOpsBar() {
@@ -29,17 +29,35 @@ export default function TopOpsBar() {
     <div className="top-ops-bar">
       <div className="container top-ops-inner">
         <div className="ops-tags">
-          <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <a
+            href="tel:+919888021000"
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'inherit', textDecoration: 'none' }}
+            title="Call Support Helpline"
+          >
             <Phone size={13} color="var(--color-accent)" />
-            <span>Toll-Free: <strong>+91 98880 21000</strong></span>
-          </span>
+            <span>Help: <strong>+91 98880 21000</strong></span>
+          </a>
+          <span style={{ color: '#2C3440' }}>|</span>
+          <a
+            href="https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20am%20sending%20a%20photo/list%20of%20fasteners%20I%20need.%20Please%20give%20me%20the%20wholesale%20rate."
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#25D366', textDecoration: 'none', fontWeight: 700 }}
+            title="WhatsApp Helpline"
+          >
+            <MessageCircle size={13} />
+            <span>WhatsApp Orders</span>
+          </a>
           <span className="hide-mobile" style={{ color: '#2C3440' }}>|</span>
           <span className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#059669' }}>
-            <CheckCircle size={13} />
-            <span>BIS Certified Fasteners</span>
+            <Factory size={13} />
+            <span>Direct Factory Wholesale (सीधे फैक्टरी रेट)</span>
           </span>
           <span className="hide-tablet" style={{ color: '#2C3440' }}>|</span>
-          <span className="hide-tablet">2,00,000+ SKUs DIN/ISO/ASTM</span>
+          <span className="hide-tablet" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <CheckCircle size={13} color="#059669" />
+            <span>2,00,000+ Fasteners In Stock</span>
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

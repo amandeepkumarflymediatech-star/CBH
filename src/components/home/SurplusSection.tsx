@@ -34,60 +34,44 @@ interface ClearanceLot {
 }
 
 export default function SurplusSection() {
-  const [activeLotId, setActiveLotId] = useState<string>('lot-1');
+  const [clearanceLots, setClearanceLots] = useState<ClearanceLot[]>([]);
+  const [activeLotId, setActiveLotId] = useState<string>('');
   const [claimedModal, setClaimedModal] = useState<ClearanceLot | null>(null);
 
   const sectionRef = useRef<HTMLElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
 
-  const clearanceLots: ClearanceLot[] = [
-    {
-      id: 'lot-1',
-      badge: 'TOP EPC LIQUIDATION',
-      title: 'ASTM A193 B7 Continuous Studs + 2H Nuts',
-      category: 'High Pressure Studs',
-      standard: 'ASTM A193 B7 / A194 2H',
-      specs: 'M24 x 3000mm • Hot Dip Galvanized • Grade B7 High Tensile',
-      location: 'Hazira Central Yard, Gujarat',
-      totalTonnage: 25.0,
-      availableTonnage: 18.4,
-      originalPrice: 182,
-      clearancePrice: 114,
-      discountPct: 37,
-      image: '/assets/bolt_zinc.jpg',
-    },
-    {
-      id: 'lot-2',
-      badge: 'AUTOMOTIVE SURPLUS',
-      title: 'DIN 933 Hex Screws Full Thread Grade 8.8',
-      category: 'Hex Screws',
-      standard: 'DIN 933 / ISO 4017',
-      specs: 'M16 x 65mm • Zinc Flake Geomet 500h • Zero Hydrogen Embrittlement',
-      location: 'Faridabad Depot, NCR',
-      totalTonnage: 12.0,
-      availableTonnage: 6.2,
-      originalPrice: 165,
-      clearancePrice: 98,
-      discountPct: 41,
-      image: '/assets/quality_optical_sorting.jpg',
-    },
-    {
-      id: 'lot-3',
-      badge: 'PEB STRUCTURAL CLEARANCE',
-      title: 'DIN 931 Heavy Hex Structural Bolts Grade 10.9',
-      category: 'Structural Bolts',
-      standard: 'DIN 931 / ISO 4014',
-      specs: 'M20 x 90mm • Hot Dip Galvanized 65μm • Class 6g Pitch',
-      location: 'Pune Logistics Hub, Maharashtra',
-      totalTonnage: 15.0,
-      availableTonnage: 9.8,
-      originalPrice: 210,
-      clearancePrice: 128,
-      discountPct: 39,
-      image: '/assets/anchor_bolt.jpg',
-    },
-  ];
+  // Fetch live dynamic surplus lots
+  useEffect(() => {
+    fetch('/api/surplus')
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: ClearanceLot[] = res.data.map((sl: any, idx: number) => {
+            const tonnes = +((Number(sl.excessQtyKg) || 1000) / 1000).toFixed(2);
+            return {
+              id: String(sl.sku || `lot-${sl.id || idx}`),
+              badge: sl.isActive ? 'FACTORY DIRECT CLEARANCE' : 'RESERVED ALLOCATION',
+              title: sl.name,
+              category: 'Surplus Fasteners',
+              standard: sl.standard || 'Industrial Spec',
+              specs: sl.grade ? `${sl.standard} • Grade ${sl.grade}` : sl.standard,
+              location: sl.locationHub || 'Hazira Logistics Hub',
+              totalTonnage: +(tonnes * 1.2).toFixed(2),
+              availableTonnage: tonnes,
+              originalPrice: Number(sl.regularPriceKg) || 180,
+              clearancePrice: Number(sl.clearancePriceKg) || 110,
+              discountPct: Number(sl.clearanceDiscountPct) || 35,
+              image: sl.imageUrl || '/assets/bolt_zinc.jpg',
+            };
+          });
+          setClearanceLots(mapped);
+          setActiveLotId(mapped[0]?.id || '');
+        }
+      })
+      .catch((err) => console.warn('SurplusSection live lots fallback:', err));
+  }, []);
 
   const currentLot = clearanceLots.find((l) => l.id === activeLotId) || clearanceLots[0];
 
@@ -203,75 +187,81 @@ export default function SurplusSection() {
             </div>
 
             {/* Active Spotlight Card Body */}
-            <div className="spotlight-card light" ref={spotlightRef}>
-              <div className="spotlight-top-strip">
-                <div className="spotlight-badge">
-                  <Flame size={13} color="var(--color-accent)" />
-                  <span>{currentLot.badge}</span>
+            {currentLot ? (
+              <div className="spotlight-card light" ref={spotlightRef}>
+                <div className="spotlight-top-strip">
+                  <div className="spotlight-badge">
+                    <Flame size={13} color="var(--color-accent)" />
+                    <span>{currentLot.badge}</span>
+                  </div>
+                  <div className="spotlight-discount-pill">
+                    <Percent size={12} />
+                    <span>{currentLot.discountPct}% OFF TARIFF</span>
+                  </div>
                 </div>
-                <div className="spotlight-discount-pill">
-                  <Percent size={12} />
-                  <span>{currentLot.discountPct}% OFF TARIFF</span>
+
+                <h3 className="spotlight-title light">{currentLot.title}</h3>
+
+                <div className="spotlight-specs-box">
+                  <div className="spec-line">
+                    <Layers size={13} color="#64748B" />
+                    <span>{currentLot.specs}</span>
+                  </div>
+                  <div className="spec-line">
+                    <MapPin size={13} color="var(--color-accent)" />
+                    <span>Ready at: <strong>{currentLot.location}</strong></span>
+                  </div>
                 </div>
+
+                {/* Tonnage Remaining Progress Indicator */}
+                <div className="tonnage-progress-box">
+                  <div className="tonnage-labels">
+                    <span>Available Stock:</span>
+                    <strong>{currentLot.availableTonnage} MT of {currentLot.totalTonnage} MT</strong>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${(currentLot.availableTonnage / currentLot.totalTonnage) * 100}%` }}
+                    ></div>
+                  </div>
+                  <div className="tonnage-footnote">
+                    <Clock size={11} color="#059669" />
+                    <span>Real-time warehouse yard availability</span>
+                  </div>
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="spotlight-price-box light">
+                  <div className="price-item">
+                    <span className="price-lbl">Standard List Rate</span>
+                    <span className="price-old">₹ {currentLot.originalPrice} / Kg</span>
+                  </div>
+                  <div className="price-item highlight">
+                    <span className="price-lbl">Clearance Rate</span>
+                    <strong className="price-clearance">₹ {currentLot.clearancePrice} <small>/ Kg</small></strong>
+                  </div>
+                  <div className="price-savings">
+                    <TrendingDown size={14} color="#059669" />
+                    <span>Net Savings: ₹ {currentLot.originalPrice - currentLot.clearancePrice} / Kg</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', padding: '13px', fontSize: '14.5px' }}
+                  onClick={() => setClaimedModal(currentLot)}
+                >
+                  <span>Reserve Allocation for {currentLot.standard}</span>
+                  <ArrowRight size={16} />
+                </button>
               </div>
-
-              <h3 className="spotlight-title light">{currentLot.title}</h3>
-
-              <div className="spotlight-specs-box">
-                <div className="spec-line">
-                  <Layers size={13} color="#64748B" />
-                  <span>{currentLot.specs}</span>
-                </div>
-                <div className="spec-line">
-                  <MapPin size={13} color="var(--color-accent)" />
-                  <span>Ready at: <strong>{currentLot.location}</strong></span>
-                </div>
+            ) : (
+              <div className="spotlight-card light animate-pulse" style={{ minHeight: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="text-slate-400 font-bold text-sm">Loading verified clearance lots...</span>
               </div>
-
-              {/* Tonnage Remaining Progress Indicator */}
-              <div className="tonnage-progress-box">
-                <div className="tonnage-labels">
-                  <span>Available Stock:</span>
-                  <strong>{currentLot.availableTonnage} MT of {currentLot.totalTonnage} MT</strong>
-                </div>
-                <div className="progress-bar-track">
-                  <div
-                    className="progress-bar-fill"
-                    style={{ width: `${(currentLot.availableTonnage / currentLot.totalTonnage) * 100}%` }}
-                  ></div>
-                </div>
-                <div className="tonnage-footnote">
-                  <Clock size={11} color="#059669" />
-                  <span>Real-time warehouse yard availability</span>
-                </div>
-              </div>
-
-              {/* Price Breakdown */}
-              <div className="spotlight-price-box light">
-                <div className="price-item">
-                  <span className="price-lbl">Standard List Rate</span>
-                  <span className="price-old">₹ {currentLot.originalPrice} / Kg</span>
-                </div>
-                <div className="price-item highlight">
-                  <span className="price-lbl">Clearance Rate</span>
-                  <strong className="price-clearance">₹ {currentLot.clearancePrice} <small>/ Kg</small></strong>
-                </div>
-                <div className="price-savings">
-                  <TrendingDown size={14} color="#059669" />
-                  <span>Net Savings: ₹ {currentLot.originalPrice - currentLot.clearancePrice} / Kg</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '13px', fontSize: '14.5px' }}
-                onClick={() => setClaimedModal(currentLot)}
-              >
-                <span>Reserve Allocation for {currentLot.standard}</span>
-                <ArrowRight size={16} />
-              </button>
-            </div>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import HeroSection from '@/components/home/HeroSection';
+import SimpleVisualCategories from '@/components/home/SimpleVisualCategories';
+import SimpleHowItWorks from '@/components/home/SimpleHowItWorks';
 import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinder';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
@@ -13,6 +15,7 @@ import ConsultationBar from '@/components/home/ConsultationBar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { GlobalUnit, Product, RfqLineItem } from '@/lib/types';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
+import { clampQty } from '@/lib/rfq-calculator';
 
 export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
@@ -116,16 +119,17 @@ export default function HomePage() {
 
   // Add To Cart
   const handleAddToCart = (product: Product, qty: number, unit: GlobalUnit) => {
+    const finalQty = clampQty(qty, unit);
     const rate = unit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
-    const weight = unit === 'PCS' ? qty * product.weightPerPcKg : qty;
+    const weight = unit === 'PCS' ? finalQty * (product.weightPerPcKg || 0.05) : finalQty;
 
     const existingIndex = cartItems.findIndex((item) => item.sku === product.sku && item.unit === unit);
     if (existingIndex > -1) {
       setCartItems((prev) => {
         const updated = [...prev];
-        const nextQty = updated[existingIndex].quantity + qty;
+        const nextQty = updated[existingIndex].quantity + finalQty;
         updated[existingIndex].quantity = nextQty;
-        updated[existingIndex].totalWeightKg = unit === 'PCS' ? nextQty * product.weightPerPcKg : nextQty;
+        updated[existingIndex].totalWeightKg = unit === 'PCS' ? nextQty * (product.weightPerPcKg || 0.05) : nextQty;
         updated[existingIndex].rowTotal = nextQty * rate;
         setStoredCart(updated);
         return updated;
@@ -139,10 +143,10 @@ export default function HomePage() {
         standard: product.standard,
         unit: unit,
         unitRate: rate,
-        quantity: qty,
-        weightPerPcKg: product.weightPerPcKg,
+        quantity: finalQty,
+        weightPerPcKg: product.weightPerPcKg || 0.05,
         totalWeightKg: weight,
-        rowTotal: qty * rate,
+        rowTotal: finalQty * rate,
       };
       setCartItems((prev) => {
         const updated = [...prev, newItem];
@@ -158,12 +162,13 @@ export default function HomePage() {
     setCartItems((prev) => {
       const updated = prev.map((item) => {
         if (item.id === id) {
-          const totalWeight = item.unit === 'PCS' ? qty * item.weightPerPcKg : qty;
+          const nextQty = clampQty(qty, item.unit);
+          const totalWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
           return {
             ...item,
-            quantity: qty,
+            quantity: nextQty,
             totalWeightKg: totalWeight,
-            rowTotal: qty * item.unitRate,
+            rowTotal: nextQty * item.unitRate,
           };
         }
         return item;
@@ -193,6 +198,12 @@ export default function HomePage() {
 
       {/* SECTION 1: High-Impact Technical Hero Section */}
       <HeroSection />
+
+      {/* SECTION 2: What We Offer (Visual Friendly Categories for All Users) */}
+      <SimpleVisualCategories />
+
+      {/* SECTION 3: How to Order in 3 Simple Steps + WhatsApp Photo Help */}
+      <SimpleHowItWorks />
 
       {/* Fastener Finder Matrix (Hilti / Fischer Style Precision Engine) */}
       <FastenerFinder

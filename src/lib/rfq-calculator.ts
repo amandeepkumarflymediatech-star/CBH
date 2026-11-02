@@ -2,7 +2,69 @@
 // CBH FASTENERS - BULK RFQ & VOLUME TIER PRICING CALCULATOR
 // ============================================================================
 
-import { RfqLineItem, RfqSummary } from './types';
+import { RfqLineItem, RfqSummary, GlobalUnit } from './types';
+
+// ============================================================================
+// MINIMUM ORDER QUANTITY (MOQ) RULES
+// - PCS: Minimum 100 PCS
+// - KGS: Minimum 250 gm (0.25 KG)
+// ============================================================================
+export const MIN_QTY_PCS = 100;
+export const MIN_QTY_KGS = 0.25; // 250 grams = 0.25 kg
+
+export function getMinQty(unit: GlobalUnit = 'PCS'): number {
+  return unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+}
+
+export function getDefaultQty(unit: GlobalUnit = 'PCS'): number {
+  return unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+}
+
+/**
+ * Returns sensible increment/decrement step size based on unit and current quantity
+ */
+export function getQtyStep(unit: GlobalUnit = 'PCS', currentQty?: number): number {
+  if (unit === 'KGS') {
+    if (currentQty !== undefined && currentQty < 1) return 0.25; // 250gm step
+    if (currentQty !== undefined && currentQty < 5) return 0.5;  // 500gm step
+    return 1; // 1kg step
+  }
+  return 100; // 100 pcs step
+}
+
+/**
+ * Clamps quantity to MOQ gracefully without throwing jarring errors
+ */
+export function clampQty(qty: number, unit: GlobalUnit = 'PCS'): number {
+  const min = getMinQty(unit);
+  if (isNaN(qty) || qty <= 0) return min;
+  if (qty < min) return min;
+  if (unit === 'KGS') {
+    // Avoid floating point inaccuracies (e.g. 0.2500000000004)
+    return Math.round(qty * 100) / 100;
+  }
+  return Math.round(qty);
+}
+
+/**
+ * Formats quantity for display with clear unit and gram representation
+ * e.g. 0.25 kg -> "250 gm (0.25 Kg)", 100 pcs -> "100 Pcs"
+ */
+export function formatQtyDisplay(qty: number, unit: GlobalUnit = 'PCS'): string {
+  if (unit === 'KGS') {
+    if (qty === 0.25) return '250 gm (0.25 Kg)';
+    if (qty > 0 && qty < 1) {
+      const gm = Math.round(qty * 1000);
+      return `${gm} gm (${qty} Kg)`;
+    }
+    return `${qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Kg`;
+  }
+  return `${Math.round(qty).toLocaleString('en-IN')} Pcs`;
+}
+
+export function formatUnitLabel(unit: GlobalUnit = 'PCS'): string {
+  return unit === 'KGS' ? 'KGS (Min 250 gm)' : 'PCS (Min 100 pcs)';
+}
 
 export function calculateRfqSummary(items: RfqLineItem[]): RfqSummary {
   let grossAmount = 0;

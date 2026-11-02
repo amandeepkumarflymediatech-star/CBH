@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { X, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { RfqLineItem } from '@/lib/types';
-import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
+import { calculateRfqSummary, formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 import { getStoredUser } from '@/lib/auth';
 import { setStoredCart } from '@/lib/cart';
 
@@ -28,6 +28,31 @@ export default function CartDrawer({
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const summary = calculateRfqSummary(items);
+
+  const handleStepQty = (item: RfqLineItem, delta: number) => {
+    const isKgs = item.unit === 'KGS';
+    if (isKgs) {
+      if (delta < 0) {
+        if (item.quantity <= MIN_QTY_KGS) return;
+        const step = item.quantity <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((item.quantity - step) * 100) / 100);
+        onUpdateQty(item.id, next);
+      } else {
+        const step = item.quantity < 1 ? 0.25 : 0.5;
+        const next = Math.round((item.quantity + step) * 100) / 100;
+        onUpdateQty(item.id, next);
+      }
+    } else {
+      if (delta < 0) {
+        if (item.quantity <= MIN_QTY_PCS) return;
+        const next = Math.max(MIN_QTY_PCS, item.quantity - 100);
+        onUpdateQty(item.id, next);
+      } else {
+        const next = item.quantity + 100;
+        onUpdateQty(item.id, next);
+      }
+    }
+  };
 
   return (
     <>
@@ -138,30 +163,60 @@ export default function CartDrawer({
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--color-surface-subtle)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button
-                        type="button"
-                        style={{ width: '22px', height: '22px', background: 'var(--color-surface-subtle)', border: '1px solid var(--color-surface-border)', borderRadius: '2px', fontWeight: 700 }}
-                        onClick={() => onUpdateQty(item.id, Math.max(10, item.quantity - 100))}
-                      >
-                        -
-                      </button>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, minWidth: '40px', textAlign: 'center' }}>
-                        {item.quantity} {item.unit}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--color-surface-subtle)', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          disabled={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            background: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? '#F1F5F9' : 'var(--color-surface-subtle)',
+                            border: '1px solid var(--color-surface-border)',
+                            borderRadius: '4px',
+                            fontWeight: 800,
+                            cursor: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer',
+                            opacity: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.4 : 1,
+                            transition: 'all 0.15s ease'
+                          }}
+                          onClick={() => handleStepQty(item, -1)}
+                          title={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${item.unit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+                        >
+                          -
+                        </button>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, padding: '2px 8px', background: '#F8FAFC', borderRadius: '4px', border: '1px solid #E2E8F0', minWidth: '70px', textAlign: 'center' }}>
+                          {formatQtyDisplay(item.quantity, item.unit)}
+                        </span>
+                        <button
+                          type="button"
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            background: 'var(--color-surface-subtle)',
+                            border: '1px solid var(--color-surface-border)',
+                            borderRadius: '4px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onClick={() => handleStepQty(item, 1)}
+                          title="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, display: 'block', marginTop: '2px' }}>
+                        {item.unit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 pcs'}
                       </span>
-                      <button
-                        type="button"
-                        style={{ width: '22px', height: '22px', background: 'var(--color-surface-subtle)', border: '1px solid var(--color-surface-border)', borderRadius: '2px', fontWeight: 700 }}
-                        onClick={() => onUpdateQty(item.id, item.quantity + 100)}
-                      >
-                        +
-                      </button>
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
                         {formatINR(item.rowTotal)}
+                      </span>
+                      <span style={{ display: 'block', fontSize: '10px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
+                        ₹{item.unitRate} / {item.unit === 'KGS' ? 'Kg' : 'Pc'}
                       </span>
                     </div>
                   </div>

@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { GlobalUnit, RfqLineItem } from '@/lib/types';
-import { calculateRfqSummary, formatINR } from '@/lib/rfq-calculator';
+import { calculateRfqSummary, formatINR, clampQty, formatQtyDisplay, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
 import { INITIAL_PRODUCTS } from '@/lib/mock-data';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
 import { getStoredUser } from '@/lib/auth';
@@ -98,7 +98,9 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
         if (!prod) return item;
 
         const rate = newUnit === 'PCS' ? prod.pricePerPiece : prod.pricePerKg;
-        const qty = newUnit === 'PCS' ? item.quantity : Math.round(item.quantity * prod.weightPerPcKg);
+        const qty = newUnit === 'PCS'
+          ? clampQty(Math.round(item.quantity / (prod.weightPerPcKg || 0.05)), 'PCS')
+          : clampQty(Math.round(item.quantity * (prod.weightPerPcKg || 0.05) * 100) / 100, 'KGS');
         const weight = newUnit === 'PCS' ? qty * prod.weightPerPcKg : qty;
         const total = qty * rate;
 
@@ -118,11 +120,11 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
 
   // Adjust quantity
   const handleQtyChange = (id: string | number, newQty: number) => {
-    const validQty = Math.max(10, newQty);
     setItems((prev) => {
       const updated = prev.map((item) => {
         if (item.id === id) {
-          const totalWeight = globalUnit === 'PCS' ? validQty * item.weightPerPcKg : validQty;
+          const validQty = clampQty(newQty, item.unit);
+          const totalWeight = item.unit === 'PCS' ? validQty * item.weightPerPcKg : validQty;
           return {
             ...item,
             quantity: validQty,
@@ -137,13 +139,37 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
     });
   };
 
+  const handleStepRapidQty = (item: RfqLineItem, delta: number) => {
+    if (globalUnit === 'KGS') {
+      if (delta < 0) {
+        if (item.quantity <= MIN_QTY_KGS) return;
+        const step = item.quantity <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((item.quantity - step) * 100) / 100);
+        handleQtyChange(item.id, next);
+      } else {
+        const step = item.quantity < 1 ? 0.25 : 0.5;
+        const next = Math.round((item.quantity + step) * 100) / 100;
+        handleQtyChange(item.id, next);
+      }
+    } else {
+      if (delta < 0) {
+        if (item.quantity <= MIN_QTY_PCS) return;
+        const next = Math.max(MIN_QTY_PCS, item.quantity - 100);
+        handleQtyChange(item.id, next);
+      } else {
+        const next = item.quantity + 100;
+        handleQtyChange(item.id, next);
+      }
+    }
+  };
+
   // Add SKU to table
   const handleAddSku = () => {
     const prod = INITIAL_PRODUCTS.find((p) => p.sku === selectedSku);
     if (!prod) return;
 
     const rate = globalUnit === 'PCS' ? prod.pricePerPiece : prod.pricePerKg;
-    const defaultQty = globalUnit === 'PCS' ? 500 : 50;
+    const defaultQty = globalUnit === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS;
 
     const newItem: RfqLineItem = {
       id: Date.now(),
@@ -397,22 +423,45 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                           <div className="rfq-qty-stepper">
                             <button
                               type="button"
-                              onClick={() => handleQtyChange(item.id, item.quantity - (globalUnit === 'PCS' ? 500 : 50))}
+                              disabled={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                              onClick={() => handleStepRapidQty(item, -1)}
+                              style={{
+                                opacity: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.35 : 1,
+                                cursor: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer'
+                              }}
+                              title={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'Minimum order reached' : 'Decrease'}
                             >
                               -
                             </button>
                             <input
                               type="number"
+                              step={item.unit === 'KGS' ? '0.05' : '10'}
+                              min={item.unit === 'KGS' ? 0.25 : 100}
                               value={item.quantity}
-                              onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  handleQtyChange(item.id, val);
+                                }
+                              }}
+                              onBlur={() => {
+                                const clamped = clampQty(item.quantity, item.unit);
+                                if (clamped !== item.quantity) {
+                                  handleQtyChange(item.id, clamped);
+                                }
+                              }}
                             />
                             <button
                               type="button"
-                              onClick={() => handleQtyChange(item.id, item.quantity + (globalUnit === 'PCS' ? 500 : 50))}
+                              onClick={() => handleStepRapidQty(item, 1)}
+                              title="Increase"
                             >
                               +
                             </button>
                           </div>
+                          <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', textAlign: 'center', marginTop: '2px' }}>
+                            {item.unit === 'KGS' ? 'Min: 250 gm' : 'Min: 100 pcs'}
+                          </span>
                         </td>
                         <td className="rfq-row-total">{formatINR(item.rowTotal)}</td>
                         <td>

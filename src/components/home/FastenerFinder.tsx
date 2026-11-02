@@ -12,6 +12,14 @@ import {
   Sparkles,
   X,
   Filter,
+  Layers,
+  Hexagon,
+  Component,
+  Wrench,
+  CircleDot,
+  Anchor,
+  Ruler,
+  LucideIcon,
 } from 'lucide-react';
 
 export interface FastenerFilters {
@@ -36,20 +44,19 @@ interface TabOption {
   id: string;
   label: string;
   sub: string;
-  icon: string;
+  icon: LucideIcon;
   defaultStandard?: string;
   defaultCategory?: string;
 }
 
 const FINDER_TABS: TabOption[] = [
-  { id: 'all', label: 'All Fasteners', sub: '2L+ SKUs', icon: '🔩' },
-  { id: 'hex-screws', label: 'Hex Screws', sub: 'DIN 933 Full', icon: '⚙️', defaultStandard: 'din933', defaultCategory: 'hex-screws' },
-  { id: 'hex-bolts', label: 'Heavy Hex Bolts', sub: 'DIN 931 Half', icon: '🔩', defaultStandard: 'din931', defaultCategory: 'hex-bolts' },
-  { id: 'socket-cap', label: 'Socket Head (Allen)', sub: 'DIN 912', icon: '🔧', defaultStandard: 'din912', defaultCategory: 'socket-cap' },
-  { id: 'nuts', label: 'Hex Nuts & Washers', sub: 'DIN 934 / 125', icon: '🗜️', defaultStandard: 'din934', defaultCategory: 'nuts' },
-  { id: 'anchors', label: 'Anchors & Fixings', sub: 'Concrete ETA', icon: '⚓', defaultStandard: 'eta', defaultCategory: 'anchors' },
-  { id: 'threaded-rods', label: 'High-Tensile Rods', sub: 'ASTM A193 B7', icon: '🧵', defaultStandard: 'astma193', defaultCategory: 'threaded-rods' },
-  // { id: 'surplus', label: 'Clearance Lots', sub: 'Up to 60% Off', icon: '🏷️' },
+  { id: 'all', label: 'All Fasteners', sub: '2,00,000+ SKUs', icon: Layers },
+  { id: 'hex-screws', label: 'Hex Screws', sub: 'DIN 933 Full Thread', icon: Hexagon, defaultStandard: 'din933', defaultCategory: 'hex-screws' },
+  { id: 'hex-bolts', label: 'Hex Bolts', sub: 'DIN 931 Half Thread', icon: Component, defaultStandard: 'din931', defaultCategory: 'hex-bolts' },
+  { id: 'socket-cap', label: 'Socket Allen', sub: 'DIN 912 Grade 12.9', icon: Wrench, defaultStandard: 'din912', defaultCategory: 'socket-cap' },
+  { id: 'nuts', label: 'Nuts & Washers', sub: 'DIN 934 / DIN 125', icon: CircleDot, defaultStandard: 'din934', defaultCategory: 'nuts' },
+  { id: 'anchors', label: 'Anchors & Fixings', sub: 'Concrete Expansion', icon: Anchor, defaultStandard: 'eta', defaultCategory: 'anchors' },
+  { id: 'threaded-rods', label: 'Threaded Rods', sub: 'ASTM A193 B7 / Studs', icon: Ruler, defaultStandard: 'astma193', defaultCategory: 'threaded-rods' },
 ];
 
 export default function FastenerFinder({
@@ -176,7 +183,7 @@ export default function FastenerFinder({
         <div className="finder-header">
           <div className="finder-title">
             <SlidersHorizontal size={20} color="var(--color-primary)" />
-            <span>Precision Fastener Finder Matrix</span>
+            <span>Find Fasteners by Size &amp; Type (साइज अनुसार खोजें)</span>
           </div>
 
           <div className="finder-telemetry-badge">
@@ -189,23 +196,49 @@ export default function FastenerFinder({
         </div>
 
         {/* Dynamic Interactive Category Tabs */}
-        <div className="finder-tabs-container" role="tablist" aria-label="Fastener Categories">
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-3 mb-4 border-b border-slate-200/80 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {FINDER_TABS.map((tab) => {
             const isActive = activeTab === tab.id;
+            const IconComp = tab.icon;
             return (
               <button
                 key={tab.id}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                className={`finder-tab-btn ${isActive ? 'active' : ''}`}
                 onClick={() => handleTabClick(tab)}
+                className={`group relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all duration-200 shrink-0 text-left cursor-pointer border select-none ${
+                  isActive
+                    ? 'bg-[#0052CC] text-white border-[#0052CC] shadow-md shadow-blue-900/25 -translate-y-0.5'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 hover:border-blue-400 hover:shadow-xs'
+                }`}
               >
-                <span className="tab-indicator">{tab.icon}</span>
-                <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
-                  <span>{tab.label}</span>
-                  <span style={{ fontSize: '10px', opacity: 0.75, fontFamily: 'var(--font-mono)' }}>{tab.sub}</span>
-                </span>
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-blue-50 group-hover:bg-blue-100 text-[#0052CC]'
+                  }`}
+                >
+                  <IconComp size={16} />
+                </div>
+
+                <div className="flex flex-col pr-1">
+                  <span
+                    className={`text-xs font-black tracking-tight leading-tight ${
+                      isActive ? 'text-white' : 'text-slate-900 group-hover:text-[#0052CC]'
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold mt-0.5 ${
+                      isActive ? 'text-blue-100' : 'text-slate-500'
+                    }`}
+                  >
+                    {tab.sub}
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -478,7 +511,7 @@ export default function FastenerFinder({
 
           {/* Filter Action */}
           <button type="submit" className="finder-submit-btn" title="View matching products in catalog">
-            <span>Filter ({productsCount})</span>
+            <span>Filter  </span>
             <Search size={16} />
           </button>
         </form>

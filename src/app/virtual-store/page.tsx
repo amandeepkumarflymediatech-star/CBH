@@ -29,6 +29,7 @@ import {
 import CartDrawer from '@/components/cart/CartDrawer';
 import { RfqLineItem } from '@/lib/types';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
+import { clampQty } from '@/lib/rfq-calculator';
 
 // Zone Definitions
 interface Zone {
@@ -1399,16 +1400,19 @@ export default function VirtualStorePage() {
         items={cartItems}
         onUpdateQty={(id, qty) => {
           setCartItems((prev) => {
-            const updated = prev.map((item) =>
-              item.id === id
-                ? {
-                    ...item,
-                    quantity: qty,
-                    totalWeightKg: qty * item.weightPerPcKg,
-                    rowTotal: qty * item.unitRate
-                  }
-                : item
-            );
+            const updated = prev.map((item) => {
+              if (item.id === id) {
+                const nextQty = clampQty(qty, item.unit);
+                const totalWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
+                return {
+                  ...item,
+                  quantity: nextQty,
+                  totalWeightKg: totalWeight,
+                  rowTotal: nextQty * item.unitRate
+                };
+              }
+              return item;
+            });
             setStoredCart(updated);
             return updated;
           });

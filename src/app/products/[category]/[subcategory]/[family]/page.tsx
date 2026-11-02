@@ -9,7 +9,7 @@ import CartDrawer from '@/components/cart/CartDrawer';
 import { CatalogProductFamily, TechnicalVariant } from '@/lib/catalog-types';
 import { INITIAL_FAMILIES } from '@/lib/catalog-data';
 import { RfqLineItem } from '@/lib/types';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, MIN_QTY_PCS } from '@/lib/rfq-calculator';
 import {
   ChevronRight,
   Award,
@@ -81,18 +81,19 @@ export default function ProductFamilyDetailPage() {
   });
 
   const getVariantQuantity = (variantId: string, packQty: number) => {
-    return quantities[variantId] || packQty || 50;
+    return quantities[variantId] || Math.max(MIN_QTY_PCS, packQty || 100);
   };
 
   const handleQuantityChange = (variantId: string, packQty: number, delta: number) => {
     const current = getVariantQuantity(variantId, packQty);
-    const step = packQty || 10;
-    const next = Math.max(step, current + delta * step);
+    const step = packQty || 100;
+    const next = Math.max(MIN_QTY_PCS, current + delta * step);
     setQuantities((prev) => ({ ...prev, [variantId]: next }));
   };
 
   const handleAddToCart = (variant: TechnicalVariant) => {
-    const qty = getVariantQuantity(variant.id, variant.packQty);
+    const rawQty = getVariantQuantity(variant.id, variant.packQty);
+    const qty = Math.max(MIN_QTY_PCS, rawQty);
     const lineItem: RfqLineItem = {
       id: Date.now(),
       productId: Number(variant.itemNo) || 101,
@@ -616,9 +617,19 @@ export default function ProductFamilyDetailPage() {
         items={cartItems}
         onUpdateQty={(id, qty) => {
           setCartItems((prev) =>
-            prev
-              .map((item) => (item.id === id ? { ...item, quantity: qty } : item))
-              .filter((item) => item.quantity > 0)
+            prev.map((item) => {
+              if (item.id === id) {
+                const nextQty = clampQty(qty, item.unit);
+                const nextWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
+                return {
+                  ...item,
+                  quantity: nextQty,
+                  totalWeightKg: nextWeight,
+                  rowTotal: nextQty * item.unitRate,
+                };
+              }
+              return item;
+            })
           );
         }}
         onRemoveItem={(id) => {

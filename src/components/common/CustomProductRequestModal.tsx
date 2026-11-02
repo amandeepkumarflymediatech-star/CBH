@@ -33,7 +33,7 @@ interface CustomProductRequestModalProps {
   initialLengthMm?: number | string;
   initialStandard?: string;
   initialGrade?: string;
-  sourceContext?: 'SURPLUS' | 'CATALOG' | 'CUSTOMER_PORTAL';
+  sourceContext?: 'SURPLUS' | 'SURPLUS_VENDOR' | 'CATALOG' | 'CUSTOMER_PORTAL';
 }
 
 const CATEGORIES = [
@@ -53,6 +53,7 @@ const STANDARDS = [
   'DIN 931',
   'DIN 6921',
   'DIN 912',
+  'DIN 934',
   'DIN 7991',
   'ISO 4017',
   'ISO 4014',
@@ -127,11 +128,11 @@ export default function CustomProductRequestModal({
   const [productTitle, setProductTitle] = useState('');
 
   // Commercials
-  const [quantity, setQuantity] = useState<number | string>(2500);
+  const [quantity, setQuantity] = useState<number | string>(1000);
   const [quantityUom, setQuantityUom] = useState('Nos');
   const [targetPrice, setTargetPrice] = useState<string>('');
   const [urgencyLevel, setUrgencyLevel] = useState<'SURPLUS_IMMEDIATE' | 'STANDARD' | 'SCHEDULED'>(
-    sourceContext === 'SURPLUS' ? 'SURPLUS_IMMEDIATE' : 'STANDARD'
+    sourceContext === 'SURPLUS' || sourceContext === 'SURPLUS_VENDOR' ? 'SURPLUS_IMMEDIATE' : 'STANDARD'
   );
 
   // Drawing & Notes
@@ -156,7 +157,7 @@ export default function CustomProductRequestModal({
     }
   }, [isOpen]);
 
-  // Sync initialCategory & search term when reopened
+  // Sync initial props when reopened
   useEffect(() => {
     if (initialCategory && initialCategory !== 'all') {
       setCategory(initialCategory);
@@ -178,10 +179,19 @@ export default function CustomProductRequestModal({
     }
   }, [initialCategory, initialSearchQuery, initialDiameter, initialLengthMm, initialStandard, initialGrade, isOpen]);
 
+  // Check if Nut or Washer category (Length not applicable)
+  const isNutOrWasher = useMemo(() => {
+    const c = category.toLowerCase();
+    return c.includes('nut') || c.includes('washer');
+  }, [category]);
+
   // Dynamic formatted size & auto title preview
   const formattedSize = useMemo(() => {
+    if (isNutOrWasher) {
+      return `${diameter}${pitchMm ? `X${pitchMm}` : ''}`;
+    }
     return `${diameter}X${pitchMm ? `${pitchMm}X` : ''}${lengthMm}`;
-  }, [diameter, pitchMm, lengthMm]);
+  }, [diameter, pitchMm, lengthMm, isNutOrWasher]);
 
   const generatedTitle = useMemo(() => {
     const stdClean = standard.replace('DIN ', 'DIN-').replace('ISO ', 'ISO-');
@@ -197,12 +207,17 @@ export default function CustomProductRequestModal({
     setErrorMessage(null);
 
     if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
-      setErrorMessage('Please provide your name, email, and phone number.');
+      setErrorMessage('Please provide your contact name, email, and mobile phone.');
       return;
     }
 
-    if (!diameter || !lengthMm) {
-      setErrorMessage('Please specify Diameter and Length.');
+    if (!diameter) {
+      setErrorMessage('Please specify Diameter (DIA).');
+      return;
+    }
+
+    if (!isNutOrWasher && !lengthMm) {
+      setErrorMessage('Please specify Fastener Length (mm).');
       return;
     }
 
@@ -217,7 +232,7 @@ export default function CustomProductRequestModal({
         finish,
         threadType,
         diameter,
-        lengthMm: Number(lengthMm) || 50,
+        lengthMm: isNutOrWasher ? 0 : Number(lengthMm) || 50,
         pitchMm: parseFloat(String(pitchMm)) || 1.5,
         sizeFormatted: formattedSize,
         quantityRequired: Number(quantity) || 1000,
@@ -258,36 +273,43 @@ export default function CustomProductRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-200 my-auto sm:my-8 max-h-[96dvh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm overflow-hidden animate-fade-in">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[92dvh] sm:max-h-[88vh] shadow-2xl border border-slate-200 flex flex-col overflow-hidden relative">
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-2.5 shrink-0" />
+
         {/* Header Strip */}
-        <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-2.5 bg-slate-50/70">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/90 shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="p-2 sm:p-2.5 bg-blue-50 text-[#0052CC] rounded-xl shrink-0">
-              {sourceContext === 'SURPLUS' ? (
+              {sourceContext === 'SURPLUS' || sourceContext === 'SURPLUS_VENDOR' ? (
                 <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
               ) : (
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC]" />
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-black text-[#0F172A] tracking-tight truncate">
-                {sourceContext === 'SURPLUS'
+              <h2 className="text-sm sm:text-base font-black text-[#0F172A] tracking-tight leading-tight">
+                {sourceContext === 'SURPLUS_VENDOR'
+                  ? 'Sell / Liquidate Excess Inventory (Vendor Inward)'
+                  : sourceContext === 'SURPLUS'
                   ? 'Request Factory Surplus Lot'
-                  : 'Request Custom Fastener Spec'}
+                  : 'Request Custom Fastener Specification'}
               </h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate hidden xs:block">
-                Can&apos;t find your exact size or grade? We onboard custom tooling &amp; clearance runs.
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 leading-snug">
+                {sourceContext === 'SURPLUS_VENDOR'
+                  ? 'Have dead stock or project surplus? CBH verifies and lists your lot on the certified clearance depot.'
+                  : "Can't find your exact size or grade? We onboard custom tooling & clearance runs."}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors shrink-0"
             aria-label="Close modal"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
@@ -297,9 +319,13 @@ export default function CustomProductRequestModal({
             <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
               <CheckCircle2 size={32} />
             </div>
-            <h3 className="text-lg sm:text-xl font-black text-[#0F172A]">Request Registered Successfully!</h3>
+            <h3 className="text-lg sm:text-xl font-black text-[#0F172A]">
+              {sourceContext === 'SURPLUS_VENDOR' ? 'Surplus Lot Registered for Inward!' : 'Inquiry Registered Successfully!'}
+            </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Your custom fastener inquiry has been registered in our factory queue. Our engineering desk will review tooling and add this product to the live catalog or generate your proforma invoice.
+              {sourceContext === 'SURPLUS_VENDOR'
+                ? 'Your surplus inventory lot has been registered with CBH Clearinghouse. Our inspection team will review MTC documents and connect with you on WhatsApp/Phone.'
+                : 'Your inquiry has been registered in our factory queue. Our engineering desk will review tooling and add this product to the live catalog or generate your quote.'}
             </p>
             <div className="p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl max-w-sm mx-auto font-mono text-xs">
               <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Docket Reference Number</span>
@@ -311,312 +337,332 @@ export default function CustomProductRequestModal({
                 onClick={handleReset}
                 className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold transition-all shadow"
               >
-                Done / Back to Catalog
+                Done / Back to Depot
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="overflow-y-auto overscroll-contain flex-1 p-3.5 sm:p-6 space-y-4 sm:space-y-5 text-xs">
-            {errorMessage && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2 text-xs">
-                <AlertCircle size={15} className="shrink-0" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {/* Generated Fastener Spec Preview Banner */}
-            <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl">
-              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block mb-0.5">
-                Target Fastener Specification Preview
-              </span>
-              <div className="font-mono font-extrabold text-[#0052CC] text-[11px] sm:text-xs break-all leading-snug">
-                {productTitle || generatedTitle}
-              </div>
-            </div>
-
-            {/* Section 1: Fastener Type & Standard */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
-                <Layers size={13} className="text-[#0052CC] shrink-0" />
-                <span>1. Fastener Category &amp; Standard</span>
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Fastener Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+            {/* Scrollable Middle Container */}
+            <div className="overflow-y-auto overscroll-contain flex-1 p-3.5 sm:p-6 space-y-4 text-xs">
+              {errorMessage && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2 text-xs">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{errorMessage}</span>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Standard / Specification</label>
-                  <select
-                    value={standard}
-                    onChange={(e) => setStandard(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {STANDARDS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+              {/* Fastener Spec Preview Banner */}
+              <div className="p-2.5 sm:p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl">
+                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block mb-0.5">
+                  Specification Preview
+                </span>
+                <div className="font-mono font-extrabold text-[#0052CC] text-[11px] sm:text-xs break-all leading-snug">
+                  {productTitle || generatedTitle}
                 </div>
               </div>
-            </div>
 
-            {/* Section 2: Dimensional Engineering Specs */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
-                <Info size={13} className="text-[#0052CC] shrink-0" />
-                <span>2. Dimensions &amp; Geometry</span>
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Diameter (DIA)</label>
-                  <select
-                    value={diameter}
-                    onChange={(e) => setDiameter(e.target.value)}
-                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {DIAMETERS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Length (mm)</label>
-                  <input
-                    type="number"
-                    value={lengthMm}
-                    onChange={(e) => setLengthMm(e.target.value)}
-                    placeholder="e.g. 65"
-                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Pitch (mm)</label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    value={pitchMm}
-                    onChange={(e) => setPitchMm(e.target.value)}
-                    placeholder="e.g. 1.5"
-                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Thread Profile</label>
-                  <select
-                    value={threadType}
-                    onChange={(e) => setThreadType(e.target.value)}
-                    className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {THREAD_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: Material Grade & Finish */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
-                <Sparkles size={13} className="text-[#0052CC] shrink-0" />
-                <span>3. Material Metallurgy &amp; Coating</span>
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Material Grade</label>
-                  <select
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {GRADES.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Surface Finish / Coating</label>
-                  <select
-                    value={finish}
-                    onChange={(e) => setFinish(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    {FINISHES.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Quantity & Target Rate */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
-                <Truck size={13} className="text-[#0052CC] shrink-0" />
-                <span>4. Volume &amp; Target Pricing</span>
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Required Volume</label>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                      required
-                    />
+              {/* Section 1: Fastener Type & Standard */}
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                  <Layers size={13} className="text-[#0052CC] shrink-0" />
+                  <span>1. Fastener Category &amp; Standard</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Fastener Category</label>
                     <select
-                      value={quantityUom}
-                      onChange={(e) => setQuantityUom(e.target.value)}
-                      className="w-20 shrink-0 px-2 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                     >
-                      <option value="Nos">Nos</option>
-                      <option value="Kgs">Kgs</option>
-                      <option value="Boxes">Boxes</option>
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Standard / Specification</label>
+                    <select
+                      value={standard}
+                      onChange={(e) => setStandard(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      {STANDARDS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Target Rate (₹ optional)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={targetPrice}
-                    onChange={(e) => setTargetPrice(e.target.value)}
-                    placeholder="e.g. 18.50"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Dispatch Urgency</label>
-                  <select
-                    value={urgencyLevel}
-                    onChange={(e: any) => setUrgencyLevel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  >
-                    <option value="SURPLUS_IMMEDIATE">Surplus Depot Lot (Immediate)</option>
-                    <option value="STANDARD">Standard Procurement (10-15 Days)</option>
-                    <option value="SCHEDULED">Plant Schedule (30+ Days)</option>
-                  </select>
-                </div>
               </div>
-            </div>
 
-            {/* Section 5: CAD Drawing / Attachment URL */}
-            <div className="space-y-1">
-              <label className="block text-slate-500 font-bold mb-1 flex items-center justify-between text-[11px]">
-                <span>Drawing URL / Technical Spec Sheet Link (Optional)</span>
-                <span className="text-[10px] text-slate-400 font-normal">Google Drive / Dropbox</span>
-              </label>
-              <input
-                type="url"
-                value={drawingUrl}
-                onChange={(e) => setDrawingUrl(e.target.value)}
-                placeholder="https://drive.google.com/file/d/.../view"
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-              />
-            </div>
+              {/* Section 2: Dimensional Engineering Specs */}
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                  <Info size={13} className="text-[#0052CC] shrink-0" />
+                  <span>2. Dimensions &amp; Geometry</span>
+                </h4>
+                <div className={`grid ${isNutOrWasher ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'} gap-2 sm:gap-3`}>
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Diameter (DIA) *</label>
+                    <select
+                      value={diameter}
+                      onChange={(e) => setDiameter(e.target.value)}
+                      className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      {DIAMETERS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
 
-            {/* Section 6: Client Contact Details */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
-                <User size={13} className="text-[#0052CC] shrink-0" />
-                <span>5. Client Procurement Coordinates</span>
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Full Contact Name *</label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="e.g. Rajesh Kumar"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                    required
-                  />
-                </div>
+                  {!isNutOrWasher && (
+                    <div className="min-w-0">
+                      <label className="block text-slate-500 font-bold mb-1 text-[11px]">Length (mm) *</label>
+                      <input
+                        type="number"
+                        value={lengthMm}
+                        onChange={(e) => setLengthMm(e.target.value)}
+                        placeholder="e.g. 65"
+                        className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                        required={!isNutOrWasher}
+                      />
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Company / Enterprise Firm</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Larsen &amp; Toubro Ltd."
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                  />
-                </div>
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Pitch (mm)</label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={pitchMm}
+                      onChange={(e) => setPitchMm(e.target.value)}
+                      placeholder="e.g. 1.75"
+                      className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Email Address *</label>
-                  <input
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="procurement@company.com"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Mobile Phone (WhatsApp) *</label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
-                    required
-                  />
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Thread Profile</label>
+                    <select
+                      value={threadType}
+                      onChange={(e) => setThreadType(e.target.value)}
+                      className="w-full px-2.5 sm:px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      {THREAD_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-500 font-bold mb-1 text-[11px]">Special Engineering Notes / Delivery Location</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Specify application temperature, salt-spray requirements, project delivery location, or special head marking..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+              {/* Section 3: Material Grade & Finish */}
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-[#0052CC] shrink-0" />
+                  <span>3. Material Metallurgy &amp; Coating</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Material Grade</label>
+                    <select
+                      value={grade}
+                      onChange={(e) => setGrade(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      {GRADES.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Surface Finish / Coating</label>
+                    <select
+                      value={finish}
+                      onChange={(e) => setFinish(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      {FINISHES.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Quantity & Target Rate */}
+              <div className="space-y-1.5">
+                <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                  <Truck size={13} className="text-[#0052CC] shrink-0" />
+                  <span>4. Volume &amp; Valuation</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">
+                      {sourceContext === 'SURPLUS_VENDOR' ? 'Available Lot Stock *' : 'Required Volume *'}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        placeholder="1000"
+                        className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                        required
+                      />
+                      <select
+                        value={quantityUom}
+                        onChange={(e) => setQuantityUom(e.target.value)}
+                        className="w-20 shrink-0 px-2 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                      >
+                        <option value="Nos">Nos</option>
+                        <option value="Kgs">Kgs</option>
+                        <option value="Boxes">Boxes</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">
+                      {sourceContext === 'SURPLUS_VENDOR' ? 'Expected Liquidation Rate (₹)' : 'Target Rate (₹ optional)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={targetPrice}
+                      onChange={(e) => setTargetPrice(e.target.value)}
+                      placeholder="e.g. 4.50"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-bold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Dispatch / Inward Urgency</label>
+                    <select
+                      value={urgencyLevel}
+                      onChange={(e: any) => setUrgencyLevel(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    >
+                      <option value="SURPLUS_IMMEDIATE">Immediate Dispatch / Yard Inward</option>
+                      <option value="STANDARD">Standard (7-15 Days)</option>
+                      <option value="SCHEDULED">Scheduled Project Allocation</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 5: CAD Drawing / MTC Link */}
+              <div className="space-y-1">
+                <label className="block text-slate-500 font-bold mb-1 flex items-center justify-between text-[11px]">
+                  <span>MTC Certificate Link / Photos / Drawing (Optional)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Google Drive / Dropbox</span>
+                </label>
+                <input
+                  type="url"
+                  value={drawingUrl}
+                  onChange={(e) => setDrawingUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/.../view"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
                 />
               </div>
+
+              {/* Section 6: Client / Vendor Contact Details */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[10px] sm:text-[11px] flex items-center gap-1.5">
+                  <User size={13} className="text-[#0052CC] shrink-0" />
+                  <span>5. Enterprise / Contact Coordinates</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Full Contact Person Name *</label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="e.g. Rajesh Kumar"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Company / Firm Name *</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="e.g. Flymedia Technologies"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">Official Email *</label>
+                    <input
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="procurement@company.com"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                      required
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="block text-slate-500 font-bold mb-1 text-[11px]">WhatsApp / Phone Number *</label>
+                    <input
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono font-semibold text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <label className="block text-slate-500 font-bold mb-1 text-[11px]">Stock Location / Special Notes</label>
+                  <textarea
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Specify warehouse city/state, packaging condition, batch certificates, or application notes..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-[#0052CC]"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
+            {/* Pinned Sticky Bottom Footer */}
+            <div className="p-3 sm:p-4 border-t border-slate-200 bg-white/95 backdrop-blur-sm flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 shrink-0 shadow-xs">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 text-xs transition-colors text-center"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 text-xs transition-colors text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold rounded-xl shadow transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs active:scale-[0.98]"
               >
-                {submitting ? 'Registering Request...' : 'Submit Custom Request to Admin'}
-                <ChevronRight size={14} />
+                {submitting ? (
+                  <span>Registering...</span>
+                ) : (
+                  <>
+                    <span>
+                      {sourceContext === 'SURPLUS_VENDOR'
+                        ? 'Submit Surplus Lot for Verification'
+                        : 'Submit Request to Admin'}
+                    </span>
+                    <ChevronRight size={14} />
+                  </>
+                )}
               </button>
             </div>
           </form>

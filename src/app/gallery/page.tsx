@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -214,21 +214,75 @@ export default function GalleryPage() {
     { key: 'exhibitions', label: 'Exhibitions & Expos', count: GALLERY_DATA.filter((i) => i.category === 'exhibitions').length },
   ];
 
-  const handlePrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handlePrev = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!selectedItem) return;
     const currentIndex = filteredItems.findIndex((i) => i.id === selectedItem.id);
     const prevIndex = (currentIndex - 1 + filteredItems.length) % filteredItems.length;
     setSelectedItem(filteredItems[prevIndex]);
   };
 
-  const handleNext = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!selectedItem) return;
     const currentIndex = filteredItems.findIndex((i) => i.id === selectedItem.id);
     const nextIndex = (currentIndex + 1) % filteredItems.length;
     setSelectedItem(filteredItems[nextIndex]);
   };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  useEffect(() => {
+    if (!selectedItem) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedItem(null);
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = origOverflow;
+    };
+  }, [selectedItem, filteredItems]);
+
+  const currentItemIndex = useMemo(() => {
+    if (!selectedItem) return 0;
+    return filteredItems.findIndex((i) => i.id === selectedItem.id);
+  }, [selectedItem, filteredItems]);
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen flex flex-col font-sans">
@@ -392,45 +446,72 @@ export default function GalleryPage() {
       </main>
 
       {/* ============================================================== */}
-      {/* INTERACTIVE LIGHTBOX MODAL                                     */}
+      {/* INTERACTIVE LIGHTBOX MODAL (100% RESPONSIVE)                   */}
       {/* ============================================================== */}
       {selectedItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 overscroll-contain animate-fade-in"
           onClick={() => setSelectedItem(null)}
+          style={{ overscrollBehavior: 'contain' }}
         >
           <div
-            className="bg-[#0F172A] text-white rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]"
+            className="bg-[#0F172A] text-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-4xl max-h-[94dvh] sm:max-h-[90vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col relative"
             onClick={(e) => e.stopPropagation()}
+            style={{ overscrollBehavior: 'contain' }}
           >
+            {/* Mobile Drag Indicator */}
+            <div className="sm:hidden w-12 h-1 bg-white/20 rounded-full mx-auto my-2 shrink-0" />
+
             {/* Modal Header */}
-            <div className="p-4 sm:px-6 flex items-center justify-between border-b border-white/10 bg-black/40">
-              <div className="flex items-center gap-2.5">
-                <span className="px-2.5 py-0.5 rounded bg-[#0052CC] text-white text-[10px] font-bold uppercase tracking-wider">
+            <div className="px-4 py-2.5 sm:px-6 sm:py-3.5 flex items-center justify-between border-b border-white/10 bg-black/40 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <span className="px-2 sm:px-2.5 py-0.5 rounded bg-[#0052CC] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shrink-0">
                   {selectedItem.categoryLabel}
                 </span>
-                <span className="text-xs text-slate-400 font-mono hidden sm:inline">
-                  {selectedItem.date}
+                <span className="text-[11px] sm:text-xs text-slate-300 font-mono shrink-0">
+                  {currentItemIndex + 1} / {filteredItems.length}
+                </span>
+                <span className="text-xs text-slate-400 font-mono hidden md:inline truncate">
+                  • {selectedItem.date}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedItem(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-                title="Close Lightbox"
-              >
-                <X size={18} />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedItem.image}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                  title="Download High-Res Media"
+                >
+                  <Download size={15} />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedItem(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                  title="Close (Esc)"
+                  aria-label="Close modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
-            {/* Main Image Frame with Prev/Next Controls */}
-            <div className="relative flex-1 bg-black min-h-[300px] sm:min-h-[440px] flex items-center justify-center overflow-hidden">
+            {/* Main Image Frame with Touch Swipe & Prev/Next Controls */}
+            <div
+              className="relative w-full h-[34vh] sm:h-auto sm:flex-1 min-h-[190px] max-h-[48vh] sm:min-h-[360px] md:min-h-[440px] bg-black flex items-center justify-center overflow-hidden shrink-0 sm:shrink select-none"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <Image
                 src={selectedItem.image}
                 alt={selectedItem.title}
                 fill
-                sizes="100vw"
-                className="object-contain"
+                sizes="(max-width: 768px) 100vw, 900px"
+                className="object-contain pointer-events-none"
                 priority
               />
 
@@ -438,49 +519,56 @@ export default function GalleryPage() {
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-[#0052CC] text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg"
-                title="Previous photo"
+                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-[#0052CC] active:scale-95 text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg z-10"
+                title="Previous photo (Left Arrow)"
+                aria-label="Previous photo"
               >
-                <ChevronLeft size={22} />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               {/* Next Button */}
               <button
                 type="button"
                 onClick={handleNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-[#0052CC] text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg"
-                title="Next photo"
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-[#0052CC] active:scale-95 text-white flex items-center justify-center backdrop-blur-md transition-all shadow-lg z-10"
+                title="Next photo (Right Arrow)"
+                aria-label="Next photo"
               >
-                <ChevronRight size={22} />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
+
+              {/* Mobile Swipe Hint */}
+              <div className="sm:hidden absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-white/60 bg-black/60 px-2 py-0.5 rounded-full pointer-events-none">
+                Swipe left / right to browse
+              </div>
             </div>
 
             {/* Modal Footer & Technical Spec Sheet */}
-            <div className="p-5 sm:p-6 bg-[#141C2E] border-t border-white/10 overflow-y-auto">
-              <div className="flex items-center gap-2 text-xs text-[#FF6B00] font-bold mb-1">
-                <MapPin size={13} />
-                <span>{selectedItem.location}</span>
+            <div className="p-4 sm:p-5 md:p-6 bg-[#141C2E] border-t border-white/10 overflow-y-auto min-h-0 flex-1 overscroll-contain">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-[#FF6B00] font-bold mb-1">
+                <MapPin size={13} className="shrink-0" />
+                <span className="truncate">{selectedItem.location}</span>
               </div>
-              <h3 className="text-base sm:text-lg font-extrabold text-white leading-snug">
+              <h3 className="text-sm sm:text-base md:text-lg font-extrabold text-white leading-snug">
                 {selectedItem.title}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 mt-1.5 sm:mt-2 leading-relaxed">
                 {selectedItem.description}
               </p>
 
               {selectedItem.specs && selectedItem.specs.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-white/10">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/10">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 sm:mb-2">
                     Verified Quality &amp; Technical Capabilities:
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {selectedItem.specs.map((spec, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-semibold text-sky-200"
+                        className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md bg-white/5 border border-white/10 text-[11px] sm:text-xs font-semibold text-sky-200"
                       >
-                        <CheckCircle2 size={12} className="text-emerald-400" />
-                        {spec}
+                        <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
+                        <span>{spec}</span>
                       </span>
                     ))}
                   </div>
