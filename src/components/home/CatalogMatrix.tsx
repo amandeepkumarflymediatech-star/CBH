@@ -35,6 +35,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
   };
 
   const toggleUnit = (id: number, unit: GlobalUnit) => {
+    if (getUnit(id) === unit) return;
     setCardUnits((prev) => ({ ...prev, [id]: unit }));
     setCardQtys((prev) => ({
       ...prev,
@@ -263,6 +264,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                     <div style={{ display: 'flex', gap: '2px', background: 'var(--color-surface-bg)', padding: '2px', borderRadius: '4px' }}>
                       <button
                         type="button"
+                        disabled={currentUnit === 'PCS'}
                         style={{
                           padding: '2px 6px',
                           fontSize: '11px',
@@ -271,7 +273,8 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                           borderRadius: '2px',
                           background: currentUnit === 'PCS' ? 'var(--color-dark-800)' : 'transparent',
                           color: currentUnit === 'PCS' ? '#FFFFFF' : 'var(--color-text-muted)',
-                          cursor: 'pointer'
+                          cursor: currentUnit === 'PCS' ? 'default' : 'pointer',
+                          pointerEvents: currentUnit === 'PCS' ? 'none' : 'auto',
                         }}
                         onClick={() => toggleUnit(p.id, 'PCS')}
                       >
@@ -279,6 +282,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                       </button>
                       <button
                         type="button"
+                        disabled={currentUnit === 'KGS'}
                         style={{
                           padding: '2px 6px',
                           fontSize: '11px',
@@ -287,7 +291,8 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                           borderRadius: '2px',
                           background: currentUnit === 'KGS' ? 'var(--color-dark-800)' : 'transparent',
                           color: currentUnit === 'KGS' ? '#FFFFFF' : 'var(--color-text-muted)',
-                          cursor: 'pointer'
+                          cursor: currentUnit === 'KGS' ? 'default' : 'pointer',
+                          pointerEvents: currentUnit === 'KGS' ? 'none' : 'auto',
                         }}
                         onClick={() => toggleUnit(p.id, 'KGS')}
                       >
