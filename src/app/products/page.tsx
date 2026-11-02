@@ -294,23 +294,35 @@ function FastenerCard({
           <div className="grid grid-cols-2 bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200/60">
             <button
               type="button"
-              onClick={() => onToggleUnit('PCS')}
-              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center cursor-pointer ${
+              disabled={currentUnit === 'PCS'}
+              onClick={() => {
+                if (currentUnit !== 'PCS') {
+                  onToggleUnit('PCS');
+                }
+              }}
+              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center ${
                 currentUnit === 'PCS'
-                  ? 'bg-white text-blue-700 shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-blue-700 shadow-xs font-black cursor-default pointer-events-none'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer'
               }`}
+              title={currentUnit === 'PCS' ? 'Pieces (Pcs) already selected' : 'Switch to Pieces (Pcs)'}
             >
               Pieces (Pcs)
             </button>
             <button
               type="button"
-              onClick={() => onToggleUnit('KGS')}
-              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center cursor-pointer ${
+              disabled={currentUnit === 'KGS'}
+              onClick={() => {
+                if (currentUnit !== 'KGS') {
+                  onToggleUnit('KGS');
+                }
+              }}
+              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center ${
                 currentUnit === 'KGS'
-                  ? 'bg-white text-blue-700 shadow-xs font-black'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-blue-700 shadow-xs font-black cursor-default pointer-events-none'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer'
               }`}
+              title={currentUnit === 'KGS' ? 'Weight (Kg) already selected' : 'Switch to Weight (Kg)'}
             >
               Weight (Kg)
             </button>
@@ -540,6 +552,7 @@ function ProductsPageInner() {
 
   // Unit and Qty Helpers with strict MOQ compliance
   const handleGlobalUnitChange = (u: GlobalUnit) => {
+    if (u === globalUnit) return;
     setGlobalUnit(u);
     setCardUnits({});
     setCardQtys({});
@@ -553,6 +566,8 @@ function ProductsPageInner() {
   };
 
   const toggleCardUnit = (id: number, u: GlobalUnit) => {
+    // Prevent trigger if unit is already active (preserves user adjusted quantity)
+    if (getCardUnit(id) === u) return;
     setCardUnits((prev) => ({ ...prev, [id]: u }));
     setCardQtys((prev) => ({ ...prev, [id]: u === 'PCS' ? MIN_QTY_PCS : MIN_QTY_KGS }));
   };

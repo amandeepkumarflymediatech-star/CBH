@@ -91,6 +91,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
 
   // Switch between PCS and KGS
   const handleUnitSwitch = (newUnit: GlobalUnit) => {
+    if (newUnit === globalUnit) return;
     setGlobalUnit(newUnit);
     setItems((prev) => {
       const updated = prev.map((item) => {
