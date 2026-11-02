@@ -33,7 +33,7 @@ interface CustomProductRequestModalProps {
   initialLengthMm?: number | string;
   initialStandard?: string;
   initialGrade?: string;
-  sourceContext?: 'SURPLUS' | 'CATALOG' | 'CUSTOMER_PORTAL';
+  sourceContext?: 'SURPLUS' | 'SURPLUS_VENDOR' | 'CATALOG' | 'CUSTOMER_PORTAL';
 }
 
 const CATEGORIES = [
@@ -131,7 +131,7 @@ export default function CustomProductRequestModal({
   const [quantityUom, setQuantityUom] = useState('Nos');
   const [targetPrice, setTargetPrice] = useState<string>('');
   const [urgencyLevel, setUrgencyLevel] = useState<'SURPLUS_IMMEDIATE' | 'STANDARD' | 'SCHEDULED'>(
-    sourceContext === 'SURPLUS' ? 'SURPLUS_IMMEDIATE' : 'STANDARD'
+    sourceContext === 'SURPLUS' || sourceContext === 'SURPLUS_VENDOR' ? 'SURPLUS_IMMEDIATE' : 'STANDARD'
   );
 
   // Drawing & Notes
@@ -264,7 +264,7 @@ export default function CustomProductRequestModal({
         <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-2.5 bg-slate-50/70">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="p-2 sm:p-2.5 bg-blue-50 text-[#0052CC] rounded-xl shrink-0">
-              {sourceContext === 'SURPLUS' ? (
+              {sourceContext === 'SURPLUS' || sourceContext === 'SURPLUS_VENDOR' ? (
                 <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
               ) : (
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#0052CC]" />
@@ -272,12 +272,16 @@ export default function CustomProductRequestModal({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-black text-[#0F172A] tracking-tight truncate">
-                {sourceContext === 'SURPLUS'
+                {sourceContext === 'SURPLUS_VENDOR'
+                  ? 'Sell / Liquidate Excess Inventory (Surplus Inward)'
+                  : sourceContext === 'SURPLUS'
                   ? 'Request Factory Surplus Lot'
                   : 'Request Custom Fastener Spec'}
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 truncate hidden xs:block">
-                Can&apos;t find your exact size or grade? We onboard custom tooling &amp; clearance runs.
+                {sourceContext === 'SURPLUS_VENDOR'
+                  ? 'Have dead stock or project surplus? CBH verifies and lists your lot on the certified clearance depot.'
+                  : "Can't find your exact size or grade? We onboard custom tooling & clearance runs."}
               </p>
             </div>
           </div>
@@ -615,7 +619,11 @@ export default function CustomProductRequestModal({
                 disabled={submitting}
                 className="w-full sm:w-auto px-6 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold rounded-xl shadow transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 text-xs"
               >
-                {submitting ? 'Registering Request...' : 'Submit Custom Request to Admin'}
+                {submitting
+                  ? 'Registering Request...'
+                  : sourceContext === 'SURPLUS_VENDOR'
+                  ? 'Submit Surplus Lot for Verification'
+                  : 'Submit Custom Request to Admin'}
                 <ChevronRight size={14} />
               </button>
             </div>
