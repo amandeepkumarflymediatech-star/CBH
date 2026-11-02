@@ -621,8 +621,9 @@ export default function SurplusPage() {
         isOpen={isCustomRequestOpen}
         onClose={() => setIsCustomRequestOpen(false)}
         sourceContext={modalContext}
-        initialCategory="HEX NUTS"
-        initialStandard="DIN 934"
+        initialCategory={modalContext === 'SURPLUS_VENDOR' ? 'HEX NUTS' : 'Hex Screws'}
+        initialStandard={modalContext === 'SURPLUS_VENDOR' ? 'DIN 934' : 'DIN 933'}
+        initialDiameter={modalContext === 'SURPLUS_VENDOR' ? 'M12' : undefined}
       />
     </main>
   );
