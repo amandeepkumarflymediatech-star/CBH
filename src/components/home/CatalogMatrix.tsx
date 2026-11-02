@@ -60,9 +60,9 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
               fontSize: '11px',
               color: 'var(--color-text-muted)'
             }}>
-              <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>PARAMETRIC CATALOG</span>
+              <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>READY STOCK INVENTORY</span>
               <span>•</span>
-              <span>PRECISION TOLERANCE METRIC</span>
+              <span>DISPATCH IN 24-48 HRS</span>
             </div>
             <h2 style={{
               fontFamily: 'var(--font-headline)',
@@ -72,7 +72,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
               color: 'var(--color-dark-900)',
               marginTop: '4px'
             }}>
-              Industrial Fasteners Catalog Matrix
+              Popular Fasteners In Stock <span style={{ color: 'var(--color-primary)', fontSize: '24px' }}>(फैक्टरी में तैयार सामान)</span>
             </h2>
           </div>
 

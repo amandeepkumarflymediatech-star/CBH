@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle2, Percent, ArrowRight, Box, Sparkles } from 'lucide-react';
+import { CheckCircle2, Percent, ArrowRight, Box, Sparkles, MessageCircle } from 'lucide-react';
 
 export default function HeroSection() {
   return (
@@ -37,62 +37,66 @@ export default function HeroSection() {
           <div className="hero-content">
             <div className="hero-pill">
               <span className="hero-pulse-dot" style={{ background: 'var(--color-accent)' }} />
-              <span>Direct Factory Depot • 2,00,000+ Industrial Fastener SKUs</span>
+              <span>Direct Factory Wholesale Depot • 2,00,000+ Fasteners In Ready Stock</span>
             </div>
 
             <h1 className="hero-title">
-              India's Premier Digital Fastener <span>Procurement</span> <span style={{ color: 'var(--color-accent)' }}>Platform</span>
+              Direct Factory Store for <span>Nuts, Bolts &amp; Screws</span> <span style={{ color: 'var(--color-accent)' }}>(होलसेल रेट पर)</span>
             </h1>
 
             <p className="hero-desc">
-              2 Lacs+ SKUs under one roof. BIS Certified DIN & ISO precision fasteners engineered for heavy infrastructure, automotive assemblies, and industrial fabrication. Direct mill traceability with EN 10204 3.1 inspection certificates.
+              India&apos;s direct manufacturer &amp; wholesale depot for <strong>Hex Bolts, Heavy Nuts, Washers, Screws &amp; Anchors</strong>. Buy in <strong>Kilograms (Kg) or Pieces (Pcs)</strong> directly at wholesale mill rates with fast 24-48 hr delivery across India.
             </p>
 
             {/* Industrial Metrics Grid */}
             <div className="hero-stats-grid">
               <div className="stat-box highlight">
                 <span className="stat-number" style={{ color: 'var(--color-primary)' }}>2,00,000+</span>
-                <span className="stat-label">SKUs In Stock</span>
+                <span className="stat-label">Fasteners In Stock</span>
               </div>
               <div className="stat-box">
                 <span className="stat-number">24-48 HR</span>
-                <span className="stat-label">Pan-India Freight</span>
+                <span className="stat-label">Pan-India Delivery</span>
               </div>
               <div className="stat-box">
                 <span className="stat-number" style={{ color: '#059669' }}>100% BIS</span>
-                <span className="stat-label">Tested & Calibrated</span>
+                <span className="stat-label">Tested &amp; Certified</span>
               </div>
               <div className="stat-box">
-                <span className="stat-number" style={{ color: 'var(--color-accent)' }}>UP TO 25%</span>
-                <span className="stat-label">Bulk Slab Tier</span>
+                <span className="stat-number" style={{ color: 'var(--color-accent)' }}>Kg / Pcs</span>
+                <span className="stat-label">Flexible Buying</span>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
-              <Link href="/bulk-order" className="btn-primary">
-                <span>Start Rapid Bulk RFQ</span>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+              <Link href="/products" className="btn-primary" style={{ padding: '12px 22px', fontSize: '14px' }}>
+                <span>Browse Products (नट-बोल्ट देखें)</span>
                 <ArrowRight size={16} />
               </Link>
-              <Link href="/surplus" className="btn-dark">
-                <span>Browse Surplus Lots</span>
-              </Link>
-              <Link href="/virtual-store" style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'rgba(255, 107, 0, 0.1)',
-                border: '1px solid var(--color-accent)',
-                color: 'var(--color-accent)',
-                padding: '10px 18px',
-                borderRadius: '6px',
-                fontWeight: 800,
-                fontSize: '13px',
-                textDecoration: 'none',
-                transition: 'all 0.2s ease'
-              }}>
-                <Box size={16} />
-                <span>Enter 3D Virtual Depot</span>
+              <a
+                href="https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20want%20to%20buy%20nuts%20and%20bolts.%20Please%20share%20wholesale%20rates."
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#25D366',
+                  color: '#FFFFFF',
+                  padding: '12px 20px',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+                }}
+              >
+                <MessageCircle size={17} />
+                <span>WhatsApp Order (व्हाट्सएप करें)</span>
+              </a>
+              <Link href="/bulk-order" className="btn-dark" style={{ padding: '12px 20px', fontSize: '14px' }}>
+                <span>Bulk RFQ (थोक भाव)</span>
               </Link>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import './globals.css';
 import TopOpsBar from '@/components/header/TopOpsBar';
 import IndustrialFooter from '@/components/footer/IndustrialFooter';
+import FloatingWhatsAppWidget from '@/components/common/FloatingWhatsAppWidget';
 import SeoHeadInjection from '@/components/common/SeoHeadInjection';
 import { getPageSeo, getFullSeoConfig } from '@/lib/seo-db';
 
@@ -98,6 +99,7 @@ export default function RootLayout({
         <TopOpsBar />
         {children}
         <IndustrialFooter />
+        <FloatingWhatsAppWidget />
       </body>
     </html>
   );

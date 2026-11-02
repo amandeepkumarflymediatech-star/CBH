@@ -1683,27 +1683,30 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: #334155;
   background: #FFFFFF;
   border: 1px solid #CBD5E1;
   cursor: pointer;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .finder-chip:hover {
-  border-color: #94A3B8;
-  background: #F8FAFC;
+  border-color: #0052CC;
+  color: #0052CC;
+  background: #F0F7FF;
 }
 
 .finder-chip.active {
-  background: var(--color-primary-subtle);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  font-weight: 600;
+  background: #EFF6FF;
+  border-color: #0052CC;
+  color: #0052CC;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 82, 204, 0.15);
 }
 
 /* Active Filters Summary Bar */
@@ -1801,42 +1804,60 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .finder-select {
-  background: var(--color-surface-bg);
-  border: 1px solid var(--color-surface-border);
-  padding: 8px 10px;
-  border-radius: var(--radius-xs);
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  padding: 9px 12px;
+  height: 42px;
+  border-radius: 10px;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--color-dark-900);
+  font-weight: 600;
+  color: #1E293B;
   outline: none;
   cursor: pointer;
-  transition: border-color var(--transition-fast);
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.finder-select:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
 }
 
 .finder-select:focus {
-  border-color: var(--color-primary);
+  border-color: #0052CC;
   background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.15);
 }
 
 .finder-submit-btn {
-  height: 38px;
+  height: 42px;
   align-self: flex-end;
-  background: var(--color-primary);
+  background: #0052CC;
   color: #FFFFFF;
   font-family: var(--font-headline);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   text-transform: uppercase;
-  border-radius: var(--radius-xs);
+  letter-spacing: 0.5px;
+  border-radius: 10px;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: background var(--transition-fast);
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 82, 204, 0.25);
+  transition: all 0.15s ease;
 }
 
 .finder-submit-btn:hover {
-  background: var(--color-primary-hover);
+  background: #0040A8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 82, 204, 0.35);
+}
+
+.finder-submit-btn:active {
+  transform: translateY(0);
 }
 
 /* Catalog Section */

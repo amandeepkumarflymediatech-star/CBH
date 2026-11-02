@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import HeroSection from '@/components/home/HeroSection';
+import SimpleVisualCategories from '@/components/home/SimpleVisualCategories';
+import SimpleHowItWorks from '@/components/home/SimpleHowItWorks';
 import FastenerFinder, { FastenerFilters } from '@/components/home/FastenerFinder';
 import RapidRFQWidget from '@/components/home/RapidRFQWidget';
 import CatalogMatrix from '@/components/home/CatalogMatrix';
@@ -193,6 +195,12 @@ export default function HomePage() {
 
       {/* SECTION 1: High-Impact Technical Hero Section */}
       <HeroSection />
+
+      {/* SECTION 2: What We Offer (Visual Friendly Categories for All Users) */}
+      <SimpleVisualCategories />
+
+      {/* SECTION 3: How to Order in 3 Simple Steps + WhatsApp Photo Help */}
+      <SimpleHowItWorks />
 
       {/* Fastener Finder Matrix (Hilti / Fischer Style Precision Engine) */}
       <FastenerFinder
