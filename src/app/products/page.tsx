@@ -245,24 +245,24 @@ function FastenerCard({
           </div>
         </div>
 
-        {/* Title */}
-        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 min-h-[2.4rem] leading-snug mb-2">
+        {/* Title (exact 2-line height, no descender overflow) */}
+        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 h-[34px] leading-[17px] mb-2 overflow-hidden">
           <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
             {p.name}
           </Link>
         </h3>
 
-        {/* Packaging & Lead Meta Details Strip */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-600 mb-2 font-mono flex-wrap">
-          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium whitespace-nowrap">
-            Box: {pcsPerBox.toLocaleString()} pcs
-          </span>
-          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium whitespace-nowrap">
-            Lead: {leadDays}d
-          </span>
-          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium truncate max-w-[110px]" title={p.finish || 'Standard'}>
-            Finish: {p.finish || 'Standard'}
-          </span>
+        {/* Packaging, Lead & Finish - 3-Column Micro Strip (Never wraps) */}
+        <div className="grid grid-cols-3 gap-1 text-[10px] text-center font-mono text-slate-600 mb-2">
+          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Small Box: ${pcsPerBox.toLocaleString()} pcs`}>
+            Box: <strong>{pcsPerBox.toLocaleString()}</strong>
+          </div>
+          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Dispatch Lead Time: ${leadDays} days`}>
+            Lead: <strong>{leadDays}d</strong>
+          </div>
+          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Finish: ${p.finish || 'Standard'}`}>
+            <strong>{p.finish || 'Self'}</strong>
+          </div>
         </div>
       </div>
 
@@ -278,77 +278,75 @@ function FastenerCard({
               {formatINR(currentPrice)}
             </span>
           </div>
-          <div className="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200/60">
-            <span className="truncate">
-              Alt: {formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)} / {currentUnit === 'PCS' ? 'Kg' : 'Pc'}
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200/60">
+            <span className="whitespace-nowrap">
+              Alt: <strong className="text-slate-700">{formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)}</strong>/{currentUnit === 'PCS' ? 'kg' : 'pc'}
             </span>
-            <span className="shrink-0 ml-1">
-              Wt: {(p.weightPerPcKg * 1000).toFixed(1)}g / pc
+            <span className="whitespace-nowrap text-slate-400">
+              {(p.weightPerPcKg * 1000).toFixed(1)}g/pc
             </span>
           </div>
         </div>
 
-        {/* Unit Switcher & Quantity Stepper */}
-        <div className="space-y-1">
-          <div className="text-[10px] font-semibold text-slate-500 flex justify-between items-center px-0.5">
-            <span>Order Unit:</span>
-            <span className="text-blue-700 font-bold font-mono">
-              {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
-            </span>
+        {/* Procurement Configurator (Full Width Stacked - Zero Overflow) */}
+        <div className="space-y-1.5">
+          {/* Segmented Unit Selector */}
+          <div className="grid grid-cols-2 bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200/60">
+            <button
+              type="button"
+              onClick={() => onToggleUnit('PCS')}
+              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center cursor-pointer ${
+                currentUnit === 'PCS'
+                  ? 'bg-white text-blue-700 shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Pieces (Pcs)
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleUnit('KGS')}
+              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center cursor-pointer ${
+                currentUnit === 'KGS'
+                  ? 'bg-white text-blue-700 shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Weight (Kg)
+            </button>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Unit Switcher */}
-            <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-[10px] font-bold shrink-0">
-              <button
-                type="button"
-                onClick={() => onToggleUnit('PCS')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  currentUnit === 'PCS'
-                    ? 'bg-white text-slate-900 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                PCS
-              </button>
-              <button
-                type="button"
-                onClick={() => onToggleUnit('KGS')}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  currentUnit === 'KGS'
-                    ? 'bg-white text-slate-900 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                KGS
-              </button>
-            </div>
+          {/* Full-Width Quantity Stepper */}
+          <div className="flex items-center justify-between border border-slate-300 rounded-lg bg-white px-2 py-1 shadow-2xs">
+            <button
+              type="button"
+              disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+              onClick={() => onAdjustQty(-1)}
+              className="w-7 h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer text-sm transition-colors"
+              aria-label="Decrease quantity"
+              title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+            >
+              &minus;
+            </button>
 
-            {/* Quantity Stepper */}
-            <div className="flex-1 flex items-center justify-between border border-slate-300 rounded-lg bg-white px-2 py-1 text-xs font-mono shadow-2xs">
-              <button
-                type="button"
-                disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
-                onClick={() => onAdjustQty(-1)}
-                className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                aria-label="Decrease quantity"
-                title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
-              >
-                -
-              </button>
-              <span className="font-bold text-slate-900 text-[11px] truncate px-1" title={formatQtyDisplay(currentQty, currentUnit)}>
+            <div className="flex flex-col items-center justify-center min-w-0 px-2">
+              <span className="font-mono font-bold text-slate-900 text-xs sm:text-[13px] leading-tight truncate">
                 {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty.toLocaleString()} Pcs`}
               </span>
-              <button
-                type="button"
-                onClick={() => onAdjustQty(1)}
-                className="w-6 h-6 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded cursor-pointer transition-colors"
-                aria-label="Increase quantity"
-                title="Increase quantity"
-              >
-                +
-              </button>
+              <span className="text-[9px] text-blue-600 font-semibold leading-none">
+                {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+              </span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => onAdjustQty(1)}
+              className="w-7 h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded cursor-pointer text-sm transition-colors"
+              aria-label="Increase quantity"
+              title="Increase quantity"
+            >
+              +
+            </button>
           </div>
         </div>
 
@@ -1516,7 +1514,7 @@ function ProductsPageInner() {
           {/* CASE 1: ZERO DIRECT MATCHES -> HELPFUL RELATED RECOMMENDATIONS  */}
           {/* ============================================================== */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div key={i} className="bg-white rounded-xl p-4 border border-slate-200 h-80 animate-pulse" />
               ))}
@@ -1587,7 +1585,7 @@ function ProductsPageInner() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5">
                     {relatedProducts.map(({ product: p, reason, tone }) => (
                       <FastenerCard
                         key={`zero-rel-${p.id}`}
@@ -1611,7 +1609,7 @@ function ProductsPageInner() {
             /* ============================================================== */
             <div className="space-y-8">
               {/* Direct Matches Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5">
                 {products.map((p) => (
                   <FastenerCard
                     key={p.id}
