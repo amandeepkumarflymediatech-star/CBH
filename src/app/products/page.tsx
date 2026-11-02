@@ -8,6 +8,7 @@ import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
 import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
+import { getStoredCart, setStoredCart } from '@/lib/cart';
 import {
   Search,
   CheckCircle2,
@@ -430,6 +431,16 @@ function ProductsPageInner() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
 
+  // Hydrate cart from storage and sync across tabs/pages
+  useEffect(() => {
+    setCartItems(getStoredCart());
+    const onCartChange = (e: any) => {
+      if (e.detail?.items) setCartItems(e.detail.items);
+    };
+    window.addEventListener('cbh_cart_change', onCartChange);
+    return () => window.removeEventListener('cbh_cart_change', onCartChange);
+  }, []);
+
   // Sync state from URL query parameters on load / update
   useEffect(() => {
     const q = searchParams.get('search') || searchParams.get('q');
@@ -608,9 +619,10 @@ function ProductsPageInner() {
     const weight = unit === 'PCS' ? qty * (product.weightPerPcKg || 0.05) : qty;
 
     const existingIndex = cartItems.findIndex((it) => it.sku === product.sku && it.unit === unit);
-    if (existingIndex > -1) {
-      setCartItems((prev) => {
-        const updated = [...prev];
+    setCartItems((prev) => {
+      let updated: RfqLineItem[];
+      if (existingIndex > -1) {
+        updated = [...prev];
         const nextQty = updated[existingIndex].quantity + qty;
         const nextWeight = unit === 'PCS' ? nextQty * (product.weightPerPcKg || 0.05) : nextQty;
         updated[existingIndex] = {
@@ -619,24 +631,25 @@ function ProductsPageInner() {
           totalWeightKg: nextWeight,
           rowTotal: nextQty * rate,
         };
-        return updated;
-      });
-    } else {
-      const newItem: RfqLineItem = {
-        id: Date.now(),
-        productId: product.id,
-        sku: product.sku,
-        name: product.name,
-        standard: product.standard,
-        unit,
-        unitRate: rate,
-        quantity: qty,
-        weightPerPcKg: product.weightPerPcKg || 0.05,
-        totalWeightKg: weight,
-        rowTotal: qty * rate,
-      };
-      setCartItems((prev) => [newItem, ...prev]);
-    }
+      } else {
+        const newItem: RfqLineItem = {
+          id: Date.now(),
+          productId: product.id,
+          sku: product.sku,
+          name: product.name,
+          standard: product.standard,
+          unit,
+          unitRate: rate,
+          quantity: qty,
+          weightPerPcKg: product.weightPerPcKg || 0.05,
+          totalWeightKg: weight,
+          rowTotal: qty * rate,
+        };
+        updated = [newItem, ...prev];
+      }
+      setStoredCart(updated);
+      return updated;
+    });
 
     setIsCartOpen(true);
   };
@@ -1792,8 +1805,8 @@ function ProductsPageInner() {
         onClose={() => setIsCartOpen(false)}
         items={cartItems}
         onUpdateQty={(id, qty) => {
-          setCartItems((prev) =>
-            prev.map((item) => {
+          setCartItems((prev) => {
+            const updated = prev.map((item) => {
               if (item.id === id) {
                 const nextQty = clampQty(qty, item.unit);
                 const nextWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
@@ -1805,11 +1818,17 @@ function ProductsPageInner() {
                 };
               }
               return item;
-            })
-          );
+            });
+            setStoredCart(updated);
+            return updated;
+          });
         }}
         onRemoveItem={(id) => {
-          setCartItems((prev) => prev.filter((item) => item.id !== id));
+          setCartItems((prev) => {
+            const updated = prev.filter((item) => item.id !== id);
+            setStoredCart(updated);
+            return updated;
+          });
         }}
       />
 
