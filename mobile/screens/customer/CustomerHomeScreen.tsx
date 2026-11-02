@@ -22,6 +22,89 @@ interface CustomerHomeScreenProps {
   onAddToCart: (product: MobileProduct, unit: GlobalUnit, qty: number) => void;
 }
 
+const VISUAL_CATEGORIES = [
+  {
+    id: 'hex-bolts',
+    nameEn: 'Hex Bolts & Screws',
+    nameHi: 'हेक्स बोल्ट',
+    desc: 'Full & Half thread in Gr 8.8, 10.9 & SS',
+    tag: 'MOST POPULAR',
+    tagColor: '#0052CC',
+    standard: 'DIN 933',
+    icon: '🔩',
+  },
+  {
+    id: 'hex-nuts',
+    nameEn: 'Hex Nuts & Lock Nuts',
+    nameHi: 'हेक्स नट',
+    desc: 'Heavy hex, flange & nyloc nuts',
+    tag: 'READY STOCK',
+    tagColor: '#059669',
+    standard: 'DIN 934',
+    icon: '🛑',
+  },
+  {
+    id: 'washers',
+    nameEn: 'Industrial Washers',
+    nameHi: 'प्लेन व स्प्रिंग वाशर',
+    desc: 'Flat plain & split spring washers',
+    tag: 'ANTI-VIBRATION',
+    tagColor: '#4F46E5',
+    standard: 'DIN 125',
+    icon: '⭕',
+  },
+  {
+    id: 'socket-screws',
+    nameEn: 'Socket Allen Screws',
+    nameHi: 'एलन बोल्ट (सॉकेट)',
+    desc: 'High-tensile Grade 12.9 cap screws',
+    tag: 'GRADE 12.9',
+    tagColor: '#D97706',
+    standard: 'DIN 912',
+    icon: '⚙️',
+  },
+  {
+    id: 'threaded-rods',
+    nameEn: 'Threaded Rods & Studs',
+    nameHi: 'स्टड व थ्रेडेड रॉड',
+    desc: 'Continuous rods & ASTM A193 B7 studs',
+    tag: 'HEAVY TENSILE',
+    tagColor: '#0284C7',
+    standard: 'DIN 975',
+    icon: '📏',
+  },
+  {
+    id: 'anchor-bolts',
+    nameEn: 'Anchor & Foundation',
+    nameHi: 'फाउंडेशन व एंकर बोल्ट',
+    desc: 'Concrete expansion & foundation bolts',
+    tag: 'CONSTRUCTION',
+    tagColor: '#7C3AED',
+    standard: 'DIN 933',
+    icon: '🏗️',
+  },
+  {
+    id: 'surplus-depot',
+    nameEn: 'Surplus Clearance Depot',
+    nameHi: 'सस्ता सरप्लस स्टॉक',
+    desc: 'Factory overstock lots up to 45% off',
+    tag: 'SAVE UP TO 45%',
+    tagColor: '#FF6B00',
+    standard: 'DIN 933',
+    icon: '🔥',
+  },
+  {
+    id: 'custom-fasteners',
+    nameEn: 'Custom & Special Sizing',
+    nameHi: 'मनचाहा साइज बनवाएं',
+    desc: 'Special drawings manufactured to order',
+    tag: 'MADE TO ORDER',
+    tagColor: '#0F172A',
+    standard: 'All',
+    icon: '✏️',
+  },
+];
+
 function getCleanFastenerTitle(name: string, subGroup?: string): string {
   if (!name) {
     if (subGroup === 'BOLTS') return 'Hex Bolt';
@@ -317,6 +400,46 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         <Text style={styles.rfqArrow}>→</Text>
       </TouchableOpacity>
 
+      {/* SECTION: Visual Fastener Categories (Matching Website SimpleVisualCategories) */}
+      <View style={{ marginTop: 8 }}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Fasteners by Type (तस्वीर देखकर चुनें)</Text>
+            <Text style={styles.sectionSubtitle}>Factory wholesale rates • Click to view all sizes &amp; rates</Text>
+          </View>
+          <TouchableOpacity onPress={() => onNavigate('catalog')}>
+            <Text style={styles.viewAllText}>View All →</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.visualGrid}>
+          {VISUAL_CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              activeOpacity={0.88}
+              onPress={() => onNavigate('catalog', { standard: cat.standard })}
+              style={styles.visualCard}
+            >
+              <View style={styles.visualTop}>
+                <View style={[styles.visualTag, { backgroundColor: cat.tagColor }]}>
+                  <Text style={styles.visualTagText}>{cat.tag}</Text>
+                </View>
+                <Text style={styles.visualIcon}>{cat.icon}</Text>
+              </View>
+
+              <Text style={styles.visualNameEn} numberOfLines={1}>{cat.nameEn}</Text>
+              <Text style={styles.visualNameHi}>{cat.nameHi}</Text>
+              <Text style={styles.visualDesc} numberOfLines={2}>{cat.desc}</Text>
+
+              <View style={styles.visualBottom}>
+                <Text style={styles.visualStock}>✔ Ready Stock</Text>
+                <Text style={styles.visualUnit}>Kg / Pcs</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* SECTION: Factory Surplus Clearance Lots (Matching Website SurplusSection) */}
       {surplusLots.length > 0 ? (
         <View style={{ marginTop: 8 }}>
@@ -546,11 +669,104 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         </View>
       )}
 
-      {/* SECTION: Quality Assurance & Metallurgy Lab Verification */}
+      {/* SECTION: Order in 3 Simple Steps (Matching Website SimpleHowItWorks) */}
+      <View style={styles.howItWorksBox}>
+        <View style={styles.howItWorksBadge}>
+          <Text style={styles.howItWorksBadgeText}>HOW TO ORDER // केवल 3 सरल कदम</Text>
+        </View>
+        <Text style={styles.howItWorksHeading}>Order in 3 Simple Steps</Text>
+        <Text style={styles.howItWorksSub}>
+          Order online or simply send your handwritten list or fastener photo on WhatsApp.
+        </Text>
+
+        <View style={styles.stepsColumn}>
+          <View style={styles.stepItem}>
+            <View style={[styles.stepNumBox, { backgroundColor: '#DBEAFE' }]}>
+              <Text style={[styles.stepNum, { color: '#0052CC' }]}>1</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Choose or Send Photo</Text>
+              <Text style={styles.stepHindi}>सामान चुनें या फोटो भेजें</Text>
+              <Text style={styles.stepDesc}>
+                Browse catalog online, OR take a picture of your sample bolt / handwritten paper list.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepNumBox, { backgroundColor: '#FFEDD5' }]}>
+              <Text style={[styles.stepNum, { color: '#EA580C' }]}>2</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Get Factory Wholesale Rate</Text>
+              <Text style={styles.stepHindi}>तुरंत फैक्टरी रेट पाएं</Text>
+              <Text style={styles.stepDesc}>
+                Zero middlemen. Our team checks inventory and gives the lowest rate per Kg/Piece in 15 mins.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepNumBox, { backgroundColor: '#D1FAE5' }]}>
+              <Text style={[styles.stepNum, { color: '#059669' }]}>3</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Fast Doorstep Delivery</Text>
+              <Text style={styles.stepHindi}>सीधे दुकान या साइट पर डिलीवरी</Text>
+              <Text style={styles.stepDesc}>
+                Dispatched in 24-48 hours across India. Comes with GST invoice and NABL 3.1 certificate.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* SECTION: Direct WhatsApp Fastener Ordering Banner */}
+      <View style={styles.waBanner}>
+        <View style={styles.waHeaderRow}>
+          <View style={styles.waIconBox}>
+            <Text style={{ fontSize: 24 }}>💬</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.waTag}>
+              <Text style={styles.waTagText}>EASY WHATSAPP ORDERING // साइज नहीं पता?</Text>
+            </View>
+            <Text style={styles.waTitle}>Don't know the exact size?</Text>
+            <Text style={styles.waSubTitle}>Just WhatsApp a photo of the bolt or paper list!</Text>
+          </View>
+        </View>
+
+        <Text style={styles.waText}>
+          पुराने नट-बोल्ट की फोटो या पर्ची खींचकर +91 98880 21000 पर भेजें। हमारे इंजीनियर 5 मिनट में सही साइज और सबसे सस्ता फैक्टरी रेट बता देंगे।
+        </Text>
+
+        <View style={styles.waButtonsRow}>
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20am%20sending%20a%20photo%20of%20fasteners%20I%20need.%20Please%20give%20me%20the%20wholesale%20rate.')}
+            style={styles.waActionBtn}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.waActionBtnText}>💬 Send Photo on WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => Linking.openURL('tel:+919888021000')}
+            style={styles.waCallBtn}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.waCallBtnText}>📞 Call +91 98880 21000</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* SECTION: Quality Assurance & Metallurgy Lab Verification (Redesigned) */}
       <View style={styles.qualitySection}>
+        <View style={styles.qualityBadgeRow}>
+          <Text style={styles.qualityBadgeTag}>NABL LAB &amp; ISO 9001:2015</Text>
+        </View>
         <Text style={styles.qualityHeading}>Verified Industrial Grade Assurance</Text>
         <Text style={styles.qualitySub}>
-          Every consignment dispatched directly from Ludhiana manufacturing facility includes verified documentation.
+          Every consignment dispatched directly from Ludhiana manufacturing facility includes verified documentation &amp; batch inspection.
         </Text>
 
         <View style={styles.qualityGrid}>
@@ -575,6 +791,14 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             <Text style={styles.qualityCardTitle}>100% Heat Traceability</Text>
             <Text style={styles.qualityCardDesc}>
               Complete traceability from raw material wire rod coils to packaged shipping cartons.
+            </Text>
+          </View>
+
+          <View style={styles.qualityCard}>
+            <Text style={styles.qualityIcon}>⚡</Text>
+            <Text style={styles.qualityCardTitle}>Optical Sorting (PPM &lt; 50)</Text>
+            <Text style={styles.qualityCardDesc}>
+              High-speed 360° laser optical dimension &amp; thread pitch sorting for zero assembly rejects.
             </Text>
           </View>
         </View>
@@ -1029,8 +1253,24 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 6,
   },
+  qualityBadgeRow: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  qualityBadgeTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1D4ED8',
+    letterSpacing: 0.4,
+  },
   qualityHeading: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -1064,6 +1304,249 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
     lineHeight: 14,
+  },
+
+  // Visual Fastener Categories Grid Styles (Matching Website SimpleVisualCategories)
+  visualGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  visualCard: {
+    width: '48.5%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'space-between',
+    minHeight: 130,
+  },
+  visualTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  visualTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  visualTagText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  visualIcon: {
+    fontSize: 18,
+  },
+  visualNameEn: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  visualNameHi: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+    marginTop: 1,
+  },
+  visualDesc: {
+    fontSize: 9,
+    color: '#64748B',
+    marginTop: 3,
+    lineHeight: 13,
+  },
+  visualBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  visualStock: {
+    fontSize: 9,
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  visualUnit: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '700',
+    fontFamily: 'monospace',
+  },
+
+  // How It Works in 3 Simple Steps Styles (Matching Website SimpleHowItWorks)
+  howItWorksBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 8,
+  },
+  howItWorksBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  howItWorksBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#065F46',
+    letterSpacing: 0.3,
+  },
+  howItWorksHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  howItWorksSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    marginBottom: 12,
+    lineHeight: 16,
+  },
+  stepsColumn: {
+    gap: 10,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  stepNumBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNum: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  stepHindi: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0052CC',
+    marginTop: 1,
+  },
+  stepDesc: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 3,
+    lineHeight: 14,
+  },
+
+  // WhatsApp Quick Order Banner
+  waBanner: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    gap: 10,
+  },
+  waHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  waIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(37, 211, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 211, 102, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(37, 211, 102, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 3,
+  },
+  waTagText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#6EE7B7',
+    letterSpacing: 0.3,
+  },
+  waTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  waSubTitle: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    fontWeight: '600',
+  },
+  waText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    lineHeight: 15,
+  },
+  waButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  waActionBtn: {
+    flex: 1.3,
+    backgroundColor: '#25D366',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  waCallBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waCallBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   // Consultation Bar Styles

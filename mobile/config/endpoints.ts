@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   // Products & Inventory Catalog
   PRODUCTS: {
     LIST: '/api/products',
+    PAGINATED: '/api/products/paginated',
     DETAIL: (id: number | string) => `/api/products?id=${id}`,
     CREATE: '/api/products',
     UPDATE: '/api/products',

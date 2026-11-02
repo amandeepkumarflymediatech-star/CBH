@@ -12,7 +12,14 @@ import {
 import { MobileCard } from '../../components/MobileCard';
 import { MobileModal } from '../../components/MobileModal';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
-import { mobileApi } from '../../config/api';
+import {
+  mobileApi,
+  formatQtyDisplay,
+  formatINR,
+  MIN_QTY_PCS,
+  MIN_QTY_KGS,
+  clampQty,
+} from '../../config/api';
 import { MobileCartItem, MobileAuthUser, GlobalUnit } from '../../types';
 
 interface CustomerCartScreenProps {
@@ -73,30 +80,41 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
     cartItems.reduce((sum, item) => sum + item.lineTotal, 0)
   ).toFixed(2);
 
-  // Dynamic Slab Discount
-  const slabDiscountPct =
-    totalWeightKg >= 2000 ? 18 : totalWeightKg >= 1000 ? 14 : totalWeightKg >= 500 ? 10 : totalWeightKg >= 250 ? 5 : 0;
+  // Wholesale Volume Tier Evaluation (100% Synced with Website calculateRfqSummary)
+  let slabDiscountPct = 0;
+  let tierLabel = '0% STANDARD';
+  let nextTierDelta = 0;
 
-  const nextTargetKg =
-    totalWeightKg >= 2000
-      ? null
-      : totalWeightKg >= 1000
-      ? 2000
-      : totalWeightKg >= 500
-      ? 1000
-      : totalWeightKg >= 250
-      ? 500
-      : 250;
-  const progressPct = nextTargetKg
-    ? Math.min(100, Math.max(10, Math.round((totalWeightKg / nextTargetKg) * 100)))
-    : 100;
-  const kgNeeded = nextTargetKg ? +(nextTargetKg - totalWeightKg).toFixed(1) : 0;
+  if (grossTotal >= 100000) {
+    slabDiscountPct = 25;
+    tierLabel = '25% FLAT OFF ACTIVE';
+    nextTierDelta = 0;
+  } else if (grossTotal >= 50000) {
+    slabDiscountPct = 15;
+    tierLabel = '15% FLAT OFF ACTIVE';
+    nextTierDelta = +(100000 - grossTotal).toFixed(2);
+  } else if (grossTotal >= 25000) {
+    slabDiscountPct = 5;
+    tierLabel = '5% OFF ACTIVE';
+    nextTierDelta = +(50000 - grossTotal).toFixed(2);
+  } else {
+    slabDiscountPct = 0;
+    tierLabel = '0% STANDARD';
+    nextTierDelta = +(25000 - grossTotal).toFixed(2);
+  }
 
   const discountAmount = +(grossTotal * (slabDiscountPct / 100)).toFixed(2);
   const taxableTotal = +(grossTotal - discountAmount).toFixed(2);
-  const gstAmount = +(taxableTotal * 0.18).toFixed(2);
-  const freightAmount = totalWeightKg >= 1000 ? 0 : cartItems.length > 0 ? 2500 : 0;
-  const netTotal = +(taxableTotal + gstAmount + freightAmount).toFixed(2);
+
+  // Free freight above ₹25,000, otherwise ₹1,200 nominal freight
+  const freightAmount = grossTotal >= 25000 || cartItems.length === 0 ? 0 : 1200;
+
+  // 18% GST on Indian Industrial Fasteners
+  const gstAmount = +((taxableTotal + freightAmount) * 0.18).toFixed(2);
+  const netTotal = +(taxableTotal + freightAmount + gstAmount).toFixed(2);
+
+  // Progress Bar percentage relative to 1 Lakh (₹1,00,000)
+  const progressPct = Math.min(100, Math.max(5, Math.round((grossTotal / 100000) * 100)));
 
   const getCleanCartTitle = (name?: string) => {
     if (!name) return 'Industrial Fastener';
@@ -272,15 +290,13 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
           </View>
 
           <Text style={styles.slabSubtitle}>
-            {slabDiscountPct >= 18
-              ? '🔥 Maximum 18% container volume discount unlocked!'
-              : totalWeightKg >= 1000
-              ? `14% active with FREE FREIGHT! Add ${kgNeeded} Kg more for 18% MAX discount.`
-              : totalWeightKg >= 500
-              ? `10% discount active. Add ${kgNeeded} Kg to reach 1,000 Kg for 14% & Free Freight!`
-              : totalWeightKg >= 250
-              ? `5% discount active. Add ${kgNeeded} Kg to unlock 10% discount at 500 Kg!`
-              : `Add ${kgNeeded} Kg more to unlock 5% Volume Slab Discount (at 250 Kg)!`}
+            {slabDiscountPct >= 25
+              ? '🔥 Maximum 25% FLAT OFF wholesale discount unlocked!'
+              : nextTierDelta > 0
+              ? `Add ₹${nextTierDelta.toLocaleString('en-IN')} more to unlock ${
+                  grossTotal >= 50000 ? '25% FLAT OFF' : grossTotal >= 25000 ? '15% FLAT OFF' : '5% OFF'
+                }!`
+              : 'Add more fasteners for automated wholesale discounts up to 25%!'}
           </Text>
         </View>
 
@@ -349,16 +365,19 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
                 <View style={styles.itemActionRow}>
                   <View style={styles.stepperContainer}>
                     <TouchableOpacity
-                      onPress={() =>
-                        onUpdateQuantity(
-                          item.product.id,
-                          item.unit,
-                          Math.max(
-                            item.unit === 'PCS' ? 100 : 10,
-                            item.quantity - (item.unit === 'PCS' ? 500 : 25)
-                          )
-                        )
-                      }
+                      onPress={() => {
+                        const min = item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+                        if (item.quantity <= min) return;
+                        let nextQty: number;
+                        if (item.unit === 'KGS') {
+                          const step = item.quantity <= 1 ? 0.25 : 0.5;
+                          nextQty = Math.max(min, Math.round((item.quantity - step) * 100) / 100);
+                        } else {
+                          const step = item.quantity > 1000 ? 500 : 100;
+                          nextQty = Math.max(min, item.quantity - step);
+                        }
+                        onUpdateQuantity(item.product.id, item.unit, nextQty);
+                      }}
                       style={styles.stepperBtn}
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >
@@ -366,17 +385,21 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
                     </TouchableOpacity>
 
                     <Text style={styles.stepperValue}>
-                      {item.quantity.toLocaleString()} {item.unit}
+                      {formatQtyDisplay(item.quantity, item.unit)}
                     </Text>
 
                     <TouchableOpacity
-                      onPress={() =>
-                        onUpdateQuantity(
-                          item.product.id,
-                          item.unit,
-                          item.quantity + (item.unit === 'PCS' ? 500 : 25)
-                        )
-                      }
+                      onPress={() => {
+                        let nextQty: number;
+                        if (item.unit === 'KGS') {
+                          const step = item.quantity < 1 ? 0.25 : item.quantity < 5 ? 0.5 : 1.0;
+                          nextQty = Math.round((item.quantity + step) * 100) / 100;
+                        } else {
+                          const step = item.quantity >= 1000 ? 500 : 100;
+                          nextQty = item.quantity + step;
+                        }
+                        onUpdateQuantity(item.product.id, item.unit, nextQty);
+                      }}
                       style={styles.stepperBtn}
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >

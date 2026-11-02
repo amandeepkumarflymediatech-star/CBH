@@ -12,7 +12,14 @@ import {
   Modal,
 } from 'react-native';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
-import { mobileApi } from '../../config/api';
+import {
+  mobileApi,
+  MIN_QTY_PCS,
+  MIN_QTY_KGS,
+  clampQty,
+  formatQtyDisplay,
+  formatINR,
+} from '../../config/api';
 import { MobileProduct, GlobalUnit } from '../../types';
 
 interface CustomerCatalogScreenProps {
@@ -129,7 +136,69 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedStandard, setSelectedStandard] = useState<string>(initialStandard || 'All');
   const [selectedGrade, setSelectedGrade] = useState<string>(initialGrade || 'All');
+  const [selectedDiameter, setSelectedDiameter] = useState<string>('All');
+  const [selectedFinish, setSelectedFinish] = useState<string>('All');
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+
+  // Related products from paginated API
+  const [relatedProducts, setRelatedProducts] = useState<Array<{ product: MobileProduct; reason: string; tone: string }>>([]);
+
+  // Card-specific Procurement Unit (PCS vs KGS) & Quantity Overrides
+  const [cardUnits, setCardUnits] = useState<Record<number, GlobalUnit>>({});
+  const [cardQtys, setCardQtys] = useState<Record<number, number>>({});
+
+  const getCardUnit = (id: number): GlobalUnit => cardUnits[id] || 'PCS';
+  const getCardQty = (id: number): number => {
+    if (cardQtys[id] !== undefined) return cardQtys[id];
+    return getCardUnit(id) === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+  };
+
+  const toggleCardUnit = (product: MobileProduct, targetUnit: GlobalUnit) => {
+    const currentUnit = getCardUnit(product.id);
+    if (currentUnit === targetUnit) return;
+
+    const currentQty = getCardQty(product.id);
+    let nextQty: number;
+    if (targetUnit === 'KGS') {
+      const approxKg = Math.round((currentQty * (product.weightPerPcKg || 0.05)) * 100) / 100;
+      nextQty = Math.max(MIN_QTY_KGS, approxKg);
+    } else {
+      const approxPcs = Math.round(currentQty / (product.weightPerPcKg || 0.05));
+      const rounded = Math.round(approxPcs / 10) * 10;
+      nextQty = Math.max(MIN_QTY_PCS, rounded);
+    }
+
+    setCardUnits((prev) => ({ ...prev, [product.id]: targetUnit }));
+    setCardQtys((prev) => ({ ...prev, [product.id]: nextQty }));
+  };
+
+  const adjustCardQty = (product: MobileProduct, delta: number) => {
+    const unit = getCardUnit(product.id);
+    const current = getCardQty(product.id);
+
+    if (unit === 'KGS') {
+      if (delta < 0) {
+        if (current <= MIN_QTY_KGS) return;
+        const step = current <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((current - step) * 100) / 100);
+        setCardQtys((prev) => ({ ...prev, [product.id]: next }));
+      } else {
+        const step = current < 1 ? 0.25 : current < 5 ? 0.5 : 1.0;
+        const next = Math.round((current + step) * 100) / 100;
+        setCardQtys((prev) => ({ ...prev, [product.id]: next }));
+      }
+    } else {
+      if (delta < 0) {
+        if (current <= MIN_QTY_PCS) return;
+        const step = current > 1000 ? 500 : current > 200 ? 100 : 10;
+        const next = Math.max(MIN_QTY_PCS, current - step);
+        setCardQtys((prev) => ({ ...prev, [product.id]: next }));
+      } else {
+        const step = current >= 1000 ? 500 : current >= 200 ? 100 : 10;
+        setCardQtys((prev) => ({ ...prev, [product.id]: current + step }));
+      }
+    }
+  };
 
   // Favorites & Added states
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -139,6 +208,8 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [standardsList, setStandardsList] = useState<string[]>(['All']);
   const [gradesList, setGradesList] = useState<string[]>(['All']);
+  const [diametersList, setDiametersList] = useState<string[]>(['All']);
+  const [finishesList, setFinishesList] = useState<string[]>(['All']);
 
   // Floating Toast
   const [toastMsg, setToastMsg] = useState('');
@@ -160,19 +231,25 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
     }
 
     try {
-      const res = await mobileApi.products.getAll({
+      // Use high-performance paginated API (synced with website 56c2f25)
+      const res = await mobileApi.products.getPaginated({
         search: debouncedQuery || undefined,
-        subGroup: selectedCategory === 'All' ? undefined : selectedCategory,
+        category: selectedCategory === 'All' ? undefined : selectedCategory,
         standard: selectedStandard === 'All' ? undefined : selectedStandard,
         grade: selectedGrade === 'All' ? undefined : selectedGrade,
-        stockStatus: inStockOnly ? 'in_stock' : undefined,
+        diameter: selectedDiameter === 'All' ? undefined : selectedDiameter,
+        finish: selectedFinish === 'All' ? undefined : selectedFinish,
+        inStockOnly,
         page: pageNum,
         limit: PAGE_SIZE,
       });
 
       const newItems = res.products || [];
-      const total = res.total ?? res.count ?? newItems.length;
+      const total = res.total ?? newItems.length;
       setTotalCount(total);
+      if (res.relatedProducts) {
+        setRelatedProducts(res.relatedProducts);
+      }
 
       if (pageNum === 1) {
         setProducts(newItems);
@@ -187,22 +264,18 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
       setHasMore(pageNum * PAGE_SIZE < total);
       setPage(pageNum);
 
-      // Populate all categories dynamically while preserving friendly labels
-      if (res.filterOptions?.subGroups && res.filterOptions.subGroups.length > 0) {
-        const knownIds = new Set(DEFAULT_CATEGORIES.map((c) => c.id.toUpperCase()));
-        const extraGroups = res.filterOptions.subGroups
-          .filter((sg: string) => Boolean(sg) && !knownIds.has(sg.toUpperCase()))
-          .map((sg: string) => ({
-            id: sg.toUpperCase(),
-            label: sg.charAt(0).toUpperCase() + sg.slice(1).toLowerCase(),
-          }));
-        setCategoriesList([...DEFAULT_CATEGORIES, ...extraGroups]);
-      }
+      // Populate filter options dynamically
       if (res.filterOptions?.standards && res.filterOptions.standards.length > 0) {
         setStandardsList(['All', ...res.filterOptions.standards]);
       }
       if (res.filterOptions?.grades && res.filterOptions.grades.length > 0) {
         setGradesList(['All', ...res.filterOptions.grades]);
+      }
+      if (res.filterOptions?.diameters && res.filterOptions.diameters.length > 0) {
+        setDiametersList(['All', ...res.filterOptions.diameters]);
+      }
+      if (res.filterOptions?.finishes && res.filterOptions.finishes.length > 0) {
+        setFinishesList(['All', ...res.filterOptions.finishes]);
       }
     } catch (err) {
       console.warn('[Customer Catalog] Fetch error:', err);
@@ -216,7 +289,7 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   // Re-fetch when debounced search or filter criteria change
   useEffect(() => {
     fetchCatalogData(1, false);
-  }, [debouncedQuery, selectedCategory, selectedStandard, selectedGrade, inStockOnly]);
+  }, [debouncedQuery, selectedCategory, selectedStandard, selectedGrade, selectedDiameter, selectedFinish, inStockOnly]);
 
   const handleRefresh = () => {
     fetchCatalogData(1, true);
@@ -238,16 +311,18 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   };
 
   const handleQuickAdd = (product: MobileProduct) => {
-    onAddToCart(product, 'PCS', 1000);
+    const unit = getCardUnit(product.id);
+    const qty = getCardQty(product.id);
+    onAddToCart(product, unit, qty);
     setRecentlyAddedId(product.id);
-    setToastMsg(`Added 1,000 Pcs of ${product.sku} to cart`);
+    setToastMsg(`Added ${formatQtyDisplay(qty, unit)} of ${product.sku} to cart`);
     setTimeout(() => {
       setRecentlyAddedId(null);
       setToastMsg('');
     }, 2500);
   };
 
-  // 100% Dynamic Card Rendering (Faithful to UI Mockup, NO "Get Quote >")
+  // 100% Dynamic Card Rendering with Dual Unit (PCS / KGS) Stepper (Synced with Website FastenerCard)
   const renderProductItem = ({ item }: { item: MobileProduct }) => {
     const isFav = favorites.has(item.id);
     const isAdded = recentlyAddedId === item.id;
@@ -259,105 +334,207 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
       : `${item.diameter || 'M6'} – ${item.lengthMm ? item.lengthMm + 'mm' : 'M20'}`;
     const featureText = getFastenerFeature(item);
 
+    const currentUnit = getCardUnit(item.id);
+    const currentQty = getCardQty(item.id);
+    const currentPrice = currentUnit === 'PCS' ? item.pricePerPiece : item.pricePerKg;
+    const altPrice = currentUnit === 'PCS' ? item.pricePerKg : item.pricePerPiece;
+    const altUnit = currentUnit === 'PCS' ? 'kg' : 'pc';
+    const pcsPerBox = Math.round(Number(item.pcsPerBox)) || 500;
+    const leadDays = item.leadTimeDays || 10;
+    const minQty = currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => onSelectProduct(item)}
-        style={[styles.card, item.isSurplus ? styles.surplusCardBorder : null]}
-      >
-        {/* Left Image Thumbnail Container with soft sky-blue background */}
-        <View style={styles.cardImgBox}>
-          <FastenerProductImage
-            imageUrl={item.imageUrl}
-            category={item.category || item.subGroup}
-            productName={item.name}
-            standard={standardDisplay}
-            drawingUrl={item.drawingUrl}
-            height={98}
-            containerStyle={styles.fastenerImageStyle}
-            showCadBadge={Boolean(item.drawingUrl)}
-          />
-          {item.isSurplus ? (
-            <View style={styles.surplusBadge}>
-              <Text style={styles.surplusBadgeText}>🔥 -{item.surplusDiscountPct || 35}%</Text>
-            </View>
-          ) : null}
-        </View>
+      <View style={[styles.card, item.isSurplus ? styles.surplusCardBorder : null]}>
+        {/* Top Header Row: Image + Details (Tappable to View Details) */}
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={() => onSelectProduct(item)}
+          style={styles.cardHeaderRow}
+        >
+          {/* Left Thumbnail Box */}
+          <View style={styles.cardImgBox}>
+            <FastenerProductImage
+              imageUrl={item.imageUrl}
+              category={item.category || item.subGroup}
+              productName={item.name}
+              standard={standardDisplay}
+              drawingUrl={item.drawingUrl}
+              height={84}
+              containerStyle={styles.fastenerImageStyle}
+              showCadBadge={Boolean(item.drawingUrl)}
+            />
+            {item.isSurplus ? (
+              <View style={styles.surplusBadge}>
+                <Text style={styles.surplusBadgeText}>🔥 -{item.surplusDiscountPct || 35}%</Text>
+              </View>
+            ) : null}
+          </View>
 
-        {/* Right Info Section */}
-        <View style={styles.cardInfo}>
-          {/* Row 1: Clean Title + Heart Wishlist Button */}
-          <View style={styles.cardTopRow}>
-            <Text style={styles.productTitle} numberOfLines={1}>
-              {cleanTitle}
-            </Text>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation?.();
-                toggleFavorite(item.id);
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.heartBtn}
-            >
-              <Text style={[styles.heartIcon, isFav && styles.heartIconActive]}>
-                {isFav ? '♥' : '♡'}
+          {/* Right Product Summary */}
+          <View style={styles.cardMainInfo}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.productTitle} numberOfLines={1}>
+                {cleanTitle}
               </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Row 2: Size & DIN Standard */}
-          <View style={styles.specLineRow}>
-            <Text style={styles.specText}>
-              Size: <Text style={styles.specValueText}>{sizeDisplay}</Text>
-              <Text style={styles.specDivider}>  |  </Text>
-              <Text style={styles.specValueText}>{cleanDin.startsWith('DIN') ? cleanDin : `DIN: ${cleanDin}`}</Text>
-            </Text>
-          </View>
-
-          {/* Row 3: Feature Check & Live Stock Status */}
-          <View style={styles.featureStockRow}>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureCheck}>✔</Text>
-              <Text style={styles.featureText}>{featureText}</Text>
-            </View>
-            <Text style={styles.specDivider}>  |  </Text>
-            <View style={styles.stockItem}>
-              <Text style={styles.stockBoxIcon}>📦</Text>
-              <Text
-                style={[
-                  styles.stockText,
-                  item.isInStock ? styles.stockTextIn : styles.stockTextPre,
-                ]}
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  toggleFavorite(item.id);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.heartBtn}
               >
-                {item.isInStock ? 'In Stock' : 'Pre-Order'}
+                <Text style={[styles.heartIcon, isFav && styles.heartIconActive]}>
+                  {isFav ? '♥' : '♡'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Spec: Size & DIN Standard */}
+            <View style={styles.specLineRow}>
+              <Text style={styles.specText}>
+                Size: <Text style={styles.specValueText}>{sizeDisplay}</Text>
+                <Text style={styles.specDivider}>  |  </Text>
+                <Text style={styles.specValueText}>{cleanDin.startsWith('DIN') ? cleanDin : `DIN: ${cleanDin}`}</Text>
               </Text>
             </View>
-          </View>
 
-          {/* Row 4: Price & Action Pill Button */}
-          <View style={styles.cardActionRow}>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceSymbol}>₹</Text>
-              <Text style={styles.priceAmount}>{item.pricePerPiece}</Text>
-              <Text style={styles.priceUnit}> / Piece</Text>
+            {/* Feature & Stock Status */}
+            <View style={styles.featureStockRow}>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={styles.featureText}>{featureText}</Text>
+              </View>
+              <Text style={styles.specDivider}>  |  </Text>
+              <View style={styles.stockItem}>
+                <Text style={styles.stockBoxIcon}>📦</Text>
+                <Text
+                  style={[
+                    styles.stockText,
+                    item.isInStock ? styles.stockTextIn : styles.stockTextPre,
+                  ]}
+                >
+                  {item.isInStock ? 'In Stock' : 'Pre-Order'}
+                </Text>
+              </View>
             </View>
+          </View>
+        </TouchableOpacity>
 
+        {/* 3-Column Micro Strip (Box size, Dispatch lead days, MOQ) */}
+        <View style={styles.microStrip}>
+          <View style={styles.microCol}>
+            <Text style={styles.microColText}>📦 Box: <Text style={styles.microBold}>{pcsPerBox.toLocaleString()} pcs</Text></Text>
+          </View>
+          <View style={styles.microCol}>
+            <Text style={styles.microColText}>⚡ Lead: <Text style={styles.microBold}>{leadDays}d</Text></Text>
+          </View>
+          <View style={styles.microCol}>
+            <Text style={styles.microColText}>🎯 MOQ: <Text style={styles.microBold}>100 Pcs / 250g</Text></Text>
+          </View>
+        </View>
+
+        {/* Price & Alt Equivalent Strip */}
+        <View style={styles.priceStripRow}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.rateLabel}>
+              {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
+            </Text>
+            <Text style={styles.priceSymbol}>₹</Text>
+            <Text style={styles.priceAmount}>{currentPrice.toFixed(2)}</Text>
+          </View>
+          <View style={styles.altPriceContainer}>
+            <Text style={styles.altPriceText}>
+              Alt: <Text style={styles.altPriceBold}>₹{altPrice.toFixed(2)}</Text>/{altUnit}
+            </Text>
+          </View>
+        </View>
+
+        {/* Procurement Configurator: Unit Switcher + Stepper + Add Button */}
+        <View style={styles.procurementRow}>
+          {/* Unit Toggle Pills */}
+          <View style={styles.unitToggleBox}>
             <TouchableOpacity
-              activeOpacity={0.82}
               onPress={(e) => {
                 e.stopPropagation?.();
-                handleQuickAdd(item);
+                toggleCardUnit(item, 'PCS');
               }}
-              style={[styles.quickAddBtn, isAdded ? styles.quickAddBtnSuccess : null]}
+              style={[
+                styles.unitPill,
+                currentUnit === 'PCS' ? styles.unitPillActive : null,
+              ]}
             >
-              <Text style={[styles.quickAddBtnText, isAdded ? styles.quickAddBtnTextSuccess : null]}>
-                {isAdded ? '✓ Added' : '+ Add to Cart'}
+              <Text style={[styles.unitPillText, currentUnit === 'PCS' ? styles.unitPillTextActive : null]}>
+                Pcs
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                toggleCardUnit(item, 'KGS');
+              }}
+              style={[
+                styles.unitPill,
+                currentUnit === 'KGS' ? styles.unitPillActive : null,
+              ]}
+            >
+              <Text style={[styles.unitPillText, currentUnit === 'KGS' ? styles.unitPillTextActive : null]}>
+                Kgs
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Stepper (- / +) */}
+          <View style={styles.cardStepper}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                adjustCardQty(item, -1);
+              }}
+              disabled={currentQty <= minQty}
+              style={[styles.stepperArrowBtn, currentQty <= minQty && styles.stepperArrowDisabled]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.stepperArrowText, currentQty <= minQty && styles.stepperArrowTextDisabled]}>−</Text>
+            </TouchableOpacity>
+
+            <View style={styles.stepperDisplay}>
+              <Text style={styles.stepperQtyText} numberOfLines={1}>
+                {formatQtyDisplay(currentQty, currentUnit)}
+              </Text>
+              <Text style={styles.stepperMinLabel}>
+                {currentUnit === 'KGS' ? 'Min 250g' : 'Min 100'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                adjustCardQty(item, 1);
+              }}
+              style={styles.stepperArrowBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.stepperArrowText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Add to Cart Button */}
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handleQuickAdd(item);
+            }}
+            style={[styles.quickAddBtn, isAdded ? styles.quickAddBtnSuccess : null]}
+          >
+            <Text style={[styles.quickAddBtnText, isAdded ? styles.quickAddBtnTextSuccess : null]}>
+              {isAdded ? '✓ Added' : '+ Add'}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -530,9 +707,9 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>No Fasteners Found</Text>
+              <Text style={styles.emptyTitle}>No Direct Matches Found</Text>
               <Text style={styles.emptySubtitle}>
-                No products match "{debouncedQuery}" under {selectedCategory}. Try resetting your search filters.
+                No products match "{debouncedQuery}" under {selectedCategory}.
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -540,12 +717,32 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
                   setSelectedCategory('All');
                   setSelectedStandard('All');
                   setSelectedGrade('All');
+                  setSelectedDiameter('All');
+                  setSelectedFinish('All');
                   setInStockOnly(false);
                 }}
                 style={styles.emptyResetBtn}
               >
                 <Text style={styles.emptyResetBtnText}>Reset All Filters</Text>
               </TouchableOpacity>
+
+              {/* Related Fasteners Section */}
+              {relatedProducts.length > 0 && (
+                <View style={styles.relatedSection}>
+                  <View style={styles.relatedHeader}>
+                    <Text style={styles.relatedSectionTitle}>🔗 Compatible & Related Fasteners</Text>
+                    <Text style={styles.relatedSectionSub}>Matching diameter, DIN standard, or mating nuts/washers</Text>
+                  </View>
+                  {relatedProducts.map(({ product: p, reason }) => (
+                    <View key={`rel-${p.id}`} style={{ marginBottom: 8 }}>
+                      <View style={styles.relatedBadgePill}>
+                        <Text style={styles.relatedBadgeText}>{reason}</Text>
+                      </View>
+                      {renderProductItem({ item: p })}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           }
         />
@@ -569,88 +766,146 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Category Chips */}
-            <Text style={styles.modalSectionLabel}>CATEGORY</Text>
-            <View style={styles.modalChipsWrap}>
-              {categoriesList.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => setSelectedCategory(cat.id)}
-                  style={[
-                    styles.modalChip,
-                    selectedCategory === cat.id ? styles.modalChipActive : null,
-                  ]}
-                >
-                  <Text
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {/* Category Chips */}
+              <Text style={styles.modalSectionLabel}>CATEGORY</Text>
+              <View style={styles.modalChipsWrap}>
+                {categoriesList.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setSelectedCategory(cat.id)}
                     style={[
-                      styles.modalChipText,
-                      selectedCategory === cat.id ? styles.modalChipTextActive : null,
+                      styles.modalChip,
+                      selectedCategory === cat.id ? styles.modalChipActive : null,
                     ]}
                   >
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Standards Chips */}
-            <Text style={styles.modalSectionLabel}>STANDARD (DIN / ISO)</Text>
-            <View style={styles.modalChipsWrap}>
-              {standardsList.slice(0, 10).map((std) => (
-                <TouchableOpacity
-                  key={std}
-                  onPress={() => setSelectedStandard(std)}
-                  style={[
-                    styles.modalChip,
-                    selectedStandard === std ? styles.modalChipActive : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.modalChipText,
-                      selectedStandard === std ? styles.modalChipTextActive : null,
-                    ]}
-                  >
-                    {std}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Grade Chips */}
-            <Text style={styles.modalSectionLabel}>PROPERTY CLASS / GRADE</Text>
-            <View style={styles.modalChipsWrap}>
-              {gradesList.slice(0, 8).map((gr) => (
-                <TouchableOpacity
-                  key={gr}
-                  onPress={() => setSelectedGrade(gr)}
-                  style={[
-                    styles.modalChip,
-                    selectedGrade === gr ? styles.modalChipActive : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.modalChipText,
-                      selectedGrade === gr ? styles.modalChipTextActive : null,
-                    ]}
-                  >
-                    {gr}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* In stock toggle */}
-            <TouchableOpacity
-              onPress={() => setInStockOnly(!inStockOnly)}
-              style={styles.inStockToggleRow}
-            >
-              <View style={[styles.checkbox, inStockOnly && styles.checkboxActive]}>
-                {inStockOnly && <Text style={styles.checkboxCheck}>✓</Text>}
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        selectedCategory === cat.id ? styles.modalChipTextActive : null,
+                      ]}
+                    >
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Text style={styles.inStockToggleLabel}>In Stock Only (Factory Ready)</Text>
-            </TouchableOpacity>
+
+              {/* Standards Chips */}
+              <Text style={styles.modalSectionLabel}>STANDARD (DIN / ISO)</Text>
+              <View style={styles.modalChipsWrap}>
+                {standardsList.slice(0, 10).map((std) => (
+                  <TouchableOpacity
+                    key={std}
+                    onPress={() => setSelectedStandard(std)}
+                    style={[
+                      styles.modalChip,
+                      selectedStandard === std ? styles.modalChipActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        selectedStandard === std ? styles.modalChipTextActive : null,
+                      ]}
+                    >
+                      {std}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Grade Chips */}
+              <Text style={styles.modalSectionLabel}>PROPERTY CLASS / GRADE</Text>
+              <View style={styles.modalChipsWrap}>
+                {gradesList.slice(0, 8).map((gr) => (
+                  <TouchableOpacity
+                    key={gr}
+                    onPress={() => setSelectedGrade(gr)}
+                    style={[
+                      styles.modalChip,
+                      selectedGrade === gr ? styles.modalChipActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modalChipText,
+                        selectedGrade === gr ? styles.modalChipTextActive : null,
+                      ]}
+                    >
+                      {gr}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Diameter Chips */}
+              {diametersList.length > 1 && (
+                <>
+                  <Text style={styles.modalSectionLabel}>DIAMETER (METRIC)</Text>
+                  <View style={styles.modalChipsWrap}>
+                    {diametersList.slice(0, 10).map((dia) => (
+                      <TouchableOpacity
+                        key={dia}
+                        onPress={() => setSelectedDiameter(dia)}
+                        style={[
+                          styles.modalChip,
+                          selectedDiameter === dia ? styles.modalChipActive : null,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.modalChipText,
+                            selectedDiameter === dia ? styles.modalChipTextActive : null,
+                          ]}
+                        >
+                          {dia}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* Finish Chips */}
+              {finishesList.length > 1 && (
+                <>
+                  <Text style={styles.modalSectionLabel}>FINISH / COATING</Text>
+                  <View style={styles.modalChipsWrap}>
+                    {finishesList.slice(0, 8).map((fn) => (
+                      <TouchableOpacity
+                        key={fn}
+                        onPress={() => setSelectedFinish(fn)}
+                        style={[
+                          styles.modalChip,
+                          selectedFinish === fn ? styles.modalChipActive : null,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.modalChipText,
+                            selectedFinish === fn ? styles.modalChipTextActive : null,
+                          ]}
+                        >
+                          {fn}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* In stock toggle */}
+              <TouchableOpacity
+                onPress={() => setInStockOnly(!inStockOnly)}
+                style={styles.inStockToggleRow}
+              >
+                <View style={[styles.checkbox, inStockOnly && styles.checkboxActive]}>
+                  {inStockOnly && <Text style={styles.checkboxCheck}>✓</Text>}
+                </View>
+                <Text style={styles.inStockToggleLabel}>In Stock Only (Factory Ready)</Text>
+              </TouchableOpacity>
+            </ScrollView>
 
             <TouchableOpacity
               onPress={() => setIsFilterOpen(false)}
@@ -881,16 +1136,14 @@ const styles = StyleSheet.create({
   },
 
   // =========================================================================
-  // 100% Dynamic Product Card (Faithful to UI Mockup, NO "Get Quote >")
+  // 100% Dynamic Product Card (Synced with Website FastenerCard)
   // =========================================================================
   card: {
-    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginHorizontal: 14,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    marginBottom: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E8EFF7',
     elevation: 2,
@@ -898,16 +1151,194 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+  },
+  cardMainInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'space-between',
+  },
+  microStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  microCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  microColText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  microBold: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  priceStripRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  rateLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    marginRight: 4,
+    textTransform: 'uppercase',
+  },
+  altPriceContainer: {
+    alignItems: 'flex-end',
+  },
+  altPriceText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  altPriceBold: {
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+  procurementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 8,
+  },
+  unitToggleBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+  },
+  unitPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  unitPillActive: {
+    backgroundColor: '#FFFFFF',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  unitPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  unitPillTextActive: {
+    color: '#0047AB',
+    fontWeight: '900',
+  },
+  cardStepper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  stepperArrowBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  stepperArrowDisabled: {
+    opacity: 0.35,
+    backgroundColor: '#F1F5F9',
+  },
+  stepperArrowText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  stepperArrowTextDisabled: {
+    color: '#94A3B8',
+  },
+  stepperDisplay: {
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  stepperQtyText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  stepperMinLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#0047AB',
+  },
+  relatedSection: {
+    marginTop: 20,
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  relatedHeader: {
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  relatedSectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  relatedSectionSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  relatedBadgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 4,
+    marginLeft: 14,
+  },
+  relatedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
   surplusCardBorder: {
     borderColor: '#F59E0B',
     borderWidth: 1.5,
   },
   cardImgBox: {
-    width: 104,
-    height: 104,
-    borderRadius: 14,
+    width: 84,
+    height: 84,
+    borderRadius: 12,
     backgroundColor: '#EEF4FF',
     alignItems: 'center',
     justifyContent: 'center',

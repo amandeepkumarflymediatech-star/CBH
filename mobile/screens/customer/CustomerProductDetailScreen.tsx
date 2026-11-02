@@ -12,7 +12,14 @@ import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { MobileProduct, GlobalUnit } from '../../types';
-import { mobileApi } from '../../config/api';
+import {
+  mobileApi,
+  MIN_QTY_PCS,
+  MIN_QTY_KGS,
+  clampQty,
+  formatQtyDisplay,
+  formatINR,
+} from '../../config/api';
 
 interface CustomerProductDetailScreenProps {
   product: MobileProduct;
@@ -34,9 +41,71 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
   onSelectProduct,
 }) => {
   const [selectedUnit, setSelectedUnit] = useState<GlobalUnit>('PCS');
-  const [quantity, setQuantity] = useState<number>(1000);
+  const [quantity, setQuantity] = useState<number>(500);
+  const [quantityInput, setQuantityInput] = useState<string>('500');
   const [isAddedToast, setIsAddedToast] = useState(false);
   const [deliveryPincode, setDeliveryPincode] = useState('560058');
+
+  // Quantity updates syncing text input
+  const updateQuantity = (val: number) => {
+    setQuantity(val);
+    setQuantityInput(String(val));
+  };
+
+  // Smart unit toggle with proportional conversion
+  const handleUnitToggle = (newUnit: GlobalUnit) => {
+    if (newUnit === selectedUnit) return;
+    setSelectedUnit(newUnit);
+    if (newUnit === 'KGS') {
+      const approxKg = Math.round((quantity * (product?.weightPerPcKg || 0.05)) * 100) / 100;
+      const nextKg = Math.max(MIN_QTY_KGS, approxKg);
+      updateQuantity(nextKg);
+    } else {
+      const approxPcs = Math.round(quantity / (product?.weightPerPcKg || 0.05));
+      const rounded = Math.round(approxPcs / 10) * 10;
+      const nextPcs = Math.max(MIN_QTY_PCS, rounded);
+      updateQuantity(nextPcs);
+    }
+  };
+
+  // Stepper stepping by 10 (110, 120, 130) or 0.25 kg
+  const handleStepQty = (delta: number) => {
+    if (selectedUnit === 'KGS') {
+      if (delta < 0) {
+        if (quantity <= MIN_QTY_KGS) return;
+        const step = quantity <= 1 ? 0.25 : 0.5;
+        const next = Math.max(MIN_QTY_KGS, Math.round((quantity - step) * 100) / 100);
+        updateQuantity(next);
+      } else {
+        const step = quantity < 1 ? 0.25 : quantity < 5 ? 0.5 : 1.0;
+        const next = Math.round((quantity + step) * 100) / 100;
+        updateQuantity(next);
+      }
+    } else {
+      if (delta < 0) {
+        if (quantity <= MIN_QTY_PCS) return;
+        const step = quantity > 1000 ? 500 : quantity > 200 ? 100 : 10;
+        const next = Math.max(MIN_QTY_PCS, quantity - step);
+        updateQuantity(next);
+      } else {
+        const step = quantity >= 1000 ? 500 : quantity >= 200 ? 100 : 10;
+        updateQuantity(quantity + step);
+      }
+    }
+  };
+
+  const handleInputChange = (text: string) => {
+    setQuantityInput(text);
+    const parsed = parseFloat(text);
+    if (!isNaN(parsed) && parsed > 0) {
+      setQuantity(parsed);
+    }
+  };
+
+  const handleInputBlur = () => {
+    const clamped = clampQty(quantity, selectedUnit);
+    updateQuantity(clamped);
+  };
 
   // Top Search Bar State
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,19 +142,25 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
       ? +(quantity * weightPerPc).toFixed(2)
       : quantity;
 
-  // Dynamic Slab Discount Engine
-  const getSlabDiscount = (weightKg: number) => {
-    if (weightKg >= 2000) return { pct: 18, nextWeight: null, nextPct: null };
-    if (weightKg >= 1000) return { pct: 14, nextWeight: 2000, nextPct: 18 };
-    if (weightKg >= 500) return { pct: 10, nextWeight: 1000, nextPct: 14 };
-    if (weightKg >= 250) return { pct: 5, nextWeight: 500, nextPct: 10 };
-    return { pct: 0, nextWeight: 250, nextPct: 5 };
+  // Wholesale Volume Discount Engine (100% Synced with Website 56c2f25)
+  const getVolumeDiscount = (qty: number, unit: GlobalUnit) => {
+    if (unit === 'KGS') {
+      if (qty >= 1000) return { pct: 26, label: 'Master OEM Wholesale (-26%)' };
+      if (qty >= 250) return { pct: 20, label: 'Contractor Volume Tier (-20%)' };
+      if (qty >= 50) return { pct: 10, label: 'Bulk Batch Tier (-10%)' };
+      return { pct: 0, label: 'Standard Rate' };
+    }
+    if (qty >= 10000) return { pct: 25, label: 'Master OEM Wholesale (-25%)' };
+    if (qty >= 2500) return { pct: 18, label: 'Contractor Volume Tier (-18%)' };
+    if (qty >= 500) return { pct: 8, label: 'Bulk Batch Tier (-8%)' };
+    return { pct: 0, label: 'Standard Rate' };
   };
 
-  const slab = getSlabDiscount(totalWeightKg);
+  const discount = getVolumeDiscount(quantity, selectedUnit);
   const unitRate = selectedUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
+  const discountedRate = +(unitRate * (1 - discount.pct / 100)).toFixed(2);
   const grossTotal = +(quantity * unitRate).toFixed(2);
-  const discountAmount = +(grossTotal * (slab.pct / 100)).toFixed(2);
+  const discountAmount = +(grossTotal * (discount.pct / 100)).toFixed(2);
   const netEstimatedTotal = +(grossTotal - discountAmount).toFixed(2);
   const gstAmount = +(netEstimatedTotal * 0.18).toFixed(2);
   const grandTotal = +(netEstimatedTotal + gstAmount).toFixed(2);
@@ -287,10 +362,7 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
             <Text style={styles.sectionTitle}>PROCUREMENT MODE</Text>
             <View style={styles.unitPills}>
               <TouchableOpacity
-                onPress={() => {
-                  setSelectedUnit('PCS');
-                  setQuantity(1000);
-                }}
+                onPress={() => handleUnitToggle('PCS')}
                 style={[
                   styles.unitBtn,
                   selectedUnit === 'PCS' ? styles.unitBtnActive : null,
@@ -302,15 +374,12 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
                     selectedUnit === 'PCS' ? styles.unitBtnTextActive : null,
                   ]}
                 >
-                  BY PCS
+                  Pieces (Pcs)
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => {
-                  setSelectedUnit('KGS');
-                  setQuantity(50);
-                }}
+                onPress={() => handleUnitToggle('KGS')}
                 style={[
                   styles.unitBtn,
                   selectedUnit === 'KGS' ? styles.unitBtnActive : null,
@@ -322,7 +391,7 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
                     selectedUnit === 'KGS' ? styles.unitBtnTextActive : null,
                   ]}
                 >
-                  BY KGS
+                  Weight (Kgs)
                 </Text>
               </TouchableOpacity>
             </View>
@@ -333,7 +402,7 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
               <Text style={styles.mainPrice}>
                 ₹{selectedUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg}
               </Text>
-              <Text style={styles.perUnitText}>per {selectedUnit} + 18% GST</Text>
+              <Text style={styles.perUnitText}>per {selectedUnit === 'PCS' ? 'Piece' : 'Kg'} + 18% GST</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.altPriceLabel}>Dual Equivalent</Text>
@@ -343,35 +412,36 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
             </View>
           </View>
 
-          {/* Stepper with Quick Increment Buttons */}
+          {/* Stepper with Direct Custom Numeric Input */}
           <View style={styles.stepperContainer}>
-            <Text style={styles.stepperLabel}>ORDER QUANTITY ({selectedUnit})</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.stepperLabel}>ORDER QUANTITY ({selectedUnit})</Text>
+              <Text style={styles.moqLabelText}>
+                {selectedUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+              </Text>
+            </View>
             <View style={styles.stepperRow}>
               <TouchableOpacity
-                onPress={() =>
-                  setQuantity((q) =>
-                    Math.max(
-                      selectedUnit === 'PCS' ? 100 : 10,
-                      q - (selectedUnit === 'PCS' ? 500 : 25)
-                    )
-                  )
-                }
-                style={styles.stepBtn}
+                onPress={() => handleStepQty(-1)}
+                disabled={quantity <= (selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
+                style={[
+                  styles.stepBtn,
+                  quantity <= (selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) && styles.stepBtnDisabled,
+                ]}
               >
-                <Text style={styles.stepBtnText}>-</Text>
+                <Text style={styles.stepBtnText}>−</Text>
               </TouchableOpacity>
 
               <TextInput
                 keyboardType="numeric"
-                value={String(quantity)}
-                onChangeText={(val) => setQuantity(Math.max(1, parseInt(val) || 0))}
+                value={quantityInput}
+                onChangeText={handleInputChange}
+                onBlur={handleInputBlur}
                 style={styles.stepInput}
               />
 
               <TouchableOpacity
-                onPress={() =>
-                  setQuantity((q) => q + (selectedUnit === 'PCS' ? 500 : 25))
-                }
+                onPress={() => handleStepQty(1)}
                 style={styles.stepBtn}
               >
                 <Text style={styles.stepBtnText}>+</Text>
@@ -382,32 +452,32 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
             <View style={styles.presetsRow}>
               {selectedUnit === 'PCS' ? (
                 <>
-                  <TouchableOpacity onPress={() => setQuantity(500)} style={styles.presetChip}>
+                  <TouchableOpacity onPress={() => updateQuantity(100)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>100 Pcs (Min)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => updateQuantity(500)} style={styles.presetChip}>
                     <Text style={styles.presetChipText}>500 Pcs</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(1000)} style={styles.presetChip}>
+                  <TouchableOpacity onPress={() => updateQuantity(1000)} style={styles.presetChip}>
                     <Text style={styles.presetChipText}>1,000 Pcs</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(5000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>5,000 Pcs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(10000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>10K Pcs</Text>
+                  <TouchableOpacity onPress={() => updateQuantity(5000)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>5K Pcs (-18%)</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <TouchableOpacity onPress={() => setQuantity(50)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>50 Kg</Text>
+                  <TouchableOpacity onPress={() => updateQuantity(0.25)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>250 gm (Min)</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(250)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>250 Kg</Text>
+                  <TouchableOpacity onPress={() => updateQuantity(50)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>50 Kg (-10%)</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(500)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>500 Kg</Text>
+                  <TouchableOpacity onPress={() => updateQuantity(250)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>250 Kg (-20%)</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setQuantity(1000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>1 Ton</Text>
+                  <TouchableOpacity onPress={() => updateQuantity(1000)} style={styles.presetChip}>
+                    <Text style={styles.presetChipText}>1 Ton (-26%)</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -418,7 +488,7 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
                 Calculated Weight: <Text style={styles.boldWeight}>{totalWeightKg.toLocaleString()} Kg</Text>
               </Text>
               <Text style={styles.weightSummaryText}>
-                Unit Weight: {weightPerPc} kg/pc
+                Unit: {weightPerPc} kg/pc
               </Text>
             </View>
           </View>
@@ -427,22 +497,35 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
           <View style={styles.slabBox}>
             <View style={styles.slabHeaderRow}>
               <Text style={styles.slabTitle}>
-                {slab.pct > 0 ? `✨ VOLUME DISCOUNT: ${slab.pct}% APPLIED` : '⚡ BULK SLAB DISCOUNTS'}
+                {discount.pct > 0 ? `✨ ${discount.label} APPLIED` : '⚡ WHOLESALE VOLUME TIERS'}
               </Text>
-              {slab.pct > 0 ? (
+              {discount.pct > 0 ? (
                 <Text style={styles.slabSavingsText}>Saved ₹{discountAmount.toLocaleString('en-IN')}</Text>
               ) : null}
             </View>
+            <Text style={styles.slabNextText}>
+              {selectedUnit === 'KGS'
+                ? 'Wholesale slabs: 50 Kg (-10%) • 250 Kg (-20%) • 1,000 Kg (-26%)'
+                : 'Wholesale slabs: 500 Pcs (-8%) • 2,500 Pcs (-18%) • 10,000 Pcs (-25%)'}
+            </Text>
+          </View>
 
-            {slab.nextWeight ? (
-              <Text style={styles.slabNextText}>
-                Add {(slab.nextWeight - totalWeightKg).toFixed(1)} Kg more to unlock {slab.nextPct}% discount!
-              </Text>
-            ) : (
-              <Text style={styles.slabNextText}>
-                Maximum Volume Tier Active (18% Container Load Discount)
-              </Text>
-            )}
+          {/* Packaging & Lead Time Micro Strip */}
+          <View style={styles.packagingStrip}>
+            <View style={styles.packagingCol}>
+              <Text style={styles.packagingColLabel}>SMALL BOX</Text>
+              <Text style={styles.packagingColVal}>{Math.round(Number(product.pcsPerBox)) || 500} pcs</Text>
+            </View>
+            <View style={styles.packagingDivider} />
+            <View style={styles.packagingCol}>
+              <Text style={styles.packagingColLabel}>MASTER CARTON</Text>
+              <Text style={styles.packagingColVal}>{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs</Text>
+            </View>
+            <View style={styles.packagingDivider} />
+            <View style={styles.packagingCol}>
+              <Text style={styles.packagingColLabel}>DISPATCH LEAD</Text>
+              <Text style={styles.packagingColVal}>{product.leadTimeDays || 10} Days</Text>
+            </View>
           </View>
         </MobileCard>
 
@@ -900,6 +983,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  stepBtnDisabled: {
+    opacity: 0.35,
+    backgroundColor: '#E2E8F0',
+  },
+  moqLabelText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0052CC',
+  },
+  packagingStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  packagingCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  packagingColLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 2,
+    letterSpacing: 0.4,
+  },
+  packagingColVal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  packagingDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#CBD5E1',
   },
   stepBtnText: {
     fontSize: 20,

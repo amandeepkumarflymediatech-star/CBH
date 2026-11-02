@@ -22,6 +22,7 @@ import {
   MobileAuthUser,
   MobileSurplusLot,
   MobileApiResponse,
+  GlobalUnit,
 } from '../types';
 
 export {
@@ -30,7 +31,64 @@ export {
   getApiEnvironment,
   getApiBaseUrl,
   getHostRootUrl,
+  GlobalUnit,
 };
+
+// ============================================================================
+// DUAL PROCUREMENT UNIT & RFQ CALCULATOR UTILITIES (100% SYNCED WITH WEBSITE)
+// ============================================================================
+export const MIN_QTY_PCS = 100;
+export const MIN_QTY_KGS = 0.25; // 250 gm
+
+export function getMinQty(unit: GlobalUnit = 'PCS'): number {
+  return unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+}
+
+export function getDefaultQty(unit: GlobalUnit = 'PCS'): number {
+  return unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+}
+
+export function getQtyStep(unit: GlobalUnit = 'PCS', currentQty?: number): number {
+  if (unit === 'KGS') {
+    if (currentQty !== undefined && currentQty < 1) return 0.25;
+    if (currentQty !== undefined && currentQty < 5) return 0.5;
+    return 1;
+  }
+  return 10;
+}
+
+export function clampQty(qty: number, unit: GlobalUnit = 'PCS'): number {
+  const min = getMinQty(unit);
+  if (isNaN(qty) || qty <= 0) return min;
+  if (qty < min) return min;
+  if (unit === 'KGS') {
+    return Math.round(qty * 100) / 100;
+  }
+  return Math.round(qty);
+}
+
+export function formatQtyDisplay(qty: number, unit: GlobalUnit = 'PCS'): string {
+  if (unit === 'KGS') {
+    if (qty === 0.25) return '250 gm (0.25 Kg)';
+    if (qty > 0 && qty < 1) {
+      const gm = Math.round(qty * 1000);
+      return `${gm} gm (${qty} Kg)`;
+    }
+    return `${qty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Kg`;
+  }
+  return `${Math.round(qty).toLocaleString('en-IN')} Pcs`;
+}
+
+export function formatUnitLabel(unit: GlobalUnit = 'PCS'): string {
+  return unit === 'KGS' ? 'KGS (Min 250 gm)' : 'PCS (Min 100 pcs)';
+}
+
+export function formatINR(val: number): string {
+  return '₹' + (val || 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 /**
  * Builds the full URL using API_BASE_URL from env config,
@@ -312,6 +370,45 @@ export const productsApi = {
         erpSynced: 513,
       },
     };
+  },
+
+  getPaginated: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    standard?: string;
+    grade?: string;
+    diameter?: string;
+    finish?: string;
+    inStockOnly?: boolean;
+    sortBy?: 'price_asc' | 'price_desc' | 'stock_desc' | 'featured';
+  }) => {
+    const qs = toQueryString({
+      page: params?.page || 1,
+      limit: params?.limit || 24,
+      search: params?.search,
+      category: params?.category,
+      standard: params?.standard,
+      grade: params?.grade,
+      diameter: params?.diameter,
+      finish: params?.finish,
+      inStockOnly: params?.inStockOnly ? 'true' : undefined,
+      sortBy: params?.sortBy,
+    });
+    const res = await request<any>(`${API_ENDPOINTS.PRODUCTS.PAGINATED}${qs}`);
+    if (res.success && Array.isArray(res.data)) {
+      return {
+        ...res,
+        products: res.data as MobileProduct[],
+        total: res.total ?? res.data.length,
+        totalPages: res.totalPages ?? 1,
+        hasMore: Boolean(res.hasMore),
+        filterOptions: res.filterOptions,
+        relatedProducts: res.relatedProducts || [],
+      };
+    }
+    return productsApi.getAll(params);
   },
 
   getById: async (id: number | string) => {
