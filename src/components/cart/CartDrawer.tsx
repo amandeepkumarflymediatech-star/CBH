@@ -3,9 +3,28 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  Trash2,
+  ArrowRight,
+  ShieldCheck,
+  ShoppingBag,
+  Zap,
+  FileSpreadsheet,
+  CheckCircle2,
+  Tag,
+  Package,
+} from 'lucide-react';
 import { RfqLineItem } from '@/lib/types';
-import { calculateRfqSummary, formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
+import {
+  calculateRfqSummary,
+  formatINR,
+  clampQty,
+  formatQtyDisplay,
+  getMinQty,
+  MIN_QTY_PCS,
+  MIN_QTY_KGS,
+} from '@/lib/rfq-calculator';
 import { getStoredUser } from '@/lib/auth';
 import { setStoredCart } from '@/lib/cart';
 
@@ -54,318 +73,314 @@ export default function CartDrawer({
     }
   };
 
+  const handleCheckout = () => {
+    setStoredCart(items);
+    onClose();
+    const user = getStoredUser();
+    if (!user) {
+      router.push('/login?redirect=/checkout');
+    } else {
+      router.push('/checkout');
+    }
+  };
+
+  const handlePhonePePay = async () => {
+    try {
+      setIsPaying(true);
+      setPayError(null);
+      setStoredCart(items);
+
+      const user = getStoredUser();
+      if (!user) {
+        onClose();
+        router.push('/login?redirect=/checkout');
+        return;
+      }
+
+      const newOrderId = `CBH-ORD-${Date.now()}`;
+      const res = await fetch('/api/payment/phonepe/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: summary.netTotal,
+          orderId: newOrderId,
+          customerName: user.fullName || 'Commercial Fastener Buyer',
+          customerPhone: user.phone || '9888021000',
+          customerEmail: user.email || 'procurement@buyer.in',
+          companyName: user.companyName || 'Verified Enterprise Client',
+          totalWeightKg: summary.totalWeightKg,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        setIsPaying(false);
+        setPayError(data.error || 'Failed to initiate PhonePe payment.');
+      }
+    } catch (err: any) {
+      setIsPaying(false);
+      setPayError(err.message || 'Payment connection error.');
+    }
+  };
+
   return (
     <>
+      {/* Background Dimmer Backdrop */}
       <div
         className={`drawer-overlay ${isOpen ? 'active' : ''}`}
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      <div className={`drawer-panel ${isOpen ? 'active' : ''}`}>
-        {/* Header */}
-        <div style={{
-          padding: '18px 24px',
-          borderBottom: '1px solid var(--color-surface-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'var(--color-surface-bg)'
-        }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase' }}>
-              RFQ Order Cart ({items.length})
-            </h3>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Dual PCS & KGS Live Billing
-            </span>
+      {/* Main Drawer Panel */}
+      <div
+        className={`drawer-panel ${isOpen ? 'active' : ''} flex flex-col h-[100dvh] max-w-[480px] w-full bg-white text-slate-900 shadow-2xl z-[2001] fixed top-0 right-0 overflow-hidden font-sans`}
+      >
+        {/* ========================================================== */}
+        {/* HEADER: Title, Item Count & Close Trigger                  */}
+        {/* ========================================================== */}
+        <div className="px-5 py-4 border-b border-slate-200/90 flex items-center justify-between bg-slate-50/90 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-700 text-white flex items-center justify-center shadow-xs shrink-0">
+              <ShoppingBag size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-none">
+                  RFQ Order Cart
+                </h3>
+                <span className="bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">
+                  {items.length} {items.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-mono block mt-1">
+                Dual PCS &amp; KGS Live Commercial Billing
+              </span>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            style={{ color: 'var(--color-dark-700)', padding: '4px' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer"
+            aria-label="Close cart drawer"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Items List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+        {/* ========================================================== */}
+        {/* BODY: Scrollable Products List (flex-1 min-h-0)            */}
+        {/* ========================================================== */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3 overscroll-contain bg-slate-50/40">
           {items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>
-              <p>Your RFQ cart is empty.</p>
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
+                <Package size={28} />
+              </div>
+              <h4 className="font-extrabold text-slate-800 text-base">Your RFQ cart is empty</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-[240px] leading-relaxed">
+                Add fasteners in pieces (pcs) or kilograms (kg) to generate instant live proforma quotes.
+              </p>
               <button
                 type="button"
-                className="btn-dark"
-                style={{ marginTop: '14px' }}
                 onClick={onClose}
+                className="mt-4 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 Browse Catalog
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {items.map((item) => (
+            items.map((item) => {
+              const isKgs = item.unit === 'KGS';
+              const minLimit = isKgs ? MIN_QTY_KGS : MIN_QTY_PCS;
+              const isAtMin = item.quantity <= minLimit;
+
+              return (
                 <div
                   key={item.id}
-                  style={{
-                    background: '#FFFFFF',
-                    border: '1px solid var(--color-surface-border)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}
+                  className="bg-white border border-slate-200 rounded-xl p-3 sm:p-3.5 shadow-2xs hover:border-slate-300 transition-all flex flex-col gap-2.5 relative group"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '6px',
-                        backgroundColor: '#F8FAFC',
-                        border: '1px solid var(--color-surface-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '2px',
-                        flexShrink: 0
-                      }}>
-                        <img
-                          src={item.imageUrl || '/assets/bolt_zinc.jpg'}
-                          alt={item.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <span className="badge badge-din" style={{ marginBottom: '4px' }}>
-                          {item.standard}
-                        </span>
-                        <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-dark-900)', lineHeight: 1.3 }}>
-                          {item.name}
-                        </h4>
-                        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-text-subtle)' }}>
-                          SKU: {item.sku}
-                        </span>
-                      </div>
+                  {/* Item Top Row: Thumbnail + Title/Standard + Remove Button */}
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                      <img
+                        src={item.imageUrl || '/assets/bolt_zinc.jpg'}
+                        alt={item.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                        }}
+                      />
                     </div>
 
+                    {/* Spec, Name & SKU */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.2 rounded font-mono border border-blue-200/60">
+                          {item.standard}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {item.sku}
+                        </span>
+                      </div>
+                      <h4
+                        className="text-xs sm:text-[13px] font-bold text-slate-900 leading-snug line-clamp-2"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </h4>
+                    </div>
+
+                    {/* Delete Item */}
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item.id)}
-                      style={{ color: 'var(--color-text-subtle)', flexShrink: 0 }}
+                      className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-md transition-colors shrink-0 cursor-pointer"
+                      title="Remove from quote"
+                      aria-label="Remove item"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--color-surface-subtle)', flexWrap: 'wrap', gap: '8px' }}>
+                  {/* Item Bottom Row: Stepper (Left) & Price Calculation (Right) */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                    {/* Stepper Control */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
                         <button
                           type="button"
-                          disabled={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            background: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? '#F1F5F9' : 'var(--color-surface-subtle)',
-                            border: '1px solid var(--color-surface-border)',
-                            borderRadius: '4px',
-                            fontWeight: 800,
-                            cursor: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer',
-                            opacity: item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.4 : 1,
-                            transition: 'all 0.15s ease'
-                          }}
+                          disabled={isAtMin}
                           onClick={() => handleStepQty(item, -1)}
-                          title={item.quantity <= (item.unit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${item.unit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
+                          className="w-6 h-6 flex items-center justify-center font-black text-slate-700 hover:bg-white rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer text-xs"
+                          title={isAtMin ? `Minimum order reached (${isKgs ? '250 gm' : '100 pcs'})` : 'Decrease'}
+                          aria-label="Decrease quantity"
                         >
-                          -
+                          &minus;
                         </button>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, padding: '2px 8px', background: '#F8FAFC', borderRadius: '4px', border: '1px solid #E2E8F0', minWidth: '70px', textAlign: 'center' }}>
+                        <span className="font-mono text-xs font-bold text-slate-900 px-2.5 text-center min-w-[76px] whitespace-nowrap">
                           {formatQtyDisplay(item.quantity, item.unit)}
                         </span>
                         <button
                           type="button"
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            background: 'var(--color-surface-subtle)',
-                            border: '1px solid var(--color-surface-border)',
-                            borderRadius: '4px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
                           onClick={() => handleStepQty(item, 1)}
-                          title="Increase quantity"
+                          className="w-6 h-6 flex items-center justify-center font-black text-slate-700 hover:bg-white rounded transition-colors cursor-pointer text-xs"
+                          title="Increase"
+                          aria-label="Increase quantity"
                         >
                           +
                         </button>
                       </div>
-                      <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600, display: 'block', marginTop: '2px' }}>
-                        {item.unit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 pcs'}
+                      <span className="text-[9px] text-slate-600 font-medium block mt-0.5 pl-0.5">
+                        {isKgs ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 pcs'}
                       </span>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                    {/* Line Total & Tariff */}
+                    <div className="text-right shrink-0 font-mono">
+                      <span className="text-sm font-extrabold text-blue-700 block leading-tight">
                         {formatINR(item.rowTotal)}
                       </span>
-                      <span style={{ display: 'block', fontSize: '10px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                        ₹{item.unitRate} / {item.unit === 'KGS' ? 'Kg' : 'Pc'}
+                      <span className="text-[10px] text-slate-600 block mt-0.5">
+                        {formatINR(item.unitRate)} / {isKgs ? 'Kg' : 'Pc'}
+                        {item.totalWeightKg ? ` • ${item.totalWeightKg.toFixed(1)}kg` : ''}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
 
-        {/* Footer Summary */}
+        {/* ========================================================== */}
+        {/* FOOTER: Compact Financial Summary & Two-Way Action Strip   */}
+        {/* ========================================================== */}
         {items.length > 0 && (
-          <div style={{
-            padding: '20px 24px',
-            borderTop: '1px solid var(--color-surface-border)',
-            background: 'var(--color-surface-bg)'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-                <span>Subtotal ({summary.totalWeightKg.toFixed(1)} kg):</span>
-                <span>{formatINR(summary.grossAmount)}</span>
+          <div className="border-t border-slate-200 bg-white px-4 sm:px-5 py-3.5 shrink-0 shadow-lg space-y-3">
+            {/* Financial Overview (Clean 2-Column Compact Matrix) */}
+            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200/80 font-mono text-xs space-y-1">
+              <div className="flex justify-between text-slate-600 text-[11px]">
+                <span>
+                  Gross Subtotal ({summary.totalWeightKg.toFixed(1)} kg):
+                </span>
+                <span className="font-bold text-slate-800">
+                  {formatINR(summary.grossAmount)}
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 700 }}>
-                <span>Volume Slab Rebate (-{summary.slabDiscountPct}%):</span>
-                <span>-{formatINR(summary.slabDiscountAmount)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-                <span>GST (18%):</span>
-                <span>{formatINR(summary.gstAmount)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: 'var(--color-dark-900)', paddingTop: '6px', borderTop: '1px solid var(--color-surface-border)' }}>
-                <span>Estimated Net:</span>
-                <span style={{ color: 'var(--color-primary)' }}>{formatINR(summary.netTotal)}</span>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                type="button"
-                disabled={isPaying}
-                onClick={async () => {
-                  try {
-                    setIsPaying(true);
-                    setPayError(null);
-                    setStoredCart(items);
-
-                    const user = getStoredUser();
-                    if (!user) {
-                      onClose();
-                      router.push('/login?redirect=/checkout');
-                      return;
-                    }
-
-                    const newOrderId = `CBH-ORD-${Date.now()}`;
-                    const res = await fetch('/api/payment/phonepe/initiate', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        amount: summary.netTotal,
-                        orderId: newOrderId,
-                        customerName: user.fullName || 'Commercial Fastener Buyer',
-                        customerPhone: user.phone || '9888021000',
-                        customerEmail: user.email || 'procurement@buyer.in',
-                        companyName: user.companyName || 'Verified Enterprise Client',
-                        totalWeightKg: summary.totalWeightKg,
-                      }),
-                    });
-                    const data = await res.json();
-                    if (data.success && data.paymentUrl) {
-                      window.location.href = data.paymentUrl;
-                    } else {
-                      setIsPaying(false);
-                      setPayError(data.error || 'Failed to initiate PhonePe payment.');
-                    }
-                  } catch (err: any) {
-                    setIsPaying(false);
-                    setPayError(err.message || 'Payment connection error.');
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  background: '#5f259f',
-                  color: '#FFFFFF',
-                  borderRadius: 'var(--radius-sm)',
-                  fontWeight: 800,
-                  fontSize: '13px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(95, 37, 159, 0.25)',
-                  cursor: isPaying ? 'wait' : 'pointer',
-                  border: 'none',
-                  opacity: isPaying ? 0.8 : 1,
-                }}
-              >
-                <span>{isPaying ? 'Redirecting to PhonePe...' : '⚡ Pay via PhonePe Gateway'}</span>
-                <ArrowRight size={16} />
-              </button>
-
-              {payError && (
-                <div style={{ color: '#DC2626', fontSize: '11px', textAlign: 'center', fontWeight: 700 }}>
-                  {payError}
+              {summary.slabDiscountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700 text-[11px] font-bold">
+                  <span>Volume Rebate (-{summary.slabDiscountPct}%):</span>
+                  <span>-{formatINR(summary.slabDiscountAmount)}</span>
                 </div>
               )}
 
+              <div className="flex justify-between text-slate-500 text-[11px]">
+                <span>Applicable GST (18%):</span>
+                <span>+{formatINR(summary.gstAmount)}</span>
+              </div>
+
+              <div className="pt-1.5 border-t border-slate-200 flex justify-between items-baseline">
+                <span className="font-extrabold text-slate-800 text-xs uppercase tracking-tight">
+                  Estimated Net:
+                </span>
+                <strong className="text-base font-black text-blue-700">
+                  {formatINR(summary.netTotal)}
+                </strong>
+              </div>
+            </div>
+
+            {/* Error Message if Payment/API fails */}
+            {payError && (
+              <div className="text-red-600 text-[11px] font-bold text-center bg-red-50 p-2 rounded-lg border border-red-200">
+                {payError}
+              </div>
+            )}
+
+            {/* Primary Action Button */}
+            <button
+              type="button"
+              onClick={handleCheckout}
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+            >
+              <span>Full Commercial Checkout &amp; GST Details</span>
+              <ArrowRight size={15} />
+            </button>
+
+            {/* Secondary Split Actions: Instant PhonePe & RFQ Matrix */}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  background: '#0052CC',
-                  color: '#FFFFFF',
-                  borderRadius: 'var(--radius-sm)',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-                onClick={() => {
-                  setStoredCart(items);
-                  onClose();
-                  const user = getStoredUser();
-                  if (!user) {
-                    router.push('/login?redirect=/checkout');
-                  } else {
-                    router.push('/checkout');
-                  }
-                }}
+                disabled={isPaying}
+                onClick={handlePhonePePay}
+                className="bg-[#5f259f] hover:bg-[#501f87] text-white py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                title="Instant online settlement via PhonePe gateway"
               >
-                <span>Full Commercial Checkout &amp; GST Details</span>
+                <Zap size={13} className="text-amber-300 shrink-0" />
+                <span className="truncate">
+                  {isPaying ? 'Redirecting...' : 'Pay via PhonePe'}
+                </span>
               </button>
 
               <Link
                 href="/bulk-order"
-                className="btn-primary"
-                style={{ width: '100%', padding: '9px', background: '#0F172A', fontSize: '11px', justifyContent: 'center' }}
                 onClick={onClose}
+                className="bg-slate-900 hover:bg-black text-white py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors text-center"
+                title="View full itemized procurement proforma spreadsheet"
               >
-                <span>Review Full RFQ Matrix &amp; Proforma</span>
+                <FileSpreadsheet size={13} className="text-slate-300 shrink-0" />
+                <span className="truncate">RFQ Proforma Matrix</span>
               </Link>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '12px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
-              <ShieldCheck size={14} color="#059669" />
-              <span>NABL 3.1 Traceability Certificate Generated Upon Checkout</span>
+            {/* Certification Trust Pill */}
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-medium pt-0.5">
+              <ShieldCheck size={13} className="text-emerald-600 shrink-0" />
+              <span>NABL 3.1 Mill Certificate &amp; Tax Invoice Generated On Order</span>
             </div>
           </div>
         )}

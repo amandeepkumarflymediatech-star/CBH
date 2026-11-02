@@ -58,9 +58,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!body.diameter || !body.lengthMm) {
+    const catLower = String(body.category || '').toLowerCase();
+    const subCatLower = String(body.subCategory || '').toLowerCase();
+    const prodLower = String(body.productName || '').toLowerCase();
+    const isNutOrWasher =
+      catLower.includes('nut') ||
+      catLower.includes('washer') ||
+      subCatLower.includes('nut') ||
+      subCatLower.includes('washer') ||
+      prodLower.includes('nut') ||
+      prodLower.includes('washer') ||
+      body.lengthMm === 0;
+
+    if (!body.diameter) {
       return NextResponse.json(
-        { success: false, error: 'Diameter and Length dimensions are required.' },
+        { success: false, error: 'Diameter dimension is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isNutOrWasher && (body.lengthMm === undefined || body.lengthMm === null || body.lengthMm === '' || Number(body.lengthMm) <= 0)) {
+      return NextResponse.json(
+        { success: false, error: 'Fastener Length dimension (mm) is required for bolts, screws, and studs.' },
         { status: 400 }
       );
     }
