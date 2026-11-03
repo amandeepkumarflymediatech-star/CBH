@@ -69,7 +69,7 @@ export async function initCustomRequestsTable(): Promise<void> {
         notes TEXT NULL,
         status ENUM('PENDING', 'UNDER_REVIEW', 'APPROVED', 'ADDED_TO_CATALOG', 'REJECTED') DEFAULT 'PENDING',
         admin_notes TEXT NULL,
-        converted_product_id INT NULL,
+        converted_product_id BIGINT NULL,
         converted_sku VARCHAR(128) NULL,
         erpnext_item_code VARCHAR(128) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -79,6 +79,12 @@ export async function initCustomRequestsTable(): Promise<void> {
         INDEX idx_cpr_email (customer_email)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    // Ensure converted_product_id is BIGINT to allow 64-bit IDs and timestamps
+    try {
+      await query(`ALTER TABLE custom_product_requests MODIFY COLUMN converted_product_id BIGINT NULL`);
+    } catch {}
+
     isTableInitialized = true;
   } catch (err) {
     console.warn('[CustomRequests] MySQL table init skipped (local fallback):', err);
@@ -466,6 +472,10 @@ export async function convertCustomRequestToProduct(
   // 2. Sync to MySQL products table
   try {
     await syncProductsToMySQL([newProduct]);
+    const prodRows = await query<any>(`SELECT id FROM products WHERE sku = ? LIMIT 1`, [newProduct.sku]);
+    if (Array.isArray(prodRows) && prodRows.length > 0 && prodRows[0].id) {
+      newProduct.id = Number(prodRows[0].id);
+    }
   } catch (err) {
     console.warn('[CustomRequests] MySQL product sync warning:', err);
   }

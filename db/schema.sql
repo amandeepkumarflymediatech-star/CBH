@@ -268,3 +268,43 @@ CREATE TABLE IF NOT EXISTS blogs (
 CREATE INDEX idx_blogs_slug ON blogs(slug);
 CREATE INDEX idx_blogs_category ON blogs(category);
 CREATE INDEX idx_blogs_status ON blogs(status);
+
+-- 11. Custom Fastener Product Inquiries & Requests Table
+CREATE TABLE IF NOT EXISTS custom_product_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    request_number VARCHAR(64) UNIQUE NOT NULL,
+    customer_id INT NULL,
+    customer_name VARCHAR(128) NOT NULL,
+    company_name VARCHAR(128) NULL,
+    customer_email VARCHAR(128) NOT NULL,
+    customer_phone VARCHAR(32) NOT NULL,
+    shipping_pincode VARCHAR(16) NULL,
+    product_name VARCHAR(255) NOT NULL,
+    category VARCHAR(64) DEFAULT 'Hex Screws',
+    sub_category VARCHAR(64) NULL,
+    standard VARCHAR(64) DEFAULT 'DIN 933',
+    grade VARCHAR(64) DEFAULT '8.8',
+    finish VARCHAR(64) DEFAULT 'SELF',
+    thread_type VARCHAR(64) DEFAULT 'Full Thread',
+    diameter VARCHAR(32) NOT NULL,
+    length_mm INT NOT NULL,
+    pitch_mm DECIMAL(6,2) NOT NULL,
+    size_formatted VARCHAR(64) NOT NULL,
+    quantity_required DECIMAL(12,2) NOT NULL,
+    quantity_uom VARCHAR(16) DEFAULT 'Nos',
+    target_price DECIMAL(12,2) NULL,
+    urgency_level VARCHAR(32) DEFAULT 'STANDARD',
+    drawing_url TEXT NULL,
+    sample_image_url TEXT NULL,
+    notes TEXT NULL,
+    status ENUM('PENDING', 'UNDER_REVIEW', 'APPROVED', 'ADDED_TO_CATALOG', 'REJECTED') DEFAULT 'PENDING',
+    admin_notes TEXT NULL,
+    converted_product_id BIGINT NULL,
+    converted_sku VARCHAR(128) NULL,
+    erpnext_item_code VARCHAR(128) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_cpr_status (status),
+    INDEX idx_cpr_phone (customer_phone),
+    INDEX idx_cpr_email (customer_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
