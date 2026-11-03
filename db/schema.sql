@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS tier_settings (
 CREATE TABLE IF NOT EXISTS bulk_rfqs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     rfq_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. RFQ-CBH-2025-9831
-    customer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    customer_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     contact_name VARCHAR(150) NOT NULL,
     company_name VARCHAR(200) NOT NULL,
     gstin VARCHAR(15),
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS rfq_items (
 CREATE TABLE IF NOT EXISTS orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_number VARCHAR(50) UNIQUE NOT NULL, -- e.g. CBH-ORD-2025-8842
-    customer_id INTEGER REFERENCES users(id),
+    customer_id BIGINT REFERENCES users(id),
     rfq_id INTEGER REFERENCES bulk_rfqs(id),
     company_name VARCHAR(200) DEFAULT NULL,
     customer_name VARCHAR(150) DEFAULT NULL,

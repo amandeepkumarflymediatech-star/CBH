@@ -190,7 +190,10 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
     setIsProcessingOrder(true);
     try {
       const res = await mobileApi.orders.create({
-        customerId: user?.id || 101,
+        customerId:
+          user?.id && !isNaN(Number(user.id)) && Number(user.id) > 0 && Number(user.id) <= 2147483647
+            ? Number(user.id)
+            : undefined,
         customerName: contactName || user?.fullName || 'Procurement In-Charge',
         companyName: companyName || user?.companyName || 'Enterprise Fastener Buyer',
         phone: phone || user?.phone || '+91 98880 21000',

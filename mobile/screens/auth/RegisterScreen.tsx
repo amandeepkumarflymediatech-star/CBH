@@ -125,7 +125,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       });
 
       const createdUser: MobileAuthUser = res.user || {
-        id: Date.now(),
+        id: (Date.now() % 1000000) + 100,
         email: email.trim(),
         fullName: fullName.trim(),
         companyName: companyName.trim(),

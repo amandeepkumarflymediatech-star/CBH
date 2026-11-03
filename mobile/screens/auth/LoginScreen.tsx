@@ -79,7 +79,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             companyBase.charAt(0).toUpperCase() + companyBase.slice(1) + ' Industrial Corp';
 
           const mockUser: MobileAuthUser = {
-            id: Date.now(),
+            id: (Date.now() % 1000000) + 100,
             email: cleanEmail,
             fullName: derivedName || 'Enterprise Partner',
             companyName: derivedCompany,

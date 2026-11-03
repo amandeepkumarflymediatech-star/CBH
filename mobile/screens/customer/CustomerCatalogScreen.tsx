@@ -464,77 +464,106 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
       <View style={{ height: 24 }} />
     );
 
-  const renderEmpty = () => (
-    <View>
-      <View style={styles.emptyBox}>
-        <View style={styles.emptyCircle}>
-          <NavIcon name="search" color="#94A3B8" size={30} />
-        </View>
-        <Text style={styles.emptyTitle}>No matches</Text>
-        <Text style={styles.emptySub}>
-          {debouncedQuery ? `Nothing found for "${debouncedQuery}".` : 'Nothing matches these filters.'}
-        </Text>
-        <TouchableOpacity onPress={resetAll} style={styles.emptyBtn} activeOpacity={0.85}>
-          <Text style={styles.emptyBtnText}>Clear filters</Text>
-        </TouchableOpacity>
-      </View>
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    // When the user starts typing a specific search query (like "DIN 933"),
+    // auto-switch category to "All" so the query isn't trapped in a specific category (e.g. Washers)
+    if (text.trim() && selectedCategory !== 'All') {
+      setSelectedCategory('All');
+    }
+  };
 
-      {relatedProducts.length > 0 ? (
-        <View style={{ marginTop: 8 }}>
-          <Text style={styles.relatedTitle}>You may also need</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.relatedList}
-          >
-            {relatedProducts.map(({ product: p, reason }) => {
-              const isAdded = recentlyAddedId === p.id;
-              const standard = p.standard || p.din || p.isoStandard || 'DIN 933';
-              return (
-                <TouchableOpacity
-                  key={`rel-${p.id}`}
-                  activeOpacity={0.9}
-                  onPress={() => onSelectProduct(p)}
-                  style={styles.relCard}
-                >
-                  <View style={styles.relImg}>
-                    <FastenerProductImage
-                      imageUrl={p.imageUrl}
-                      category={p.category || p.subGroup}
-                      productName={p.name}
-                      standard={standard}
-                      drawingUrl={p.drawingUrl}
-                      height={90}
-                      containerStyle={styles.cardImgInner}
-                    />
-                  </View>
-                  <View style={styles.relBody}>
-                    <Text style={styles.relReason} numberOfLines={1}>{reason}</Text>
-                    <Text style={styles.relTitle} numberOfLines={1}>
-                      {getCleanFastenerTitle(p.name, p.subGroup)}
-                    </Text>
-                    <Text style={styles.relSpec} numberOfLines={1}>
-                      {p.sizeFormatted || p.diameter || ''} · {standard}
-                    </Text>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.relPrice}>₹{p.pricePerPiece}/pc</Text>
-                      <TouchableOpacity
-                        onPress={() => handleQuickAdd(p)}
-                        style={[styles.relAdd, isAdded && styles.addBtnDone]}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.addBtnText}>{isAdded ? '✓' : 'Add'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+  const renderEmpty = () => {
+    const isCategoryRestricted = selectedCategory !== 'All';
+    return (
+      <View>
+        <View style={styles.emptyBox}>
+          <View style={styles.emptyCircle}>
+            <NavIcon name="search" color="#94A3B8" size={30} />
+          </View>
+          <Text style={styles.emptyTitle}>No exact matches found</Text>
+          <Text style={styles.emptySub}>
+            {debouncedQuery
+              ? isCategoryRestricted
+                ? `No products match "${debouncedQuery}" under ${selectedCategory}.`
+                : `No fasteners found matching "${debouncedQuery}".`
+              : 'Nothing matches these filters.'}
+          </Text>
+
+          {isCategoryRestricted && debouncedQuery ? (
+            <TouchableOpacity
+              onPress={() => setSelectedCategory('All')}
+              style={[styles.emptyBtn, { backgroundColor: BLUE, marginBottom: 8 }]}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.emptyBtnText, { color: '#FFFFFF' }]}>
+                Search &ldquo;{debouncedQuery}&rdquo; in All Categories
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity onPress={resetAll} style={styles.emptyBtn} activeOpacity={0.85}>
+            <Text style={styles.emptyBtnText}>Reset all filters</Text>
+          </TouchableOpacity>
         </View>
-      ) : null}
-    </View>
-  );
+
+        {relatedProducts.length > 0 ? (
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.relatedTitle}>Compatible &amp; Related Fasteners</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedList}
+            >
+              {relatedProducts.map(({ product: p, reason }) => {
+                const isAdded = recentlyAddedId === p.id;
+                const standard = p.standard || p.din || p.isoStandard || 'DIN 933';
+                return (
+                  <TouchableOpacity
+                    key={`rel-${p.id}`}
+                    activeOpacity={0.9}
+                    onPress={() => onSelectProduct(p)}
+                    style={styles.relCard}
+                  >
+                    <View style={styles.relImg}>
+                      <FastenerProductImage
+                        imageUrl={p.imageUrl}
+                        category={p.category || p.subGroup}
+                        productName={p.name}
+                        standard={standard}
+                        drawingUrl={p.drawingUrl}
+                        height={90}
+                        containerStyle={styles.cardImgInner}
+                      />
+                    </View>
+                    <View style={styles.relBody}>
+                      <Text style={styles.relReason} numberOfLines={1}>{reason}</Text>
+                      <Text style={styles.relTitle} numberOfLines={1}>
+                        {getCleanFastenerTitle(p.name, p.subGroup)}
+                      </Text>
+                      <Text style={styles.relSpec} numberOfLines={1}>
+                        {p.sizeFormatted || p.diameter || ''} · {standard}
+                      </Text>
+                      <View style={styles.rowBetween}>
+                        <Text style={styles.relPrice}>₹{p.pricePerPiece}/pc</Text>
+                        <TouchableOpacity
+                          onPress={() => handleQuickAdd(p)}
+                          style={[styles.relAdd, isAdded && styles.addBtnDone]}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.addBtnText}>{isAdded ? '✓' : 'Add'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -562,7 +591,7 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
             placeholder="Search size, DIN, grade"
             placeholderTextColor="#94A3B8"
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
             autoCorrect={false}
             returnKeyType="search"
           />
@@ -816,7 +845,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 14,
-    backgroundColor: '#EEF4FF',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
