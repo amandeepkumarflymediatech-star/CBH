@@ -30,6 +30,13 @@ async function getUsers(): Promise<UserAccount[]> {
         joinedDate: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         createdAt: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         ordersCount: Number(r.orders_count) || 0,
+        designation: r.designation || undefined,
+        pan: r.pan || undefined,
+        tan: r.tan || undefined,
+        msme: r.msme || undefined,
+        deliverySites: r.delivery_sites ? (typeof r.delivery_sites === 'string' ? JSON.parse(r.delivery_sites) : r.delivery_sites) : undefined,
+        teamMembers: r.team_members ? (typeof r.team_members === 'string' ? JSON.parse(r.team_members) : r.team_members) : undefined,
+        notificationPreferences: r.notification_preferences ? (typeof r.notification_preferences === 'string' ? JSON.parse(r.notification_preferences) : r.notification_preferences) : undefined,
       }));
     }
   } catch (err) {
@@ -188,6 +195,13 @@ export async function PUT(request: Request) {
           tier_discount_pct = COALESCE(?, tier_discount_pct),
           credit_limit = COALESCE(?, credit_limit),
           is_verified = COALESCE(?, is_verified),
+          delivery_sites = COALESCE(?, delivery_sites),
+          team_members = COALESCE(?, team_members),
+          notification_preferences = COALESCE(?, notification_preferences),
+          designation = COALESCE(?, designation),
+          pan = COALESCE(?, pan),
+          tan = COALESCE(?, tan),
+          msme = COALESCE(?, msme),
           updated_at = NOW()
         WHERE id = ?`,
         [
@@ -202,6 +216,13 @@ export async function PUT(request: Request) {
           updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : null,
           updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : null,
           updates.isVerified !== undefined ? (updates.isVerified ? 1 : 0) : null,
+          updates.deliverySites ? JSON.stringify(updates.deliverySites) : null,
+          updates.teamMembers ? JSON.stringify(updates.teamMembers) : null,
+          updates.notificationPreferences ? JSON.stringify(updates.notificationPreferences) : null,
+          updates.designation ?? null,
+          updates.pan ?? null,
+          updates.tan ?? null,
+          updates.msme ?? null,
           numId,
         ]
       );

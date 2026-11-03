@@ -40,6 +40,13 @@ import { AdminPaymentsScreen } from './screens/admin/AdminPaymentsScreen';
 import { AdminProfileScreen } from './screens/admin/AdminProfileScreen';
 import { AdminSurplusScreen } from './screens/admin/AdminSurplusScreen';
 import { AdminCategoriesScreen } from './screens/admin/AdminCategoriesScreen';
+import { AdminBlogScreen } from './screens/admin/AdminBlogScreen';
+import { CustomerAboutScreen } from './screens/customer/CustomerAboutScreen';
+import { CustomerContactScreen } from './screens/customer/CustomerContactScreen';
+import { CustomerBlogScreen } from './screens/customer/CustomerBlogScreen';
+import { CustomerBulkOrderScreen } from './screens/customer/CustomerBulkOrderScreen';
+import { CustomerGalleryScreen } from './screens/customer/CustomerGalleryScreen';
+import { CustomerPoliciesScreen } from './screens/customer/CustomerPoliciesScreen';
 
 import { CustomerHomeScreen } from './screens/customer/CustomerHomeScreen';
 import { CustomerCatalogScreen } from './screens/customer/CustomerCatalogScreen';
@@ -236,6 +243,8 @@ export default function App() {
           return { title: 'Surplus Stock', subtitle: 'Factory Clearance Lots' };
         case 'categories':
           return { title: 'Catalog Taxonomies', subtitle: 'Categories & Families' };
+        case 'blogs':
+          return { title: 'Technical Library', subtitle: 'Publish & Manage Guides' };
         case 'profile':
           return { title: 'Operator Profile', subtitle: 'Node Authorization' };
         case 'login':
@@ -257,6 +266,18 @@ export default function App() {
           return { title: 'My Quotations', subtitle: 'Official RFQ Inquiries' };
         case 'certificates':
           return { title: 'NABL Test Reports', subtitle: 'EN 10204 Type 3.1 MTC' };
+        case 'about':
+          return { title: 'About CBH', subtitle: '65-Year Legacy Since 1959' };
+        case 'contact':
+          return { title: 'Contact Factory', subtitle: 'Ludhiana Hub & RTGS Details' };
+        case 'blogs':
+          return { title: 'Technical Library', subtitle: 'Fastener Metallurgy & Standards' };
+        case 'bulk-order':
+          return { title: 'Bulk Tender RFQ', subtitle: 'Project BOM & Line Matching' };
+        case 'gallery':
+          return { title: 'Plant Gallery', subtitle: 'Cold Forging & Labs' };
+        case 'policies':
+          return { title: 'Legal & Commercial', subtitle: 'B2B Terms & SLA' };
         case 'profile':
           return { title: 'Business Profile', subtitle: 'GSTIN & Credit Line' };
         case 'auth':
@@ -341,6 +362,8 @@ export default function App() {
           return <AdminSurplusScreen />;
         case 'categories':
           return <AdminCategoriesScreen />;
+        case 'blogs':
+          return <AdminBlogScreen onBack={() => setActiveTab('dashboard')} />;
         case 'profile':
           return (
             <AdminProfileScreen
@@ -424,10 +447,54 @@ export default function App() {
               user={user}
               onNavigateToCart={() => setActiveTab('cart')}
               onNavigateToCatalog={() => setActiveTab('catalog')}
+              onNavigateToBulkOrder={() => setActiveTab('bulk-order')}
             />
           );
         case 'certificates':
           return <CustomerCertificatesScreen />;
+        case 'about':
+          return (
+            <CustomerAboutScreen
+              onBack={() => setActiveTab('home')}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
+              onNavigateToContact={() => setActiveTab('contact')}
+            />
+          );
+        case 'contact':
+          return (
+            <CustomerContactScreen
+              onBack={() => setActiveTab('home')}
+              onNavigateToRfqs={() => setActiveTab('rfqs')}
+            />
+          );
+        case 'blogs':
+          return (
+            <CustomerBlogScreen
+              onBack={() => setActiveTab('home')}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
+            />
+          );
+        case 'bulk-order':
+          return (
+            <CustomerBulkOrderScreen
+              user={user}
+              onBack={() => setActiveTab('home')}
+              onOrderSubmitted={() => setActiveTab('rfqs')}
+            />
+          );
+        case 'gallery':
+          return (
+            <CustomerGalleryScreen
+              onBack={() => setActiveTab('home')}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
+            />
+          );
+        case 'policies':
+          return (
+            <CustomerPoliciesScreen
+              onBack={() => setActiveTab('profile')}
+            />
+          );
         case 'profile':
           if (!user) {
             return (
@@ -447,6 +514,12 @@ export default function App() {
               onLogout={handleLogout}
               onSwitchToAdmin={() => handleRoleSwitch('admin')}
               onNavigateToCertificates={() => setActiveTab('certificates')}
+              onNavigateToAbout={() => setActiveTab('about')}
+              onNavigateToBlogs={() => setActiveTab('blogs')}
+              onNavigateToGallery={() => setActiveTab('gallery')}
+              onNavigateToContact={() => setActiveTab('contact')}
+              onNavigateToBulkOrder={() => setActiveTab('bulk-order')}
+              onNavigateToPolicies={() => setActiveTab('policies')}
             />
           );
         default:
@@ -471,7 +544,13 @@ export default function App() {
     }
   };
 
-  const isCustomBlueHeader = (activeTab === 'catalog' || Boolean(selectedProduct) || activeTab === 'cart');
+  const isAuthScreen =
+    activeTab === 'auth' ||
+    activeTab === 'login' ||
+    (!user && (activeTab === 'profile' || activeTab === 'orders' || role === 'admin'));
+
+  const isCustomBlueHeader =
+    activeTab === 'catalog' || Boolean(selectedProduct) || activeTab === 'cart' || isAuthScreen;
 
   return (
     <SafeAreaView style={[styles.safeArea, isCustomBlueHeader ? { backgroundColor: '#0047AB' } : null]}>
@@ -552,7 +631,7 @@ export default function App() {
           <View style={styles.viewport}>{renderScreen()}</View>
 
           {/* Bottom Navigation */}
-          {!selectedProduct && activeTab !== 'login' && activeTab !== 'auth' ? (
+          {!selectedProduct && !isAuthScreen ? (
             <MobileBottomNav
               role={role}
               activeTab={activeTab}

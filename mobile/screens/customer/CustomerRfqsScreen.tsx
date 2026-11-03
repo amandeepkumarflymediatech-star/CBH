@@ -7,10 +7,10 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
+import { NavIcon } from '../../components/NavIcon';
 import { mobileApi } from '../../config/api';
 import { MobileRfq, MobileAuthUser } from '../../types';
 
@@ -18,12 +18,46 @@ interface CustomerRfqsScreenProps {
   user?: MobileAuthUser | null;
   onNavigateToCart: () => void;
   onNavigateToCatalog?: () => void;
+  onNavigateToBulkOrder?: () => void;
 }
+
+// Same palette as the other customer screens
+const GRAPHITE = '#1C2228';
+const STEEL = '#5E6A74';
+const MIST = '#EDEFF1';
+const HAIR = '#D6DBE0';
+const WHITE = '#FFFFFF';
+const ORANGE = '#F26B1D';
+const GREEN = '#17803D';
+const RED = '#C62828';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+
+// An RFQ moves through these stages; the tracker fills as it progresses
+const STAGES = ['Submitted', 'In review', 'Quoted', 'PO issued'];
+const stageIndex = (status: MobileRfq['status']) => {
+  switch (status) {
+    case 'IN_REVIEW':
+      return 1;
+    case 'QUOTED':
+      return 2;
+    case 'APPROVED':
+    case 'PO_ISSUED':
+      return 3;
+    default:
+      return 0;
+  }
+};
+
+const statusLabel = (status: string) => {
+  const s = status.replace(/_/g, ' ').toLowerCase();
+  return s === 'po issued' ? 'PO issued' : s.charAt(0).toUpperCase() + s.slice(1);
+};
 
 export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({
   user,
   onNavigateToCart,
   onNavigateToCatalog,
+  onNavigateToBulkOrder,
 }) => {
   const [rfqs, setRfqs] = useState<MobileRfq[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,326 +90,271 @@ export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({
   }, [searchQuery, user?.id]);
 
   const handleAcceptQuote = (rfq: MobileRfq) => {
-    setToastMsg(`Accepted official quote for ${rfq.rfqNumber}! PO Generated in ERPNext.`);
-    setRfqs((prev) =>
-      prev.map((r) => (r.id === rfq.id ? { ...r, status: 'PO_ISSUED' } : r))
-    );
+    setToastMsg(`Quote accepted. Purchase order issued for ${rfq.rfqNumber}.`);
+    setRfqs((prev) => prev.map((r) => (r.id === rfq.id ? { ...r, status: 'PO_ISSUED' } : r)));
     setTimeout(() => setToastMsg(''), 3500);
   };
 
-  const getRfqBadgeVariant = (status: MobileRfq['status']) => {
+  const statusColor = (status: MobileRfq['status']) => {
     switch (status) {
       case 'APPROVED':
       case 'PO_ISSUED':
-        return 'success';
+        return GREEN;
       case 'QUOTED':
-        return 'info';
-      case 'IN_REVIEW':
-      case 'PENDING':
-        return 'warning';
+        return ORANGE;
       case 'REJECTED':
-        return 'danger';
+        return RED;
       default:
-        return 'neutral';
+        return STEEL;
     }
   };
 
   return (
     <ScrollView
+      style={{ backgroundColor: WHITE }}
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => fetchRfqs(true)}
-          colors={['#0052CC']}
-        />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchRfqs(true)} colors={[ORANGE]} />
       }
+      showsVerticalScrollIndicator={false}
     >
-      <MobileSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Search RFQ Number (e.g. CBH-RFQ)..."
-      />
+      <View style={styles.searchWrap}>
+        <MobileSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by RFQ number, e.g. CBH-RFQ"
+        />
+      </View>
 
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ {toastMsg}</Text>
+          <Text style={styles.toastText}>{toastMsg}</Text>
         </View>
       ) : null}
 
-      <TouchableOpacity onPress={onNavigateToCart} style={styles.newRfqBtn}>
-        <Text style={styles.newRfqBtnText}>📄 Create New Bulk Procurement RFQ</Text>
-      </TouchableOpacity>
+      {/* Start a new RFQ */}
+      <View style={styles.startBlock}>
+        <TouchableOpacity onPress={onNavigateToCart} style={styles.primaryBtn} activeOpacity={0.88}>
+          <Text style={styles.primaryBtnText}>Request quote for cart items</Text>
+        </TouchableOpacity>
+        {onNavigateToBulkOrder ? (
+          <TouchableOpacity onPress={onNavigateToBulkOrder} style={styles.secondaryBtn} activeOpacity={0.85}>
+            <Text style={styles.secondaryBtnText}>Upload a BOM or drawing</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       <View style={styles.resultsHeader}>
-        <Text style={styles.resultsCount}>
-          Found {rfqs.length} quotation inquiries
+        <Text style={styles.h2}>
+          Your quotes{!isLoading ? ` (${rfqs.length})` : ''}
         </Text>
-        <TouchableOpacity onPress={() => fetchRfqs(true)}>
-          <Text style={styles.reloadText}>↻ Refresh</Text>
+        <TouchableOpacity onPress={() => fetchRfqs(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.link}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Loading state */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0052CC" />
-          <Text style={styles.loadingText}>Loading quotation inquiries...</Text>
+        <View style={styles.centerBlock}>
+          <ActivityIndicator size="large" color={ORANGE} />
+          <Text style={styles.loadingText}>Loading your quotes</Text>
         </View>
       ) : rfqs.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyTitle}>No Quotation Inquiries</Text>
+        <View style={styles.centerBlock}>
+          <NavIcon name="rfqs" color={STEEL} size={32} />
+          <Text style={styles.emptyTitle}>No quotes yet</Text>
           <Text style={styles.emptySubtitle}>
-            Add items to your cart and request an official RFQ to receive custom volume discounts and commercial proforma.
+            Add items to your cart and request a quote to get volume pricing and a proforma invoice.
           </Text>
           {onNavigateToCatalog ? (
-            <TouchableOpacity onPress={onNavigateToCatalog} style={styles.browseBtn}>
-              <Text style={styles.browseBtnText}>Explore Fastener Catalog</Text>
+            <TouchableOpacity onPress={onNavigateToCatalog} style={styles.browseBtn} activeOpacity={0.88}>
+              <Text style={styles.browseBtnText}>Browse the catalog</Text>
             </TouchableOpacity>
           ) : null}
         </View>
       ) : (
-        rfqs.map((rfq) => (
-          <MobileCard key={rfq.id}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
-              <MobileBadge
-                label={rfq.status}
-                variant={getRfqBadgeVariant(rfq.status)}
-                size="sm"
-              />
-            </View>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.dateText}>Inquiry Date: {rfq.date || '2026-10-30'}</Text>
-              <Text style={styles.companyText}>{rfq.companyName || 'Industrial Client'}</Text>
-            </View>
-
-            <Text style={styles.tonnageText}>
-              Estimated Volume: {rfq.totalWeightKg || 1200} Kg ({rfq.itemsCount || 3} Fastener Lines)
-            </Text>
-
-            <View style={styles.quoteBox}>
-              <View>
-                <Text style={styles.quoteBoxLabel}>Discount Margin</Text>
-                <Text style={styles.quoteBoxVal}>{rfq.discountPct || 14}% OFF List</Text>
+        rfqs.map((rfq) => {
+          const idx = stageIndex(rfq.status);
+          const rejected = rfq.status === 'REJECTED';
+          const color = statusColor(rfq.status);
+          return (
+            <View key={rfq.id} style={styles.rfq}>
+              {/* Number + status */}
+              <View style={styles.rowBetween}>
+                <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
+                <View style={styles.statusRow}>
+                  <View style={[styles.statusDot, { backgroundColor: color }]} />
+                  <Text style={[styles.statusText, { color }]}>{statusLabel(rfq.status)}</Text>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.quoteBoxLabel}>Quoted Amount (Incl. GST)</Text>
-                <Text style={styles.quoteBoxAmount}>
-                  ₹{(rfq.netTotal || 0).toLocaleString('en-IN')}
-                </Text>
+
+              {/* Progress tracker */}
+              <View style={styles.tracker}>
+                {STAGES.map((s, i) => (
+                  <View
+                    key={s}
+                    style={[
+                      styles.seg,
+                      i <= idx && { backgroundColor: rejected ? RED : i === idx && idx === 2 ? ORANGE : GRAPHITE },
+                    ]}
+                  />
+                ))}
               </View>
-            </View>
+              <View style={styles.stageLabels}>
+                {STAGES.map((s, i) => (
+                  <Text key={s} style={[styles.stageLabel, i === idx && !rejected && styles.stageLabelOn]}>
+                    {s}
+                  </Text>
+                ))}
+              </View>
 
-            <View style={styles.cardDivider} />
+              <Text style={styles.meta}>
+                {rfq.companyName || 'Industrial Client'}, sent {rfq.date || '2026-10-30'}
+              </Text>
+              <Text style={styles.meta}>
+                {rfq.itemsCount || 3} fastener lines, about {(rfq.totalWeightKg || 1200).toLocaleString('en-IN')} kg
+              </Text>
 
-            <View style={styles.actionsRow}>
+              {/* Quote amount */}
+              <View style={styles.quoteRow}>
+                <View>
+                  <Text style={styles.quoteLabel}>Discount</Text>
+                  <Text style={styles.quoteDiscount}>{rfq.discountPct || 14}% off list</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.quoteLabel}>Quoted total incl. GST</Text>
+                  <Text style={styles.quoteAmount}>₹{(rfq.netTotal || 0).toLocaleString('en-IN')}</Text>
+                </View>
+              </View>
+
+              {/* Action or state */}
               {rfq.status === 'QUOTED' ? (
-                <TouchableOpacity
-                  onPress={() => handleAcceptQuote(rfq)}
-                  style={styles.acceptBtn}
-                >
-                  <Text style={styles.acceptBtnText}>✓ Accept Quote &amp; Issue PO</Text>
+                <TouchableOpacity onPress={() => handleAcceptQuote(rfq)} style={styles.acceptBtn} activeOpacity={0.88}>
+                  <Text style={styles.acceptBtnText}>Accept quote and issue PO</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>
-                    {rfq.status === 'PO_ISSUED'
-                      ? '✓ Purchase Order Confirmed'
-                      : '⏳ Under Sales Desk Engineering Review'}
-                  </Text>
-                </View>
+                <Text style={[styles.stateNote, rfq.status === 'PO_ISSUED' && { color: GREEN }, rejected && { color: RED }]}>
+                  {rfq.status === 'PO_ISSUED'
+                    ? 'Purchase order confirmed'
+                    : rejected
+                    ? 'This request was declined'
+                    : 'Our sales team is preparing your quote'}
+                </Text>
               )}
             </View>
-          </MobileCard>
-        ))
+          );
+        })
       )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
-  },
+  container: { paddingBottom: 40, backgroundColor: WHITE },
+
+  searchWrap: { paddingHorizontal: 16, paddingTop: 16 },
+
   toast: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#34D399',
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: GRAPHITE,
     borderRadius: 8,
-    padding: 10,
-  },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  newRfqBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#0052CC',
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 10,
+  },
+  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
+
+  startBlock: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, gap: 10 },
+  primaryBtn: {
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: ORANGE,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  newRfqBtnText: {
-    color: '#0052CC',
-    fontSize: 13,
-    fontWeight: '800',
+  primaryBtnText: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  secondaryBtn: {
+    height: 50,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  secondaryBtnText: { color: GRAPHITE, fontSize: 15, fontWeight: '700' },
+
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: HAIR,
+    backgroundColor: MIST,
   },
-  resultsCount: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '700',
-  },
-  reloadText: {
-    fontSize: 11,
-    color: '#0052CC',
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 8,
-  },
-  emptyIcon: {
-    fontSize: 36,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
+  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
+  link: { fontSize: 14, fontWeight: '700', color: ORANGE },
+
+  centerBlock: { paddingHorizontal: 32, paddingVertical: 48, alignItems: 'center', gap: 10 },
+  loadingText: { fontSize: 14, color: STEEL },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: GRAPHITE, marginTop: 4 },
+  emptySubtitle: { fontSize: 14, color: STEEL, textAlign: 'center', lineHeight: 21 },
   browseBtn: {
     marginTop: 8,
-    backgroundColor: '#0052CC',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    height: 46,
+    paddingHorizontal: 24,
     borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  browseBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+  browseBtnText: { color: GRAPHITE, fontSize: 14, fontWeight: '700' },
+
+  // One RFQ: a hairline-separated block, not a card
+  rfq: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIR,
   },
-  rowBetween: {
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rfqNumber: { fontSize: 15, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 13, fontWeight: '700' },
+
+  tracker: { flexDirection: 'row', gap: 4, marginTop: 14 },
+  seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: MIST },
+  stageLabels: { flexDirection: 'row', gap: 4, marginTop: 6, marginBottom: 14 },
+  stageLabel: { flex: 1, fontSize: 11, color: STEEL },
+  stageLabelOn: { color: GRAPHITE, fontWeight: '700' },
+
+  meta: { fontSize: 13, color: STEEL, marginTop: 2 },
+
+  quoteRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
   },
-  rfqNumber: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  dateText: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  companyText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  tonnageText: {
-    fontSize: 12,
-    color: '#334155',
-    marginTop: 6,
-    fontWeight: '600',
-  },
-  quoteBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  quoteBoxLabel: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  quoteBoxVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  quoteBoxAmount: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#0052CC',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  actionsRow: {
-    alignItems: 'center',
-  },
+  quoteLabel: { fontSize: 12, color: STEEL },
+  quoteDiscount: { fontSize: 15, fontWeight: '700', color: GREEN, marginTop: 2 },
+  quoteAmount: { fontSize: 22, fontWeight: '800', color: GRAPHITE, marginTop: 2, fontVariant: ['tabular-nums'] },
+
   acceptBtn: {
-    backgroundColor: '#0052CC',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: 16,
+    height: 48,
     borderRadius: 8,
-    width: '100%',
+    backgroundColor: ORANGE,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  acceptBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusPill: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
+  acceptBtnText: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  stateNote: { marginTop: 16, fontSize: 13, fontWeight: '600', color: STEEL },
 });
 
 export default CustomerRfqsScreen;

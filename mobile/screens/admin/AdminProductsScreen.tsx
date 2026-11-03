@@ -9,14 +9,24 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { mobileApi } from '../../config/api';
 import { MobileProduct } from '../../types';
+
+// Same palette as the other screens
+const GRAPHITE = '#1C2228';
+const STEEL = '#5E6A74';
+const MIST = '#EDEFF1';
+const HAIR = '#D6DBE0';
+const WHITE = '#FFFFFF';
+const ORANGE = '#F26B1D';
+const GREEN = '#17803D';
+const RED = '#C62828';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 export const AdminProductsScreen: React.FC = () => {
   const [products, setProducts] = useState<MobileProduct[]>([]);
@@ -95,9 +105,7 @@ export const AdminProductsScreen: React.FC = () => {
     fetchProducts();
   }, [searchQuery, selectedStandard]);
 
-  // ============================================================================
-  // CRUD: CREATE
-  // ============================================================================
+  // CREATE
   const handleOpenCreate = () => {
     setNewSku(`CBH-${newStandard.replace(/\s+/g, '')}-${newDiameter}-${newLength}`);
     setNewName(`Hex Fastener ${newStandard} ${newDiameter}x${newLength} Gr ${newGrade}`);
@@ -106,7 +114,7 @@ export const AdminProductsScreen: React.FC = () => {
 
   const handleCreateProduct = async () => {
     if (!newSku.trim() || !newName.trim()) {
-      Alert.alert('Validation Error', 'SKU and Product Name are required.');
+      Alert.alert('Missing details', 'Enter a SKU and a product name.');
       return;
     }
 
@@ -139,17 +147,15 @@ export const AdminProductsScreen: React.FC = () => {
       setProducts((prev) => [createdItem, ...prev]);
       setTotalCount((prev) => prev + 1);
       setIsCreateModalOpen(false);
-      showToast(`SKU ${createdItem.sku} created in catalog!`);
+      showToast(`${createdItem.sku} added to the catalog`);
     } catch (err: any) {
-      Alert.alert('Create Error', err.message || 'Failed to create product.');
+      Alert.alert('Could not add product', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ============================================================================
-  // CRUD: UPDATE
-  // ============================================================================
+  // UPDATE
   const handleOpenEdit = (product: MobileProduct) => {
     setActiveProduct(product);
     setEditStockPcs(product.stockPcs || 0);
@@ -191,17 +197,15 @@ export const AdminProductsScreen: React.FC = () => {
       );
 
       setIsEditModalOpen(false);
-      showToast(`SKU ${activeProduct.sku} updated!`);
+      showToast(`${activeProduct.sku} updated`);
     } catch (err: any) {
-      Alert.alert('Update Error', err.message || 'Failed to update product.');
+      Alert.alert('Could not update product', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ============================================================================
-  // CRUD: DELETE
-  // ============================================================================
+  // DELETE
   const handlePromptDelete = (product: MobileProduct) => {
     setProductToDelete(product);
     setIsDeleteModalOpen(true);
@@ -215,10 +219,10 @@ export const AdminProductsScreen: React.FC = () => {
       setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
       setTotalCount((prev) => Math.max(0, prev - 1));
       setIsDeleteModalOpen(false);
-      showToast(`SKU ${productToDelete.sku} removed from warehouse inventory.`);
+      showToast(`${productToDelete.sku} deleted`);
       setProductToDelete(null);
     } catch (err: any) {
-      Alert.alert('Delete Error', err.message || 'Failed to delete product.');
+      Alert.alert('Could not delete product', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -226,325 +230,250 @@ export const AdminProductsScreen: React.FC = () => {
 
   return (
     <ScrollView
+      style={{ backgroundColor: WHITE }}
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => fetchProducts(true)}
-          colors={['#0052CC']}
-        />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchProducts(true)} colors={[ORANGE]} />
       }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      {/* Search Bar */}
-      <MobileSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Search SKU, standard, or size (e.g. DIN 933 M10)..."
-      />
+      <View style={styles.searchWrap}>
+        <MobileSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search SKU, standard or size, e.g. DIN 933 M10"
+        />
+      </View>
 
-      {/* Standards Filter Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      {/* Standards filter tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsContent}
+        style={styles.tabs}
+      >
         {standardsList.map((std) => {
-          const isActive = selectedStandard === std;
+          const active = selectedStandard === std;
           return (
             <TouchableOpacity
               key={std}
               onPress={() => setSelectedStandard(std)}
-              style={[styles.chip, isActive ? styles.chipActive : styles.chipInactive]}
+              style={[styles.tab, active && styles.tabActive]}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                {std}
-              </Text>
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{std}</Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Action Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ {toastMsg}</Text>
+          <Text style={styles.toastText}>{toastMsg}</Text>
         </View>
       ) : null}
 
-      {/* Control Action Bar with Add SKU button */}
+      {/* Count + add */}
       <View style={styles.controlBar}>
         <View>
-          <Text style={styles.resultsCount}>
-            {totalCount.toLocaleString()} Warehouse SKUs
-          </Text>
-          <Text style={styles.subCount}>Showing {products.length} live records</Text>
+          <Text style={styles.h2}>{totalCount.toLocaleString('en-IN')} products</Text>
+          <Text style={styles.subCount}>Showing {products.length}</Text>
         </View>
-
-        <TouchableOpacity
-          style={styles.addSkuBtn}
-          onPress={handleOpenCreate}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.addSkuBtnText}>➕ Add SKU</Text>
+        <TouchableOpacity style={styles.addBtn} onPress={handleOpenCreate} activeOpacity={0.88}>
+          <Text style={styles.addBtnText}>Add product</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Product List */}
+      {/* List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0052CC" />
-          <Text style={styles.loadingText}>Fetching warehouse catalog...</Text>
+        <View style={styles.centerBlock}>
+          <ActivityIndicator size="large" color={ORANGE} />
+          <Text style={styles.loadingText}>Loading catalog</Text>
         </View>
       ) : products.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No Fasteners Found</Text>
-          <Text style={styles.emptySubtitle}>Try clearing your search query or standard filter.</Text>
-          <TouchableOpacity onPress={() => { setSearchQuery(''); setSelectedStandard('All'); }} style={styles.resetBtn}>
-            <Text style={styles.resetBtnText}>Clear Filters</Text>
+        <View style={styles.centerBlock}>
+          <Text style={styles.emptyTitle}>No products found</Text>
+          <Text style={styles.emptySubtitle}>Clear the search or the standard filter to see more.</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setSearchQuery('');
+              setSelectedStandard('All');
+            }}
+            style={styles.resetBtn}
+          >
+            <Text style={styles.resetBtnText}>Clear filters</Text>
           </TouchableOpacity>
         </View>
       ) : (
         products.map((product) => (
-          <MobileCard key={product.id}>
-            {/* Header: Status */}
-            <View style={[styles.rowBetween, { marginBottom: 8 }]}>
-              <Text style={styles.skuText}>{product.sku}</Text>
-              <MobileBadge
-                label={product.isInStock ? 'IN STOCK' : 'OUT OF STOCK'}
-                variant={product.isInStock ? 'success' : 'danger'}
-                size="sm"
-              />
-            </View>
-
-            {/* Product Photo & Details Row matching website */}
-            <View style={styles.adminProductRow}>
+          <View key={product.id} style={styles.product}>
+            <View style={styles.topRow}>
               <FastenerProductImage
                 imageUrl={product.imageUrl}
                 drawingUrl={product.drawingUrl}
-                height={74}
-                containerStyle={styles.adminThumbContainer}
+                height={76}
+                containerStyle={styles.thumb}
                 showCadBadge
               />
-              <View style={styles.adminProductInfo}>
-                <Text style={styles.productName} numberOfLines={2}>
-                  {product.name}
-                </Text>
-
-                {/* Technical Specs Tags */}
-                <View style={styles.specsRow}>
-                  <View style={styles.specTag}>
-                    <Text style={styles.specTagLabel}>STD:</Text>
-                    <Text style={styles.specTagVal}>{product.standard || 'DIN 933'}</Text>
-                  </View>
-                  <View style={styles.specTag}>
-                    <Text style={styles.specTagLabel}>GR:</Text>
-                    <Text style={styles.specTagVal}>{product.grade || '8.8'}</Text>
-                  </View>
-                  <View style={styles.specTag}>
-                    <Text style={styles.specTagLabel}>SIZE:</Text>
-                    <Text style={styles.specTagVal}>{product.diameter}x{product.lengthMm}mm</Text>
+              <View style={styles.info}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.sku} numberOfLines={1}>
+                    {product.sku}
+                  </Text>
+                  <View style={styles.statusRow}>
+                    <View style={[styles.dot, { backgroundColor: product.isInStock ? GREEN : RED }]} />
+                    <Text style={[styles.statusText, { color: product.isInStock ? GREEN : RED }]}>
+                      {product.isInStock ? 'In stock' : 'Out of stock'}
+                    </Text>
                   </View>
                 </View>
+                <Text style={styles.name} numberOfLines={2}>
+                  {product.name}
+                </Text>
+                <Text style={styles.specs}>
+                  {product.standard || 'DIN 933'}, Gr {product.grade || '8.8'}, {product.diameter} × {product.lengthMm} mm
+                </Text>
               </View>
             </View>
 
-            <View style={styles.cardDivider} />
-
-            {/* Inventory Count & Dual Rates */}
-            <View style={styles.rowBetween}>
-              <View>
-                <Text style={styles.metaLabel}>Bin Stock</Text>
-                <Text style={styles.stockVal}>
-                  {(product.stockPcs || 0).toLocaleString()} Pcs
-                </Text>
-                <Text style={styles.stockKgVal}>
-                  {(product.stockKg || 0).toLocaleString()} Kg
-                </Text>
+            {/* Stock and rates side by side */}
+            <View style={styles.dataRow}>
+              <View style={styles.dataCol}>
+                <Text style={styles.dataLabel}>In stock</Text>
+                <Text style={styles.dataVal}>{(product.stockPcs || 0).toLocaleString('en-IN')} pcs</Text>
+                <Text style={styles.dataSub}>{(product.stockKg || 0).toLocaleString('en-IN')} kg</Text>
               </View>
-
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.metaLabel}>Base Rates</Text>
-                <Text style={styles.priceVal}>₹{product.pricePerPiece} / Pc</Text>
-                <Text style={styles.priceKgVal}>₹{product.pricePerKg} / Kg</Text>
+              <View style={[styles.dataCol, styles.dataColRight]}>
+                <Text style={styles.dataLabel}>Rates</Text>
+                <Text style={styles.dataVal}>₹{product.pricePerPiece} / pc</Text>
+                <Text style={styles.dataSub}>₹{product.pricePerKg} / kg</Text>
               </View>
             </View>
 
-            {/* CRUD Action Buttons: Edit & Delete */}
-            <View style={styles.cardActionsRow}>
+            <View style={styles.actions}>
               <TouchableOpacity
                 onPress={() => handlePromptDelete(product)}
-                style={styles.deleteBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.deleteBtnText}>🗑 Delete</Text>
+                <Text style={styles.deleteLink}>Delete</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleOpenEdit(product)}
-                style={styles.editBtn}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.editBtnText}>✏ Edit Rates &amp; Stock</Text>
+              <TouchableOpacity onPress={() => handleOpenEdit(product)} style={styles.editBtn} activeOpacity={0.85}>
+                <Text style={styles.editBtnText}>Edit rates and stock</Text>
               </TouchableOpacity>
             </View>
-          </MobileCard>
+          </View>
         ))
       )}
 
-      {/* ====================================================================== */}
-      {/* MODAL 1: CREATE PRODUCT (SKU)                                          */}
-      {/* ====================================================================== */}
+      {/* Create modal */}
       <MobileModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Add New Fastener SKU"
+        title="Add product"
       >
         <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.modalSubtitle}>
-            Create a new industrial fastener record in MySQL &amp; ERPNext inventory.
-          </Text>
+          <Text style={styles.modalSubtitle}>Adds a new fastener to the catalog and ERPNext inventory.</Text>
 
-          <Text style={styles.inputLabel}>Fastener SKU *</Text>
+          <Text style={styles.inputLabel}>SKU</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.input, { fontFamily: MONO }]}
             value={newSku}
             onChangeText={setNewSku}
-            placeholder="e.g. CBH-933-M12-50-BP"
+            placeholder="CBH-933-M12-50-BP"
+            placeholderTextColor="#8D98A1"
             autoCapitalize="characters"
           />
 
-          <Text style={styles.inputLabel}>Product Full Name *</Text>
+          <Text style={styles.inputLabel}>Product name</Text>
           <TextInput
-            style={styles.textInput}
+            style={styles.input}
             value={newName}
             onChangeText={setNewName}
-            placeholder="e.g. Hex Head Bolt DIN 933 M12x50 Grade 8.8"
+            placeholder="Hex Head Bolt DIN 933 M12x50 Grade 8.8"
+            placeholderTextColor="#8D98A1"
           />
 
-          <View style={styles.rowTwoCols}>
+          <View style={styles.twoCols}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Standard</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newStandard}
-                onChangeText={setNewStandard}
-                placeholder="DIN 933"
-              />
+              <TextInput style={styles.input} value={newStandard} onChangeText={setNewStandard} placeholder="DIN 933" placeholderTextColor="#8D98A1" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Grade</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newGrade}
-                onChangeText={setNewGrade}
-                placeholder="8.8 / 10.9 / SS 304"
-              />
+              <TextInput style={styles.input} value={newGrade} onChangeText={setNewGrade} placeholder="8.8, 10.9, SS 304" placeholderTextColor="#8D98A1" />
             </View>
           </View>
 
-          <View style={styles.rowTwoCols}>
+          <View style={styles.twoCols}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Diameter</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newDiameter}
-                onChangeText={setNewDiameter}
-                placeholder="M10"
-              />
+              <TextInput style={styles.input} value={newDiameter} onChangeText={setNewDiameter} placeholder="M10" placeholderTextColor="#8D98A1" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Length (mm)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newLength}
-                onChangeText={setNewLength}
-                keyboardType="numeric"
-                placeholder="50"
-              />
+              <TextInput style={styles.input} value={newLength} onChangeText={setNewLength} keyboardType="numeric" placeholder="50" placeholderTextColor="#8D98A1" />
             </View>
           </View>
 
-          <View style={styles.rowTwoCols}>
+          <View style={styles.twoCols}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Rate (₹ / Pc)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newPricePcs}
-                onChangeText={setNewPricePcs}
-                keyboardType="numeric"
-              />
+              <Text style={styles.inputLabel}>Rate (₹ per pc)</Text>
+              <TextInput style={styles.input} value={newPricePcs} onChangeText={setNewPricePcs} keyboardType="numeric" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Rate (₹ / Kg)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newPriceKg}
-                onChangeText={setNewPriceKg}
-                keyboardType="numeric"
-              />
+              <Text style={styles.inputLabel}>Rate (₹ per kg)</Text>
+              <TextInput style={styles.input} value={newPriceKg} onChangeText={setNewPriceKg} keyboardType="numeric" />
             </View>
           </View>
 
-          <View style={styles.rowTwoCols}>
+          <View style={styles.twoCols}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Stock (Pcs)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newStockPcs}
-                onChangeText={setNewStockPcs}
-                keyboardType="numeric"
-              />
+              <Text style={styles.inputLabel}>Stock (pcs)</Text>
+              <TextInput style={styles.input} value={newStockPcs} onChangeText={setNewStockPcs} keyboardType="numeric" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Stock (Kg)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newStockKg}
-                onChangeText={setNewStockKg}
-                keyboardType="numeric"
-              />
+              <Text style={styles.inputLabel}>Stock (kg)</Text>
+              <TextInput style={styles.input} value={newStockKg} onChangeText={setNewStockKg} keyboardType="numeric" />
             </View>
           </View>
 
           <TouchableOpacity
             onPress={handleCreateProduct}
-            style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+            style={[styles.saveBtn, isSubmitting && styles.disabled]}
             disabled={isSubmitting}
             activeOpacity={0.88}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Create &amp; Publish SKU →</Text>
-            )}
+            {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Add product</Text>}
           </TouchableOpacity>
         </ScrollView>
       </MobileModal>
 
-      {/* ====================================================================== */}
-      {/* MODAL 2: UPDATE PRODUCT (EDIT)                                         */}
-      {/* ====================================================================== */}
+      {/* Edit modal */}
       {activeProduct ? (
         <MobileModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title={`Edit SKU: ${activeProduct.sku}`}
+          title={`Edit ${activeProduct.sku}`}
         >
           <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalSubtitle}>
-              Update physical bin stocks, grade, and rates in ERP database.
-            </Text>
+            <Text style={styles.modalSubtitle}>Changes to stock, grade and rates sync to the ERP database.</Text>
 
-            <View style={styles.rowTwoCols}>
+            <View style={styles.twoCols}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Bin Stock (Pcs)</Text>
+                <Text style={styles.inputLabel}>Stock (pcs)</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.input}
                   keyboardType="numeric"
                   value={String(editStockPcs)}
                   onChangeText={(val) => setEditStockPcs(parseInt(val) || 0)}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Bin Stock (Kg)</Text>
+                <Text style={styles.inputLabel}>Stock (kg)</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.input}
                   keyboardType="numeric"
                   value={String(editStockKg)}
                   onChangeText={(val) => setEditStockKg(parseFloat(val) || 0)}
@@ -552,20 +481,20 @@ export const AdminProductsScreen: React.FC = () => {
               </View>
             </View>
 
-            <View style={styles.rowTwoCols}>
+            <View style={styles.twoCols}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Rate (₹ / Pc)</Text>
+                <Text style={styles.inputLabel}>Rate (₹ per pc)</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.input}
                   keyboardType="numeric"
                   value={String(editPricePcs)}
                   onChangeText={(val) => setEditPricePcs(parseFloat(val) || 0)}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Rate (₹ / Kg)</Text>
+                <Text style={styles.inputLabel}>Rate (₹ per kg)</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.input}
                   keyboardType="numeric"
                   value={String(editPriceKg)}
                   onChangeText={(val) => setEditPriceKg(parseFloat(val) || 0)}
@@ -573,75 +502,66 @@ export const AdminProductsScreen: React.FC = () => {
               </View>
             </View>
 
-            <Text style={styles.inputLabel}>Material Grade</Text>
+            <Text style={styles.inputLabel}>Grade</Text>
             <TextInput
-              style={styles.textInput}
+              style={styles.input}
               value={editGrade}
               onChangeText={setEditGrade}
-              placeholder="e.g. 8.8, 10.9, 12.9"
+              placeholder="8.8, 10.9, 12.9"
+              placeholderTextColor="#8D98A1"
             />
 
             <TouchableOpacity
               onPress={handleSaveEdit}
-              style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+              style={[styles.saveBtn, isSubmitting && styles.disabled]}
               disabled={isSubmitting}
               activeOpacity={0.88}
             >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.saveBtnText}>Save Changes &amp; Sync ERP →</Text>
-              )}
+              {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Save changes</Text>}
             </TouchableOpacity>
           </ScrollView>
         </MobileModal>
       ) : null}
 
-      {/* ====================================================================== */}
-      {/* MODAL 3: DELETE PRODUCT CONFIRMATION                                   */}
-      {/* ====================================================================== */}
+      {/* Delete modal */}
       {productToDelete ? (
         <MobileModal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
-          title="Delete SKU Confirmation"
+          title="Delete this product?"
         >
           <View style={styles.modalScroll}>
-            <View style={styles.deleteWarningBox}>
-              <Text style={styles.deleteWarningIcon}>⚠</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.deleteWarningTitle}>Permanent Removal</Text>
-                <Text style={styles.deleteWarningText}>
-                  Are you sure you want to delete SKU <Text style={{ fontWeight: '800' }}>{productToDelete.sku}</Text> from the active inventory database?
+            <Text style={styles.deleteLead}>
+              {productToDelete.sku} will be permanently removed from the inventory database. This can’t be undone.
+            </Text>
+
+            <View style={styles.deleteTable}>
+              <View style={[styles.kv, { borderTopWidth: 0 }]}>
+                <Text style={styles.k}>Name</Text>
+                <Text style={styles.v}>{productToDelete.name}</Text>
+              </View>
+              <View style={styles.kv}>
+                <Text style={styles.k}>Standard and grade</Text>
+                <Text style={styles.v}>
+                  {productToDelete.standard}, Gr {productToDelete.grade}
                 </Text>
+              </View>
+              <View style={styles.kv}>
+                <Text style={styles.k}>In stock</Text>
+                <Text style={styles.v}>{(productToDelete.stockPcs || 0).toLocaleString('en-IN')} pcs</Text>
               </View>
             </View>
 
-            <Text style={styles.deleteItemMeta}>
-              • Name: {productToDelete.name}{'\n'}
-              • Standard: {productToDelete.standard} | Grade: {productToDelete.grade}{'\n'}
-              • Current Bin Stock: {(productToDelete.stockPcs || 0).toLocaleString()} Pcs
-            </Text>
-
-            <View style={styles.modalActionsRow}>
-              <TouchableOpacity
-                onPress={() => setIsDeleteModalOpen(false)}
-                style={styles.cancelBtn}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setIsDeleteModalOpen(false)} style={styles.cancelBtn} disabled={isSubmitting}>
+                <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={handleConfirmDelete}
-                style={[styles.confirmDeleteBtn, isSubmitting && styles.btnDisabled]}
+                style={[styles.confirmDeleteBtn, isSubmitting && styles.disabled]}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.confirmDeleteBtnText}>Confirm Delete</Text>
-                )}
+                {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Delete product</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -652,353 +572,150 @@ export const AdminProductsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  chip: {
+  container: { paddingBottom: 40, backgroundColor: WHITE },
+
+  searchWrap: { paddingHorizontal: 16, paddingTop: 16 },
+
+  tabs: { marginTop: 8, borderBottomWidth: 1, borderBottomColor: HAIR, flexGrow: 0 },
+  tabsContent: { paddingHorizontal: 20, gap: 22 },
+  tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  tabActive: { borderBottomColor: ORANGE },
+  tabText: { fontSize: 14, fontWeight: '600', color: STEEL },
+  tabTextActive: { color: GRAPHITE },
+
+  toast: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: GRAPHITE,
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
+    paddingVertical: 12,
   },
-  chipActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
-  },
-  chipInactive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#CBD5E1',
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
+  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
+
   controlBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
-  },
-  resultsCount: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  subCount: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  addSkuBtn: {
-    backgroundColor: '#0052CC',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    elevation: 2,
-  },
-  addSkuBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  toast: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#10B981',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-  },
-  toastText: {
-    color: '#065F46',
-    fontWeight: '700',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#64748B',
-    fontSize: 13,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  resetBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     marginTop: 12,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  resetBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  skuText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0052CC',
-    letterSpacing: 0.2,
-  },
-  productName: {
-    fontSize: 13,
-    color: '#0F172A',
-    fontWeight: '600',
-    marginTop: 2,
-    lineHeight: 18,
-  },
-  specsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  specTag: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignItems: 'center',
-    gap: 4,
-  },
-  specTagLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-  },
-  specTagVal: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  metaLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-  },
-  stockVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  stockKgVal: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  priceVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  priceKgVal: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
+    backgroundColor: MIST,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderColor: HAIR,
   },
-  editBtn: {
-    flex: 1,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editBtnText: {
-    color: '#0052CC',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  deleteBtn: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteBtnText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  modalScroll: {
-    paddingVertical: 6,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 4,
+  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
+  subCount: { fontSize: 12, color: STEEL, marginTop: 1 },
+  addBtn: { height: 38, paddingHorizontal: 16, borderRadius: 8, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { color: WHITE, fontSize: 14, fontWeight: '700' },
+
+  centerBlock: { paddingHorizontal: 32, paddingVertical: 48, alignItems: 'center', gap: 8 },
+  loadingText: { fontSize: 14, color: STEEL, marginTop: 6 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: GRAPHITE },
+  emptySubtitle: { fontSize: 14, color: STEEL, textAlign: 'center' },
+  resetBtn: {
     marginTop: 8,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    height: 44,
+    paddingHorizontal: 22,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
-  },
-  rowTwoCols: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  saveBtn: {
-    backgroundColor: '#0052CC',
-    height: 46,
-    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
+  },
+  resetBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
+
+  // One product: a hairline-separated block, not a card
+  product: { paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: HAIR },
+  topRow: { flexDirection: 'row', gap: 14 },
+  thumb: { width: 76, height: 76, borderRadius: 6, flexShrink: 0, backgroundColor: MIST },
+  info: { flex: 1 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  sku: { fontSize: 13, fontWeight: '700', color: GRAPHITE, fontFamily: MONO, flexShrink: 1 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  name: { fontSize: 15, fontWeight: '600', color: GRAPHITE, marginTop: 4, lineHeight: 20 },
+  specs: { fontSize: 12, color: STEEL, marginTop: 4 },
+
+  dataRow: { flexDirection: 'row', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: MIST },
+  dataCol: { flex: 1 },
+  dataColRight: { alignItems: 'flex-end' },
+  dataLabel: { fontSize: 12, color: STEEL },
+  dataVal: { fontSize: 16, fontWeight: '700', color: GRAPHITE, marginTop: 2, fontVariant: ['tabular-nums'] },
+  dataSub: { fontSize: 13, color: STEEL, marginTop: 1, fontVariant: ['tabular-nums'] },
+
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
+  deleteLink: { fontSize: 14, fontWeight: '600', color: RED },
+  editBtn: {
+    height: 44,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
+
+  // Modals
+  modalScroll: { paddingVertical: 6 },
+  modalSubtitle: { fontSize: 14, color: STEEL, lineHeight: 20, marginBottom: 6 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: GRAPHITE, marginTop: 14, marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderColor: HAIR,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 15,
+    color: GRAPHITE,
+    backgroundColor: WHITE,
+  },
+  twoCols: { flexDirection: 'row', gap: 10 },
+  saveBtn: {
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 22,
     marginBottom: 10,
   },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  deleteWarningBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 12,
+  saveText: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  disabled: { opacity: 0.6 },
+
+  // Delete
+  deleteLead: { fontSize: 15, color: GRAPHITE, lineHeight: 22 },
+  deleteTable: { marginTop: 12, marginBottom: 20 },
+  kv: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
   },
-  deleteWarningIcon: {
-    fontSize: 18,
-    color: '#DC2626',
-  },
-  deleteWarningTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#991B1B',
-  },
-  deleteWarningText: {
-    fontSize: 12,
-    color: '#B91C1C',
-    marginTop: 2,
-    lineHeight: 17,
-  },
-  deleteItemMeta: {
-    fontSize: 12,
-    color: '#475569',
-    lineHeight: 20,
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  modalActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  k: { fontSize: 14, color: STEEL },
+  v: { fontSize: 14, fontWeight: '600', color: GRAPHITE, flexShrink: 1, textAlign: 'right', marginLeft: 16 },
+  modalActions: { flexDirection: 'row', gap: 10 },
   cancelBtn: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelBtnText: {
-    color: '#475569',
-    fontWeight: '700',
-    fontSize: 13,
-  },
+  cancelText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
   confirmDeleteBtn: {
     flex: 1,
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 8,
+    backgroundColor: RED,
     alignItems: 'center',
-  },
-  confirmDeleteBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  adminProductRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  adminThumbContainer: {
-    width: 74,
-    height: 74,
-    borderRadius: 8,
-    flexShrink: 0,
-  },
-  adminProductInfo: {
-    flex: 1,
-    marginLeft: 12,
+    justifyContent: 'center',
   },
 });
 

@@ -122,6 +122,7 @@ export interface RfqSummary {
 
 export interface CustomerOrder {
   id: string;
+  customerId?: number;
   orderNumber: string;
   date: string;
   itemsCount: number;
@@ -139,6 +140,7 @@ export interface CustomerOrder {
   phone?: string;
   gstin?: string;
   deliveryPincode?: string;
+  paymentMethod?: string;
   paymentStatus?: string;
   grossAmount?: number;
   gstAmount?: number;
@@ -180,6 +182,55 @@ export interface BulkQuotation {
   items?: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
 }
 
+export interface DeliverySite {
+  id: string;
+  name: string;
+  address: string;
+  incharge?: string;
+  phone?: string;
+  activeDeliveries?: number;
+  isPrimary?: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  access: string;
+  status: string;
+  phone?: string;
+  limit?: string;
+  avatar?: string;
+}
+
+export interface NotificationPreferences {
+  emailAlerts?: boolean;
+  smsDispatchAlerts?: boolean;
+  rfqQuotations?: boolean;
+  creditAlerts?: boolean;
+}
+
+export interface CertificateRecord {
+  id: string;
+  certNumber: string;
+  orderNumber: string;
+  heatNumber: string;
+  standard: string;
+  grade: string;
+  itemsCovered: string;
+  issueDate: string;
+  labAccreditation: string;
+  carbonPct: string;
+  manganesePct: string;
+  chromiumPct: string;
+  tensileMpa: string;
+  yieldMpa: string;
+  hardnessHrc: string;
+  saltSprayHrs: string;
+  downloadUrl?: string;
+}
+
 export interface UserAccount {
   id: number;
   fullName: string;
@@ -192,7 +243,15 @@ export interface UserAccount {
   tierDiscountPct: number;
   creditLimit: number;
   isVerified: boolean;
+  address?: string;
   city?: string;
+  designation?: string;
+  pan?: string;
+  tan?: string;
+  msme?: string;
+  deliverySites?: DeliverySite[];
+  teamMembers?: TeamMember[];
+  notificationPreferences?: NotificationPreferences;
   createdAt: string;
   joinedDate?: string;
   ordersCount?: number;

@@ -26,25 +26,25 @@ interface MicroPillItem {
 
 const PILLS: MicroPillItem[] = [
   {
-    icon: '⚡',
+    icon: '✓',
     label: 'Instant Dual Pricing',
     color: '#0052CC',
     bg: '#EFF6FF',
     border: '#BFDBFE',
   },
   {
-    icon: '📜',
-    label: 'NABL Lab MTC',
+    icon: '✓',
+    label: 'NABL Lab MTC (EN 10204 3.1)',
     color: '#059669',
     bg: '#ECFDF5',
     border: '#A7F3D0',
   },
   {
-    icon: '🚚',
-    label: 'Live Dispatch',
-    color: '#7C3AED',
-    bg: '#F5F3FF',
-    border: '#DDD6FE',
+    icon: '✓',
+    label: 'Real-Time Dispatch',
+    color: '#0F172A',
+    bg: '#F1F5F9',
+    border: '#CBD5E1',
   },
 ];
 

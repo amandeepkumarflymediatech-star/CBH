@@ -69,13 +69,13 @@ export const CustomerAuthScreen: React.FC<CustomerAuthScreenProps> = ({
         <View style={styles.demoRow}>
           <Text style={styles.demoTitle}>1-TAP TEST CREDENTIALS</Text>
           <TouchableOpacity onPress={fillDemo} style={styles.demoBtn}>
-            <Text style={styles.demoBtnText}>⚡ Fill Demo</Text>
+            <Text style={styles.demoBtnText}>Fill Demo</Text>
           </TouchableOpacity>
         </View>
 
         {errorMsg ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠ {errorMsg}</Text>
+            <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         ) : null}
 

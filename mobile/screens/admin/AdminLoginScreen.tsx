@@ -67,7 +67,7 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.brandBox}>
         <View style={styles.logo}>
-          <Text style={styles.logoText}>⚡</Text>
+          <Text style={styles.logoText}>CBH</Text>
         </View>
         <Text style={styles.title}>Operations Console</Text>
         <Text style={styles.subtitle}>Authorized Plant Controllers Only</Text>
@@ -77,13 +77,13 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
         <View style={styles.demoRow}>
           <Text style={styles.demoTitle}>CLEARANCE OPERATOR</Text>
           <TouchableOpacity onPress={fillDemo} style={styles.demoBtn}>
-            <Text style={styles.demoBtnText}>⚡ Fill Admin</Text>
+            <Text style={styles.demoBtnText}>Fill Admin Demo</Text>
           </TouchableOpacity>
         </View>
 
         {errorMsg ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠ {errorMsg}</Text>
+            <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         ) : null}
 

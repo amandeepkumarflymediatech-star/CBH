@@ -4,6 +4,48 @@
 
 export type UserRole = 'customer' | 'admin';
 
+export interface MobileDeliverySite {
+  id: string;
+  name: string;
+  address: string;
+  incharge?: string;
+  phone?: string;
+  activeDeliveries?: number;
+  isPrimary?: boolean;
+}
+
+export interface MobileTeamMember {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  access: string;
+  status: string;
+  phone?: string;
+  limit?: string;
+  avatar?: string;
+}
+
+export interface MobileCertificate {
+  id: string;
+  certNumber: string;
+  orderNumber: string;
+  heatNumber: string;
+  standard: string;
+  grade: string;
+  itemsCovered: string;
+  issueDate: string;
+  labAccreditation: string;
+  carbonPct: string;
+  manganesePct: string;
+  chromiumPct: string;
+  tensileMpa: string;
+  yieldMpa: string;
+  hardnessHrc: string;
+  saltSprayHrs: string;
+  downloadUrl?: string;
+}
+
 export interface MobileAuthUser {
   id: number | string;
   email: string;
@@ -19,6 +61,12 @@ export interface MobileAuthUser {
   pan?: string;
   msmeRegistrationNumber?: string;
   address?: string;
+  designation?: string;
+  tan?: string;
+  msme?: string;
+  deliverySites?: MobileDeliverySite[];
+  teamMembers?: MobileTeamMember[];
+  notificationPreferences?: any;
 }
 
 export type GlobalUnit = 'PCS' | 'KGS';
@@ -98,6 +146,11 @@ export interface MobileOrder {
   companyName?: string;
   email?: string;
   phone?: string;
+  paymentMethod?: 'PHONEPE' | 'NEFT_RTGS' | 'CREDIT_LINE' | 'COD';
+  paymentStatus?: 'PAID' | 'PENDING' | 'COD_ON_DELIVERY';
+  poNumber?: string;
+  pincode?: string;
+  city?: string;
   erpnextSalesOrderId?: string;
   items?: Array<{
     sku: string;

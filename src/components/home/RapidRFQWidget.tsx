@@ -613,7 +613,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
               </div>
 
               {/* CSV Upload */}
-              <div className="csv-upload-box">
+              {/* <div className="csv-upload-box">
                 <div className="csv-info">
                   <FileSpreadsheet size={20} color="var(--color-primary)" />
                   <span>Upload BOM (.CSV / .XLSX) for 100+ fastener batch quoting</span>
@@ -637,7 +637,7 @@ export default function RapidRFQWidget({ hideHeader = false }: RapidRFQWidgetPro
                     <span>Browse File</span>
                   </button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 

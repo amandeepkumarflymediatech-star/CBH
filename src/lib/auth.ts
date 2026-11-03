@@ -1,5 +1,7 @@
 'use client';
 
+import { DeliverySite, TeamMember, NotificationPreferences } from './types';
+
 export interface AuthUser {
   id: number | string;
   email: string;
@@ -13,8 +15,14 @@ export interface AuthUser {
   creditLimit?: number;
   avatar?: string;
   pan?: string;
+  tan?: string;
+  msme?: string;
   msmeRegistrationNumber?: string;
   address?: string;
+  designation?: string;
+  deliverySites?: DeliverySite[];
+  teamMembers?: TeamMember[];
+  notificationPreferences?: NotificationPreferences;
 }
 
 const STORAGE_KEY = 'cbh_auth_user';

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import TablePagination from '@/components/common/TablePagination';
 import { CustomerOrder } from '@/lib/types';
+import { getStoredUser } from '@/lib/auth';
 import { formatINR } from '@/lib/rfq-calculator';
 import { showToast } from '@/lib/swal';
 

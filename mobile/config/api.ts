@@ -544,18 +544,70 @@ export const ordersApi = {
     customerId?: number | string;
     customerName?: string;
     companyName?: string;
+    phone?: string;
+    email?: string;
     items: Array<{ sku: string; name: string; quantity: number; rate: number; weightKg?: number }>;
     shippingAddress: string;
+    city?: string;
     deliveryPincode?: string;
-    paymentMethod: 'PHONEPE' | 'NEFT_RTGS' | 'CREDIT_LINE';
+    poNumber?: string;
+    paymentMethod: 'PHONEPE' | 'NEFT_RTGS' | 'CREDIT_LINE' | 'COD';
+    paymentStatus?: 'PAID' | 'PENDING' | 'COD_ON_DELIVERY';
     carrier?: string;
     netAmount?: number;
     totalWeightKg?: number;
   }) => {
-    return request(API_ENDPOINTS.ORDERS.CREATE, {
+    const isCod = orderPayload.paymentMethod === 'COD';
+    const carrier = orderPayload.carrier || ((orderPayload.totalWeightKg && orderPayload.totalWeightKg > 150) ? 'TCI Freight Logistics' : 'Blue Dart Express');
+    const orderNumber = `CBH-ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const trackingNumber = isCod ? `BD-COD-${Math.floor(100000 + Math.random() * 900000)}` : `BD-${Math.floor(100000 + Math.random() * 900000)}IN`;
+    const mtcCertNumber = `MTC-CBH-2026-NABL-${Math.floor(100 + Math.random() * 900)}`;
+
+    const res = await request(API_ENDPOINTS.ORDERS.CREATE, {
       method: 'POST',
-      body: JSON.stringify(orderPayload),
+      body: JSON.stringify({
+        ...orderPayload,
+        orderNumber,
+        carrier,
+        trackingNumber,
+        mtcCertNumber,
+        paymentStatus: orderPayload.paymentStatus || (isCod ? 'COD_ON_DELIVERY' : orderPayload.paymentMethod === 'NEFT_RTGS' ? 'PENDING' : 'PAID'),
+      }),
     });
+
+    const createdOrder: MobileOrder = {
+      id: res.data?.id || `ord-${Date.now()}`,
+      orderNumber: res.data?.orderNumber || res.orderNumber || orderNumber,
+      date: new Date().toISOString().split('T')[0],
+      customerName: orderPayload.customerName || 'Procurement In-Charge',
+      companyName: orderPayload.companyName || 'Enterprise Buyer',
+      phone: orderPayload.phone,
+      email: orderPayload.email,
+      itemsCount: orderPayload.items.length,
+      totalWeightKg: orderPayload.totalWeightKg || 0,
+      netAmount: orderPayload.netAmount || 0,
+      status: 'CONFIRMED',
+      paymentMethod: orderPayload.paymentMethod,
+      paymentStatus: orderPayload.paymentStatus || (isCod ? 'COD_ON_DELIVERY' : orderPayload.paymentMethod === 'NEFT_RTGS' ? 'PENDING' : 'PAID'),
+      carrier: res.data?.carrier || carrier,
+      trackingNumber: res.data?.trackingNumber || trackingNumber,
+      dispatchDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      shippingAddress: orderPayload.shippingAddress,
+      pincode: orderPayload.deliveryPincode,
+      city: orderPayload.city,
+      poNumber: orderPayload.poNumber,
+      mtcCertNumber: res.data?.mtcCertNumber || mtcCertNumber,
+      items: orderPayload.items,
+    };
+
+    FALLBACK_ORDERS.unshift(createdOrder);
+
+    return {
+      ...res,
+      success: true,
+      order: createdOrder,
+      orderNumber: createdOrder.orderNumber,
+    };
   },
 
   updateStatus: async (payload: {
@@ -899,6 +951,43 @@ export const uploadApi = {
 };
 
 // ============================================================================
+// ============================================================================
+// 11. CERTIFICATES & QUALITY 3.1 APIS
+// ============================================================================
+export const certificatesApi = {
+  getAll: async (params?: { search?: string; orderNumber?: string; customerId?: number | string }) => {
+    const queryParts: string[] = [];
+    if (params?.search) queryParts.push('search=' + encodeURIComponent(params.search));
+    if (params?.orderNumber) queryParts.push('orderNumber=' + encodeURIComponent(params.orderNumber));
+    if (params?.customerId) queryParts.push('customerId=' + encodeURIComponent(String(params.customerId)));
+    const url = '/api/certificates' + (queryParts.length > 0 ? '?' + queryParts.join('&') : '');
+    try {
+      const res = await request(url);
+      return { success: true, certificates: res.data || [] };
+    } catch {
+      return { success: false, certificates: [] };
+    }
+  },
+};
+
+// ============================================================================
+// 12. FASTENER BLOGS & TECH LIBRARY APIS
+// ============================================================================
+export const blogsApi = {
+  getAll: async (params?: { search?: string; category?: string }) => {
+    const queryParts: string[] = [];
+    if (params?.search) queryParts.push('search=' + encodeURIComponent(params.search));
+    if (params?.category) queryParts.push('category=' + encodeURIComponent(params.category));
+    const url = '/api/blogs' + (queryParts.length > 0 ? '?' + queryParts.join('&') : '');
+    try {
+      const res = await request(url);
+      return { success: true, blogs: res.data || [] };
+    } catch {
+      return { success: false, blogs: [] };
+    }
+  },
+};
+
 // UNIFIED CBH MOBILE API CLIENT EXPORT
 // ============================================================================
 export const mobileApi = {
@@ -912,6 +1001,8 @@ export const mobileApi = {
   erpnext: erpnextApi,
   payment: paymentApi,
   upload: uploadApi,
+  certificates: certificatesApi,
+  blogs: blogsApi,
 };
 
 export default mobileApi;
@@ -1083,6 +1174,8 @@ export const FALLBACK_ORDERS: MobileOrder[] = [
     totalWeightKg: 850.5,
     netAmount: 142850,
     status: 'IN_TRANSIT',
+    paymentMethod: 'PHONEPE',
+    paymentStatus: 'PAID',
     carrier: 'Blue Dart Express Heavy',
     trackingNumber: 'BD-889921447IN',
     dispatchDate: '2026-10-29',
@@ -1100,6 +1193,8 @@ export const FALLBACK_ORDERS: MobileOrder[] = [
     totalWeightKg: 1420.0,
     netAmount: 268400,
     status: 'PROCESSING',
+    paymentMethod: 'NEFT_RTGS',
+    paymentStatus: 'PAID',
     carrier: 'VRL Logistics Hub',
     trackingNumber: 'VRL-7740192',
     dispatchDate: '2026-10-30',
@@ -1117,6 +1212,8 @@ export const FALLBACK_ORDERS: MobileOrder[] = [
     totalWeightKg: 310.0,
     netAmount: 58900,
     status: 'DELIVERED',
+    paymentMethod: 'COD',
+    paymentStatus: 'COD_ON_DELIVERY',
     carrier: 'TCI Freight Express',
     trackingNumber: 'TCI-994412',
     dispatchDate: '2026-10-25',

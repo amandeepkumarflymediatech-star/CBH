@@ -20,9 +20,17 @@ export async function GET(request: Request) {
   const status = searchParams.get('status');
   const carrier = searchParams.get('carrier');
   const sortBy = searchParams.get('sortBy');
+  const customerId = searchParams.get('customerId');
+  const customerEmail = searchParams.get('customerEmail')?.toLowerCase().trim();
 
   const allOrders = await getOrders();
   let results = [...allOrders];
+
+  if (customerId) {
+    results = results.filter((ord) => ord.customerId && String(ord.customerId) === String(customerId));
+  } else if (customerEmail) {
+    results = results.filter((ord) => ord.email && ord.email.toLowerCase() === customerEmail);
+  }
 
   if (search) {
     results = results.filter(
@@ -76,6 +84,8 @@ export async function POST(request: Request) {
       totalWeightKg: parseFloat(body.totalWeightKg) || 250.0,
       netAmount: parseFloat(body.netAmount) || 45000.0,
       status: body.status || 'CONFIRMED',
+      paymentMethod: body.paymentMethod || 'PHONEPE',
+      paymentStatus: body.paymentStatus || (body.paymentMethod === 'COD' ? 'COD_ON_DELIVERY' : 'PAID'),
       carrier: body.carrier || 'TCI Freight Express',
       trackingNumber: body.trackingNumber || 'TCI-' + Math.floor(100000 + Math.random() * 900000),
       dispatchDate: body.dispatchDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],

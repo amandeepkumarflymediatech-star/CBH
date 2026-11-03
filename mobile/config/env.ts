@@ -23,10 +23,10 @@ export const ENV = {
   // - 'local': Local Next.js server on computer (http://10.0.2.2:3000/api)
   // - 'lan': Physical phone on Wi-Fi (http://192.168.1.146:3000/api)
   // - 'prod': Live cloud production backend (https://cbh.socialflymediatech.com/api)
-  ACTIVE_ENV: 'local' as ApiEnvironment,
+  ACTIVE_ENV: 'prod' as ApiEnvironment,
 
   // Legacy boolean flag (kept for backwards compatibility)
-  IS_PROD: false,
+  IS_PROD: true,
 };
 
 // Runtime dynamic environment switch

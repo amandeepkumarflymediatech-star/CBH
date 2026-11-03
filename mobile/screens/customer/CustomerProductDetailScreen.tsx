@@ -8,9 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
+import { NavIcon } from '../../components/NavIcon';
 import { MobileProduct, GlobalUnit } from '../../types';
 import {
   mobileApi,
@@ -18,7 +17,6 @@ import {
   MIN_QTY_KGS,
   clampQty,
   formatQtyDisplay,
-  formatINR,
 } from '../../config/api';
 
 interface CustomerProductDetailScreenProps {
@@ -30,6 +28,36 @@ interface CustomerProductDetailScreenProps {
   onSearch?: (query: string) => void;
   onSelectProduct?: (product: MobileProduct) => void;
 }
+
+// Volume discount tiers (same slabs as before, now data-driven)
+const TIERS: Record<GlobalUnit, { min: number; pct: number }[]> = {
+  PCS: [
+    { min: 500, pct: 8 },
+    { min: 2500, pct: 18 },
+    { min: 10000, pct: 25 },
+  ],
+  KGS: [
+    { min: 50, pct: 10 },
+    { min: 250, pct: 20 },
+    { min: 1000, pct: 26 },
+  ],
+};
+
+const PRESETS: Record<GlobalUnit, number[]> = {
+  PCS: [100, 500, 1000, 5000],
+  KGS: [0.25, 50, 250, 1000],
+};
+
+const tierLabel = (min: number, unit: GlobalUnit) => {
+  if (unit === 'KGS') return min >= 1000 ? `${min / 1000} t` : `${min} kg`;
+  return min >= 1000 ? `${min / 1000}K` : `${min}`;
+};
+
+const BLUE = '#0047AB';
+const ORANGE = '#FF6B00';
+const INK = '#0F172A';
+const MUTED = '#64748B';
+const LINE = '#E2E8F0';
 
 export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenProps> = ({
   product,
@@ -44,78 +72,68 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
   const [quantity, setQuantity] = useState<number>(500);
   const [quantityInput, setQuantityInput] = useState<string>('500');
   const [isAddedToast, setIsAddedToast] = useState(false);
-  const [deliveryPincode, setDeliveryPincode] = useState('560058');
+  const [deliveryPincode, setDeliveryPincode] = useState('');
+  const [showAllSpecs, setShowAllSpecs] = useState(false);
 
-  // Quantity updates syncing text input
+  // Search
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<MobileProduct[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const weightPerPc = product.weightPerPcKg || 0.05;
+  const minQty = selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
+
   const updateQuantity = (val: number) => {
     setQuantity(val);
     setQuantityInput(String(val));
   };
 
-  // Smart unit toggle with proportional conversion
   const handleUnitToggle = (newUnit: GlobalUnit) => {
     if (newUnit === selectedUnit) return;
     setSelectedUnit(newUnit);
     if (newUnit === 'KGS') {
-      const approxKg = Math.round((quantity * (product?.weightPerPcKg || 0.05)) * 100) / 100;
-      const nextKg = Math.max(MIN_QTY_KGS, approxKg);
-      updateQuantity(nextKg);
+      const approxKg = Math.round(quantity * weightPerPc * 100) / 100;
+      updateQuantity(Math.max(MIN_QTY_KGS, approxKg));
     } else {
-      const approxPcs = Math.round(quantity / (product?.weightPerPcKg || 0.05));
+      const approxPcs = Math.round(quantity / weightPerPc);
       const rounded = Math.round(approxPcs / 10) * 10;
-      const nextPcs = Math.max(MIN_QTY_PCS, rounded);
-      updateQuantity(nextPcs);
+      updateQuantity(Math.max(MIN_QTY_PCS, rounded));
     }
   };
 
-  // Stepper stepping by 10 (110, 120, 130) or 0.25 kg
   const handleStepQty = (delta: number) => {
     if (selectedUnit === 'KGS') {
       if (delta < 0) {
         if (quantity <= MIN_QTY_KGS) return;
         const step = quantity <= 1 ? 0.25 : 0.5;
-        const next = Math.max(MIN_QTY_KGS, Math.round((quantity - step) * 100) / 100);
-        updateQuantity(next);
+        updateQuantity(Math.max(MIN_QTY_KGS, Math.round((quantity - step) * 100) / 100));
       } else {
         const step = quantity < 1 ? 0.25 : quantity < 5 ? 0.5 : 1.0;
-        const next = Math.round((quantity + step) * 100) / 100;
-        updateQuantity(next);
+        updateQuantity(Math.round((quantity + step) * 100) / 100);
       }
+    } else if (delta < 0) {
+      if (quantity <= MIN_QTY_PCS) return;
+      const step = quantity > 1000 ? 500 : quantity > 200 ? 100 : 10;
+      updateQuantity(Math.max(MIN_QTY_PCS, quantity - step));
     } else {
-      if (delta < 0) {
-        if (quantity <= MIN_QTY_PCS) return;
-        const step = quantity > 1000 ? 500 : quantity > 200 ? 100 : 10;
-        const next = Math.max(MIN_QTY_PCS, quantity - step);
-        updateQuantity(next);
-      } else {
-        const step = quantity >= 1000 ? 500 : quantity >= 200 ? 100 : 10;
-        updateQuantity(quantity + step);
-      }
+      const step = quantity >= 1000 ? 500 : quantity >= 200 ? 100 : 10;
+      updateQuantity(quantity + step);
     }
   };
 
   const handleInputChange = (text: string) => {
     setQuantityInput(text);
     const parsed = parseFloat(text);
-    if (!isNaN(parsed) && parsed > 0) {
-      setQuantity(parsed);
-    }
+    if (!isNaN(parsed) && parsed > 0) setQuantity(parsed);
   };
 
-  const handleInputBlur = () => {
-    const clamped = clampQty(quantity, selectedUnit);
-    updateQuantity(clamped);
-  };
+  const handleInputBlur = () => updateQuantity(clampQty(quantity, selectedUnit));
 
-  // Top Search Bar State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<MobileProduct[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  // Live Autocomplete on typing
+  // Live search suggestions
   useEffect(() => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+    if (searchQuery.trim().length < 2) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
@@ -135,484 +153,388 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Fastener calculations
-  const weightPerPc = product.weightPerPcKg || 0.054;
-  const totalWeightKg =
-    selectedUnit === 'PCS'
-      ? +(quantity * weightPerPc).toFixed(2)
-      : quantity;
-
-  // Wholesale Volume Discount Engine (100% Synced with Website 56c2f25)
-  const getVolumeDiscount = (qty: number, unit: GlobalUnit) => {
-    if (unit === 'KGS') {
-      if (qty >= 1000) return { pct: 26, label: 'Master OEM Wholesale (-26%)' };
-      if (qty >= 250) return { pct: 20, label: 'Contractor Volume Tier (-20%)' };
-      if (qty >= 50) return { pct: 10, label: 'Bulk Batch Tier (-10%)' };
-      return { pct: 0, label: 'Standard Rate' };
-    }
-    if (qty >= 10000) return { pct: 25, label: 'Master OEM Wholesale (-25%)' };
-    if (qty >= 2500) return { pct: 18, label: 'Contractor Volume Tier (-18%)' };
-    if (qty >= 500) return { pct: 8, label: 'Bulk Batch Tier (-8%)' };
-    return { pct: 0, label: 'Standard Rate' };
-  };
-
-  const discount = getVolumeDiscount(quantity, selectedUnit);
+  // Calculations
+  const totalWeightKg = selectedUnit === 'PCS' ? +(quantity * weightPerPc).toFixed(2) : quantity;
+  const activeTier = [...TIERS[selectedUnit]].reverse().find((t) => quantity >= t.min);
+  const discountPct = activeTier?.pct || 0;
   const unitRate = selectedUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg;
-  const discountedRate = +(unitRate * (1 - discount.pct / 100)).toFixed(2);
   const grossTotal = +(quantity * unitRate).toFixed(2);
-  const discountAmount = +(grossTotal * (discount.pct / 100)).toFixed(2);
+  const discountAmount = +(grossTotal * (discountPct / 100)).toFixed(2);
   const netEstimatedTotal = +(grossTotal - discountAmount).toFixed(2);
   const gstAmount = +(netEstimatedTotal * 0.18).toFixed(2);
   const grandTotal = +(netEstimatedTotal + gstAmount).toFixed(2);
 
   const handleAdd = () => {
-    onAddToCart(product, selectedUnit, quantity);
+    // Clamp so a half-typed quantity can't be added below the minimum
+    const finalQty = clampQty(quantity, selectedUnit);
+    updateQuantity(finalQty);
+    onAddToCart(product, selectedUnit, finalQty);
     setIsAddedToast(true);
     setTimeout(() => setIsAddedToast(false), 2500);
   };
 
+  const specs: { k: string; v: string }[] = [
+    { k: 'Standard', v: product.standard || 'DIN 933' },
+    product.isoStandard ? { k: 'ISO equivalent', v: product.isoStandard } : null,
+    { k: 'Grade', v: product.grade || '8.8' },
+    { k: 'Finish', v: product.finish || 'Zinc clear' },
+    { k: 'Diameter', v: product.diameter || 'M10' },
+    { k: 'Length', v: `${product.lengthMm || 50} mm` },
+    product.pitchMm ? { k: 'Thread pitch', v: `${product.pitchMm} mm` } : null,
+    { k: 'Thread type', v: product.threadType || 'Metric full thread' },
+    { k: 'HSN code', v: String(product.hsnCode || '73181500') },
+  ].filter(Boolean) as { k: string; v: string }[];
+  const visibleSpecs = showAllSpecs ? specs : specs.slice(0, 4);
+
+  const chips = [
+    product.standard,
+    product.grade ? `Gr ${product.grade}` : null,
+    product.diameter && product.lengthMm ? `${product.diameter} × ${product.lengthMm}` : null,
+    product.finish,
+  ].filter(Boolean) as string[];
+
   return (
     <View style={styles.screen}>
-      {/* ===================================================================== */}
-      {/* 1. TOP BRAND HEADER BAR (Fixed at top)                                */}
-      {/* ===================================================================== */}
-      <View style={styles.topBlueHeader}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={styles.headerMenuBtn}
-          activeOpacity={0.8}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={styles.headerMenuIcon}>←</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.headerBack}>←</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onBack}
-          style={styles.brandRow}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.brandTitle}>CBH Fasteners</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onNavigateToCart}
-          style={styles.rfqIconBtn}
-          activeOpacity={0.8}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={styles.rfqIcon}>🛒</Text>
-          <View style={styles.rfqBadge}>
-            <Text style={styles.rfqBadgeText}>{cartCount}</Text>
-          </View>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {product.sku}
+        </Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => {
+              setSearchOpen((o) => !o);
+              setShowDropdown(false);
+            }}
+            style={styles.headerBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <NavIcon name="search" color="#FFFFFF" size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onNavigateToCart}
+            style={styles.headerBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <NavIcon name="cart" color="#FFFFFF" size={20} />
+            {cartCount > 0 ? (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ===================================================================== */}
-      {/* 2. WHITE ROUNDED SEARCH BAR (With Live Autocomplete & Catalog Nav)     */}
-      {/* ===================================================================== */}
-      <View style={styles.searchBarWrapper}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products..."
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCorrect={false}
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              if (onSearch && searchQuery.trim()) {
-                setShowDropdown(false);
-                onSearch(searchQuery.trim());
-              }
-            }}
-          />
-          {isSearching ? (
-            <ActivityIndicator size="small" color="#0047AB" style={{ marginRight: 4 }} />
-          ) : searchQuery ? (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                setShowDropdown(false);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.clearSearchIcon}>✕</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        {/* Floating Autocomplete Dropdown */}
-        {showDropdown && searchResults.length > 0 ? (
-          <View style={styles.searchDropdown}>
-            {searchResults.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.searchDropdownItem}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setShowDropdown(false);
-                  setSearchQuery('');
-                  if (onSelectProduct) {
-                    onSelectProduct(item);
-                  } else if (onSearch) {
-                    onSearch(item.name);
-                  }
-                }}
-              >
-                <View style={styles.searchDropdownImgBox}>
-                  <FastenerProductImage
-                    imageUrl={item.imageUrl}
-                    category={item.category || item.subGroup}
-                    productName={item.name}
-                    standard={item.standard}
-                    height={38}
-                  />
-                </View>
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.searchDropdownTitle} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.searchDropdownSub}>
-                    {item.standard || 'DIN 933'} • ₹{item.pricePerPiece}/pc
-                  </Text>
-                </View>
-                <Text style={styles.searchDropdownArrow}>→</Text>
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity
-              style={styles.searchDropdownFooter}
-              onPress={() => {
-                setShowDropdown(false);
+      {/* Search (opens from the header icon) */}
+      {searchOpen ? (
+        <View style={styles.searchWrap}>
+          <View style={styles.searchBar}>
+            <NavIcon name="search" color={MUTED} size={16} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search products"
+              placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={() => {
                 if (onSearch && searchQuery.trim()) {
+                  setShowDropdown(false);
                   onSearch(searchQuery.trim());
                 }
               }}
-            >
-              <Text style={styles.searchDropdownFooterText}>
-                View all results for "{searchQuery}" in Catalog →
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Top Header Card (Clean White B2B Style) */}
-        <View style={styles.headerCard}>
-          {/* <View style={styles.headerTopRow}>
-            <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-              <Text style={styles.backBtnText}>← Back to Catalog</Text>
-            </TouchableOpacity>
-            <MobileBadge
-              label={product.isInStock ? 'IN STOCK' : 'PRE-ORDER'}
-              variant={product.isInStock ? 'success' : 'warning'}
-              size="sm"
             />
-          </View> */}
-
-          <View style={styles.badgeRow}>
-            <Text style={styles.skuTag}>{product.sku}</Text>
-            {product.standard ? (
-              <Text style={styles.standardTag}>{product.standard}</Text>
-            ) : null}
-            {product.isoStandard ? (
-              <Text style={styles.isoTag}>{product.isoStandard}</Text>
+            {isSearching ? (
+              <ActivityIndicator size="small" color={BLUE} />
+            ) : searchQuery ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setShowDropdown(false);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.searchClear}>✕</Text>
+              </TouchableOpacity>
             ) : null}
           </View>
 
-          {/* Hero Fastener Photo */}
-          <FastenerProductImage
-            imageUrl={product.imageUrl}
-            drawingUrl={product.drawingUrl}
-            height={180}
-            showCadBadge
-            containerStyle={{ marginVertical: 10 }}
-          />
-
-          <Text style={styles.productTitle}>{product.name}</Text>
-          <Text style={styles.categorySub}>
-            Category: {product.subGroup || product.category || 'Industrial Fasteners'} • Grade {product.grade}
-          </Text>
-
-          {product.stockPcs ? (
-            <View style={styles.warehouseStockRow}>
-              <View style={styles.pulseDot} />
-              <Text style={styles.warehouseStockText}>
-                {product.stockPcs.toLocaleString()} Pcs ({product.stockKg || 0} Kg) available in Factory Bins
-              </Text>
+          {showDropdown && searchResults.length > 0 ? (
+            <View style={styles.dropdown}>
+              {searchResults.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.dropdownItem}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setShowDropdown(false);
+                    setSearchQuery('');
+                    setSearchOpen(false);
+                    if (onSelectProduct) onSelectProduct(item);
+                    else if (onSearch) onSearch(item.name);
+                  }}
+                >
+                  <View style={styles.dropdownImg}>
+                    <FastenerProductImage
+                      imageUrl={item.imageUrl}
+                      category={item.category || item.subGroup}
+                      productName={item.name}
+                      standard={item.standard}
+                      height={38}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.dropdownTitle} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.dropdownSub}>
+                      {item.standard || 'DIN 933'} · ₹{item.pricePerPiece}/pc
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.dropdownFooter}
+                onPress={() => {
+                  setShowDropdown(false);
+                  if (onSearch && searchQuery.trim()) onSearch(searchQuery.trim());
+                }}
+              >
+                <Text style={styles.dropdownFooterText}>See all results</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
         </View>
+      ) : null}
+
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
+        <View style={styles.heroCard}>
+          <FastenerProductImage
+            imageUrl={product.imageUrl}
+            drawingUrl={product.drawingUrl}
+            height={200}
+            showCadBadge
+          />
+          <View
+            style={[
+              styles.stockChip,
+              { backgroundColor: product.isInStock ? '#DCFCE7' : '#FEF3C7' },
+            ]}
+          >
+            <View style={[styles.stockDot, { backgroundColor: product.isInStock ? '#16A34A' : '#D97706' }]} />
+            <Text style={[styles.stockChipText, { color: product.isInStock ? '#166534' : '#92400E' }]}>
+              {product.isInStock ? 'In stock' : 'Pre-order'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Title */}
+        <View>
+          <Text style={styles.title}>{product.name}</Text>
+          {product.stockPcs ? (
+            <Text style={styles.stockLine}>{product.stockPcs.toLocaleString()} pcs available</Text>
+          ) : null}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {chips.map((c) => (
+            <View key={c} style={styles.specChip}>
+              <Text style={styles.specChipText}>{c}</Text>
+            </View>
+          ))}
+        </ScrollView>
 
         {isAddedToast ? (
           <View style={styles.toast}>
-            <Text style={styles.toastText}>✓ Added to RFQ Cart!</Text>
+            <Text style={styles.toastText}>✓ Added to cart</Text>
             <TouchableOpacity onPress={onNavigateToCart}>
-              <Text style={styles.toastLink}>View Cart &amp; Checkout →</Text>
+              <Text style={styles.toastLink}>View cart</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
-        {/* Pricing & Procurement Configurator Card */}
-        <MobileCard>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>PROCUREMENT MODE</Text>
-            <View style={styles.unitPills}>
-              <TouchableOpacity
-                onPress={() => handleUnitToggle('PCS')}
-                style={[
-                  styles.unitBtn,
-                  selectedUnit === 'PCS' ? styles.unitBtnActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.unitBtnText,
-                    selectedUnit === 'PCS' ? styles.unitBtnTextActive : null,
-                  ]}
+        {/* Price + unit */}
+        <View style={styles.card}>
+          <View style={styles.segment}>
+            {(['PCS', 'KGS'] as GlobalUnit[]).map((u) => {
+              const active = selectedUnit === u;
+              return (
+                <TouchableOpacity
+                  key={u}
+                  onPress={() => handleUnitToggle(u)}
+                  style={[styles.segBtn, active && styles.segBtnActive]}
+                  activeOpacity={0.85}
                 >
-                  Pieces (Pcs)
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleUnitToggle('KGS')}
-                style={[
-                  styles.unitBtn,
-                  selectedUnit === 'KGS' ? styles.unitBtnActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.unitBtnText,
-                    selectedUnit === 'KGS' ? styles.unitBtnTextActive : null,
-                  ]}
-                >
-                  Weight (Kgs)
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <Text style={[styles.segText, active && styles.segTextActive]}>
+                    {u === 'PCS' ? 'By piece' : 'By weight'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View style={styles.priceRow}>
             <View>
-              <Text style={styles.mainPrice}>
-                ₹{selectedUnit === 'PCS' ? product.pricePerPiece : product.pricePerKg}
+              <Text style={styles.price}>
+                ₹{unitRate}
+                <Text style={styles.priceUnit}>/{selectedUnit === 'PCS' ? 'pc' : 'kg'}</Text>
               </Text>
-              <Text style={styles.perUnitText}>per {selectedUnit === 'PCS' ? 'Piece' : 'Kg'} + 18% GST</Text>
+              <Text style={styles.priceNote}>+ 18% GST</Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.altPriceLabel}>Dual Equivalent</Text>
-              <Text style={styles.altPrice}>
-                {selectedUnit === 'PCS' ? `₹${product.pricePerKg}/Kg` : `₹${product.pricePerPiece}/Pc`}
-              </Text>
-            </View>
-          </View>
-
-          {/* Stepper with Direct Custom Numeric Input */}
-          <View style={styles.stepperContainer}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Text style={styles.stepperLabel}>ORDER QUANTITY ({selectedUnit})</Text>
-              <Text style={styles.moqLabelText}>
-                {selectedUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
-              </Text>
-            </View>
-            <View style={styles.stepperRow}>
-              <TouchableOpacity
-                onPress={() => handleStepQty(-1)}
-                disabled={quantity <= (selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
-                style={[
-                  styles.stepBtn,
-                  quantity <= (selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) && styles.stepBtnDisabled,
-                ]}
-              >
-                <Text style={styles.stepBtnText}>−</Text>
-              </TouchableOpacity>
-
-              <TextInput
-                keyboardType="numeric"
-                value={quantityInput}
-                onChangeText={handleInputChange}
-                onBlur={handleInputBlur}
-                style={styles.stepInput}
-              />
-
-              <TouchableOpacity
-                onPress={() => handleStepQty(1)}
-                style={styles.stepBtn}
-              >
-                <Text style={styles.stepBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Quick Presets */}
-            <View style={styles.presetsRow}>
-              {selectedUnit === 'PCS' ? (
-                <>
-                  <TouchableOpacity onPress={() => updateQuantity(100)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>100 Pcs (Min)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(500)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>500 Pcs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(1000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>1,000 Pcs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(5000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>5K Pcs (-18%)</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity onPress={() => updateQuantity(0.25)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>250 gm (Min)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(50)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>50 Kg (-10%)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(250)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>250 Kg (-20%)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => updateQuantity(1000)} style={styles.presetChip}>
-                    <Text style={styles.presetChipText}>1 Ton (-26%)</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            <View style={styles.weightSummaryRow}>
-              <Text style={styles.weightSummaryText}>
-                Calculated Weight: <Text style={styles.boldWeight}>{totalWeightKg.toLocaleString()} Kg</Text>
-              </Text>
-              <Text style={styles.weightSummaryText}>
-                Unit: {weightPerPc} kg/pc
-              </Text>
-            </View>
-          </View>
-
-          {/* Dynamic Slab Discount Banner */}
-          <View style={styles.slabBox}>
-            <View style={styles.slabHeaderRow}>
-              <Text style={styles.slabTitle}>
-                {discount.pct > 0 ? `✨ ${discount.label} APPLIED` : '⚡ WHOLESALE VOLUME TIERS'}
-              </Text>
-              {discount.pct > 0 ? (
-                <Text style={styles.slabSavingsText}>Saved ₹{discountAmount.toLocaleString('en-IN')}</Text>
-              ) : null}
-            </View>
-            <Text style={styles.slabNextText}>
-              {selectedUnit === 'KGS'
-                ? 'Wholesale slabs: 50 Kg (-10%) • 250 Kg (-20%) • 1,000 Kg (-26%)'
-                : 'Wholesale slabs: 500 Pcs (-8%) • 2,500 Pcs (-18%) • 10,000 Pcs (-25%)'}
+            <Text style={styles.altPrice}>
+              {selectedUnit === 'PCS' ? `₹${product.pricePerKg}/kg` : `₹${product.pricePerPiece}/pc`}
             </Text>
           </View>
 
-          {/* Packaging & Lead Time Micro Strip */}
-          <View style={styles.packagingStrip}>
-            <View style={styles.packagingCol}>
-              <Text style={styles.packagingColLabel}>SMALL BOX</Text>
-              <Text style={styles.packagingColVal}>{Math.round(Number(product.pcsPerBox)) || 500} pcs</Text>
-            </View>
-            <View style={styles.packagingDivider} />
-            <View style={styles.packagingCol}>
-              <Text style={styles.packagingColLabel}>MASTER CARTON</Text>
-              <Text style={styles.packagingColVal}>{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs</Text>
-            </View>
-            <View style={styles.packagingDivider} />
-            <View style={styles.packagingCol}>
-              <Text style={styles.packagingColLabel}>DISPATCH LEAD</Text>
-              <Text style={styles.packagingColVal}>{product.leadTimeDays || 10} Days</Text>
-            </View>
+          {/* Quantity */}
+          <View style={styles.qtyHeader}>
+            <Text style={styles.cardLabel}>Quantity</Text>
+            <Text style={styles.minText}>Min {formatQtyDisplay(minQty, selectedUnit)}</Text>
           </View>
-        </MobileCard>
-
-        {/* Technical Specifications (NABL / DIN Verified) */}
-        <MobileCard>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>NABL TECHNICAL SPECIFICATIONS</Text>
-            <View style={styles.certPill}>
-              <Text style={styles.certPillText}>EN 10204 Type 3.1</Text>
-            </View>
-          </View>
-
-          <View style={styles.specTable}>
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Standard</Text>
-              <Text style={styles.specVal}>{product.standard || 'DIN 933'}</Text>
-            </View>
-            {product.isoStandard ? (
-              <View style={styles.specRow}>
-                <Text style={styles.specKey}>ISO Equivalent</Text>
-                <Text style={styles.specVal}>{product.isoStandard}</Text>
-              </View>
-            ) : null}
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Tensile Grade</Text>
-              <Text style={styles.specVal}>{product.grade || '8.8 High Tensile'}</Text>
-            </View>
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Surface Finish</Text>
-              <Text style={styles.specVal}>{product.finish || 'Zinc Clear Cr3+'}</Text>
-            </View>
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Diameter</Text>
-              <Text style={styles.specVal}>{product.diameter || 'M10'}</Text>
-            </View>
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Length</Text>
-              <Text style={styles.specVal}>{product.lengthMm || 50} mm</Text>
-            </View>
-            {product.pitchMm ? (
-              <View style={styles.specRow}>
-                <Text style={styles.specKey}>Thread Pitch</Text>
-                <Text style={styles.specVal}>{product.pitchMm} mm</Text>
-              </View>
-            ) : null}
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>Thread Type</Text>
-              <Text style={styles.specVal}>{product.threadType || 'Metric Full Thread'}</Text>
-            </View>
-            <View style={styles.specRow}>
-              <Text style={styles.specKey}>HSN Code</Text>
-              <Text style={styles.specVal}>{product.hsnCode || '73181500'}</Text>
-            </View>
-          </View>
-        </MobileCard>
-
-        {/* Dispatch & Delivery Estimator */}
-        <MobileCard>
-          <Text style={styles.sectionTitle}>DELIVERY ESTIMATE</Text>
-          <View style={styles.pincodeRow}>
+          <View style={styles.stepperRow}>
+            <TouchableOpacity
+              onPress={() => handleStepQty(-1)}
+              disabled={quantity <= minQty}
+              style={[styles.stepBtn, quantity <= minQty && styles.stepBtnDisabled]}
+            >
+              <Text style={styles.stepBtnText}>−</Text>
+            </TouchableOpacity>
             <TextInput
-              style={styles.pincodeInput}
+              keyboardType="numeric"
+              value={quantityInput}
+              onChangeText={handleInputChange}
+              onBlur={handleInputBlur}
+              style={styles.stepInput}
+            />
+            <TouchableOpacity onPress={() => handleStepQty(1)} style={styles.stepBtn}>
+              <Text style={styles.stepBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+            {PRESETS[selectedUnit].map((p) => {
+              const active = quantity === p;
+              return (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => updateQuantity(p)}
+                  style={[styles.preset, active && styles.presetActive]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.presetText, active && styles.presetTextActive]}>
+                    {formatQtyDisplay(p, selectedUnit)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.weightLine}>
+            ≈ {totalWeightKg.toLocaleString()} kg · {weightPerPc} kg/pc
+          </Text>
+        </View>
+
+        {/* Volume discount tiers */}
+        <View style={styles.card}>
+          <View style={styles.qtyHeader}>
+            <Text style={styles.cardLabel}>Buy more, save more</Text>
+            {discountPct > 0 ? (
+              <Text style={styles.savedText}>Saved ₹{discountAmount.toLocaleString('en-IN')}</Text>
+            ) : null}
+          </View>
+          <View style={styles.tierRow}>
+            {TIERS[selectedUnit].map((t) => {
+              const active = activeTier?.min === t.min;
+              return (
+                <TouchableOpacity
+                  key={t.min}
+                  onPress={() => updateQuantity(t.min)}
+                  style={[styles.tier, active && styles.tierActive]}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.tierPct, active && styles.tierPctActive]}>−{t.pct}%</Text>
+                  <Text style={[styles.tierQty, active && styles.tierQtyActive]}>
+                    {tierLabel(t.min, selectedUnit)}+
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Specs */}
+        <View style={styles.card}>
+          <View style={styles.qtyHeader}>
+            <Text style={styles.cardLabel}>Specifications</Text>
+            <View style={styles.certPill}>
+              <Text style={styles.certPillText}>Type 3.1 MTC</Text>
+            </View>
+          </View>
+          {visibleSpecs.map((s) => (
+            <View key={s.k} style={styles.specRow}>
+              <Text style={styles.specKey}>{s.k}</Text>
+              <Text style={styles.specVal}>{s.v}</Text>
+            </View>
+          ))}
+          {specs.length > 4 ? (
+            <TouchableOpacity onPress={() => setShowAllSpecs((v) => !v)} style={styles.moreBtn}>
+              <Text style={styles.moreText}>{showAllSpecs ? 'Show less' : `Show all ${specs.length}`}</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <View style={styles.packRow}>
+            <View style={styles.packCol}>
+              <Text style={styles.packVal}>{Math.round(Number(product.pcsPerBox)) || 500}</Text>
+              <Text style={styles.packLbl}>pcs / box</Text>
+            </View>
+            <View style={styles.packDivider} />
+            <View style={styles.packCol}>
+              <Text style={styles.packVal}>{Math.round(Number(product.pcsPerMasterCtn)) || 4000}</Text>
+              <Text style={styles.packLbl}>pcs / carton</Text>
+            </View>
+            <View style={styles.packDivider} />
+            <View style={styles.packCol}>
+              <Text style={styles.packVal}>{product.leadTimeDays || 10} days</Text>
+              <Text style={styles.packLbl}>lead time</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Delivery */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Delivery</Text>
+          <View style={styles.pinRow}>
+            <TextInput
+              style={styles.pinInput}
               value={deliveryPincode}
               onChangeText={setDeliveryPincode}
-              placeholder="Enter Pincode"
+              placeholder="Enter pincode"
+              placeholderTextColor="#94A3B8"
               keyboardType="numeric"
               maxLength={6}
             />
-            <View style={styles.dispatchPill}>
-              <Text style={styles.dispatchPillText}>Dispatch in 24-48h</Text>
+            <View style={styles.shipPill}>
+              <Text style={styles.shipPillText}>Ships in 24–48 hrs</Text>
             </View>
           </View>
-          <Text style={styles.deliveryDesc}>
-            Direct logistics dispatch via Blue Dart Express, TCI Freight, or V-Trans with live transit tracking.
-          </Text>
-        </MobileCard>
+        </View>
       </ScrollView>
 
-      {/* Sticky Bottom Bar */}
+      {/* Sticky bottom bar */}
       <View style={styles.bottomBar}>
         <View>
-          <Text style={styles.netLabel}>Estimated Net (+18% GST)</Text>
+          <Text style={styles.netLabel}>Total incl. GST</Text>
           <Text style={styles.netValue}>₹{grandTotal.toLocaleString('en-IN')}</Text>
         </View>
-
-        <TouchableOpacity onPress={handleAdd} style={styles.ctaBtn}>
-          <Text style={styles.ctaBtnText}>🛒 Add to RFQ Cart</Text>
+        <TouchableOpacity onPress={handleAdd} style={styles.ctaBtn} activeOpacity={0.88}>
+          <Text style={styles.ctaBtnText}>Add to cart</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -620,127 +542,66 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
+  screen: { flex: 1, backgroundColor: '#F4F6FA' },
 
-  // Fixed Top Brand Header
-  topBlueHeader: {
-    backgroundColor: '#0047AB',
+  // Header
+  header: {
+    backgroundColor: BLUE,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 20,
   },
-  headerMenuBtn: {
-    padding: 6,
-    borderRadius: 8,
-  },
-  headerMenuIcon: {
-    fontSize: 22,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
-  },
-  rfqIconBtn: {
-    position: 'relative',
-    padding: 6,
-  },
-  rfqIcon: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
-  rfqBadge: {
+  headerBtn: { padding: 6 },
+  headerBack: { fontSize: 24, color: '#FFFFFF', fontWeight: '700' },
+  headerTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginLeft: 4 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cartBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#FF6B00',
+    top: 0,
+    right: 0,
+    backgroundColor: ORANGE,
     minWidth: 17,
     height: 17,
-    borderRadius: 8.5,
+    borderRadius: 9,
     paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rfqBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
-  },
+  cartBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
 
-  // White Rounded Search Bar
-  searchBarWrapper: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    position: 'relative',
-    zIndex: 50,
-  },
+  // Search
+  searchWrap: { paddingHorizontal: 16, paddingTop: 10, zIndex: 30 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 22,
-    paddingHorizontal: 12,
-    height: 40,
+    paddingHorizontal: 14,
+    height: 42,
     gap: 8,
+    borderWidth: 1,
+    borderColor: LINE,
   },
-  searchIcon: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#0F172A',
-    paddingVertical: 0,
-  },
-  clearSearchIcon: {
-    fontSize: 14,
-    color: '#94A3B8',
-    padding: 4,
-  },
-
-  // Floating Autocomplete Dropdown
-  searchDropdown: {
-    position: 'absolute',
-    top: 54,
-    left: 16,
-    right: 16,
+  searchInput: { flex: 1, fontSize: 14, color: INK, paddingVertical: 0 },
+  searchClear: { fontSize: 14, color: '#94A3B8' },
+  dropdown: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: LINE,
+    overflow: 'hidden',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    zIndex: 100,
   },
-  searchDropdownItem: {
+  dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -748,7 +609,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  searchDropdownImgBox: {
+  dropdownImg: {
     width: 40,
     height: 40,
     borderRadius: 8,
@@ -757,421 +618,201 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  searchDropdownTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  searchDropdownSub: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  searchDropdownArrow: {
-    fontSize: 14,
-    color: '#0047AB',
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  searchDropdownFooter: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-  },
-  searchDropdownFooterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0047AB',
-  },
-  container: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 90,
-  },
-  headerCard: {
+  dropdownTitle: { fontSize: 13, fontWeight: '700', color: INK },
+  dropdownSub: { fontSize: 11, color: MUTED, marginTop: 2 },
+  dropdownFooter: { paddingVertical: 11, alignItems: 'center', backgroundColor: '#F8FAFC' },
+  dropdownFooterText: { fontSize: 12, fontWeight: '800', color: BLUE },
+
+  container: { padding: 16, gap: 12, paddingBottom: 100 },
+
+  // Hero
+  heroCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+  },
+  stockChip: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  stockDot: { width: 7, height: 7, borderRadius: 4 },
+  stockChipText: { fontSize: 12, fontWeight: '800' },
+
+  title: { fontSize: 20, fontWeight: '800', color: INK, lineHeight: 26 },
+  stockLine: { fontSize: 13, color: '#059669', fontWeight: '600', marginTop: 4 },
+  chipRow: { gap: 8, paddingRight: 16 },
+  specChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: LINE,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  backBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-  },
-  backBtnText: {
-    color: '#0052CC',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 6,
-  },
-  skuTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0052CC',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  standardTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  isoTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  productTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    lineHeight: 24,
-  },
-  categorySub: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  warehouseStockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-  },
-  warehouseStockText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
-  },
+  specChipText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+
   toast: {
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: '#34D399',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
-    fontWeight: '700',
+  toastText: { color: '#065F46', fontSize: 13, fontWeight: '700' },
+  toastLink: { color: BLUE, fontSize: 13, fontWeight: '800' },
+
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: LINE,
   },
-  toastLink: {
-    color: '#0052CC',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.5,
-  },
-  unitPills: {
+  cardLabel: { fontSize: 14, fontWeight: '800', color: INK },
+
+  // Unit segment
+  segment: {
     flexDirection: 'row',
     backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    padding: 2,
+    borderRadius: 12,
+    padding: 3,
   },
-  unitBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  unitBtnActive: {
-    backgroundColor: '#0052CC',
-  },
-  unitBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  unitBtnTextActive: {
-    color: '#FFFFFF',
-  },
+  segBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center' },
+  segBtnActive: { backgroundColor: BLUE },
+  segText: { fontSize: 13, fontWeight: '700', color: MUTED },
+  segTextActive: { color: '#FFFFFF' },
+
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 10,
+    alignItems: 'flex-end',
+    marginTop: 14,
+    marginBottom: 16,
   },
-  mainPrice: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#0052CC',
-  },
-  perUnitText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  altPriceLabel: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  altPrice: {
-    fontSize: 14,
-    color: '#334155',
-    fontWeight: '700',
-  },
-  stepperContainer: {
-    gap: 8,
-  },
-  stepperLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#475569',
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  price: { fontSize: 28, fontWeight: '900', color: BLUE },
+  priceUnit: { fontSize: 15, fontWeight: '700', color: MUTED },
+  priceNote: { fontSize: 12, color: MUTED, marginTop: 1 },
+  altPrice: { fontSize: 14, fontWeight: '700', color: '#475569' },
+
+  qtyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  minText: { fontSize: 12, fontWeight: '700', color: BLUE },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#EEF4FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  stepBtnDisabled: {
-    opacity: 0.35,
-    backgroundColor: '#E2E8F0',
-  },
-  moqLabelText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  packagingStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  packagingCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  packagingColLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 2,
-    letterSpacing: 0.4,
-  },
-  packagingColVal: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  packagingDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#CBD5E1',
-  },
-  stepBtnText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
+  stepBtnDisabled: { opacity: 0.35 },
+  stepBtnText: { fontSize: 22, fontWeight: '800', color: BLUE },
   stepInput: {
     flex: 1,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: LINE,
+    backgroundColor: '#F8FAFC',
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: INK,
   },
-  presetsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  presetChip: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: 6,
+  presetRow: { gap: 8, paddingTop: 12, paddingRight: 8 },
+  preset: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: LINE,
+  },
+  presetActive: { backgroundColor: INK, borderColor: INK },
+  presetText: { fontSize: 12, fontWeight: '700', color: '#475569' },
+  presetTextActive: { color: '#FFFFFF' },
+  weightLine: { fontSize: 12, color: MUTED, marginTop: 12 },
+
+  // Tiers
+  savedText: { fontSize: 13, fontWeight: '800', color: '#15803D' },
+  tierRow: { flexDirection: 'row', gap: 8 },
+  tier: {
+    flex: 1,
     alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: LINE,
   },
-  presetChipText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  weightSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  weightSummaryText: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  boldWeight: {
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  slabBox: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  slabHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  slabTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#1D4ED8',
-  },
-  slabSavingsText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  slabNextText: {
-    fontSize: 10,
-    color: '#1E40AF',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  certPill: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  certPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  specTable: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    marginTop: 6,
-  },
+  tierActive: { backgroundColor: '#ECFDF5', borderColor: '#16A34A' },
+  tierPct: { fontSize: 16, fontWeight: '900', color: '#475569' },
+  tierPctActive: { color: '#15803D' },
+  tierQty: { fontSize: 11, fontWeight: '700', color: MUTED, marginTop: 2 },
+  tierQtyActive: { color: '#166534' },
+
+  // Specs
+  certPill: { backgroundColor: '#EEF4FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  certPillText: { fontSize: 11, fontWeight: '800', color: BLUE },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  specKey: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  specVal: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  pincodeRow: {
+  specKey: { fontSize: 13, color: MUTED, fontWeight: '600' },
+  specVal: { fontSize: 13, fontWeight: '700', color: INK, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  moreBtn: { paddingVertical: 10, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  moreText: { fontSize: 13, fontWeight: '800', color: BLUE },
+  packRow: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
-    marginTop: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingVertical: 10,
+    marginTop: 4,
   },
-  pincodeInput: {
+  packCol: { flex: 1, alignItems: 'center' },
+  packVal: { fontSize: 14, fontWeight: '800', color: INK },
+  packLbl: { fontSize: 11, color: MUTED, marginTop: 1 },
+  packDivider: { width: 1, height: 26, backgroundColor: '#CBD5E1' },
+
+  // Delivery
+  pinRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  pinInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
-    fontSize: 13,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: LINE,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 14,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: INK,
   },
-  dispatchPill: {
+  shipPill: {
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
   },
-  dispatchPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  deliveryDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 6,
-  },
+  shipPillText: { fontSize: 12, fontWeight: '800', color: '#065F46' },
+
+  // Bottom bar
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -1179,39 +820,24 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: LINE,
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  netLabel: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  netValue: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0052CC',
-  },
+  netLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  netValue: { fontSize: 22, fontWeight: '900', color: BLUE },
   ctaBtn: {
-    backgroundColor: '#0052CC',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: ORANGE,
+    paddingHorizontal: 28,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  ctaBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
+  ctaBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
 });
 
 export default CustomerProductDetailScreen;

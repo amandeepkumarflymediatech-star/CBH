@@ -86,7 +86,7 @@ export const CartPopupModal: React.FC<CartPopupModalProps> = ({
                       wasAlreadyInCart ? styles.statusTextWarning : styles.statusTextSuccess,
                     ]}
                   >
-                    {wasAlreadyInCart ? '⚡ Already in Cart — Updated' : '✓ Added to Cart'}
+                    {wasAlreadyInCart ? 'Updated in Cart' : '✓ Added to Cart'}
                   </Text>
                 </View>
 
@@ -114,10 +114,15 @@ export const CartPopupModal: React.FC<CartPopupModalProps> = ({
               <View style={styles.productBox}>
                 <View style={styles.imageWrap}>
                   <FastenerProductImage
+                    imageUrl={product.imageUrl}
                     subGroup={product.subGroup}
+                    category={product.category || product.subGroup}
                     standard={product.standard}
                     name={product.name}
-                    size={52}
+                    productName={product.name}
+                    size={50}
+                    height={50}
+                    containerStyle={styles.popupProductImg}
                   />
                 </View>
 
@@ -321,6 +326,14 @@ const styles = StyleSheet.create({
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  popupProductImg: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 0,
+    padding: 2,
+    backgroundColor: 'transparent',
   },
   productDetails: {
     flex: 1,

@@ -77,7 +77,7 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
       {/* Header Profile Badge */}
       <View style={styles.headerCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>🛡</Text>
+          <Text style={styles.avatarText}>CBH</Text>
         </View>
 
         <View style={{ flex: 1 }}>
@@ -99,7 +99,7 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
       {/* Switch to Customer Storefront View */}
       <TouchableOpacity onPress={onSwitchToCustomer} style={styles.switchBtn} activeOpacity={0.8}>
         <Text style={styles.switchBtnText}>
-          ⚡ Switch to Customer Storefront View →
+          Switch to Customer Storefront View →
         </Text>
       </TouchableOpacity>
 
@@ -266,7 +266,7 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
       </MobileCard>
 
       <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.8}>
-        <Text style={styles.logoutBtnText}>🔒 End Operations Session &amp; Sign Out</Text>
+        <Text style={styles.logoutBtnText}>End Operations Session &amp; Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );

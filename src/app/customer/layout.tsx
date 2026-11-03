@@ -67,11 +67,11 @@ export default function CustomerLayout({
 
   // Telemetry badge counts
   const [telemetry, setTelemetry] = useState({
-    ordersCount: 3,
-    rfqsCount: 2,
-    certsCount: 5,
-    sitesCount: 4,
-    teamCount: 6,
+    ordersCount: 0,
+    rfqsCount: 0,
+    certsCount: 0,
+    sitesCount: 0,
+    teamCount: 0,
   });
 
   useEffect(() => {
@@ -145,8 +145,8 @@ export default function CustomerLayout({
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  const clientName = currentUser?.fullName || 'Rajesh Sharma';
-  const clientCompany = currentUser?.companyName || 'Apex Heavy Infra Ltd.';
+  const clientName = currentUser?.fullName || currentUser?.email?.split('@')[0] || 'Client Account';
+  const clientCompany = currentUser?.companyName || 'Enterprise Partner Ltd.';
   const clientAvatar =
     currentUser?.avatar ||
     (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
@@ -368,7 +368,7 @@ export default function CustomerLayout({
                 </div>
                 {!isSidebarCollapsed && (
                   <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    ₹37.5L
+                    {currentUser?.creditLimit ? `₹${((currentUser.creditLimit) / 100000).toFixed(1)}L` : 'Active'}
                   </span>
                 )}
               </Link>

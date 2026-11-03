@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MobileCard } from '../../components/MobileCard';
 import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
+import { NavIcon } from '../../components/NavIcon';
 import { mobileApi } from '../../config/api';
 
 interface OtpVerificationScreenProps {
@@ -99,7 +100,7 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
     >
       <View style={styles.brandBox}>
         <View style={styles.logo}>
-          <Text style={styles.logoText}>🛡️</Text>
+          <NavIcon name="shield" color="#0052CC" size={24} />
         </View>
         <Text style={styles.title}>Verify Code &amp; Reset</Text>
         <Text style={styles.subtitle}>
@@ -113,14 +114,14 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
         <View style={styles.demoBar}>
           <Text style={styles.demoLabel}>TEST VERIFICATION CODE</Text>
           <TouchableOpacity onPress={fillDemoOtp} style={styles.demoBtn}>
-            <Text style={styles.demoBtnText}>⚡ Fill Demo OTP</Text>
+            <Text style={styles.demoBtnText}>Fill Demo OTP</Text>
           </TouchableOpacity>
         </View>
 
         {/* Feedback Messages */}
         {errorMsg ? (
           <View style={styles.errorAlert}>
-            <Text style={styles.errorText}>⚠ {errorMsg}</Text>
+            <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         ) : null}
 

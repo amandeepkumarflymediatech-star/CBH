@@ -7,9 +7,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Image,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
 import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
 import { mobileApi } from '../../config/api';
 import {
@@ -24,28 +22,29 @@ interface LoginScreenProps {
   onNavigateToRegister?: () => void;
   onNavigateToForgotPassword?: () => void;
   initialRole?: UserRole;
-  onBackToWelcome?: () => void;
+  onBackToWelcome?: () => void; // back arrow now lives in AuthScreen's header
 }
+
+type Field = 'email' | 'password' | null;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
   onSuccess,
   onNavigateToRegister,
   onNavigateToForgotPassword,
-  onBackToWelcome,
 }) => {
-  // All fields start completely empty - NO prefill or dummy data
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [focused, setFocused] = useState<Field>(null);
 
   const handleLogin = async () => {
     const cleanEmail = email.trim();
     const cleanPass = password.trim();
 
     if (!cleanEmail || !cleanPass) {
-      setErrorMsg('Please enter both corporate email and password.');
+      setErrorMsg('Enter your email and password.');
       return;
     }
 
@@ -53,14 +52,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setErrorMsg('');
 
     try {
-      // Send credentials to backend - role is determined server-side from account credentials
       const res = await mobileApi.auth.login({
         email: cleanEmail,
         password: cleanPass,
       });
 
       if (!res.success) {
-        // Fallback simulation if backend server is unreachable or offline demo
+        // NOTE: offline demo fallback (unchanged). It signs in ANY email with
+        // any password when the backend fails. Remove or wrap in __DEV__
+        // before release.
         const lower = cleanEmail.toLowerCase();
         if (lower === 'admin@cbh.store' || lower === 'admin' || lower.startsWith('admin@')) {
           setMobileStoredUser(DEMO_MOBILE_ADMIN, 'token_demo_admin');
@@ -75,7 +75,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             .replace(/\b\w/g, (c) => c.toUpperCase());
           const domain = parts[1] || 'company.com';
           const companyBase = domain.split('.')[0].replace(/[-_]/g, ' ');
-          const derivedCompany = companyBase.charAt(0).toUpperCase() + companyBase.slice(1) + ' Industrial Corp';
+          const derivedCompany =
+            companyBase.charAt(0).toUpperCase() + companyBase.slice(1) + ' Industrial Corp';
 
           const mockUser: MobileAuthUser = {
             id: Date.now(),
@@ -94,301 +95,259 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           return;
         }
 
-        throw new Error(
-          res.error || 'Invalid credentials. Please verify your email and password.'
-        );
+        throw new Error(res.error || 'Wrong email or password.');
       }
 
-      // Backend authenticated user with exact database role ('admin' | 'customer')
       const authenticatedUser: MobileAuthUser = res.user;
       setMobileStoredUser(authenticatedUser, res.token || 'token_live');
       mobileApi.auth.saveSession(authenticatedUser, res.token).catch(() => {});
       onSuccess(authenticatedUser);
     } catch (err: any) {
-      setErrorMsg(
-        err.message || 'Authentication failed. Please verify your credentials and try again.'
-      );
+      setErrorMsg(err.message || 'Could not sign in. Check your details and try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const clearError = () => {
+    if (errorMsg) setErrorMsg('');
+  };
+
   return (
     <ScrollView
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      {/* Brand Header */}
-      <View style={styles.brandBox}>
-        <View style={styles.logoWrap}>
-          <Image
-            source={require('../../assets/cbh-store-logo.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
-
-        <Text style={styles.title}>Sign In to CBH.STORE</Text>
-        <Text style={styles.subtitle}>
-          Enterprise Fastener Procurement &amp; Management Portal
-        </Text>
-      </View>
-
-      {/* Main Single Unified Sign-In Card */}
-      <MobileCard>
-        {/* Error Alert */}
-        {errorMsg ? (
-          <View style={styles.errorAlert}>
-            <Text style={styles.errorIcon}>⚠</Text>
-            <Text style={styles.errorText}>{errorMsg}</Text>
+      {errorMsg ? (
+        <View style={styles.errorBox}>
+          <View style={styles.errorDot}>
+            <Text style={styles.errorDotText}>!</Text>
           </View>
-        ) : null}
+          <Text style={styles.errorText}>{errorMsg}</Text>
+        </View>
+      ) : null}
 
-        {/* Corporate Email Input */}
-        <Text style={styles.label}>Corporate Email Address</Text>
+      {/* Email */}
+      <Text style={styles.label}>Email</Text>
+      <TextInput
+        value={email}
+        onChangeText={(v) => {
+          setEmail(v);
+          clearError();
+        }}
+        onFocus={() => setFocused('email')}
+        onBlur={() => setFocused(null)}
+        placeholder="you@company.com"
+        placeholderTextColor="#94A3B8"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        returnKeyType="next"
+        style={[styles.input, focused === 'email' && styles.inputFocused]}
+      />
+
+      {/* Password */}
+      <Text style={styles.label}>Password</Text>
+      <View style={[styles.passwordWrap, focused === 'password' && styles.inputFocused]}>
         <TextInput
-          value={email}
-          onChangeText={(val) => {
-            setEmail(val);
-            if (errorMsg) setErrorMsg('');
+          value={password}
+          onChangeText={(v) => {
+            setPassword(v);
+            clearError();
           }}
-          placeholder="procurement@company.com"
+          onFocus={() => setFocused('password')}
+          onBlur={() => setFocused(null)}
+          onSubmitEditing={handleLogin}
+          placeholder="Your password"
           placeholderTextColor="#94A3B8"
+          secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
-          keyboardType="email-address"
-          style={styles.input}
+          returnKeyType="go"
+          style={styles.passwordInput}
         />
-
-        {/* Password Input with Forgot Password & Show/Hide Eye */}
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Password</Text>
-          {onNavigateToForgotPassword ? (
-            <TouchableOpacity onPress={onNavigateToForgotPassword}>
-              <Text style={styles.forgotLink}>Forgot Password?</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <View style={styles.passwordWrap}>
-          <TextInput
-            value={password}
-            onChangeText={(val) => {
-              setPassword(val);
-              if (errorMsg) setErrorMsg('');
-            }}
-            placeholder="Enter your account password"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.passwordInput}
-          />
-          <TouchableOpacity
-            style={styles.eyeBtn}
-            onPress={() => setShowPassword(!showPassword)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            activeOpacity={0.7}
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-          >
-            <PasswordEyeIcon visible={showPassword} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Unified Sign-In Button */}
         <TouchableOpacity
-          style={[styles.submitBtn, isLoading && styles.btnDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-          activeOpacity={0.88}
+          style={styles.eyeBtn}
+          onPress={() => setShowPassword(!showPassword)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={0.7}
+          accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.submitBtnText}>Sign In to Account →</Text>
-          )}
+          <PasswordEyeIcon visible={showPassword} />
         </TouchableOpacity>
+      </View>
 
-        {/* Register Account Link */}
-        {onNavigateToRegister ? (
-          <View style={styles.switchAuthRow}>
-            <Text style={styles.switchAuthText}>New business client?</Text>
-            <TouchableOpacity onPress={onNavigateToRegister}>
-              <Text style={styles.switchAuthLink}> Register Company Account</Text>
-            </TouchableOpacity>
+      {onNavigateToForgotPassword ? (
+        <TouchableOpacity
+          onPress={onNavigateToForgotPassword}
+          style={styles.forgotBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.forgotLink}>Forgot password?</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Sign in */}
+      <TouchableOpacity
+        style={[styles.submitBtn, isLoading && styles.btnDisabled]}
+        onPress={handleLogin}
+        disabled={isLoading}
+        activeOpacity={0.88}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.submitBtnText}>Sign in</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Register */}
+      {onNavigateToRegister ? (
+        <>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>New here?</Text>
+            <View style={styles.dividerLine} />
           </View>
-        ) : null}
-      </MobileCard>
 
-      {/* Return to Welcome Screen Link */}
-      {onBackToWelcome ? (
-        <TouchableOpacity style={styles.backWelcomeBtn} onPress={onBackToWelcome}>
-          <Text style={styles.backWelcomeText}>← Back to Welcome Gateway</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.registerBtn}
+            onPress={onNavigateToRegister}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.registerBtnText}>Create company account</Text>
+          </TouchableOpacity>
+        </>
       ) : null}
     </ScrollView>
   );
 };
 
+const BLUE = '#0047AB';
+
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: 20,
-    paddingTop: 24,
-    paddingBottom: 40,
-    backgroundColor: '#F8FAFC',
-    minHeight: '100%',
+  content: {
+    paddingHorizontal: 22,
+    paddingTop: 28,
+    paddingBottom: 32,
   },
-  brandBox: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoWrap: {
-    width: 90,
-    height: 90,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 19,
-    paddingHorizontal: 16,
-  },
-  errorAlert: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
+
+  errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
   },
-  errorIcon: {
-    fontSize: 14,
-    color: '#DC2626',
+  errorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  errorText: {
-    flex: 1,
-    color: '#B91C1C',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  errorDotText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  errorText: { flex: 1, color: '#B91C1C', fontSize: 13, fontWeight: '600' },
+
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#334155',
     marginBottom: 6,
-    marginTop: 10,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  forgotLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0052CC',
+    marginTop: 14,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
     color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+  },
+  inputFocused: {
+    borderColor: BLUE,
     backgroundColor: '#FFFFFF',
   },
   passwordWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    paddingLeft: 16,
+    paddingRight: 8,
   },
   passwordInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
+    fontSize: 15,
     color: '#0F172A',
   },
   eyeBtn: {
-    padding: 6,
-    justifyContent: 'center',
+    padding: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  eyeBtnText: {
-    fontSize: 16,
+
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 10,
   },
+  forgotLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BLUE,
+  },
+
   submitBtn: {
-    height: 52,
-    backgroundColor: '#0052CC',
-    borderRadius: 12,
+    height: 54,
+    backgroundColor: BLUE,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 22,
     elevation: 3,
-    shadowColor: '#0052CC',
+    shadowColor: BLUE,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
   },
-  btnDisabled: {
-    opacity: 0.6,
-  },
+  btnDisabled: { opacity: 0.6 },
   submitBtnText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 26,
+    marginBottom: 14,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+
+  registerBtn: {
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: BLUE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerBtnText: {
+    color: BLUE,
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  switchAuthRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 18,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  switchAuthText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  switchAuthLink: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
-  backWelcomeBtn: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  backWelcomeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
   },
 });
 

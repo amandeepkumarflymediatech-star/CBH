@@ -144,7 +144,7 @@ export const AdminErpSyncScreen: React.FC = () => {
           style={styles.splitBtn}
           activeOpacity={0.8}
         >
-          <Text style={styles.splitBtnText}>📦 Sync Sales Orders</Text>
+          <Text style={styles.splitBtnText}>Sync Sales Orders</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleSync('item')}
@@ -152,7 +152,7 @@ export const AdminErpSyncScreen: React.FC = () => {
           style={styles.splitBtn}
           activeOpacity={0.8}
         >
-          <Text style={styles.splitBtnText}>🔩 Sync 605 SKUs</Text>
+          <Text style={styles.splitBtnText}>Sync 605 SKUs</Text>
         </TouchableOpacity>
       </View>
 
@@ -166,7 +166,7 @@ export const AdminErpSyncScreen: React.FC = () => {
             style={styles.testBtn}
           >
             <Text style={styles.testBtnText}>
-              {isTesting ? 'Testing...' : '⚡ Test Handshake'}
+              {isTesting ? 'Testing...' : 'Test Handshake'}
             </Text>
           </TouchableOpacity>
         </View>

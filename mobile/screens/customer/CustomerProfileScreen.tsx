@@ -9,8 +9,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
 import { MobileModal } from '../../components/MobileModal';
 import { mobileApi } from '../../config/api';
 import { getMobileStoredUser, DEMO_MOBILE_CUSTOMER, setMobileStoredUser } from '../../config/auth';
@@ -29,7 +29,27 @@ interface CustomerProfileScreenProps {
   onLogout: () => void;
   onSwitchToAdmin?: () => void;
   onNavigateToCertificates: () => void;
+  onNavigateToAbout?: () => void;
+  onNavigateToBlogs?: () => void;
+  onNavigateToGallery?: () => void;
+  onNavigateToContact?: () => void;
+  onNavigateToBulkOrder?: () => void;
+  onNavigateToPolicies?: () => void;
 }
+
+// Same palette as the product detail screen
+const GRAPHITE = '#1C2228';
+const STEEL = '#5E6A74';
+const MIST = '#EDEFF1';
+const HAIR = '#D6DBE0';
+const WHITE = '#FFFFFF';
+const ORANGE = '#F26B1D';
+const GREEN = '#17803D';
+const RED = '#C62828';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+
+const DEFAULT_ADDRESS = 'Plot 42, Peenya Industrial Area Phase II, Bengaluru, KA - 560058';
+const DEFAULT_CREDIT = 2500000;
 
 export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
   user,
@@ -37,19 +57,24 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
   onLogout,
   onSwitchToAdmin,
   onNavigateToCertificates,
+  onNavigateToAbout,
+  onNavigateToBlogs,
+  onNavigateToGallery,
+  onNavigateToContact,
+  onNavigateToBulkOrder,
+  onNavigateToPolicies,
 }) => {
-  // 1. DYNAMIC PROFILE STATE (Priority: prop user -> stored user -> fallback)
   const initialUser: MobileAuthUser = user || getMobileStoredUser() || DEMO_MOBILE_CUSTOMER;
   const [currentUser, setCurrentUser] = useState<MobileAuthUser>(initialUser);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string>('');
+  const [totalSpend, setTotalSpend] = useState<number>(0);
 
-  // 2. DISPATCH SITES LIST (CRUD for Delivery Locations)
   const [dispatchSites, setDispatchSites] = useState<DispatchSite[]>([
     {
       id: 'site_1',
       name: 'Primary Factory Depot',
-      address: initialUser.address || 'Plot 42, Peenya Industrial Area Phase II, Bengaluru, KA - 560058',
+      address: initialUser.address || DEFAULT_ADDRESS,
       isPrimary: true,
     },
     {
@@ -60,18 +85,14 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
     },
   ]);
 
-  // 3. EDIT PROFILE MODAL STATE
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [editFullName, setEditFullName] = useState<string>(currentUser.fullName || '');
   const [editCompanyName, setEditCompanyName] = useState<string>(currentUser.companyName || '');
   const [editPhone, setEditPhone] = useState<string>(currentUser.phone || '');
   const [editGstin, setEditGstin] = useState<string>(currentUser.gstin || '');
-  const [editAddress, setEditAddress] = useState<string>(
-    currentUser.address || 'Plot 42, Peenya Industrial Area Phase II, Bengaluru, KA - 560058'
-  );
+  const [editAddress, setEditAddress] = useState<string>(currentUser.address || DEFAULT_ADDRESS);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
 
-  // 4. ADD DISPATCH SITE MODAL STATE
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState<boolean>(false);
   const [newSiteName, setNewSiteName] = useState<string>('');
   const [newSiteAddress, setNewSiteAddress] = useState<string>('');
@@ -82,7 +103,6 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
     setTimeout(() => setToastMsg(''), 3500);
   };
 
-  // Sync state whenever parent prop changes (e.g. after login with new credentials)
   useEffect(() => {
     if (user) {
       setCurrentUser(user);
@@ -90,11 +110,10 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
       setEditCompanyName(user.companyName || '');
       setEditPhone(user.phone || '');
       setEditGstin(user.gstin || '');
-      setEditAddress(user.address || 'Plot 42, Peenya Industrial Area Phase II, Bengaluru, KA - 560058');
+      setEditAddress(user.address || DEFAULT_ADDRESS);
     }
   }, [user]);
 
-  // LIVE SYNC: Fetch fresh profile data directly from database via API
   const fetchLiveProfile = useCallback(async (isRefresh = false) => {
     if (isRefresh) setIsRefreshing(true);
     try {
@@ -121,9 +140,19 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
             setCurrentUser(synced);
             setMobileStoredUser(synced);
             if (onUpdateUser) onUpdateUser(synced);
+            if (matched.deliverySites && Array.isArray(matched.deliverySites) && matched.deliverySites.length > 0) {
+              setDispatchSites(matched.deliverySites as any);
+            }
           }
         }
       }
+      try {
+        const ords = await mobileApi.orders.getAll();
+        if (ords.orders && Array.isArray(ords.orders)) {
+          const sum = ords.orders.reduce((acc, o) => acc + (o.netAmount || 0), 0);
+          setTotalSpend(sum);
+        }
+      } catch {}
     } catch (err) {
       console.warn('[Customer Profile] Live fetch sync error:', err);
     } finally {
@@ -135,26 +164,23 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
     fetchLiveProfile(false);
   }, []);
 
-  // CRUD: UPDATE PROFILE
   const handleOpenEdit = () => {
     setEditFullName(currentUser.fullName);
     setEditCompanyName(currentUser.companyName);
     setEditPhone(currentUser.phone || '');
     setEditGstin(currentUser.gstin || '');
-    setEditAddress(
-      currentUser.address || 'Plot 42, Peenya Industrial Area Phase II, Bengaluru, KA - 560058'
-    );
+    setEditAddress(currentUser.address || DEFAULT_ADDRESS);
     setIsEditModalOpen(true);
   };
 
   const handleSaveProfile = async () => {
     if (!editFullName.trim() || !editCompanyName.trim()) {
-      Alert.alert('Validation Error', 'Full Name and Registered Company Name are required.');
+      Alert.alert('Missing details', 'Enter your full name and registered company name.');
       return;
     }
 
     if (editGstin.trim() && editGstin.trim().length !== 15) {
-      Alert.alert('Invalid GSTIN', 'GSTIN must be a 15-character Indian tax identification number.');
+      Alert.alert('Invalid GSTIN', 'A GSTIN has exactly 15 characters.');
       return;
     }
 
@@ -169,7 +195,6 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
         address: editAddress.trim(),
       };
 
-      // Call backend PUT /api/users
       await mobileApi.users.update(updatedData as any);
 
       const mergedUser: MobileAuthUser = {
@@ -185,7 +210,6 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
       setMobileStoredUser(mergedUser);
       if (onUpdateUser) onUpdateUser(mergedUser);
 
-      // Also update primary dispatch site
       setDispatchSites((prev) =>
         prev.map((site) =>
           site.isPrimary ? { ...site, address: updatedData.address || site.address } : site
@@ -193,18 +217,17 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
       );
 
       setIsEditModalOpen(false);
-      showToast('Profile and business registration updated successfully!');
+      showToast('Profile updated');
     } catch (err: any) {
-      Alert.alert('Update Failed', err.message || 'Could not update profile details.');
+      Alert.alert('Could not save', err.message || 'Your changes were not saved. Try again.');
     } finally {
       setIsSavingProfile(false);
     }
   };
 
-  // CRUD: CREATE DISPATCH SITE
   const handleAddSite = () => {
     if (!newSiteName.trim() || !newSiteAddress.trim()) {
-      Alert.alert('Validation Error', 'Site label and dispatch address are required.');
+      Alert.alert('Missing details', 'Enter a site name and a full address.');
       return;
     }
     const newSite: DispatchSite = {
@@ -213,37 +236,43 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
       address: newSiteAddress.trim(),
       isPrimary: false,
     };
-    setDispatchSites((prev) => [...prev, newSite]);
+    const updated = [...dispatchSites, newSite];
+    setDispatchSites(updated);
     setNewSiteName('');
     setNewSiteAddress('');
     setIsAddSiteModalOpen(false);
-    showToast(`Added ${newSite.name} to delivery locations!`);
+    showToast(`${newSite.name} added`);
+    if (currentUser.id) {
+      mobileApi.users.update({ id: currentUser.id, deliverySites: updated } as any).catch(() => {});
+    }
   };
 
-  // CRUD: DELETE DISPATCH SITE
   const handleDeleteSite = (siteId: string) => {
     Alert.alert(
-      'Remove Delivery Location',
-      'Are you sure you want to remove this dispatch site from your account?',
+      'Remove this site?',
+      'It will no longer appear as a delivery location on your account.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            setDispatchSites((prev) => prev.filter((s) => s.id !== siteId));
-            showToast('Delivery location removed.');
+            const updated = dispatchSites.filter((s) => s.id !== siteId);
+            setDispatchSites(updated);
+            showToast('Site removed');
+            if (currentUser.id) {
+              mobileApi.users.update({ id: currentUser.id, deliverySites: updated } as any).catch(() => {});
+            }
           },
         },
       ]
     );
   };
 
-  // CRUD: DELETE / DEACTIVATE ACCOUNT
   const handleDeactivateAccount = () => {
     Alert.alert(
-      'Deactivate Procurement Account',
-      'Are you sure you want to request account deactivation? All pending RFQs and order records will be archived.',
+      'Deactivate your account?',
+      'Pending RFQs and order records will be archived.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -264,7 +293,6 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
     );
   };
 
-  // Avatar Initials
   const getInitials = (name?: string) => {
     if (!name) return 'C';
     const parts = name.trim().split(/\s+/);
@@ -273,332 +301,303 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
   };
 
   const tierName = (currentUser.tier || 'DIAMOND').toUpperCase();
-  const rebatePct = currentUser.tierDiscountPct || (tierName === 'DIAMOND' ? 18 : tierName === 'PLATINUM' ? 12 : tierName === 'GOLD' ? 8 : 5);
-  const creditLimitFormatted = Number(currentUser.creditLimit || 2500000).toLocaleString('en-IN', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  });
+  const tierLabel = tierName.charAt(0) + tierName.slice(1).toLowerCase();
+  const rebatePct =
+    currentUser.tierDiscountPct ||
+    (tierName === 'DIAMOND' ? 18 : tierName === 'PLATINUM' ? 12 : tierName === 'GOLD' ? 8 : 5);
+
+  const creditLimit = Number(currentUser.creditLimit || DEFAULT_CREDIT);
+  const available = Math.max(0, creditLimit - totalSpend);
+  const usedPct = Math.min(100, Math.round((totalSpend / creditLimit) * 100));
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+  const resources: { show: boolean; onPress?: () => void; title: string; sub: string }[] = [
+    { show: !!onNavigateToBulkOrder, onPress: onNavigateToBulkOrder, title: 'Bulk order and BOM upload', sub: 'Send a tender or project line list for quotation' },
+    { show: !!onNavigateToBlogs, onPress: onNavigateToBlogs, title: 'Technical fastener library', sub: 'DIN/ISO standards, metallurgy and coatings' },
+    { show: !!onNavigateToGallery, onPress: onNavigateToGallery, title: 'Plant and testing lab', sub: 'Cold headers, optical sorting, tensile testing' },
+    { show: !!onNavigateToAbout, onPress: onNavigateToAbout, title: 'About Capital Bolts & Hardwares', sub: '65-year legacy and 500 MT capacity' },
+    { show: !!onNavigateToContact, onPress: onNavigateToContact, title: 'Factory contact and bank details', sub: 'Ludhiana hub, direct phone, RTGS and IFSC' },
+    { show: !!onNavigateToPolicies, onPress: onNavigateToPolicies, title: 'Terms and policies', sub: 'B2B terms, data privacy and freight SLA' },
+  ].filter((r) => r.show);
 
   return (
     <ScrollView
+      style={{ backgroundColor: WHITE }}
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => fetchLiveProfile(true)}
-          colors={['#0047AB', '#FF6B00']}
-        />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchLiveProfile(true)} colors={[ORANGE]} />
       }
       showsVerticalScrollIndicator={false}
     >
-      {/* Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ {toastMsg}</Text>
+          <Text style={styles.toastText}>{toastMsg}</Text>
         </View>
       ) : null}
 
-      {/* 1. DYNAMIC HEADER PROFILE CARD */}
-      <View style={styles.profileHeader}>
+      {/* Identity */}
+      <View style={styles.identity}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{getInitials(currentUser.fullName)}</Text>
         </View>
-
         <View style={{ flex: 1 }}>
-          <View style={styles.nameRow}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {currentUser.fullName}
-            </Text>
-            <TouchableOpacity
-              onPress={handleOpenEdit}
-              style={styles.editPillBtn}
-              activeOpacity={0.8}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text style={styles.editPillBtnText}>✏ Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+          <Text style={styles.userName} numberOfLines={1}>
+            {currentUser.fullName}
+          </Text>
           <Text style={styles.userCompany} numberOfLines={1}>
             {currentUser.companyName}
           </Text>
           <Text style={styles.userEmail} numberOfLines={1}>
-            ✉ {currentUser.email}
+            {currentUser.email}
           </Text>
+        </View>
+        <TouchableOpacity onPress={handleOpenEdit} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Text style={styles.link}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.statusLine}>
+        <Text style={styles.statusText}>
+          {tierLabel} tier, {rebatePct}% rebate
+        </Text>
+        <Text style={[styles.statusText, { color: GREEN }]}>Verified business</Text>
+      </View>
 
-          <View style={styles.badgesRow}>
-            <View style={styles.tierPill}>
-              <Text style={styles.tierText}>★ {tierName} TIER ({rebatePct}% Rebate)</Text>
-            </View>
-            <View style={styles.verifiedPill}>
-              <Text style={styles.verifiedText}>✔ Verified B2B</Text>
-            </View>
+      {/* Credit: the signature element */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Credit available</Text>
+        <Text style={styles.creditValue}>{inr(available)}</Text>
+        <View style={styles.meter}>
+          <View style={[styles.meterFill, { width: `${usedPct}%` as any }, usedPct >= 85 && { backgroundColor: RED }]} />
+        </View>
+        <View style={styles.rowBetween}>
+          <Text style={styles.meterText}>
+            {inr(totalSpend)} used ({usedPct}%)
+          </Text>
+          <Text style={styles.meterText}>Limit {inr(creditLimit)}</Text>
+        </View>
+        <Text style={styles.note}>Net 30-day billing on all orders.</Text>
+      </View>
+
+      {/* Business details */}
+      <View style={styles.section}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Business details</Text>
+          <TouchableOpacity onPress={handleOpenEdit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.link}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.table}>
+          <View style={[styles.kv, { borderTopWidth: 0 }]}>
+            <Text style={styles.k}>Company</Text>
+            <Text style={styles.v}>{currentUser.companyName}</Text>
+          </View>
+          <View style={styles.kv}>
+            <Text style={styles.k}>GSTIN</Text>
+            <Text style={[styles.v, { fontFamily: MONO, fontSize: 13 }]}>
+              {currentUser.gstin || '29AABCA1234F1Z5'}
+            </Text>
+          </View>
+          <View style={styles.kv}>
+            <Text style={styles.k}>Phone</Text>
+            <Text style={styles.v}>{currentUser.phone || '+91 98880 21000'}</Text>
+          </View>
+          <View style={styles.kv}>
+            <Text style={styles.k}>Account ID</Text>
+            <Text style={[styles.v, { fontFamily: MONO, fontSize: 13 }]}>
+              CBH-CUST-{currentUser.id || '101'}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* 2. DYNAMIC CORPORATE 30-DAY CREDIT LINE CARD */}
-      <MobileCard>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.creditTitle}>Corporate 30D Revolving Credit</Text>
-          <View style={styles.creditStatusTag}>
-            <Text style={styles.creditStatusText}>Active Facility</Text>
-          </View>
-        </View>
-
-        <Text style={styles.creditValue}>₹{creditLimitFormatted} Available</Text>
-        <Text style={styles.creditSubtext}>
-          Approved for Net 30-Day billing terms across all fastener factory orders.
-        </Text>
-
-        <View style={styles.barBg}>
-          <View style={styles.barFill} />
-        </View>
-        <View style={styles.creditMetaRow}>
-          <Text style={styles.creditMetaKey}>Utilized: ₹0.00</Text>
-          <Text style={styles.creditMetaVal}>Drawdown: 100% Available</Text>
-        </View>
-      </MobileCard>
-
-      {/* 3. COMMERCIAL BUSINESS REGISTRATION DETAILS */}
-      <MobileCard>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.sectionHeading}>Business Registration &amp; Tax</Text>
-          <TouchableOpacity onPress={handleOpenEdit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.inlineEditLink}>Edit Details →</Text>
+      {/* Delivery sites */}
+      <View style={styles.section}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Delivery sites</Text>
+          <TouchableOpacity onPress={() => setIsAddSiteModalOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.link}>Add site</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailKey}>Company Name:</Text>
-          <Text style={styles.detailVal}>{currentUser.companyName}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailKey}>GSTIN Tax ID:</Text>
-          <Text style={[styles.detailVal, styles.gstinVal]}>
-            {currentUser.gstin || '29AABCA1234F1Z5'}
-          </Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailKey}>Primary Phone:</Text>
-          <Text style={styles.detailVal}>{currentUser.phone || '+91 98880 21000'}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailKey}>Client Account ID:</Text>
-          <Text style={styles.detailVal}>#CBH-CUST-{currentUser.id || '101'}</Text>
-        </View>
-      </MobileCard>
-
-      {/* 4. CRUD: REGISTERED DISPATCH & DELIVERY SITES */}
-      <MobileCard>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.sectionHeading}>Delivery &amp; Dispatch Godowns</Text>
-          <TouchableOpacity
-            onPress={() => setIsAddSiteModalOpen(true)}
-            style={styles.addSiteHeaderBtn}
-          >
-            <Text style={styles.addSiteHeaderText}>＋ Add Site</Text>
-          </TouchableOpacity>
-        </View>
-
-        {dispatchSites.map((site) => (
-          <View key={site.id} style={styles.siteItem}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <View style={styles.siteTitleRow}>
-                <Text style={styles.siteName}>{site.name}</Text>
-                {site.isPrimary ? (
-                  <View style={styles.primaryPill}>
-                    <Text style={styles.primaryPillText}>PRIMARY</Text>
-                  </View>
-                ) : null}
+        <View style={styles.table}>
+          {dispatchSites.map((site, i) => (
+            <View key={site.id} style={[styles.siteRow, i === 0 && { borderTopWidth: 0 }]}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.siteTitleRow}>
+                  <Text style={styles.siteName}>{site.name}</Text>
+                  {site.isPrimary ? <Text style={styles.primaryTag}>Primary</Text> : null}
+                </View>
+                <Text style={styles.siteAddress}>{site.address}</Text>
               </View>
-              <Text style={styles.siteAddress}>{site.address}</Text>
+              {!site.isPrimary ? (
+                <TouchableOpacity onPress={() => handleDeleteSite(site.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.removeLink}>Remove</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
-
-            {!site.isPrimary ? (
-              <TouchableOpacity
-                onPress={() => handleDeleteSite(site.id)}
-                style={styles.deleteSiteBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.deleteSiteBtnText}>✕</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ))}
-      </MobileCard>
-
-      {/* 5. NABL CERTIFICATES LINK */}
-      <TouchableOpacity
-        onPress={onNavigateToCertificates}
-        style={styles.certBtn}
-        activeOpacity={0.82}
-      >
-        <View style={styles.certIconCircle}>
-          <Text style={styles.certIconText}>📄</Text>
+          ))}
         </View>
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.certBtnTitle}>NABL Lab Certificates &amp; MTC 3.1</Text>
-          <Text style={styles.certBtnSubtitle}>
-            Download official mill test reports &amp; spectro analysis curves
-          </Text>
+      </View>
+
+      {/* Certificates */}
+      <TouchableOpacity onPress={onNavigateToCertificates} style={styles.certRow} activeOpacity={0.85}>
+        <View style={styles.certTag}>
+          <Text style={styles.certTagText}>MTC</Text>
         </View>
-        <Text style={styles.certChevron}>→</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.certTitle}>Lab certificates</Text>
+          <Text style={styles.certSub}>NABL reports and Type 3.1 mill test certificates</Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
 
-      {/* 6. SWITCH TO ADMIN (If applicable) */}
-      {/* {onSwitchToAdmin ? (
-        <TouchableOpacity
-          onPress={onSwitchToAdmin}
-          style={styles.switchBtn}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.switchBtnText}>⚡ Switch to Admin Console Mode →</Text>
-        </TouchableOpacity>
-      ) : null} */}
+      {/* Resources */}
+      {resources.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.h2}>Resources</Text>
+          <View style={styles.table}>
+            {resources.map((r, i) => (
+              <TouchableOpacity
+                key={r.title}
+                onPress={r.onPress}
+                style={[styles.menuRow, i === 0 && { borderTopWidth: 0 }]}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>{r.title}</Text>
+                  <Text style={styles.menuSub}>{r.sub}</Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
-      {/* 7. ACCOUNT ACTIONS (Sign Out & Deactivate) */}
-      <View style={styles.actionsBox}>
+      {/* Account actions */}
+      <View style={styles.actions}>
         <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.85}>
-          <Text style={styles.logoutBtnText}>Sign Out Account</Text>
+          <Text style={styles.logoutText}>Sign out</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleDeactivateAccount}
-          style={styles.deactivateBtn}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.deactivateBtnText}>Request Account Deactivation</Text>
+        <TouchableOpacity onPress={handleDeactivateAccount} style={styles.deactivateBtn} activeOpacity={0.85}>
+          <Text style={styles.deactivateText}>Request account deactivation</Text>
         </TouchableOpacity>
       </View>
 
-      {/* =================================================================== */}
-      {/* MODAL 1: EDIT PROFILE & BUSINESS REGISTRATION (CRUD UPDATE)         */}
-      {/* =================================================================== */}
+      {/* Edit profile modal */}
       <MobileModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit Business Profile"
-        subtitle="Update corporate contact person and registration info"
+        title="Edit business profile"
+        subtitle="Contact person and registration details"
       >
-        <View style={styles.modalScroll}>
-          <Text style={styles.inputLabel}>Contact Person Full Name *</Text>
+        <View style={styles.modalBody}>
+          <Text style={styles.inputLabel}>Full name</Text>
           <TextInput
-            style={styles.modalInput}
+            style={styles.input}
             value={editFullName}
             onChangeText={setEditFullName}
-            placeholder="e.g. Vikram Malhotra"
-            placeholderTextColor="#94A3B8"
+            placeholder="Vikram Malhotra"
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Registered Company / Firm Name *</Text>
+          <Text style={styles.inputLabel}>Registered company name</Text>
           <TextInput
-            style={styles.modalInput}
+            style={styles.input}
             value={editCompanyName}
             onChangeText={setEditCompanyName}
-            placeholder="e.g. Larsen Turbo & Engineering Ltd."
-            placeholderTextColor="#94A3B8"
+            placeholder="Larsen Turbo & Engineering Ltd."
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Direct Phone Number *</Text>
+          <Text style={styles.inputLabel}>Phone</Text>
           <TextInput
-            style={styles.modalInput}
+            style={styles.input}
             value={editPhone}
             onChangeText={setEditPhone}
             placeholder="+91 98880 21000"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#8D98A1"
             keyboardType="phone-pad"
           />
 
-          <Text style={styles.inputLabel}>GSTIN (15 Digits)</Text>
+          <Text style={styles.inputLabel}>GSTIN (15 characters)</Text>
           <TextInput
-            style={[styles.modalInput, { textTransform: 'uppercase' }]}
+            style={[styles.input, { fontFamily: MONO }]}
             value={editGstin}
             onChangeText={setEditGstin}
             placeholder="29AABCA1234F1Z5"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#8D98A1"
             maxLength={15}
             autoCapitalize="characters"
           />
 
-          <Text style={styles.inputLabel}>Primary Dispatch / Godown Address</Text>
+          <Text style={styles.inputLabel}>Primary dispatch address</Text>
           <TextInput
-            style={[styles.modalInput, styles.textAreaInput]}
+            style={[styles.input, styles.textArea]}
             value={editAddress}
             onChangeText={setEditAddress}
-            placeholder="Plot / Street, Industrial Area, City, State, PIN"
-            placeholderTextColor="#94A3B8"
+            placeholder="Plot or street, industrial area, city, state, PIN"
+            placeholderTextColor="#8D98A1"
             multiline
             numberOfLines={3}
           />
 
-          <View style={styles.modalActionsRow}>
-            <TouchableOpacity
-              onPress={() => setIsEditModalOpen(false)}
-              style={styles.modalCancelBtn}
-            >
-              <Text style={styles.modalCancelBtnText}>Cancel</Text>
+          <View style={styles.modalActions}>
+            <TouchableOpacity onPress={() => setIsEditModalOpen(false)} style={styles.cancelBtn}>
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               onPress={handleSaveProfile}
-              style={[styles.modalSaveBtn, isSavingProfile && styles.btnDisabled]}
+              style={[styles.saveBtn, isSavingProfile && styles.disabled]}
               disabled={isSavingProfile}
             >
               {isSavingProfile ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color={WHITE} size="small" />
               ) : (
-                <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+                <Text style={styles.saveText}>Save changes</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
       </MobileModal>
 
-      {/* =================================================================== */}
-      {/* MODAL 2: ADD DISPATCH SITE LOCATION (CRUD CREATE)                   */}
-      {/* =================================================================== */}
+      {/* Add site modal */}
       <MobileModal
         isOpen={isAddSiteModalOpen}
         onClose={() => setIsAddSiteModalOpen(false)}
-        title="Add Delivery Location"
-        subtitle="Register an additional project site or godown for live dispatch"
+        title="Add delivery site"
+        subtitle="Orders can be dispatched to any site on your account"
       >
-        <View style={styles.modalScroll}>
-          <Text style={styles.inputLabel}>Site / Warehouse Label *</Text>
+        <View style={styles.modalBody}>
+          <Text style={styles.inputLabel}>Site name</Text>
           <TextInput
-            style={styles.modalInput}
+            style={styles.input}
             value={newSiteName}
             onChangeText={setNewSiteName}
-            placeholder="e.g. Metro Phase II Fabrication Yard"
-            placeholderTextColor="#94A3B8"
+            placeholder="Metro Phase II fabrication yard"
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Complete Site Address &amp; Gate *</Text>
+          <Text style={styles.inputLabel}>Address and gate</Text>
           <TextInput
-            style={[styles.modalInput, styles.textAreaInput]}
+            style={[styles.input, styles.textArea]}
             value={newSiteAddress}
             onChangeText={setNewSiteAddress}
-            placeholder="Plot No., Survey Gate, Industrial Estate, PIN Code"
-            placeholderTextColor="#94A3B8"
+            placeholder="Plot no., gate, industrial estate, PIN"
+            placeholderTextColor="#8D98A1"
             multiline
             numberOfLines={3}
           />
 
-          <View style={styles.modalActionsRow}>
-            <TouchableOpacity
-              onPress={() => setIsAddSiteModalOpen(false)}
-              style={styles.modalCancelBtn}
-            >
-              <Text style={styles.modalCancelBtnText}>Cancel</Text>
+          <View style={styles.modalActions}>
+            <TouchableOpacity onPress={() => setIsAddSiteModalOpen(false)} style={styles.cancelBtn}>
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               onPress={handleAddSite}
-              style={[styles.modalSaveBtn, isSavingSite && styles.btnDisabled]}
+              style={[styles.saveBtn, isSavingSite && styles.disabled]}
               disabled={isSavingSite}
             >
-              <Text style={styles.modalSaveBtnText}>Add Site</Text>
+              <Text style={styles.saveText}>Add site</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -608,404 +607,185 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
-  },
+  container: { paddingBottom: 40, backgroundColor: WHITE },
+
   toast: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#34D399',
-    borderRadius: 10,
-    padding: 12,
-    elevation: 2,
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: GRAPHITE,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  toastText: {
-    color: '#065F46',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  profileHeader: {
-    backgroundColor: '#0047AB',
-    borderRadius: 16,
-    padding: 16,
+  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
+
+  // Identity
+  identity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    elevation: 3,
-    shadowColor: '#002B6B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
-  avatarText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#0047AB',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    flex: 1,
-    marginRight: 8,
-  },
-  editPillBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  editPillBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  userCompany: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#BFDBFE',
-    marginTop: 2,
-  },
-  userEmail: {
-    fontSize: 11,
-    color: '#E0EEFB',
-    marginTop: 2,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  tierPill: {
-    backgroundColor: '#FEF3C7',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  tierText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#92400E',
-  },
-  verifiedPill: {
-    backgroundColor: '#DCFCE7',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  verifiedText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  creditTitle: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  creditStatusTag: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  creditStatusText: {
-    color: '#0047AB',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  creditValue: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#0047AB',
-  },
-  creditSubtext: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 3,
-    lineHeight: 16,
-  },
-  barBg: {
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    marginTop: 10,
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#10B981',
-  },
-  creditMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  creditMetaKey: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  creditMetaVal: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
-  },
-  sectionHeading: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  inlineEditLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0047AB',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  detailKey: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  detailVal: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  gstinVal: {
-    color: '#0047AB',
-    letterSpacing: 0.5,
-  },
-  addSiteHeaderBtn: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  addSiteHeaderText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0047AB',
-  },
-  siteItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  siteTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  siteName: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  primaryPill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  primaryPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  siteAddress: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 3,
-    lineHeight: 16,
-  },
-  deleteSiteBtn: {
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: '#FEE2E2',
-  },
-  deleteSiteBtnText: {
-    color: '#DC2626',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  certBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 1,
-  },
-  certIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: GRAPHITE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  certIconText: {
-    fontSize: 18,
-  },
-  certBtnTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0047AB',
-  },
-  certBtnSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  certChevron: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0047AB',
-    marginLeft: 6,
-  },
-  switchBtn: {
-    backgroundColor: '#0F172A',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  switchBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  actionsBox: {
-    marginTop: 4,
-    gap: 8,
-  },
-  logoutBtn: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  logoutBtnText: {
-    color: '#DC2626',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  deactivateBtn: {
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  deactivateBtnText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  modalScroll: {
+  avatarText: { fontSize: 20, fontWeight: '700', color: WHITE },
+  userName: { fontSize: 20, fontWeight: '700', color: GRAPHITE },
+  userCompany: { fontSize: 14, color: GRAPHITE, marginTop: 2 },
+  userEmail: { fontSize: 13, color: STEEL, marginTop: 2 },
+  statusLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIR,
   },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-    marginTop: 10,
-    marginBottom: 4,
+  statusText: { fontSize: 13, fontWeight: '600', color: STEEL },
+  link: { fontSize: 14, fontWeight: '700', color: ORANGE },
+
+  // Sections: hairline-separated, no cards
+  section: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIR,
   },
-  modalInput: {
-    backgroundColor: '#F8FAFC',
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
+  label: { fontSize: 13, color: STEEL },
+  note: { fontSize: 12, color: STEEL, marginTop: 10 },
+
+  // Credit meter
+  creditValue: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: GRAPHITE,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
+  },
+  meter: { height: 8, borderRadius: 4, backgroundColor: MIST, marginTop: 14, marginBottom: 8, overflow: 'hidden' },
+  meterFill: { height: '100%', backgroundColor: ORANGE, borderRadius: 4 },
+  meterText: { fontSize: 12, color: STEEL, fontVariant: ['tabular-nums'] },
+
+  // Key/value tables
+  table: { marginTop: 8 },
+  kv: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
+  },
+  k: { fontSize: 14, color: STEEL },
+  v: { fontSize: 14, fontWeight: '600', color: GRAPHITE, flexShrink: 1, textAlign: 'right', marginLeft: 16 },
+
+  // Sites
+  siteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
+  },
+  siteTitleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  siteName: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
+  primaryTag: { fontSize: 12, fontWeight: '600', color: GREEN },
+  siteAddress: { fontSize: 13, color: STEEL, marginTop: 3, lineHeight: 19 },
+  removeLink: { fontSize: 13, fontWeight: '600', color: RED },
+
+  // Certificates
+  certRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    backgroundColor: MIST,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIR,
+  },
+  certTag: {
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  certTagText: { fontSize: 12, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
+  certTitle: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
+  certSub: { fontSize: 13, color: STEEL, marginTop: 2 },
+  chevron: { fontSize: 24, color: STEEL, marginLeft: 6 },
+
+  // Resources
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
+  },
+  menuTitle: { fontSize: 14, fontWeight: '600', color: GRAPHITE },
+  menuSub: { fontSize: 12, color: STEEL, marginTop: 2 },
+
+  // Actions
+  actions: { paddingHorizontal: 20, paddingTop: 24, gap: 6 },
+  logoutBtn: {
+    height: 50,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
+  deactivateBtn: { paddingVertical: 14, alignItems: 'center' },
+  deactivateText: { fontSize: 13, color: STEEL, textDecorationLine: 'underline' },
+
+  // Modals
+  modalBody: { paddingBottom: 20 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: GRAPHITE, marginTop: 14, marginBottom: 6 },
+  input: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: HAIR,
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 13,
-    color: '#0F172A',
+    height: 46,
+    fontSize: 15,
+    color: GRAPHITE,
+    backgroundColor: WHITE,
   },
-  textAreaInput: {
-    height: 72,
-    textAlignVertical: 'top',
-  },
-  modalActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  modalCancelBtn: {
+  textArea: { height: 84, paddingTop: 12, textAlignVertical: 'top' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 22 },
+  cancelBtn: {
     flex: 1,
-    paddingVertical: 11,
+    height: 48,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  modalCancelBtnText: {
-    color: '#475569',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  modalSaveBtn: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 8,
-    backgroundColor: '#0047AB',
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalSaveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
+  cancelText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
+  saveBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  btnDisabled: {
-    opacity: 0.6,
-  },
+  saveText: { fontSize: 15, fontWeight: '700', color: WHITE },
+  disabled: { opacity: 0.6 },
 });
 
 export default CustomerProfileScreen;

@@ -7,10 +7,9 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
+import { NavIcon } from '../../components/NavIcon';
 import { mobileApi } from '../../config/api';
 import { MobileOrder, MobileRfq, MobileProduct } from '../../types';
 
@@ -29,6 +28,25 @@ interface BarDataPoint {
   total: number;
 }
 
+// Same palette as the customer screens
+const GRAPHITE = '#1C2228';
+const STEEL = '#5E6A74';
+const LIGHT_STEEL = '#A9B3BB';
+const MIST = '#EDEFF1';
+const HAIR = '#D6DBE0';
+const WHITE = '#FFFFFF';
+const ORANGE = '#F26B1D';
+const ORANGE_LIGHT = '#F9B48A';
+const GREEN = '#17803D';
+const RED = '#C62828';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const statusLabel = (s: string) => {
+  const t = s.replace(/_/g, ' ').toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   onNavigate,
   onSelectOrder,
@@ -42,9 +60,8 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Visual Graph Controls
   const [timeframe, setTimeframe] = useState<Timeframe>('Monthly');
-  const [selectedBarIdx, setSelectedBarIdx] = useState<number>(5); // Default to current month/period
+  const [selectedBarIdx, setSelectedBarIdx] = useState<number>(5);
 
   const loadData = async (isRefresh = false) => {
     if (isRefresh) {
@@ -82,29 +99,23 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     loadData();
   }, []);
 
-  // Live KPI Aggregations
-  const totalRevenue = useMemo(() => {
-    return orders.reduce((sum, o) => sum + (o.netAmount || 0), 0);
-  }, [orders]);
+  const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + (o.netAmount || 0), 0), [orders]);
 
   const totalWeightTons = useMemo(() => {
     const totalKg = orders.reduce((sum, o) => sum + (o.totalWeightKg || 0), 0);
     return (totalKg / 1000).toFixed(1);
   }, [orders]);
 
-  const pendingOrders = useMemo(() => {
-    return orders.filter((o) => o.status === 'PROCESSING' || o.status === 'CONFIRMED');
-  }, [orders]);
+  const pendingOrders = useMemo(
+    () => orders.filter((o) => o.status === 'PROCESSING' || o.status === 'CONFIRMED'),
+    [orders]
+  );
 
-  const pendingRfqs = useMemo(() => {
-    return rfqs.filter((r) => r.status === 'PENDING' || r.status === 'IN_REVIEW');
-  }, [rfqs]);
+  const pendingRfqs = useMemo(
+    () => rfqs.filter((r) => r.status === 'PENDING' || r.status === 'IN_REVIEW'),
+    [rfqs]
+  );
 
-  const totalRfqValue = useMemo(() => {
-    return rfqs.reduce((sum, r) => sum + (r.netTotal || 0), 0);
-  }, [rfqs]);
-
-  // Order Status Breakdown for Visual Progress Bar
   const statusStats = useMemo(() => {
     const total = orders.length || 1;
     const delivered = orders.filter((o) => o.status === 'DELIVERED').length;
@@ -112,23 +123,17 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
     const processing = orders.filter((o) => o.status === 'PROCESSING').length;
     const confirmed = orders.filter((o) => o.status === 'CONFIRMED').length;
     const cancelled = orders.filter((o) => o.status === 'CANCELLED').length;
-
     return {
       total: orders.length,
       delivered,
-      deliveredPct: Math.round((delivered / total) * 100),
       inTransit,
-      inTransitPct: Math.round((inTransit / total) * 100),
       processing,
-      processingPct: Math.round((processing / total) * 100),
       confirmed,
-      confirmedPct: Math.round((confirmed / total) * 100),
       cancelled,
-      cancelledPct: Math.round((cancelled / total) * 100),
+      deliveredPct: Math.round((delivered / total) * 100),
     };
   }, [orders]);
 
-  // Dynamic Chart Dataset derived directly from live database Orders
   const chartData: BarDataPoint[] = useMemo(() => {
     const totalVal = orders.reduce((sum, o) => sum + (Number(o.netAmount) || 0), 0);
     const base = totalVal > 0 ? totalVal : 450000;
@@ -139,12 +144,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         const factor = 0.12 + idx * 0.04;
         const subtotal = Math.round(base * factor);
         const spot = Math.round(subtotal * 0.42);
-        return {
-          label: w,
-          oneTime: spot,
-          recurring: subtotal - spot,
-          total: subtotal,
-        };
+        return { label: w, oneTime: spot, recurring: subtotal - spot, total: subtotal };
       });
     } else if (timeframe === 'Quarterly') {
       const quarters = ['Q1-25', 'Q2-25', 'Q3-25', 'Q4-25', 'Q1-26', 'Q2-26'];
@@ -152,27 +152,16 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
         const factor = 0.8 + idx * 0.35;
         const subtotal = Math.round(base * factor);
         const spot = Math.round(subtotal * 0.45);
-        return {
-          label: q,
-          oneTime: spot,
-          recurring: subtotal - spot,
-          total: subtotal,
-        };
+        return { label: q, oneTime: spot, recurring: subtotal - spot, total: subtotal };
       });
     } else {
-      // Monthly
       const months = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
       return months.map((m, idx) => {
         const isCurrent = idx === months.length - 1;
         const factor = isCurrent ? 1.0 : 0.4 + idx * 0.11;
         const subtotal = Math.round(base * factor);
         const spot = Math.round(subtotal * 0.38);
-        return {
-          label: m,
-          oneTime: spot,
-          recurring: subtotal - spot,
-          total: subtotal,
-        };
+        return { label: m, oneTime: spot, recurring: subtotal - spot, total: subtotal };
       });
     }
   }, [orders, timeframe]);
@@ -184,14 +173,13 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
 
   const selectedPoint = chartData[selectedBarIdx] || chartData[chartData.length - 1];
 
-  // Dynamic Fastener Standards Spread computed directly from live Warehouse Products
   const categoriesSpread = useMemo(() => {
     if (!products.length) {
       return [
-        { name: 'Hex Bolts (DIN 933 / 931)', pct: 45, count: 275, color: '#0052CC' },
-        { name: 'Socket Caps (DIN 912)', pct: 25, count: 152, color: '#7C3AED' },
-        { name: 'Heavy Hex Nuts (DIN 934)', pct: 18, count: 110, color: '#F59E0B' },
-        { name: 'Anchor & Structural Studs', pct: 12, count: 68, color: '#10B981' },
+        { name: 'Hex Bolts (DIN 933 / 931)', pct: 45, count: 275 },
+        { name: 'Socket Caps (DIN 912)', pct: 25, count: 152 },
+        { name: 'Heavy Hex Nuts (DIN 934)', pct: 18, count: 110 },
+        { name: 'Anchor & Structural Studs', pct: 12, count: 68 },
       ];
     }
     const map = new Map<string, number>();
@@ -200,239 +188,134 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       map.set(key, (map.get(key) || 0) + 1);
     });
     const total = products.length;
-    const colors = ['#0052CC', '#7C3AED', '#F59E0B', '#10B981', '#EC4899', '#38BDF8'];
     return Array.from(map.entries())
-      .map(([name, count], idx) => ({
-        name,
-        count,
-        pct: Math.round((count / total) * 100),
-        color: colors[idx % colors.length],
-      }))
+      .map(([name, count]) => ({ name, count, pct: Math.round((count / total) * 100) }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 4);
   }, [products]);
 
+  const kpis = [
+    { id: 'orders', label: 'Orders', value: String(orders.length), sub: `${pendingOrders.length} to dispatch`, warn: pendingOrders.length > 0 },
+    { id: 'rfqs', label: 'RFQs', value: String(rfqs.length), sub: `${pendingRfqs.length} need review`, warn: pendingRfqs.length > 0 },
+    { id: 'products', label: 'Products', value: productsTotal.toLocaleString('en-IN'), sub: 'SKUs in catalog', warn: false },
+    { id: 'users', label: 'Clients', value: String(usersCount), sub: 'registered accounts', warn: false },
+  ];
+
+  const ops = [
+    { id: 'products', icon: 'products', title: 'Products', sub: 'Edit SKUs' },
+    { id: 'orders', icon: 'orders', title: 'Dispatches', sub: 'Tracking, AWBs' },
+    { id: 'rfqs', icon: 'rfqs', title: 'RFQs', sub: 'Quotes' },
+    { id: 'users', icon: 'users', title: 'Clients', sub: 'Credit, tiers' },
+    { id: 'surplus', icon: 'catalog', title: 'Surplus', sub: 'Clearance lots' },
+    { id: 'categories', icon: 'dashboard', title: 'Categories', sub: 'Taxonomy' },
+    { id: 'erp', icon: 'check', title: 'ERPNext', sub: 'Mill sync' },
+    { id: 'payments', icon: 'lock', title: 'Payments', sub: 'PhonePe' },
+    { id: 'blogs', icon: 'doc', title: 'Library', sub: 'Publish articles' },
+  ];
+
+  const orderColor = (s: string) =>
+    s === 'DELIVERED' ? GREEN : s === 'IN_TRANSIT' || s === 'DISPATCHED' ? GRAPHITE : ORANGE;
+
+  const pipeline = [
+    { label: 'Delivered', n: statusStats.delivered, color: GREEN },
+    { label: 'In transit', n: statusStats.inTransit, color: GRAPHITE },
+    { label: 'Processing', n: statusStats.processing, color: ORANGE },
+    { label: 'Confirmed', n: statusStats.confirmed, color: LIGHT_STEEL },
+    { label: 'Cancelled', n: statusStats.cancelled, color: RED },
+  ];
+
+  const erpOnline = String(erpStatus?.status || '').toUpperCase() === 'CONNECTED' || !erpStatus?.status;
+
   return (
     <ScrollView
+      style={{ backgroundColor: WHITE }}
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => loadData(true)}
-          colors={['#0052CC']}
-        />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => loadData(true)} colors={[ORANGE]} />
       }
+      showsVerticalScrollIndicator={false}
     >
-      {/* ================================================================ */}
-      {/* 1. NODE TELEMETRY HERO BANNER                                    */}
-      {/* ================================================================ */}
-      <View style={styles.banner}>
-        <View style={styles.bannerTop}>
-          <View style={styles.nodeStatus}>
-            <View style={styles.pulsingDot} />
-            <Text style={styles.nodeText}>PLANT MASTER NODE: LDH-DC1</Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => loadData(true)}
-            style={styles.syncBtn}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.syncBtnText}>
-              {isRefreshing ? 'Syncing...' : '↻ Live Refresh'}
+      {/* Headline number */}
+      <View style={styles.hero}>
+        <View style={styles.rowBetween}>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: erpOnline ? GREEN : RED }]} />
+            <Text style={styles.heroMeta}>
+              ERPNext {erpOnline ? 'connected' : String(erpStatus?.status).toLowerCase()}, {erpStatus?.latencyMs || 28} ms
             </Text>
+          </View>
+          <TouchableOpacity onPress={() => loadData(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.link}>{isRefreshing ? 'Syncing' : 'Refresh'}</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.revenueWrap}>
-          <Text style={styles.bannerLabel}>Gross Active Pipeline Invoiced Volume</Text>
-          <Text style={styles.bannerValue}>
-            ₹{totalRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-          </Text>
-        </View>
-
-        <View style={styles.telemetryGrid}>
-          <View style={styles.telemetryItem}>
-            <Text style={styles.telemetryLabel}>ERPNext Link</Text>
-            <View style={styles.rowInline}>
-              <View style={[styles.statusMiniDot, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.telemetryVal}>{erpStatus?.status || 'ONLINE TLS 1.3'}</Text>
-            </View>
-          </View>
-          <View style={styles.telemetryItem}>
-            <Text style={styles.telemetryLabel}>Latency</Text>
-            <Text style={styles.telemetryVal}>{erpStatus?.latencyMs || 28} ms</Text>
-          </View>
-          <View style={styles.telemetryItem}>
-            <Text style={styles.telemetryLabel}>Dispatched Weight</Text>
-            <Text style={styles.telemetryVal}>{totalWeightTons} MT</Text>
-          </View>
-        </View>
+        <Text style={styles.heroLabel}>Total invoiced</Text>
+        <Text style={styles.heroValue}>{inr(totalRevenue)}</Text>
+        <Text style={styles.heroSub}>{totalWeightTons} MT dispatched from plant LDH-DC1</Text>
       </View>
 
-      {/* ================================================================ */}
-      {/* 2. KPI TELEMETRY CARDS (2x2 Grid with trends)                    */}
-      {/* ================================================================ */}
+      {/* KPIs: 2x2 grid divided by hairlines */}
       <View style={styles.kpiGrid}>
-        {/* Card 1: Active Orders */}
-        <TouchableOpacity
-          style={styles.kpiCard}
-          onPress={() => onNavigate('orders')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.kpiRow}>
-            <Text style={styles.kpiTitle}>Active Orders</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: '#EFF6FF' }]}>
-              <Text style={styles.kpiIcon}>📦</Text>
-            </View>
-          </View>
-          <Text style={styles.kpiNum}>{orders.length}</Text>
-          <View style={styles.trendRow}>
-            <Text style={styles.trendUp}>↑ +14.2%</Text>
-            <Text style={styles.trendSub}>{pendingOrders.length} pending dispatch</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Card 2: Open RFQs */}
-        <TouchableOpacity
-          style={styles.kpiCard}
-          onPress={() => onNavigate('rfqs')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.kpiRow}>
-            <Text style={styles.kpiTitle}>Open RFQs</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <Text style={styles.kpiIcon}>📄</Text>
-            </View>
-          </View>
-          <Text style={styles.kpiNum}>{rfqs.length}</Text>
-          <View style={styles.trendRow}>
-            <Text style={styles.trendWarning}>⚡ {pendingRfqs.length} require review</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Card 3: Warehouse SKUs */}
-        <TouchableOpacity
-          style={styles.kpiCard}
-          onPress={() => onNavigate('products')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.kpiRow}>
-            <Text style={styles.kpiTitle}>Warehouse SKUs</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: '#F3E8FF' }]}>
-              <Text style={styles.kpiIcon}>🔩</Text>
-            </View>
-          </View>
-          <Text style={styles.kpiNum}>{productsTotal.toLocaleString()}</Text>
-          <View style={styles.trendRow}>
-            <Text style={styles.trendSuccess}>✓ 100% In-Stock</Text>
-            <Text style={styles.trendSub}>DIN & ISO</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Card 4: B2B Clients */}
-        <TouchableOpacity
-          style={styles.kpiCard}
-          onPress={() => onNavigate('users')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.kpiRow}>
-            <Text style={styles.kpiTitle}>B2B Clients</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: '#ECFDF5' }]}>
-              <Text style={styles.kpiIcon}>👥</Text>
-            </View>
-          </View>
-          <Text style={styles.kpiNum}>{usersCount}</Text>
-          <View style={styles.trendRow}>
-            <Text style={styles.trendUp}>↑ +8.5%</Text>
-            <Text style={styles.trendSub}>Verified GSTIN</Text>
-          </View>
-        </TouchableOpacity>
+        {kpis.map((k, i) => (
+          <TouchableOpacity
+            key={k.id}
+            onPress={() => onNavigate(k.id)}
+            style={[styles.kpi, i % 2 === 0 && styles.kpiLeft, i < 2 && styles.kpiTop]}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.kpiLabel}>{k.label}</Text>
+            <Text style={styles.kpiNum}>{k.value}</Text>
+            <Text style={[styles.kpiSub, k.warn && { color: ORANGE, fontWeight: '700' }]}>{k.sub}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* ================================================================ */}
-      {/* 3. VISUAL KPI GRAPH: COMMERCIAL ORDER VOLUME (Interactive)       */}
-      {/* ================================================================ */}
-      <View style={styles.graphCard}>
-        <View style={styles.graphHeader}>
-          <View>
-            <Text style={styles.graphTitle}>Commercial Order Volume</Text>
-            <Text style={styles.graphSubtitle}>Spot Dispatches vs Annual Contracts</Text>
-          </View>
-
-          {/* Timeframe Pill Switcher */}
-          <View style={styles.timeframePill}>
-            {(['Weekly', 'Monthly', 'Quarterly'] as Timeframe[]).map((tf) => {
-              const active = timeframe === tf;
-              return (
-                <TouchableOpacity
-                  key={tf}
-                  onPress={() => {
-                    setTimeframe(tf);
-                    setSelectedBarIdx(chartData.length - 1);
-                  }}
-                  style={[styles.tfBtn, active && styles.tfBtnActive]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.tfText, active && styles.tfTextActive]}>{tf}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+      {/* Order volume chart: the signature element */}
+      <View style={styles.section}>
+        <Text style={styles.h2}>Order volume</Text>
+        <View style={styles.tabs}>
+          {(['Weekly', 'Monthly', 'Quarterly'] as Timeframe[]).map((tf) => {
+            const active = timeframe === tf;
+            return (
+              <TouchableOpacity
+                key={tf}
+                onPress={() => {
+                  setTimeframe(tf);
+                  setSelectedBarIdx(chartData.length - 1);
+                }}
+                style={[styles.tab, active && styles.tabActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tf}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Selected Data Inspection Callout */}
-        {selectedPoint && (
-          <View style={styles.pointCallout}>
-            <View style={styles.calloutRow}>
-              <Text style={styles.calloutLabel}>{selectedPoint.label} Performance:</Text>
-              <Text style={styles.calloutTotal}>
-                ₹{selectedPoint.total.toLocaleString('en-IN')}
-              </Text>
-            </View>
-            <View style={styles.calloutDetails}>
-              <View style={styles.calloutBadge}>
-                <View style={[styles.legendDot, { backgroundColor: '#93C5FD' }]} />
-                <Text style={styles.calloutItemText}>
-                  Spot: ₹{selectedPoint.oneTime.toLocaleString('en-IN')}
-                </Text>
-              </View>
-              <View style={styles.calloutBadge}>
-                <View style={[styles.legendDot, { backgroundColor: '#0052CC' }]} />
-                <Text style={styles.calloutItemText}>
-                  ARC Contract: ₹{selectedPoint.recurring.toLocaleString('en-IN')}
-                </Text>
-              </View>
-            </View>
+        {selectedPoint ? (
+          <View style={styles.callout}>
+            <Text style={styles.calloutTotal}>{inr(selectedPoint.total)}</Text>
+            <Text style={styles.calloutSub}>
+              {selectedPoint.label}: {inr(selectedPoint.oneTime)} spot, {inr(selectedPoint.recurring)} contract
+            </Text>
           </View>
-        )}
+        ) : null}
 
-        {/* Visual Bar Canvas with Reference Grid */}
         <View style={styles.chartCanvas}>
-          {/* Background Grid Lines */}
-          <View style={styles.gridLinesContainer}>
-            <View style={styles.gridLine}>
-              <Text style={styles.gridLabel}>₹{(maxChartVal / 1000).toFixed(0)}k</Text>
-              <View style={styles.gridLineRule} />
-            </View>
-            <View style={styles.gridLine}>
-              <Text style={styles.gridLabel}>₹{((maxChartVal * 0.5) / 1000).toFixed(0)}k</Text>
-              <View style={styles.gridLineRule} />
-            </View>
-            <View style={styles.gridLine}>
-              <Text style={styles.gridLabel}>₹0</Text>
-              <View style={styles.gridLineRule} />
-            </View>
+          <View style={styles.gridLines} pointerEvents="none">
+            {[maxChartVal, maxChartVal / 2, 0].map((v, i) => (
+              <View key={i} style={styles.gridLine}>
+                <Text style={styles.gridLabel}>{v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}</Text>
+                <View style={styles.gridRule} />
+              </View>
+            ))}
           </View>
 
-          {/* Render Bars */}
           <View style={styles.barsRow}>
             {chartData.map((point, index) => {
               const isSelected = selectedBarIdx === index;
               const barHeightPct = Math.min(100, Math.max(14, (point.total / maxChartVal) * 100));
               const oneTimePct = (point.oneTime / (point.total || 1)) * 100;
               const recurringPct = (point.recurring / (point.total || 1)) * 100;
-
               return (
                 <TouchableOpacity
                   key={point.label}
@@ -441,262 +324,145 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
                   activeOpacity={0.7}
                 >
                   <View style={styles.barWrapper}>
-                    <View
-                      style={[
-                        styles.stackedBar,
-                        { height: `${barHeightPct}%` },
-                        isSelected && styles.stackedBarSelected,
-                      ]}
-                    >
-                      {/* Top Segment: Spot */}
-                      <View style={[styles.barSegmentSpot, { height: `${oneTimePct}%` }]} />
-                      {/* Bottom Segment: ARC */}
-                      <View style={[styles.barSegmentArc, { height: `${recurringPct}%` }]} />
+                    <View style={[styles.stackedBar, { height: `${barHeightPct}%` }]}>
+                      <View
+                        style={{ height: `${oneTimePct}%`, backgroundColor: isSelected ? ORANGE_LIGHT : LIGHT_STEEL }}
+                      />
+                      <View
+                        style={{ height: `${recurringPct}%`, backgroundColor: isSelected ? ORANGE : GRAPHITE }}
+                      />
                     </View>
                   </View>
-                  <Text style={[styles.barLabel, isSelected && styles.barLabelActive]}>
-                    {point.label}
-                  </Text>
+                  <Text style={[styles.barLabel, isSelected && styles.barLabelActive]}>{point.label}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* Legend */}
-        <View style={styles.legendContainer}>
+        <View style={styles.legend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#93C5FD' }]} />
-            <Text style={styles.legendText}>Spot Fastener Orders</Text>
+            <View style={[styles.legendSwatch, { backgroundColor: LIGHT_STEEL }]} />
+            <Text style={styles.legendText}>Spot orders</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#0052CC' }]} />
-            <Text style={styles.legendText}>Annual Rate Contracts (ARC)</Text>
+            <View style={[styles.legendSwatch, { backgroundColor: GRAPHITE }]} />
+            <Text style={styles.legendText}>Annual rate contracts</Text>
           </View>
         </View>
       </View>
 
-      {/* ================================================================ */}
-      {/* 4. ORDER STATUS DISTRIBUTION PROGRESS CHART                      */}
-      {/* ================================================================ */}
-      <View style={styles.graphCard}>
-        <View style={styles.graphHeader}>
-          <View>
-            <Text style={styles.graphTitle}>Consignment Pipeline Health</Text>
-            <Text style={styles.graphSubtitle}>
-              {statusStats.total} Total Orders in Active MySQL Database
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => onNavigate('orders')}>
-            <Text style={styles.seeAllText}>Pipeline →</Text>
+      {/* Pipeline */}
+      <View style={styles.section}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Order pipeline</Text>
+          <TouchableOpacity onPress={() => onNavigate('orders')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.link}>View orders</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Multi-Segment Color Progress Bar */}
-        <View style={styles.multiProgressBar}>
-          <View style={[styles.progSegment, { flex: Math.max(1, statusStats.delivered), backgroundColor: '#10B981' }]} />
-          <View style={[styles.progSegment, { flex: Math.max(1, statusStats.inTransit), backgroundColor: '#0052CC' }]} />
-          <View style={[styles.progSegment, { flex: Math.max(1, statusStats.processing), backgroundColor: '#F59E0B' }]} />
-          <View style={[styles.progSegment, { flex: Math.max(1, statusStats.confirmed), backgroundColor: '#38BDF8' }]} />
-          <View style={[styles.progSegment, { flex: Math.max(1, statusStats.cancelled), backgroundColor: '#EF4444' }]} />
+        <Text style={styles.note}>
+          {statusStats.total} orders, {statusStats.deliveredPct}% delivered
+        </Text>
+        <View style={styles.pipeBar}>
+          {pipeline.map((p) => (
+            <View key={p.label} style={{ flex: Math.max(1, p.n), backgroundColor: p.color }} />
+          ))}
         </View>
-
-        {/* Status Metrics Legend */}
-        <View style={styles.statusChipsGrid}>
-          <View style={styles.statusChip}>
-            <View style={[styles.statusChipDot, { backgroundColor: '#10B981' }]} />
-            <Text style={styles.statusChipLabel}>Delivered</Text>
-            <Text style={styles.statusChipVal}>{statusStats.delivered}</Text>
-          </View>
-          <View style={styles.statusChip}>
-            <View style={[styles.statusChipDot, { backgroundColor: '#0052CC' }]} />
-            <Text style={styles.statusChipLabel}>In Transit</Text>
-            <Text style={styles.statusChipVal}>{statusStats.inTransit}</Text>
-          </View>
-          <View style={styles.statusChip}>
-            <View style={[styles.statusChipDot, { backgroundColor: '#F59E0B' }]} />
-            <Text style={styles.statusChipLabel}>Processing</Text>
-            <Text style={styles.statusChipVal}>{statusStats.processing}</Text>
-          </View>
-          <View style={styles.statusChip}>
-            <View style={[styles.statusChipDot, { backgroundColor: '#38BDF8' }]} />
-            <Text style={styles.statusChipLabel}>Confirmed</Text>
-            <Text style={styles.statusChipVal}>{statusStats.confirmed}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ================================================================ */}
-      {/* 5. FASTENER CATEGORY SPREAD & INVENTORY WEIGHT                   */}
-      {/* ================================================================ */}
-      <View style={styles.graphCard}>
-        <View style={styles.graphHeader}>
-          <View>
-            <Text style={styles.graphTitle}>Inventory Standards Spread</Text>
-            <Text style={styles.graphSubtitle}>605 SKUs Categorized by Engineering Standard</Text>
-          </View>
-          <TouchableOpacity onPress={() => onNavigate('products')}>
-            <Text style={styles.seeAllText}>Catalog →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {categoriesSpread.map((cat) => (
-          <View key={cat.name} style={styles.catSpreadItem}>
-            <View style={styles.catSpreadHeader}>
-              <Text style={styles.catSpreadName}>{cat.name}</Text>
-              <Text style={styles.catSpreadPct}>{cat.pct}% ({cat.count} SKUs)</Text>
+        <View style={{ marginTop: 6 }}>
+          {pipeline.map((p, i) => (
+            <View key={p.label} style={[styles.kv, i === 0 && { borderTopWidth: 0 }]}>
+              <View style={styles.statusRow}>
+                <View style={[styles.dot, { backgroundColor: p.color }]} />
+                <Text style={styles.k}>{p.label}</Text>
+              </View>
+              <Text style={styles.v}>{p.n}</Text>
             </View>
-            <View style={styles.catProgressBarTrack}>
-              <View
-                style={[
-                  styles.catProgressBarFill,
-                  { width: `${cat.pct}%`, backgroundColor: cat.color },
-                ]}
-              />
+          ))}
+        </View>
+      </View>
+
+      {/* Inventory spread */}
+      <View style={styles.section}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Catalog by standard</Text>
+          <TouchableOpacity onPress={() => onNavigate('products')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.link}>View catalog</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.note}>{productsTotal.toLocaleString('en-IN')} SKUs in total</Text>
+        {categoriesSpread.map((cat) => (
+          <View key={cat.name} style={styles.cat}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.catName} numberOfLines={1}>
+                {cat.name}
+              </Text>
+              <Text style={styles.catPct}>
+                {cat.pct}% ({cat.count})
+              </Text>
+            </View>
+            <View style={styles.catTrack}>
+              <View style={[styles.catFill, { width: `${cat.pct}%` }]} />
             </View>
           </View>
         ))}
       </View>
 
-      {/* ================================================================ */}
-      {/* 6. ADMIN QUICK OPERATIONS GRID (All 8 Core Sections)             */}
-      {/* ================================================================ */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>⚡ Operations Management Enclave</Text>
+      {/* Operations */}
+      <View style={styles.section}>
+        <Text style={styles.h2}>Manage</Text>
+        <View style={styles.opsGrid}>
+          {ops.map((o, i) => (
+            <TouchableOpacity
+              key={o.id}
+              onPress={() => onNavigate(o.id)}
+              style={[styles.op, i % 3 !== 2 && styles.opRight, i < 6 && styles.opBottom]}
+              activeOpacity={0.7}
+            >
+              <NavIcon name={o.icon as any} color={GRAPHITE} size={20} />
+              <Text style={styles.opTitle}>{o.title}</Text>
+              <Text style={styles.opSub}>{o.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
-      <View style={styles.operationsGrid}>
-        <TouchableOpacity
-          onPress={() => onNavigate('products')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>🔩</Text>
-          <Text style={styles.opTileTitle}>Products</Text>
-          <Text style={styles.opTileSub}>Full CRUD SKUs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('orders')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>📦</Text>
-          <Text style={styles.opTileTitle}>Dispatches</Text>
-          <Text style={styles.opTileSub}>Tracking &amp; AWBs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('rfqs')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>📄</Text>
-          <Text style={styles.opTileTitle}>RFQs</Text>
-          <Text style={styles.opTileSub}>Quote &amp; Volume</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('users')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>👥</Text>
-          <Text style={styles.opTileTitle}>Clients</Text>
-          <Text style={styles.opTileSub}>Credit &amp; Tiers</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('surplus')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>🏷️</Text>
-          <Text style={styles.opTileTitle}>Surplus</Text>
-          <Text style={styles.opTileSub}>Clearance Lots</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('categories')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>🗂️</Text>
-          <Text style={styles.opTileTitle}>Catalog</Text>
-          <Text style={styles.opTileSub}>Taxonomies</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('erp')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>⚡</Text>
-          <Text style={styles.opTileTitle}>ERPNext</Text>
-          <Text style={styles.opTileSub}>Live Mill Sync</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onNavigate('payments')}
-          style={styles.opTile}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.opTileIcon}>💳</Text>
-          <Text style={styles.opTileTitle}>Payments</Text>
-          <Text style={styles.opTileSub}>PhonePe Gateway</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ================================================================ */}
-      {/* 7. RECENT FACTORY DISPATCHES PIPELINE                            */}
-      {/* ================================================================ */}
-      <View style={[styles.sectionHeader, { marginTop: 10 }]}>
-        <Text style={styles.sectionTitle}>Recent Factory Dispatches</Text>
-        <TouchableOpacity onPress={() => onNavigate('orders')}>
-          <Text style={styles.viewAllText}>View All ({orders.length}) →</Text>
+      {/* Recent dispatches */}
+      <View style={[styles.rowBetween, styles.listHeader]}>
+        <Text style={styles.h2}>Recent dispatches</Text>
+        <TouchableOpacity onPress={() => onNavigate('orders')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.link}>View all ({orders.length})</Text>
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="small" color="#0052CC" style={{ marginVertical: 20 }} />
+        <ActivityIndicator size="small" color={ORANGE} style={{ marginVertical: 24 }} />
       ) : (
         orders.slice(0, 3).map((order) => (
-          <MobileCard
+          <TouchableOpacity
             key={order.id}
+            style={styles.order}
+            activeOpacity={0.7}
             onPress={() => (onSelectOrder ? onSelectOrder(order) : onNavigate('orders'))}
           >
-            <View style={styles.orderTop}>
+            <View style={styles.rowBetween}>
               <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-              <MobileBadge
-                label={order.status}
-                variant={
-                  order.status === 'DELIVERED'
-                    ? 'success'
-                    : order.status === 'IN_TRANSIT' || order.status === 'DISPATCHED'
-                    ? 'primary'
-                    : 'warning'
-                }
-                size="sm"
-              />
+              <View style={styles.statusRow}>
+                <View style={[styles.dot, { backgroundColor: orderColor(order.status) }]} />
+                <Text style={[styles.statusText, { color: orderColor(order.status) }]}>
+                  {statusLabel(order.status)}
+                </Text>
+              </View>
             </View>
-
-            <Text style={styles.companyName}>
-              {order.companyName || order.customerName || 'Enterprise Buyer'}
+            <Text style={styles.company}>{order.companyName || order.customerName || 'Enterprise Buyer'}</Text>
+            <Text style={styles.meta}>
+              {(order.totalWeightKg || 120).toLocaleString('en-IN')} kg by {order.carrier || 'Express'}
+              {order.trackingNumber ? `, AWB ${order.trackingNumber}` : ''}
             </Text>
-            <Text style={styles.orderDetails}>
-              {(order.totalWeightKg || 120).toLocaleString()} Kg • {order.carrier || 'Express'}
-              {order.trackingNumber ? ` • AWB: ${order.trackingNumber}` : ''}
-            </Text>
-
-            <View style={styles.orderDivider} />
-
-            <View style={styles.orderBottom}>
-              <Text style={styles.orderAmount}>
-                ₹{(order.netAmount || 0).toLocaleString()}
-              </Text>
-              <Text style={styles.manageText}>Update Status →</Text>
+            <View style={[styles.rowBetween, { marginTop: 12 }]}>
+              <Text style={styles.orderAmount}>{inr(order.netAmount || 0)}</Text>
+              <Text style={styles.link}>Update status</Text>
             </View>
-          </MobileCard>
+          </TouchableOpacity>
         ))
       )}
     </ScrollView>
@@ -704,541 +470,120 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 14,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
-  },
-  banner: {
-    backgroundColor: '#0F172A',
-    borderRadius: 18,
-    padding: 18,
-    elevation: 4,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  bannerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  nodeStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  pulsingDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
-  },
-  nodeText: {
-    color: '#94A3B8',
-    fontSize: 10,
+  container: { paddingBottom: 40, backgroundColor: WHITE },
+
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
+  link: { fontSize: 14, fontWeight: '700', color: ORANGE },
+  note: { fontSize: 13, color: STEEL, marginTop: 4 },
+
+  // Hero
+  hero: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: HAIR },
+  heroMeta: { fontSize: 13, color: STEEL },
+  heroLabel: { fontSize: 13, color: STEEL, marginTop: 20 },
+  heroValue: {
+    fontSize: 38,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    color: GRAPHITE,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
-  syncBtn: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  syncBtnText: {
-    color: '#38BDF8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  revenueWrap: {
-    marginBottom: 16,
-  },
-  bannerLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  bannerValue: {
-    color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '900',
-    marginTop: 4,
-    letterSpacing: -0.5,
-  },
-  telemetryGrid: {
-    flexDirection: 'row',
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 12,
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  telemetryItem: {
-    flex: 1,
-  },
-  telemetryLabel: {
-    fontSize: 9,
-    color: '#94A3B8',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  telemetryVal: {
-    fontSize: 12,
-    color: '#F8FAFC',
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  rowInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 3,
-  },
-  statusMiniDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  kpiCard: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-  },
-  kpiRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  kpiTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-  },
-  kpiIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiIcon: {
-    fontSize: 14,
-  },
-  kpiNum: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginTop: 6,
-    letterSpacing: -0.5,
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-    flexWrap: 'wrap',
-  },
-  trendUp: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  trendSuccess: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  trendWarning: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#D97706',
-  },
-  trendSub: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  graphCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-  },
-  graphHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  graphTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  graphSubtitle: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  timeframePill: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    padding: 2,
-  },
-  tfBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  tfBtnActive: {
-    backgroundColor: '#0052CC',
-  },
-  tfText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  tfTextActive: {
-    color: '#FFFFFF',
-  },
-  pointCallout: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  calloutRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  calloutLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  calloutTotal: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0052CC',
-  },
-  calloutDetails: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 6,
-  },
-  calloutBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  calloutItemText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  chartCanvas: {
-    height: 160,
-    position: 'relative',
-    justifyContent: 'flex-end',
-    marginBottom: 8,
-  },
-  gridLinesContainer: {
+  heroSub: { fontSize: 13, color: STEEL, marginTop: 4 },
+
+  // KPI grid
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', borderBottomWidth: 1, borderBottomColor: HAIR },
+  kpi: { width: '50%', paddingHorizontal: 20, paddingVertical: 18 },
+  kpiLeft: { borderRightWidth: 1, borderRightColor: HAIR },
+  kpiTop: { borderBottomWidth: 1, borderBottomColor: HAIR },
+  kpiLabel: { fontSize: 13, color: STEEL },
+  kpiNum: { fontSize: 28, fontWeight: '800', color: GRAPHITE, marginTop: 2, fontVariant: ['tabular-nums'] },
+  kpiSub: { fontSize: 12, color: STEEL, marginTop: 2 },
+
+  // Sections
+  section: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: HAIR },
+
+  // Chart
+  tabs: { flexDirection: 'row', marginTop: 12, borderBottomWidth: 1, borderBottomColor: HAIR },
+  tab: { paddingVertical: 10, marginRight: 22, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  tabActive: { borderBottomColor: ORANGE },
+  tabText: { fontSize: 14, fontWeight: '600', color: STEEL },
+  tabTextActive: { color: GRAPHITE },
+  callout: { marginTop: 16 },
+  calloutTotal: { fontSize: 24, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
+  calloutSub: { fontSize: 12, color: STEEL, marginTop: 2 },
+  chartCanvas: { height: 170, marginTop: 16, justifyContent: 'flex-end' },
+  gridLines: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 24,
     justifyContent: 'space-between',
-    pointerEvents: 'none',
   },
-  gridLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  gridLabel: {
-    fontSize: 9,
-    color: '#94A3B8',
-    fontWeight: '600',
-    width: 28,
-  },
-  gridLineRule: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
+  gridLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  gridLabel: { fontSize: 10, color: STEEL, width: 30 },
+  gridRule: { flex: 1, height: 1, backgroundColor: MIST },
   barsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingLeft: 34,
-    paddingRight: 6,
+    paddingLeft: 36,
     height: '100%',
   },
-  barColumn: {
-    alignItems: 'center',
-    flex: 1,
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  barWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    height: 125,
-    justifyContent: 'flex-end',
-  },
-  stackedBar: {
-    width: 22,
-    borderRadius: 5,
-    overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
-  },
-  stackedBarSelected: {
-    borderWidth: 2,
-    borderColor: '#0052CC',
-    elevation: 3,
-  },
-  barSegmentSpot: {
-    backgroundColor: '#93C5FD',
-    width: '100%',
-  },
-  barSegmentArc: {
-    backgroundColor: '#0052CC',
-    width: '100%',
-  },
-  barLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
-    marginTop: 6,
-  },
-  barLabelActive: {
-    color: '#0052CC',
-    fontWeight: '900',
-  },
-  legendContainer: {
+  barColumn: { alignItems: 'center', flex: 1, height: '100%', justifyContent: 'flex-end' },
+  barWrapper: { width: '100%', alignItems: 'center', height: 140, justifyContent: 'flex-end' },
+  stackedBar: { width: 26, borderRadius: 3, overflow: 'hidden', backgroundColor: MIST },
+  barLabel: { fontSize: 11, color: STEEL, marginTop: 6 },
+  barLabelActive: { color: GRAPHITE, fontWeight: '700' },
+  legend: { flexDirection: 'row', gap: 18, marginTop: 12 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendSwatch: { width: 10, height: 10, borderRadius: 2 },
+  legendText: { fontSize: 12, color: STEEL },
+
+  // Pipeline
+  pipeBar: { height: 10, borderRadius: 5, flexDirection: 'row', overflow: 'hidden', marginTop: 14, gap: 2 },
+  kv: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginTop: 8,
-    paddingTop: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 11,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: MIST,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  k: { fontSize: 14, color: STEEL },
+  v: { fontSize: 14, fontWeight: '700', color: GRAPHITE, fontVariant: ['tabular-nums'] },
+
+  // Category spread
+  cat: { marginTop: 14 },
+  catName: { fontSize: 14, color: GRAPHITE, fontWeight: '600', flex: 1, marginRight: 12 },
+  catPct: { fontSize: 13, color: STEEL, fontVariant: ['tabular-nums'] },
+  catTrack: { height: 6, borderRadius: 3, backgroundColor: MIST, marginTop: 6, overflow: 'hidden' },
+  catFill: { height: '100%', backgroundColor: GRAPHITE, borderRadius: 3 },
+
+  // Operations grid
+  opsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, borderWidth: 1, borderColor: HAIR, borderRadius: 8, overflow: 'hidden' },
+  op: { width: '33.333%', paddingVertical: 16, paddingHorizontal: 12, gap: 4 },
+  opRight: { borderRightWidth: 1, borderRightColor: HAIR },
+  opBottom: { borderBottomWidth: 1, borderBottomColor: HAIR },
+  opTitle: { fontSize: 14, fontWeight: '700', color: GRAPHITE, marginTop: 6 },
+  opSub: { fontSize: 12, color: STEEL },
+
+  // Recent dispatches
+  listHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: MIST,
+    borderBottomWidth: 1,
+    borderBottomColor: HAIR,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  seeAllText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
-  multiProgressBar: {
-    height: 10,
-    borderRadius: 5,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
-    marginVertical: 12,
-  },
-  progSegment: {
-    height: '100%',
-  },
-  statusChipsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  statusChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  statusChipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusChipLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  statusChipVal: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  catSpreadItem: {
-    marginTop: 10,
-  },
-  catSpreadHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  catSpreadName: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  catSpreadPct: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  catProgressBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F1F5F9',
-    overflow: 'hidden',
-  },
-  catProgressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  operationsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  opTile: {
-    flex: 1,
-    minWidth: '22%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    elevation: 1,
-  },
-  opTileIcon: {
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  opTileTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  opTileSub: {
-    fontSize: 8,
-    color: '#64748B',
-    fontWeight: '600',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  viewAllText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  orderTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  orderNumber: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  companyName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    marginTop: 2,
-  },
-  orderDetails: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  orderDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  orderBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  orderAmount: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
-  manageText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-  },
+  order: { paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: HAIR },
+  orderNumber: { fontSize: 15, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
+  statusText: { fontSize: 13, fontWeight: '700' },
+  company: { fontSize: 14, fontWeight: '600', color: GRAPHITE, marginTop: 8 },
+  meta: { fontSize: 13, color: STEEL, marginTop: 2 },
+  orderAmount: { fontSize: 18, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
 });
+
+export default AdminDashboardScreen;

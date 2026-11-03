@@ -20,6 +20,7 @@ import {
 import TablePagination from '@/components/common/TablePagination';
 import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 import { BulkQuotation } from '@/lib/types';
+import { getStoredUser } from '@/lib/auth';
 import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 import { showSuccessAlert, showToast } from '@/lib/swal';

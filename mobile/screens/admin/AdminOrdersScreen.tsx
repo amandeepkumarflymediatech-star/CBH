@@ -9,13 +9,48 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
 import { mobileApi } from '../../config/api';
 import { MobileOrder } from '../../types';
+
+// Same palette as the other screens
+const GRAPHITE = '#1C2228';
+const STEEL = '#5E6A74';
+const MIST = '#EDEFF1';
+const HAIR = '#D6DBE0';
+const WHITE = '#FFFFFF';
+const ORANGE = '#F26B1D';
+const GREEN = '#17803D';
+const RED = '#C62828';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const statusLabel = (s: string) => {
+  if (s === 'All') return 'All';
+  const t = s.replace(/_/g, ' ').toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
+// Dispatch stages; the tracker fills as an order moves along
+const STAGES = ['Processing', 'Dispatched', 'In transit', 'Delivered'];
+const stageIndex = (status: string) => {
+  switch (status) {
+    case 'DISPATCHED':
+      return 1;
+    case 'IN_TRANSIT':
+      return 2;
+    case 'DELIVERED':
+      return 3;
+    default:
+      return 0;
+  }
+};
+
+const payLabel = (m?: string) =>
+  m === 'COD' ? 'Cash on delivery' : m === 'PHONEPE' ? 'Prepaid UPI' : m === 'NEFT_RTGS' ? 'RTGS wire' : m ? '30-day credit' : '';
 
 export const AdminOrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<MobileOrder[]>([]);
@@ -25,14 +60,14 @@ export const AdminOrdersScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Update Status Modal
+  // Update status modal
   const [activeOrder, setActiveOrder] = useState<MobileOrder | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<MobileOrder['status']>('PROCESSING');
   const [newTracking, setNewTracking] = useState('');
   const [newCarrier, setNewCarrier] = useState('');
 
-  // Create Order Modal
+  // Create order modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newCompanyName, setNewCompanyName] = useState('');
@@ -42,7 +77,7 @@ export const AdminOrdersScreen: React.FC = () => {
   const [newQuantityKg, setNewQuantityKg] = useState('250');
   const [newAmount, setNewAmount] = useState('32500');
 
-  // Delete Modal
+  // Delete modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<MobileOrder | null>(null);
 
@@ -78,9 +113,7 @@ export const AdminOrdersScreen: React.FC = () => {
     fetchOrders();
   }, [selectedStatus, searchQuery]);
 
-  // ============================================================================
-  // CRUD: CREATE
-  // ============================================================================
+  // CREATE
   const handleOpenCreate = () => {
     setNewClientName('Vikram Malhotra');
     setNewCompanyName('L&T Mega Structures Ltd.');
@@ -90,7 +123,7 @@ export const AdminOrdersScreen: React.FC = () => {
 
   const handleCreateOrder = async () => {
     if (!newCompanyName.trim() || !newShippingAddress.trim()) {
-      Alert.alert('Validation Error', 'Company name and shipping address are required.');
+      Alert.alert('Missing details', 'Enter a company name and a shipping address.');
       return;
     }
 
@@ -137,17 +170,15 @@ export const AdminOrdersScreen: React.FC = () => {
 
       setOrders((prev) => [newOrder, ...prev]);
       setIsCreateModalOpen(false);
-      showToast(`Order #${newOrder.orderNumber} created successfully!`);
+      showToast(`Order ${newOrder.orderNumber} created`);
     } catch (err: any) {
-      Alert.alert('Create Error', err.message || 'Failed to create order.');
+      Alert.alert('Could not create order', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ============================================================================
-  // CRUD: UPDATE
-  // ============================================================================
+  // UPDATE
   const handleOpenUpdate = (order: MobileOrder) => {
     setActiveOrder(order);
     setNewStatus(order.status);
@@ -170,28 +201,21 @@ export const AdminOrdersScreen: React.FC = () => {
       setOrders((prev) =>
         prev.map((o) =>
           o.id === activeOrder.id
-            ? {
-                ...o,
-                status: newStatus,
-                trackingNumber: newTracking.trim(),
-                carrier: newCarrier.trim(),
-              }
+            ? { ...o, status: newStatus, trackingNumber: newTracking.trim(), carrier: newCarrier.trim() }
             : o
         )
       );
 
       setIsUpdateModalOpen(false);
-      showToast(`Order #${activeOrder.orderNumber} updated to ${newStatus}!`);
+      showToast(`${activeOrder.orderNumber} is now ${statusLabel(newStatus).toLowerCase()}`);
     } catch (err: any) {
-      Alert.alert('Update Error', err.message || 'Failed to update order status.');
+      Alert.alert('Could not update order', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ============================================================================
-  // CRUD: DELETE
-  // ============================================================================
+  // DELETE
   const handlePromptDelete = (order: MobileOrder) => {
     setOrderToDelete(order);
     setIsDeleteModalOpen(true);
@@ -204,10 +228,10 @@ export const AdminOrdersScreen: React.FC = () => {
       await mobileApi.orders.delete(orderToDelete.id);
       setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
       setIsDeleteModalOpen(false);
-      showToast(`Order #${orderToDelete.orderNumber} deleted.`);
+      showToast(`${orderToDelete.orderNumber} deleted`);
       setOrderToDelete(null);
     } catch (err: any) {
-      Alert.alert('Delete Error', err.message || 'Failed to delete order record.');
+      Alert.alert('Could not delete order', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -215,363 +239,337 @@ export const AdminOrdersScreen: React.FC = () => {
 
   const statusFilters = ['All', 'PROCESSING', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
 
-  const getStatusVariant = (st: string) => {
+  const statusColor = (st: string) => {
     switch (st) {
       case 'DELIVERED':
-        return 'success';
+        return GREEN;
       case 'IN_TRANSIT':
       case 'DISPATCHED':
-        return 'primary';
-      case 'PROCESSING':
-      case 'CONFIRMED':
-        return 'warning';
+        return GRAPHITE;
       case 'CANCELLED':
-        return 'danger';
+        return RED;
       default:
-        return 'neutral';
+        return ORANGE;
     }
   };
 
   return (
     <ScrollView
+      style={{ backgroundColor: WHITE }}
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => fetchOrders(true)}
-          colors={['#0052CC']}
-        />
+        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchOrders(true)} colors={[ORANGE]} />
       }
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      {/* Search Bar */}
-      <MobileSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Search Order #, Client, AWB Tracking..."
-      />
+      <View style={styles.searchWrap}>
+        <MobileSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by order number, client or AWB"
+        />
+      </View>
 
-      {/* Status Filter Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      {/* Status filter tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsContent}
+        style={styles.tabs}
+      >
         {statusFilters.map((st) => {
-          const isActive = selectedStatus === st;
+          const active = selectedStatus === st;
           return (
             <TouchableOpacity
               key={st}
               onPress={() => setSelectedStatus(st)}
-              style={[styles.chip, isActive ? styles.chipActive : styles.chipInactive]}
+              style={[styles.tab, active && styles.tabActive]}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                {st}
-              </Text>
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{statusLabel(st)}</Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ {toastMsg}</Text>
+          <Text style={styles.toastText}>{toastMsg}</Text>
         </View>
       ) : null}
 
-      {/* Control Action Bar */}
+      {/* Count + create */}
       <View style={styles.controlBar}>
-        <View>
-          <Text style={styles.resultsCount}>{orders.length} Active Consignments</Text>
-          <Text style={styles.subCount}>Real-time logistics dispatch pipeline</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.addOrderBtn}
-          onPress={handleOpenCreate}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.addOrderBtnText}>➕ New Dispatch</Text>
+        <Text style={styles.h2}>{isLoading ? 'Orders' : `${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`}</Text>
+        <TouchableOpacity style={styles.addBtn} onPress={handleOpenCreate} activeOpacity={0.88}>
+          <Text style={styles.addBtnText}>New dispatch</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Order List */}
+      {/* List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0052CC" />
-          <Text style={styles.loadingText}>Loading factory dispatch records...</Text>
+        <View style={styles.centerBlock}>
+          <ActivityIndicator size="large" color={ORANGE} />
+          <Text style={styles.loadingText}>Loading orders</Text>
         </View>
       ) : orders.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No Orders Found</Text>
-          <Text style={styles.emptySubtitle}>No consignments match your search or filter.</Text>
-          <TouchableOpacity onPress={() => { setSearchQuery(''); setSelectedStatus('All'); }} style={styles.resetBtn}>
-            <Text style={styles.resetBtnText}>Clear Filters</Text>
+        <View style={styles.centerBlock}>
+          <Text style={styles.emptyTitle}>No orders found</Text>
+          <Text style={styles.emptySubtitle}>Nothing matches this search or filter.</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setSearchQuery('');
+              setSelectedStatus('All');
+            }}
+            style={styles.resetBtn}
+          >
+            <Text style={styles.resetBtnText}>Clear filters</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        orders.map((order) => (
-          <MobileCard key={order.id}>
-            <View style={styles.rowBetween}>
-              <View>
+        orders.map((order) => {
+          const idx = stageIndex(order.status);
+          const cancelled = order.status === 'CANCELLED';
+          const color = statusColor(order.status);
+          const pay = payLabel(order.paymentMethod);
+          return (
+            <View key={order.id} style={styles.order}>
+              <View style={styles.rowBetween}>
                 <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-                <Text style={styles.companyName}>{order.companyName || 'Enterprise Buyer'}</Text>
+                <View style={styles.statusRow}>
+                  <View style={[styles.dot, { backgroundColor: color }]} />
+                  <Text style={[styles.statusText, { color }]}>{statusLabel(order.status)}</Text>
+                </View>
               </View>
-              <MobileBadge
-                label={order.status}
-                variant={getStatusVariant(order.status) as any}
-                size="sm"
-              />
-            </View>
+              <Text style={styles.company}>{order.companyName || 'Enterprise Buyer'}</Text>
 
-            {/* Address */}
-            <Text style={styles.addressText} numberOfLines={2}>
-              📍 {order.shippingAddress || 'Plant Dispatch Center'}
-            </Text>
+              {/* Stage tracker */}
+              <View style={styles.tracker}>
+                {STAGES.map((s, i) => (
+                  <View
+                    key={s}
+                    style={[styles.seg, i <= idx && { backgroundColor: cancelled ? RED : i === idx && idx < 3 ? ORANGE : i === 3 ? GREEN : GRAPHITE }]}
+                  />
+                ))}
+              </View>
+              <View style={styles.stageLabels}>
+                {STAGES.map((s, i) => (
+                  <Text key={s} style={[styles.stageLabel, i === idx && !cancelled && styles.stageLabelOn]}>
+                    {s}
+                  </Text>
+                ))}
+              </View>
 
-            {/* Logistics Info */}
-            <View style={styles.logisticsBox}>
-              <Text style={styles.carrierText}>
-                🚚 {order.carrier || 'Express Logistics'}{' '}
-                {order.trackingNumber ? `• AWB: ${order.trackingNumber}` : '• Pending AWB'}
+              <Text style={styles.meta} numberOfLines={2}>
+                Ship to {order.shippingAddress || 'Plant Dispatch Center'}
               </Text>
-              <Text style={styles.weightText}>
-                Weight: {(order.totalWeightKg || 120).toLocaleString()} Kg
+              <Text style={styles.meta}>
+                {order.carrier || 'Express Logistics'},{' '}
+                {order.trackingNumber ? `AWB ${order.trackingNumber}` : 'AWB pending'}
               </Text>
-            </View>
 
-            {/* Order Value & Items */}
-            <View style={styles.rowBetween}>
-              <Text style={styles.itemsCount}>
-                📦 {order.items ? order.items.length : 1} Line Items
-              </Text>
-              <Text style={styles.amountText}>
-                ₹{(order.netAmount || 0).toLocaleString()}
-              </Text>
-            </View>
+              <View style={styles.amountRow}>
+                <View>
+                  <Text style={styles.amount}>{inr(order.netAmount || 0)}</Text>
+                  <Text style={styles.amountSub}>
+                    {order.items ? order.items.length : 1} {(order.items ? order.items.length : 1) === 1 ? 'line' : 'lines'},{' '}
+                    {(order.totalWeightKg || 120).toLocaleString('en-IN')} kg{pay ? `, ${pay}` : ''}
+                  </Text>
+                </View>
+              </View>
 
-            {/* Action Buttons: Delete & Update Status */}
-            <View style={styles.cardActionsRow}>
-              <TouchableOpacity
-                onPress={() => handlePromptDelete(order)}
-                style={styles.deleteBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.deleteBtnText}>🗑 Delete</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleOpenUpdate(order)}
-                style={styles.updateBtn}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.updateBtnText}>⚡ Update Dispatch Status</Text>
-              </TouchableOpacity>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  onPress={() => handlePromptDelete(order)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteLink}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleOpenUpdate(order)} style={styles.updateBtn} activeOpacity={0.85}>
+                  <Text style={styles.updateBtnText}>Update status</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </MobileCard>
-        ))
+          );
+        })
       )}
 
-      {/* ====================================================================== */}
-      {/* MODAL 1: CREATE DISPATCH ORDER                                         */}
-      {/* ====================================================================== */}
+      {/* Create order modal */}
       <MobileModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Factory Dispatch Order"
+        title="New dispatch order"
       >
         <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.modalSubtitle}>
-            Initiate a plant clearance consignment directly in the ERP pipeline.
-          </Text>
+          <Text style={styles.modalSubtitle}>Create a plant consignment directly in the ERP pipeline.</Text>
 
-          <Text style={styles.inputLabel}>Enterprise Company Name *</Text>
+          <Text style={styles.inputLabel}>Company name</Text>
           <TextInput
-            style={styles.textInput}
+            style={styles.input}
             value={newCompanyName}
             onChangeText={setNewCompanyName}
-            placeholder="e.g. Apex Infrastructure Pvt Ltd"
+            placeholder="Apex Infrastructure Pvt Ltd"
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Procurement Officer / Contact</Text>
+          <Text style={styles.inputLabel}>Contact person</Text>
           <TextInput
-            style={styles.textInput}
+            style={styles.input}
             value={newClientName}
             onChangeText={setNewClientName}
-            placeholder="e.g. Rajesh Sharma"
+            placeholder="Rajesh Sharma"
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Plant Delivery Address *</Text>
+          <Text style={styles.inputLabel}>Delivery address</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.input, styles.textArea]}
             value={newShippingAddress}
             onChangeText={setNewShippingAddress}
-            placeholder="Complete warehouse or site address with PIN"
+            placeholder="Warehouse or site address with PIN"
+            placeholderTextColor="#8D98A1"
             multiline
           />
 
-          <Text style={styles.inputLabel}>Freight Logistics Carrier</Text>
+          <Text style={styles.inputLabel}>Carrier</Text>
           <TextInput
-            style={styles.textInput}
+            style={styles.input}
             value={newCarrierSelect}
             onChangeText={setNewCarrierSelect}
-            placeholder="Blue Dart / TCI Freight / Safexpress"
+            placeholder="Blue Dart, TCI Freight, Safexpress"
+            placeholderTextColor="#8D98A1"
           />
 
-          <Text style={styles.inputLabel}>Fastener Manifest Description</Text>
+          <Text style={styles.inputLabel}>Items</Text>
           <TextInput
-            style={styles.textInput}
+            style={styles.input}
             value={newSkuDesc}
             onChangeText={setNewSkuDesc}
-            placeholder="e.g. DIN 933 M12x50 Grade 8.8 (Hex Bolts)"
+            placeholder="DIN 933 M12x50 Grade 8.8 (Hex Bolts)"
+            placeholderTextColor="#8D98A1"
           />
 
-          <View style={styles.rowTwoCols}>
+          <View style={styles.twoCols}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Weight (Kg)</Text>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="numeric"
-                value={newQuantityKg}
-                onChangeText={setNewQuantityKg}
-              />
+              <Text style={styles.inputLabel}>Weight (kg)</Text>
+              <TextInput style={styles.input} keyboardType="numeric" value={newQuantityKg} onChangeText={setNewQuantityKg} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Invoice Value (₹)</Text>
-              <TextInput
-                style={styles.textInput}
-                keyboardType="numeric"
-                value={newAmount}
-                onChangeText={setNewAmount}
-              />
+              <Text style={styles.inputLabel}>Invoice value (₹)</Text>
+              <TextInput style={styles.input} keyboardType="numeric" value={newAmount} onChangeText={setNewAmount} />
             </View>
           </View>
 
           <TouchableOpacity
             onPress={handleCreateOrder}
-            style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+            style={[styles.saveBtn, isSubmitting && styles.disabled]}
             disabled={isSubmitting}
             activeOpacity={0.88}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Generate Order &amp; Dispatch →</Text>
-            )}
+            {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Create order</Text>}
           </TouchableOpacity>
         </ScrollView>
       </MobileModal>
 
-      {/* ====================================================================== */}
-      {/* MODAL 2: UPDATE STATUS & AWB                                           */}
-      {/* ====================================================================== */}
+      {/* Update status modal */}
       {activeOrder ? (
         <MobileModal
           isOpen={isUpdateModalOpen}
           onClose={() => setIsUpdateModalOpen(false)}
-          title={`Update Order: ${activeOrder.orderNumber}`}
+          title={`Update ${activeOrder.orderNumber}`}
         >
           <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalSubtitle}>
-              Update logistics status, carrier assignment, and live AWB tracking.
-            </Text>
+            <Text style={styles.modalSubtitle}>Set the dispatch status, carrier and AWB tracking number.</Text>
 
-            <Text style={styles.inputLabel}>Dispatch Status</Text>
-            <View style={styles.statusButtonsRow}>
-              {(['PROCESSING', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as const).map(
-                (st) => (
+            <Text style={styles.inputLabel}>Status</Text>
+            <View style={styles.statusSelectRow}>
+              {(['PROCESSING', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as const).map((st) => {
+                const active = newStatus === st;
+                return (
                   <TouchableOpacity
                     key={st}
-                    style={[styles.statusSelectBtn, newStatus === st && styles.statusSelectBtnActive]}
+                    style={[styles.statusSelect, active && styles.statusSelectActive]}
                     onPress={() => setNewStatus(st)}
+                    activeOpacity={0.8}
                   >
-                    <Text
-                      style={[
-                        styles.statusSelectBtnText,
-                        newStatus === st && styles.statusSelectBtnTextActive,
-                      ]}
-                    >
-                      {st}
+                    <Text style={[styles.statusSelectText, active && styles.statusSelectTextActive]}>
+                      {statusLabel(st)}
                     </Text>
                   </TouchableOpacity>
-                )
-              )}
+                );
+              })}
             </View>
 
-            <Text style={styles.inputLabel}>Logistics Carrier</Text>
+            <Text style={styles.inputLabel}>Carrier</Text>
             <TextInput
-              style={styles.textInput}
+              style={styles.input}
               value={newCarrier}
               onChangeText={setNewCarrier}
-              placeholder="e.g. Blue Dart Express Heavy"
+              placeholder="Blue Dart Express Heavy"
+              placeholderTextColor="#8D98A1"
             />
 
-            <Text style={styles.inputLabel}>AWB Tracking Number</Text>
+            <Text style={styles.inputLabel}>AWB tracking number</Text>
             <TextInput
-              style={styles.textInput}
+              style={[styles.input, { fontFamily: MONO }]}
               value={newTracking}
               onChangeText={setNewTracking}
-              placeholder="e.g. BD-889921447IN"
+              placeholder="BD-889921447IN"
+              placeholderTextColor="#8D98A1"
               autoCapitalize="characters"
             />
 
             <TouchableOpacity
               onPress={handleSaveStatus}
-              style={[styles.saveBtn, isSubmitting && styles.btnDisabled]}
+              style={[styles.saveBtn, isSubmitting && styles.disabled]}
               disabled={isSubmitting}
               activeOpacity={0.88}
             >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.saveBtnText}>Broadcast Logistics Update →</Text>
-              )}
+              {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Save update</Text>}
             </TouchableOpacity>
           </ScrollView>
         </MobileModal>
       ) : null}
 
-      {/* ====================================================================== */}
-      {/* MODAL 3: DELETE CONFIRMATION                                           */}
-      {/* ====================================================================== */}
+      {/* Delete modal */}
       {orderToDelete ? (
         <MobileModal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
-          title="Delete Consignment"
+          title="Delete this order?"
         >
           <View style={styles.modalScroll}>
-            <View style={styles.deleteWarningBox}>
-              <Text style={styles.deleteWarningIcon}>⚠</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.deleteWarningTitle}>Delete Order Confirmation</Text>
-                <Text style={styles.deleteWarningText}>
-                  Are you sure you want to delete order <Text style={{ fontWeight: '800' }}>#{orderToDelete.orderNumber}</Text>?
-                </Text>
+            <Text style={styles.deleteLead}>
+              {orderToDelete.orderNumber} will be permanently removed. This can’t be undone.
+            </Text>
+
+            <View style={styles.deleteTable}>
+              <View style={[styles.kv, { borderTopWidth: 0 }]}>
+                <Text style={styles.k}>Client</Text>
+                <Text style={styles.v}>{orderToDelete.companyName || 'Enterprise Buyer'}</Text>
+              </View>
+              <View style={styles.kv}>
+                <Text style={styles.k}>Status</Text>
+                <Text style={styles.v}>{statusLabel(orderToDelete.status)}</Text>
+              </View>
+              <View style={styles.kv}>
+                <Text style={styles.k}>Value</Text>
+                <Text style={styles.v}>{inr(orderToDelete.netAmount || 0)}</Text>
               </View>
             </View>
 
-            <Text style={styles.deleteItemMeta}>
-              • Client: {orderToDelete.companyName || 'Enterprise Buyer'}{'\n'}
-              • Status: {orderToDelete.status}{'\n'}
-              • Value: ₹{(orderToDelete.netAmount || 0).toLocaleString()}
-            </Text>
-
-            <View style={styles.modalActionsRow}>
-              <TouchableOpacity
-                onPress={() => setIsDeleteModalOpen(false)}
-                style={styles.cancelBtn}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setIsDeleteModalOpen(false)} style={styles.cancelBtn} disabled={isSubmitting}>
+                <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={handleConfirmDelete}
-                style={[styles.confirmDeleteBtn, isSubmitting && styles.btnDisabled]}
+                style={[styles.confirmDeleteBtn, isSubmitting && styles.disabled]}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.confirmDeleteBtnText}>Confirm Delete</Text>
-                )}
+                {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Delete order</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -582,338 +580,163 @@ export const AdminOrdersScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  chip: {
+  container: { paddingBottom: 40, backgroundColor: WHITE },
+
+  searchWrap: { paddingHorizontal: 16, paddingTop: 16 },
+
+  tabs: { marginTop: 8, borderBottomWidth: 1, borderBottomColor: HAIR, flexGrow: 0 },
+  tabsContent: { paddingHorizontal: 20, gap: 22 },
+  tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  tabActive: { borderBottomColor: ORANGE },
+  tabText: { fontSize: 14, fontWeight: '600', color: STEEL },
+  tabTextActive: { color: GRAPHITE },
+
+  toast: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: GRAPHITE,
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
+    paddingVertical: 12,
   },
-  chipActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
-  },
-  chipInactive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#CBD5E1',
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
+  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
+
   controlBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
-  },
-  resultsCount: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  subCount: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  addOrderBtn: {
-    backgroundColor: '#0052CC',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    elevation: 2,
-  },
-  addOrderBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  toast: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#10B981',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-  },
-  toastText: {
-    color: '#065F46',
-    fontWeight: '700',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#64748B',
-    fontSize: 13,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  resetBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     marginTop: 12,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  resetBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  orderNumber: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
-  companyName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 2,
-  },
-  addressText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 6,
-    lineHeight: 17,
-  },
-  logisticsBox: {
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 8,
-    marginVertical: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  carrierText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  weightText: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 3,
-  },
-  itemsCount: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  amountText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
+    backgroundColor: MIST,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderColor: HAIR,
   },
-  updateBtn: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  updateBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  deleteBtn: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteBtnText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  modalScroll: {
-    paddingVertical: 6,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 4,
+  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
+  addBtn: { height: 38, paddingHorizontal: 16, borderRadius: 8, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { color: WHITE, fontSize: 14, fontWeight: '700' },
+
+  centerBlock: { paddingHorizontal: 32, paddingVertical: 48, alignItems: 'center', gap: 8 },
+  loadingText: { fontSize: 14, color: STEEL, marginTop: 6 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: GRAPHITE },
+  emptySubtitle: { fontSize: 14, color: STEEL },
+  resetBtn: {
     marginTop: 8,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    height: 44,
+    paddingHorizontal: 22,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
-  },
-  rowTwoCols: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statusButtonsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  statusSelectBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-  },
-  statusSelectBtnActive: {
-    backgroundColor: '#0052CC',
-    borderColor: '#0052CC',
-  },
-  statusSelectBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  statusSelectBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  saveBtn: {
-    backgroundColor: '#0052CC',
-    height: 46,
-    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
+  },
+  resetBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
+
+  // One order: a hairline-separated block, not a card
+  order: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: HAIR },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  orderNumber: { fontSize: 15, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 13, fontWeight: '700' },
+  company: { fontSize: 15, fontWeight: '600', color: GRAPHITE, marginTop: 6 },
+
+  tracker: { flexDirection: 'row', gap: 4, marginTop: 14 },
+  seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: MIST },
+  stageLabels: { flexDirection: 'row', gap: 4, marginTop: 6, marginBottom: 14 },
+  stageLabel: { flex: 1, fontSize: 11, color: STEEL },
+  stageLabelOn: { color: GRAPHITE, fontWeight: '700' },
+
+  meta: { fontSize: 13, color: STEEL, marginTop: 2, lineHeight: 19 },
+
+  amountRow: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: MIST },
+  amount: { fontSize: 22, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
+  amountSub: { fontSize: 12, color: STEEL, marginTop: 2 },
+
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
+  deleteLink: { fontSize: 14, fontWeight: '600', color: RED },
+  updateBtn: {
+    height: 44,
+    paddingHorizontal: 22,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
+
+  // Modals
+  modalScroll: { paddingVertical: 6 },
+  modalSubtitle: { fontSize: 14, color: STEEL, lineHeight: 20, marginBottom: 6 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: GRAPHITE, marginTop: 14, marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderColor: HAIR,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 15,
+    color: GRAPHITE,
+    backgroundColor: WHITE,
+  },
+  textArea: { height: 84, paddingTop: 12, textAlignVertical: 'top' },
+  twoCols: { flexDirection: 'row', gap: 10 },
+  statusSelectRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusSelect: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: HAIR,
+    backgroundColor: WHITE,
+  },
+  statusSelectActive: { backgroundColor: GRAPHITE, borderColor: GRAPHITE },
+  statusSelectText: { fontSize: 13, fontWeight: '600', color: GRAPHITE },
+  statusSelectTextActive: { color: WHITE },
+  saveBtn: {
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 22,
     marginBottom: 10,
   },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  deleteWarningBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 12,
+  saveText: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  disabled: { opacity: 0.6 },
+
+  // Delete
+  deleteLead: { fontSize: 15, color: GRAPHITE, lineHeight: 22 },
+  deleteTable: { marginTop: 12, marginBottom: 20 },
+  kv: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: MIST,
   },
-  deleteWarningIcon: {
-    fontSize: 18,
-    color: '#DC2626',
-  },
-  deleteWarningTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#991B1B',
-  },
-  deleteWarningText: {
-    fontSize: 12,
-    color: '#B91C1C',
-    marginTop: 2,
-    lineHeight: 17,
-  },
-  deleteItemMeta: {
-    fontSize: 12,
-    color: '#475569',
-    lineHeight: 20,
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  modalActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  k: { fontSize: 14, color: STEEL },
+  v: { fontSize: 14, fontWeight: '600', color: GRAPHITE, flexShrink: 1, textAlign: 'right', marginLeft: 16 },
+  modalActions: { flexDirection: 'row', gap: 10 },
   cancelBtn: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: GRAPHITE,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelBtnText: {
-    color: '#475569',
-    fontWeight: '700',
-    fontSize: 13,
-  },
+  cancelText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
   confirmDeleteBtn: {
     flex: 1,
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 8,
+    backgroundColor: RED,
     alignItems: 'center',
-  },
-  confirmDeleteBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
+    justifyContent: 'center',
   },
 });
 

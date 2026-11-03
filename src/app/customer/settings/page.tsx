@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Building2,
@@ -14,18 +14,22 @@ import {
   Save,
   CheckCircle2,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
-import { getStoredUser, logout } from '@/lib/auth';
+import { getStoredUser, setStoredUser, logout, AuthUser } from '@/lib/auth';
+import { showToast } from '@/lib/swal';
 
 export default function CustomerSettingsPage() {
-  const user = getStoredUser();
-  const [companyName, setCompanyName] = useState(user?.companyName || 'Apex Infrastructure Corp');
-  const [contactName, setContactName] = useState(user?.fullName || 'Rajesh Sharma');
-  const [email, setEmail] = useState(user?.email || 'procurement@apexinfra.com');
-  const [phone, setPhone] = useState('+91 98140 22345');
-  const [gstin, setGstin] = useState(user?.gstin || '07AAAAA0000A1Z5');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [companyName, setCompanyName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [address, setAddress] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Notification Preferences
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -33,11 +37,81 @@ export default function CustomerSettingsPage() {
   const [rfqQuotations, setRfqQuotations] = useState(true);
   const [creditAlerts, setCreditAlerts] = useState(true);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    const user = getStoredUser();
+    setCurrentUser(user);
+    if (user) {
+      setCompanyName(user.companyName || '');
+      setContactName(user.fullName || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setGstin(user.gstin || '');
+      setAddress(user.address || '');
+
+      if (user.notificationPreferences) {
+        setEmailAlerts(user.notificationPreferences.emailAlerts ?? true);
+        setSmsDispatchAlerts(user.notificationPreferences.smsDispatchAlerts ?? true);
+        setRfqQuotations(user.notificationPreferences.rfqQuotations ?? true);
+        setCreditAlerts(user.notificationPreferences.creditAlerts ?? true);
+      }
+    }
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const user = getStoredUser() || currentUser;
+    if (!user) return;
+
+    setIsSaving(true);
+    const notificationPreferences = {
+      emailAlerts,
+      smsDispatchAlerts,
+      rfqQuotations,
+      creditAlerts,
+    };
+
+    const updatedUser: AuthUser = {
+      ...user,
+      fullName: contactName.trim(),
+      companyName: companyName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      gstin: gstin.trim().toUpperCase(),
+      address: address.trim(),
+      notificationPreferences,
+    };
+
+    setStoredUser(updatedUser);
+    setCurrentUser(updatedUser);
+
+    if (user.id) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: user.id,
+            fullName: updatedUser.fullName,
+            companyName: updatedUser.companyName,
+            email: updatedUser.email,
+            phone: updatedUser.phone,
+            gstin: updatedUser.gstin,
+            address: updatedUser.address,
+            notificationPreferences,
+          }),
+        });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+    }
+
+    setIsSaving(false);
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    showToast('Company profile & notification preferences updated successfully!', 'success');
+    setTimeout(() => setSavedSuccess(false), 3500);
   };
+
+  const creditLimitFormatted = Number(currentUser?.creditLimit || 2500000).toLocaleString('en-IN');
 
   return (
     <div className="max-w-[1000px] mx-auto space-y-6">
@@ -93,6 +167,7 @@ export default function CustomerSettingsPage() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Company Registered Name</label>
                 <input
                   type="text"
+                  required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
@@ -100,12 +175,12 @@ export default function CustomerSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">GSTIN (Verified)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">GSTIN (Verified Tax Identifier)</label>
                 <div className="relative">
                   <input
                     type="text"
                     value={gstin}
-                    onChange={(e) => setGstin(e.target.value)}
+                    onChange={(e) => setGstin(e.target.value.toUpperCase())}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-mono focus:outline-none focus:border-[#5B4DF6]"
                   />
                   <ShieldCheck size={16} className="text-emerald-600 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -116,6 +191,7 @@ export default function CustomerSettingsPage() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Primary Procurement Officer</label>
                 <input
                   type="text"
+                  required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
@@ -126,6 +202,7 @@ export default function CustomerSettingsPage() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Official Work Email</label>
                 <input
                   type="email"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
@@ -143,11 +220,23 @@ export default function CustomerSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Approved Credit Facility</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Sanctioned Credit Facility</label>
                 <div className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-bold flex items-center justify-between">
-                  <span>₹50,00,000 (30 Days Revolving)</span>
-                  <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-extrabold">ACTIVE</span>
+                  <span>₹{creditLimitFormatted} (30 Days Revolving)</span>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-extrabold">
+                    ACTIVE FACILITY
+                  </span>
                 </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">Primary Registered Commercial Address</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
+                />
               </div>
             </div>
           </div>
@@ -211,9 +300,10 @@ export default function CustomerSettingsPage() {
             </Link>
             <button
               type="submit"
+              disabled={isSaving}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#5B4DF6] hover:bg-[#4D3FF0] text-white shadow-sm transition-all cursor-pointer"
             >
-              <Save size={14} />
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               <span>Save Changes</span>
             </button>
           </div>

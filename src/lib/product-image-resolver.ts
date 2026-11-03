@@ -30,7 +30,7 @@ export function extractGoogleDriveId(url?: string | null): string | null {
 export function getCategoryPlaceholder(category: string = '', name: string = ''): string {
   const combined = `${category} ${name}`.toLowerCase();
   if (combined.includes('grub')) {
-    return '/files/grub-screw-din916.png';
+    return '/assets/images/grub-screw-real.png';
   }
   if (combined.includes('socket') || combined.includes('allen') || combined.includes('csk')) {
     return '/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png';
@@ -61,7 +61,19 @@ export function resolveProductImageUrl(
 
   // If it's already a local asset
   if (trimmed.startsWith('/assets/') || trimmed.startsWith('/files/')) {
-    return trimmed;
+    try {
+      const localFile = path.resolve(process.cwd(), 'public', trimmed.replace(/^\//, ''));
+      if (fs.existsSync(localFile) && fs.statSync(localFile).size > 100) {
+        return trimmed;
+      }
+    } catch {}
+
+    const driveMatch = trimmed.match(/\/assets\/products\/([a-zA-Z0-9_-]{20,})\.[a-zA-Z0-9]+/);
+    if (driveMatch) {
+      return `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w800`;
+    }
+
+    return getCategoryPlaceholder(category, name);
   }
 
   // Extract Drive ID if it's from Google Drive

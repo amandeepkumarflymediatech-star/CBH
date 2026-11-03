@@ -29,17 +29,18 @@ export default function CustomerProfilePage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   // Profile Form State
-  const [fullName, setFullName] = useState('Rajesh Sharma');
-  const [designation, setDesignation] = useState('Senior VP Procurement & Supply Chain');
-  const [email, setEmail] = useState('procurement@apexinfra.com');
-  const [phone, setPhone] = useState('+91 98140 22345');
-  const [altPhone, setAltPhone] = useState('+91 11 4059 8800');
-  const [companyName, setCompanyName] = useState('Apex Infrastructure Corp');
-  const [gstin, setGstin] = useState('07AAAAA0000A1Z5');
-  const [pan, setPan] = useState('AAACA1234D');
-  const [tan, setTan] = useState('DELA98765E');
-  const [msme, setMsme] = useState('UDYAM-DL-03-0019284');
-  const [address, setAddress] = useState('Tower B, 7th Floor, Cyber City, DLF Phase II, Gurugram, Haryana - 122002');
+  const [fullName, setFullName] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [altPhone, setAltPhone] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [pan, setPan] = useState('');
+  const [tan, setTan] = useState('');
+  const [msme, setMsme] = useState('');
+  const [address, setAddress] = useState('');
+  const [totalSpend, setTotalSpend] = useState(0);
 
   // Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -67,12 +68,23 @@ export default function CustomerProfilePage() {
     const u = getStoredUser();
     setCurrentUser(u);
     if (u) {
-      if (u.fullName) setFullName(u.fullName);
-      if (u.email) setEmail(u.email);
-      if (u.companyName) setCompanyName(u.companyName);
-      if (u.gstin) setGstin(u.gstin);
-      if (u.phone) setPhone(u.phone);
+      setFullName(u.fullName || '');
+      setEmail(u.email || '');
+      setCompanyName(u.companyName || '');
+      setGstin(u.gstin || '');
+      setPhone(u.phone || '');
+      setDesignation(u.designation || 'Head of Procurement & Supply Chain');
+      setPan(u.pan || '');
+      setTan(u.tan || '');
+      setMsme(u.msme || u.msmeRegistrationNumber || '');
+      setAddress(u.address || '');
     }
+    fetch('/api/orders').then(r => r.json()).then(d => {
+      if (d.data && Array.isArray(d.data)) {
+        const sum = d.data.reduce((acc, o) => acc + (o.netAmount || 0), 0);
+        setTotalSpend(sum);
+      }
+    }).catch(() => {});
     const savedAvatar =
       u?.avatar ||
       (typeof window !== 'undefined' ? localStorage.getItem('cbh_customer_avatar') : null) ||
@@ -166,9 +178,32 @@ export default function CustomerProfilePage() {
       companyName,
       gstin,
       phone,
+      designation,
+      pan,
+      tan,
+      msme,
+      address,
       avatar: finalAvatar,
     };
     setStoredUser(updated);
+    if (current?.id) {
+      fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: current.id,
+          fullName,
+          companyName,
+          gstin,
+          phone,
+          designation,
+          pan,
+          tan,
+          msme,
+          address,
+        })
+      }).catch(() => {});
+    }
     setCurrentUser(updated);
     if (typeof window !== 'undefined') {
       try {
@@ -386,7 +421,7 @@ export default function CustomerProfilePage() {
 
             <div>
               <div className="text-[11px] text-slate-400 font-bold uppercase">Available Balance</div>
-              <div className="text-2xl font-black text-[#0F172A] font-mono mt-0.5">₹37,50,000</div>
+              <div className="text-2xl font-black text-[#0F172A] font-mono mt-0.5">{Math.max(0, Number(currentUser?.creditLimit || 2500000) - totalSpend).toLocaleString('en-IN')}</div>
             </div>
 
             <div className="space-y-1.5">
@@ -394,8 +429,8 @@ export default function CustomerProfilePage() {
                 <div className="bg-gradient-to-r from-[#5B4DF6] to-emerald-500 h-full w-[25%]" />
               </div>
               <div className="flex justify-between text-[11px] text-slate-500 font-medium">
-                <span>Utilized: ₹12.50L (25%)</span>
-                <span>Limit: ₹50.00L</span>
+                <span>{`Utilized: ₹${totalSpend.toLocaleString('en-IN')} (${Math.min(100, Math.round((totalSpend / Number(currentUser?.creditLimit || 2500000)) * 100))}%)`}</span>
+                <span>{`Limit: ₹${Number(currentUser?.creditLimit || 2500000).toLocaleString('en-IN')}`}</span>
               </div>
             </div>
 

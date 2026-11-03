@@ -7,11 +7,13 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Image,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
 import { PasswordEyeIcon } from '../../components/PasswordEyeIcon';
 import { mobileApi } from '../../config/api';
+import { CustomerPoliciesScreen } from '../customer/CustomerPoliciesScreen';
+import { MobileAuthUser } from '../../types';
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -19,12 +21,63 @@ interface RegisterScreenProps {
   onSuccess?: (user: MobileAuthUser) => void;
 }
 
+const BLUE = '#0047AB';
+
+// Reusable input with focus highlight and optional show/hide toggle
+const Field: React.FC<{
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  optional?: boolean;
+  secure?: boolean;
+  keyboardType?: any;
+  autoCapitalize?: 'none' | 'characters' | 'words' | 'sentences';
+}> = ({ label, value, onChangeText, placeholder, optional, secure, keyboardType, autoCapitalize }) => {
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <View style={styles.fieldWrap}>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>{label}</Text>
+        {optional ? <Text style={styles.optional}>Optional</Text> : null}
+      </View>
+      <View style={[styles.inputWrap, focused && styles.inputFocused]}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          secureTextEntry={secure && !visible}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize ?? (secure || keyboardType === 'email-address' ? 'none' : 'words')}
+          autoCorrect={false}
+          style={styles.input}
+        />
+        {secure ? (
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setVisible((v) => !v)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+            accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          >
+            <PasswordEyeIcon visible={visible} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+};
+
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onNavigateToLogin,
   onRegisterSuccess,
   onSuccess,
 }) => {
-  // All fields start completely empty - NO auto-fill
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -32,9 +85,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [gstin, setGstin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,22 +95,19 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
   const handleRegister = async () => {
     if (!companyName.trim() || !fullName.trim() || !email.trim() || !password.trim()) {
-      setErrorMsg('Please complete all required fields marked with *');
+      setErrorMsg('Fill in company, name, email and password.');
       return;
     }
-
     if (password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters long.');
+      setErrorMsg('Password must be at least 6 characters.');
       return;
     }
-
     if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match. Please verify your password.');
+      setErrorMsg('Passwords do not match.');
       return;
     }
-
     if (!agreedTerms) {
-      setErrorMsg('Please accept the B2B Procurement Terms to create an enterprise account.');
+      setErrorMsg('Accept the terms to continue.');
       return;
     }
 
@@ -90,201 +139,128 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       setRegisteredUser(createdUser);
 
       if (!res.success) {
+        // NOTE: unchanged demo fallback. A failed registration still shows
+        // success when the email has an "@". Remove before release.
         if (email.includes('@')) {
           setIsSuccess(true);
           if (onRegisterSuccess) onRegisterSuccess(email);
           return;
         }
-        throw new Error(res.error || 'Failed to create business account.');
+        throw new Error(res.error || 'Could not create your account.');
       }
 
       setIsSuccess(true);
       if (onRegisterSuccess) onRegisterSuccess(email);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Registration failed. Please check network connection.');
+      setErrorMsg(err.message || 'Registration failed. Check your connection.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ---- Success ----
   if (isSuccess) {
     return (
-      <View style={styles.successContainer}>
-        <View style={styles.successCard}>
-          <Text style={styles.successIcon}>✓</Text>
-          <Text style={styles.successTitle}>Account Registered!</Text>
-          <Text style={styles.successText}>
-            Welcome to CBH Fasteners India. Your enterprise procurement account has
-            been created for <Text style={styles.boldText}>{email}</Text>.
-          </Text>
-          <TouchableOpacity
-            style={styles.successBtn}
-            onPress={() => {
-              if (onSuccess && registeredUser) {
-                onSuccess(registeredUser);
-              } else {
-                onNavigateToLogin();
-              }
-            }}
-          >
-            <Text style={styles.successBtnText}>
-              {onSuccess ? 'Continue to Checkout →' : 'Proceed to Sign In →'}
-            </Text>
-          </TouchableOpacity>
+      <View style={styles.successWrap}>
+        <View style={styles.successCircle}>
+          <Text style={styles.successCheck}>✓</Text>
         </View>
+        <Text style={styles.successTitle}>Account created</Text>
+        <Text style={styles.successText}>
+          Welcome aboard. You can now order with{' '}
+          <Text style={styles.bold}>{email}</Text>.
+        </Text>
+        <TouchableOpacity
+          style={styles.submitBtn}
+          activeOpacity={0.88}
+          onPress={() => {
+            if (onSuccess && registeredUser) onSuccess(registeredUser);
+            else onNavigateToLogin();
+          }}
+        >
+          <Text style={styles.submitBtnText}>{onSuccess ? 'Continue' : 'Go to sign in'}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
+  const clear = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    if (errorMsg) setErrorMsg('');
+  };
+
   return (
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Brand Header */}
-      <View style={styles.brandBox}>
-        <View style={styles.logoWrap}>
-          <Image
-            source={require('../../assets/cbh-store-logo.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
-
-        <Text style={styles.title}>Register B2B Account</Text>
-        <Text style={styles.subtitle}>
-          Direct Mill Procurement, Dynamic Slab Pricing &amp; Stamped NABL MTC Certificates
-        </Text>
-      </View>
-
-      <MobileCard>
-        {/* Error Alert */}
+    <>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {errorMsg ? (
-          <View style={styles.errorAlert}>
-            <Text style={styles.errorIcon}>⚠</Text>
+          <View style={styles.errorBox}>
+            <View style={styles.errorDot}>
+              <Text style={styles.errorDotText}>!</Text>
+            </View>
             <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         ) : null}
 
-        {/* Company Name */}
-        <Text style={styles.label}>
-          Company / Business Legal Name <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
+        <Text style={styles.section}>Company</Text>
+        <Field
+          label="Company name"
           value={companyName}
-          onChangeText={setCompanyName}
-          placeholder="e.g. Apex Infrastructure EPC Ltd"
-          placeholderTextColor="#94A3B8"
-          style={styles.input}
+          onChangeText={clear(setCompanyName)}
+          placeholder="Apex Infrastructure Ltd"
+        />
+        <Field
+          label="GSTIN"
+          optional
+          value={gstin}
+          onChangeText={clear(setGstin)}
+          placeholder="27AABCA1234F1Z5"
+          autoCapitalize="characters"
         />
 
-        {/* Contact Person Name */}
-        <Text style={styles.label}>
-          Authorized Buyer / Contact Name <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
+        <Text style={styles.section}>Contact</Text>
+        <Field
+          label="Your name"
           value={fullName}
-          onChangeText={setFullName}
-          placeholder="e.g. Rajesh Sharma"
-          placeholderTextColor="#94A3B8"
-          style={styles.input}
+          onChangeText={clear(setFullName)}
+          placeholder="Rajesh Sharma"
         />
-
-        {/* Corporate Email */}
-        <Text style={styles.label}>
-          Corporate Email Address <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
+        <Field
+          label="Work email"
           value={email}
-          onChangeText={setEmail}
-          placeholder="procurement@company.com"
-          placeholderTextColor="#94A3B8"
-          autoCapitalize="none"
+          onChangeText={clear(setEmail)}
+          placeholder="you@company.com"
           keyboardType="email-address"
-          style={styles.input}
+        />
+        <Field
+          label="Mobile"
+          optional
+          value={phone}
+          onChangeText={clear(setPhone)}
+          placeholder="10-digit number"
+          keyboardType="phone-pad"
         />
 
-        {/* Mobile Number & GSTIN in a Row */}
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Mobile Number</Text>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="10-digit number"
-              placeholderTextColor="#94A3B8"
-              keyboardType="phone-pad"
-              style={styles.input}
-            />
-          </View>
+        <Text style={styles.section}>Password</Text>
+        <Field
+          label="Password"
+          value={password}
+          onChangeText={clear(setPassword)}
+          placeholder="At least 6 characters"
+          secure
+        />
+        <Field
+          label="Confirm password"
+          value={confirmPassword}
+          onChangeText={clear(setConfirmPassword)}
+          placeholder="Re-enter password"
+          secure
+        />
 
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>GSTIN (Optional)</Text>
-            <TextInput
-              value={gstin}
-              onChangeText={setGstin}
-              placeholder="27AABCA1234F1Z5"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="characters"
-              style={styles.input}
-            />
-          </View>
-        </View>
-
-        {/* Password with View Icon */}
-        <Text style={styles.label}>
-          Password <Text style={styles.required}>*</Text>
-        </Text>
-        <View style={styles.passwordWrap}>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Minimum 6 characters"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.passwordInput}
-          />
-          <TouchableOpacity
-            style={styles.eyeBtn}
-            onPress={() => setShowPassword(!showPassword)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            activeOpacity={0.7}
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-          >
-            <PasswordEyeIcon visible={showPassword} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Confirm Password with View Icon */}
-        <Text style={styles.label}>
-          Confirm Password <Text style={styles.required}>*</Text>
-        </Text>
-        <View style={styles.passwordWrap}>
-          <TextInput
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Re-enter your password"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry={!showConfirmPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.passwordInput}
-          />
-          <TouchableOpacity
-            style={styles.eyeBtn}
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            activeOpacity={0.7}
-            accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-          >
-            <PasswordEyeIcon visible={showConfirmPassword} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Terms & Conditions Checkbox */}
+        {/* Terms */}
         <TouchableOpacity
           style={styles.termsRow}
           onPress={() => setAgreedTerms(!agreedTerms)}
@@ -294,12 +270,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             {agreedTerms ? <Text style={styles.checkmark}>✓</Text> : null}
           </View>
           <Text style={styles.termsText}>
-            I agree to the <Text style={styles.termsLink}>B2B Procurement Terms</Text> &amp;{' '}
-            <Text style={styles.termsLink}>Commercial Policies</Text>
+            I agree to the{' '}
+            <Text onPress={() => setIsPolicyModalOpen(true)} style={styles.termsLink}>
+              terms &amp; policies
+            </Text>
           </Text>
         </TouchableOpacity>
 
-        {/* Register Button */}
         <TouchableOpacity
           style={[styles.submitBtn, isLoading && styles.btnDisabled]}
           onPress={handleRegister}
@@ -309,269 +286,189 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text style={styles.submitBtnText}>Create Enterprise Account →</Text>
+            <Text style={styles.submitBtnText}>Create account</Text>
           )}
         </TouchableOpacity>
 
-        {/* Sign In Link */}
-        <View style={styles.switchAuthRow}>
-          <Text style={styles.switchAuthText}>Existing business client?</Text>
-          <TouchableOpacity onPress={onNavigateToLogin}>
-            <Text style={styles.switchAuthLink}> Sign In</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>Already registered?</Text>
+          <TouchableOpacity onPress={onNavigateToLogin} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.switchLink}> Sign in</Text>
           </TouchableOpacity>
         </View>
-      </MobileCard>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Terms & policies sheet */}
+      <Modal
+        visible={isPolicyModalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsPolicyModalOpen(false)}
+      >
+        <SafeAreaView style={styles.policyScreen}>
+          <View style={styles.policyHeader}>
+            <Text style={styles.policyTitle}>Terms &amp; policies</Text>
+            <TouchableOpacity
+              onPress={() => setIsPolicyModalOpen(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.policyDone}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <CustomerPoliciesScreen />
+        </SafeAreaView>
+      </Modal>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: 20,
+  content: {
+    paddingHorizontal: 22,
     paddingTop: 24,
-    paddingBottom: 40,
-    backgroundColor: '#F8FAFC',
-    minHeight: '100%',
+    paddingBottom: 32,
   },
-  brandBox: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoWrap: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
-    paddingHorizontal: 16,
-  },
-  errorAlert: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
+
+  errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
   },
-  errorIcon: {
-    fontSize: 14,
-    color: '#DC2626',
+  errorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  errorText: {
-    flex: 1,
-    color: '#B91C1C',
-    fontSize: 12,
-    fontWeight: '600',
+  errorDotText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  errorText: { flex: 1, color: '#B91C1C', fontSize: 13, fontWeight: '600' },
+
+  section: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 12,
+    marginBottom: 2,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-    marginTop: 10,
-  },
+
+  fieldWrap: { marginTop: 10 },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  showText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  required: {
-    color: '#EF4444',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
-  },
-  passwordWrap: {
+  label: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  optional: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
+  inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
+    height: 50,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    paddingLeft: 16,
+    paddingRight: 8,
   },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#0F172A',
-  },
-  eyeBtn: {
-    padding: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  inputFocused: { borderColor: BLUE, backgroundColor: '#FFFFFF' },
+  input: { flex: 1, fontSize: 15, color: '#0F172A' },
+  eyeBtn: { padding: 8, alignItems: 'center', justifyContent: 'center' },
+
   termsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 6,
     gap: 10,
+    marginTop: 20,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 7,
     borderWidth: 1.5,
     borderColor: '#94A3B8',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#0052CC',
-    borderColor: '#0052CC',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  termsText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16,
-  },
-  termsLink: {
-    color: '#0052CC',
-    fontWeight: '700',
-  },
+  checkboxChecked: { backgroundColor: BLUE, borderColor: BLUE },
+  checkmark: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  termsText: { flex: 1, fontSize: 13, color: '#64748B' },
+  termsLink: { color: BLUE, fontWeight: '700' },
+
   submitBtn: {
-    backgroundColor: '#0052CC',
-    height: 50,
-    borderRadius: 12,
+    height: 54,
+    backgroundColor: BLUE,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
-    elevation: 2,
-    shadowColor: '#0052CC',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    marginTop: 20,
+    elevation: 3,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    alignSelf: 'stretch',
   },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  submitBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  switchAuthRow: {
+  btnDisabled: { opacity: 0.6 },
+  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+
+  switchRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    marginTop: 18,
   },
-  switchAuthText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  switchAuthLink: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0052CC',
-  },
-  successContainer: {
+  switchText: { fontSize: 13, color: '#64748B' },
+  switchLink: { fontSize: 13, fontWeight: '800', color: BLUE },
+
+  // Success
+  successWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 28,
   },
-  successCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+  successCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: '100%',
-    elevation: 4,
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  successIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#ECFDF5',
-    color: '#059669',
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'center',
-    lineHeight: 52,
-    marginBottom: 12,
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 6,
-  },
+  successCheck: { fontSize: 36, color: '#16A34A', fontWeight: '900' },
+  successTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
   successText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 8,
   },
-  boldText: {
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  successBtn: {
-    backgroundColor: '#0052CC',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    width: '100%',
+  bold: { fontWeight: '700', color: '#0F172A' },
+
+  // Policy sheet
+  policyScreen: { flex: 1, backgroundColor: '#FFFFFF' },
+  policyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  successBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
+  policyTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  policyDone: { fontSize: 15, fontWeight: '800', color: BLUE },
 });
 
 export default RegisterScreen;

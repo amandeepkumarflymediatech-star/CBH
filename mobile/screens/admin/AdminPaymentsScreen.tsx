@@ -109,7 +109,7 @@ export const AdminPaymentsScreen: React.FC = () => {
           activeOpacity={0.8}
         >
           <Text style={[styles.tabText, activeTab === 'config' && styles.tabTextActive]}>
-            ⚙️ Gateway Configuration
+            Gateway Configuration
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -118,7 +118,7 @@ export const AdminPaymentsScreen: React.FC = () => {
           activeOpacity={0.8}
         >
           <Text style={[styles.tabText, activeTab === 'ledger' && styles.tabTextActive]}>
-            💳 Transaction Ledger
+            Transaction Ledger
           </Text>
         </TouchableOpacity>
       </View>
@@ -141,7 +141,7 @@ export const AdminPaymentsScreen: React.FC = () => {
               style={styles.testBtn}
             >
               <Text style={styles.testBtnText}>
-                {isTesting ? 'Testing...' : '⚡ Test Handshake'}
+                {isTesting ? 'Testing...' : 'Test Handshake'}
               </Text>
             </TouchableOpacity>
           </View>

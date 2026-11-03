@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users2,
   ShieldCheck,
@@ -9,44 +9,127 @@ import {
   UserCheck,
   Trash2,
   X,
-  Lock
+  Lock,
+  Phone,
+  Loader2,
+  User
 } from 'lucide-react';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  access: string;
-  status: string;
-}
-
-const DEFAULT_TEAM: TeamMember[] = [];
+import { getStoredUser, setStoredUser, AuthUser } from '@/lib/auth';
+import { TeamMember } from '@/lib/types';
+import { showToast } from '@/lib/swal';
 
 export default function CustomerTeamPage() {
-  const [team, setTeam] = useState<TeamMember[]>(DEFAULT_TEAM);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [newMember, setNewMember] = useState({ name: '', role: '', email: '', access: 'Inspection & MTC Download' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [newMember, setNewMember] = useState({
+    name: '',
+    role: '',
+    email: '',
+    phone: '',
+    access: 'Inspection & MTC Download',
+  });
 
-  const handleInvite = (e: React.FormEvent) => {
+  useEffect(() => {
+    const user = getStoredUser();
+    setCurrentUser(user);
+
+    if (user?.teamMembers && Array.isArray(user.teamMembers) && user.teamMembers.length > 0) {
+      setTeam(user.teamMembers);
+    } else if (user?.fullName) {
+      // Default to Primary Account Officer
+      const primary: TeamMember = {
+        id: 'tm-primary',
+        name: user.fullName,
+        role: user.designation || 'Primary Account Officer',
+        email: user.email,
+        phone: user.phone || '+91 Contact on File',
+        access: 'Admin (Full PO & Credit Sign-off)',
+        status: 'Active',
+      };
+      setTeam([primary]);
+    }
+
+    // Refresh from API
+    if (user?.id) {
+      fetch(`/api/users?search=${encodeURIComponent(user.email)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.users && data.users.length > 0) {
+            const matched = data.users.find((u: any) => u.id === Number(user.id) || u.email === user.email);
+            if (matched && Array.isArray(matched.teamMembers) && matched.teamMembers.length > 0) {
+              setTeam(matched.teamMembers);
+              const updated = { ...user, teamMembers: matched.teamMembers };
+              setStoredUser(updated);
+              setCurrentUser(updated);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const persistTeam = async (updatedTeam: TeamMember[]) => {
+    setTeam(updatedTeam);
+    const user = getStoredUser() || currentUser;
+    if (user) {
+      const updatedUser: AuthUser = { ...user, teamMembers: updatedTeam };
+      setStoredUser(updatedUser);
+      setCurrentUser(updatedUser);
+
+      if (user.id) {
+        setIsSaving(true);
+        try {
+          await fetch('/api/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              teamMembers: updatedTeam,
+            }),
+          });
+        } catch (err) {
+          console.warn('Background sync failed:', err);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    }
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMember.name || !newMember.email) return;
+    if (!newMember.name.trim() || !newMember.email.trim()) return;
+
     const added: TeamMember = {
       id: `tm-${Date.now()}`,
       name: newMember.name.trim(),
       role: newMember.role.trim() || 'Procurement Member',
       email: newMember.email.trim(),
+      phone: newMember.phone.trim() || '+91 Contact on File',
       access: newMember.access,
       status: 'Active',
     };
-    setTeam([...team, added]);
-    setNewMember({ name: '', role: '', email: '', access: 'Inspection & MTC Download' });
+
+    const updated = [...team, added];
+    await persistTeam(updated);
+    setNewMember({
+      name: '',
+      role: '',
+      email: '',
+      phone: '',
+      access: 'Inspection & MTC Download',
+    });
     setIsInviteModalOpen(false);
+    showToast(`Authorized team member "${added.name}"!`, 'success');
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     if (confirm('Are you sure you want to revoke portal permissions for this member?')) {
-      setTeam(team.filter((t) => t.id !== id));
+      const updated = team.filter((t) => t.id !== id);
+      await persistTeam(updated);
+      showToast('Team member access revoked.', 'info');
     }
   };
 
@@ -67,9 +150,10 @@ export default function CustomerTeamPage() {
         <button
           type="button"
           onClick={() => setIsInviteModalOpen(true)}
-          className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5 cursor-pointer"
         >
-          <span> + Authorize Team Member</span>
+          <Plus size={14} />
+          <span>Authorize Team Member</span>
         </button>
       </div>
 
@@ -90,14 +174,23 @@ export default function CustomerTeamPage() {
               {team.map((mem) => (
                 <tr key={mem.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5 px-4">
-                    <div className="font-extrabold text-[#0F172A] text-sm">{mem.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                    <div className="font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                        {mem.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span>{mem.name}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 ml-9">
                       <Mail size={11} /> {mem.email}
+                      {mem.phone && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <Phone size={11} /> {mem.phone}
+                        </>
+                      )}
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-700">
-                    {mem.role}
-                  </td>
+                  <td className="py-3.5 px-4 font-semibold text-slate-700">{mem.role}</td>
                   <td className="py-3.5 px-4">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-[#0052CC] text-[11px] font-bold">
                       <Lock size={11} /> {mem.access}
@@ -109,11 +202,11 @@ export default function CustomerTeamPage() {
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    {mem.id !== 'tm-1' && (
+                    {mem.id !== 'tm-primary' && (
                       <button
                         type="button"
                         onClick={() => handleRemove(mem.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
                         title="Revoke access"
                       >
                         <Trash2 size={14} />
@@ -129,14 +222,16 @@ export default function CustomerTeamPage() {
 
       {/* Invite Member Modal */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">Authorize New Team Member</h3>
+              <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">
+                Authorize New Team Member
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsInviteModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -144,66 +239,93 @@ export default function CustomerTeamPage() {
 
             <form onSubmit={handleInvite} className="py-4 space-y-3.5">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Full Name</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Full Name *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Amit Sengupta"
+                  placeholder="e.g. Vikram Mehta"
                   value={newMember.name}
                   onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Corporate Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="amit.s@apexinfra.in"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Corporate Role *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. QA Inspection Lead"
+                    value={newMember.role}
+                    onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Official Work Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="member@company.com"
+                    value={newMember.email}
+                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Company Role / Designation</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Phone / WhatsApp
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Senior QA/QC Inspection Manager"
-                  value={newMember.role}
-                  onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  placeholder="+91 98000 00000"
+                  value={newMember.phone}
+                  onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Portal Access Level</label>
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  Permission Tier
+                </label>
                 <select
                   value={newMember.access}
                   onChange={(e) => setNewMember({ ...newMember, access: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-xs font-semibold text-slate-800 bg-[#F8FAFC] focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none bg-white"
                 >
-                  <option value="Inspection & MTC Download">Inspection &amp; MTC Download (View-Only QA)</option>
-                  <option value="Invoices & Ledger Review">Invoices &amp; Ledger Review (Finance Team)</option>
-                  <option value="Full PO Authorization & Credit">Full PO Authorization &amp; Credit (Senior Procurement)</option>
+                  <option value="Inspection & MTC Download">Inspection &amp; MTC Download Only</option>
+                  <option value="BOM Upload & RFQ Drafting">BOM Upload &amp; RFQ Drafting</option>
+                  <option value="Billing & Invoices Audit">Billing &amp; Invoices Audit</option>
+                  <option value="Full PO Sign-off & Credit Draw">Full PO Sign-off &amp; Credit Draw</option>
                 </select>
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsInviteModalOpen(false)}
-                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold shadow text-center"
+                  disabled={isSaving}
+                  className="px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  Grant Portal Clearance
+                  {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                  <span>Authorize Officer</span>
                 </button>
               </div>
             </form>

@@ -7,6 +7,7 @@ import {
   Text,
   ReturnKeyTypeOptions,
 } from 'react-native';
+import { NavIcon } from './NavIcon';
 
 interface MobileSearchProps {
   value: string;
@@ -32,7 +33,9 @@ export const MobileSearch: React.FC<MobileSearchProps> = ({
   return (
     <View style={styles.container}>
       <View style={[styles.inputBox, value ? styles.inputBoxActive : null]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <View style={styles.searchIconWrap}>
+          <NavIcon name="search" color="#64748B" size={15} />
+        </View>
         <TextInput
           value={value}
           onChangeText={onChange}
@@ -62,7 +65,7 @@ export const MobileSearch: React.FC<MobileSearchProps> = ({
           style={[styles.filterBtn, isFilterActive ? styles.filterBtnActive : null]}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Text style={styles.filterIcon}>⚙</Text>
+          <NavIcon name="filter" color={isFilterActive ? '#FFFFFF' : '#0F172A'} size={16} />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -89,9 +92,10 @@ const styles = StyleSheet.create({
   inputBoxActive: {
     borderColor: '#0052CC',
   },
-  searchIcon: {
-    fontSize: 13,
+  searchIconWrap: {
     marginRight: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,

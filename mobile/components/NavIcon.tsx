@@ -146,6 +146,124 @@ export const NavIcon: React.FC<NavIconProps> = ({ name, color, size = 22 }) => {
         </View>
       );
 
+    case 'search':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.65, height: size * 0.65, borderRadius: size * 0.35, borderWidth: 1.8, borderColor: color, position: 'absolute', top: 1, left: 1 }} />
+          <View style={{ width: 1.8, height: size * 0.45, backgroundColor: color, position: 'absolute', bottom: 1, right: 3, transform: [{ rotate: '-45deg' }] }} />
+        </View>
+      );
+
+    case 'filter':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center', gap: 3 }]}>
+          <View style={{ width: size * 0.8, height: 2, backgroundColor: color, borderRadius: 1 }} />
+          <View style={{ width: size * 0.55, height: 2, backgroundColor: color, borderRadius: 1 }} />
+          <View style={{ width: size * 0.3, height: 2, backgroundColor: color, borderRadius: 1 }} />
+        </View>
+      );
+
+    case 'doc':
+    case 'document':
+    case 'file':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={[styles.docBody, { borderColor: color }]}>
+            <View style={[styles.docLine, { backgroundColor: color, width: 8 }]} />
+            <View style={[styles.docLine, { backgroundColor: color, width: 10 }]} />
+            <View style={[styles.docLine, { backgroundColor: color, width: 6 }]} />
+          </View>
+        </View>
+      );
+
+    case 'phone':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.5, height: size * 0.8, borderWidth: 1.8, borderColor: color, borderRadius: 3, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 2 }}>
+            <View style={{ width: size * 0.2, height: 1.5, backgroundColor: color, borderRadius: 1 }} />
+            <View style={{ width: size * 0.15, height: size * 0.15, borderRadius: size * 0.08, borderWidth: 1, borderColor: color }} />
+          </View>
+        </View>
+      );
+
+    case 'mail':
+    case 'email':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.8, height: size * 0.55, borderWidth: 1.8, borderColor: color, borderRadius: 2, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: size * 0.5, height: 1.5, backgroundColor: color, marginBottom: 2 }} />
+            <View style={{ width: size * 0.3, height: 1.5, backgroundColor: color }} />
+          </View>
+        </View>
+      );
+
+    case 'lock':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.45, height: size * 0.35, borderTopLeftRadius: size * 0.25, borderTopRightRadius: size * 0.25, borderWidth: 1.6, borderColor: color, borderBottomWidth: 0, marginBottom: -1 }} />
+          <View style={{ width: size * 0.65, height: size * 0.45, backgroundColor: color, borderRadius: 2 }} />
+        </View>
+      );
+
+    case 'truck':
+    case 'shipping':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+            <View style={{ width: size * 0.5, height: size * 0.45, backgroundColor: color, borderRadius: 1 }} />
+            <View style={{ width: size * 0.28, height: size * 0.32, borderWidth: 1.6, borderColor: color, borderLeftWidth: 0, borderTopRightRadius: 2 }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: size * 0.28, marginTop: 1 }}>
+            <View style={{ width: size * 0.18, height: size * 0.18, borderRadius: size * 0.09, backgroundColor: color }} />
+            <View style={{ width: size * 0.18, height: size * 0.18, borderRadius: size * 0.09, backgroundColor: color }} />
+          </View>
+        </View>
+      );
+
+    case 'shield':
+    case 'verified':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.65, height: size * 0.75, borderWidth: 1.8, borderColor: color, borderTopLeftRadius: 3, borderTopRightRadius: 3, borderBottomLeftRadius: size * 0.35, borderBottomRightRadius: size * 0.35, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: size * 0.2, height: size * 0.3, borderBottomWidth: 1.8, borderRightWidth: 1.8, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: -2 }} />
+          </View>
+        </View>
+      );
+
+    case 'check':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.3, height: size * 0.5, borderBottomWidth: 2, borderRightWidth: 2, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: -2 }} />
+        </View>
+      );
+
+    case 'plus':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.7, height: 2, backgroundColor: color, position: 'absolute' }} />
+          <View style={{ width: 2, height: size * 0.7, backgroundColor: color, position: 'absolute' }} />
+        </View>
+      );
+
+    case 'trash':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.65, height: 2, backgroundColor: color, marginBottom: 1 }} />
+          <View style={{ width: size * 0.5, height: size * 0.55, borderWidth: 1.6, borderColor: color, borderTopWidth: 0, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 }} />
+        </View>
+      );
+
+    case 'whatsapp':
+    case 'chat':
+      return (
+        <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>
+          <View style={{ width: size * 0.7, height: size * 0.6, borderWidth: 1.8, borderColor: color, borderRadius: 5, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: size * 0.35, height: 1.5, backgroundColor: color }} />
+          </View>
+          <View style={{ width: 0, height: 0, borderLeftWidth: 3, borderRightWidth: 3, borderTopWidth: 4, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: color, alignSelf: 'flex-start', marginLeft: 4, marginTop: -1 }} />
+        </View>
+      );
+
     default:
       return (
         <View style={[styles.box, { width: size, height: size, justifyContent: 'center', alignItems: 'center' }]}>

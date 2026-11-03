@@ -220,7 +220,7 @@ export const AdminSurplusScreen: React.FC = () => {
       <View style={styles.rowBetween}>
         <Text style={styles.countText}>{filteredLots.length} Clearance Lots Active</Text>
         <TouchableOpacity onPress={handleOpenAdd} style={styles.addBtn} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>➕ New Surplus Lot</Text>
+          <Text style={styles.addBtnText}>+ New Surplus Lot</Text>
         </TouchableOpacity>
       </View>
 
@@ -239,7 +239,12 @@ export const AdminSurplusScreen: React.FC = () => {
       />
 
       {/* Hub Filter Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 16 }}
+        style={styles.chipsRow}
+      >
         {hubsList.map((hub) => {
           const active = selectedHub === hub;
           return (
@@ -272,9 +277,9 @@ export const AdminSurplusScreen: React.FC = () => {
           <Text style={styles.lotName}>{lot.name}</Text>
 
           <View style={styles.specsRow}>
-            <Text style={styles.specItem}>📐 {lot.standard}</Text>
-            <Text style={styles.specItem}>🔬 {lot.grade}</Text>
-            <Text style={styles.specItem}>📍 {lot.locationHub}</Text>
+            <Text style={styles.specItem}>Std: {lot.standard}</Text>
+            <Text style={styles.specItem}>Grade: {lot.grade}</Text>
+            <Text style={styles.specItem}>Hub: {lot.locationHub}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -302,7 +307,7 @@ export const AdminSurplusScreen: React.FC = () => {
               style={styles.editBtn}
               activeOpacity={0.8}
             >
-              <Text style={styles.editBtnText}>✏ Edit Lot Parameters</Text>
+              <Text style={styles.editBtnText}>Edit Lot Parameters</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -312,7 +317,7 @@ export const AdminSurplusScreen: React.FC = () => {
               style={styles.deleteBtn}
               activeOpacity={0.8}
             >
-              <Text style={styles.deleteBtnText}>🗑</Text>
+              <Text style={styles.deleteBtnText}>Delete</Text>
             </TouchableOpacity>
           </View>
         </MobileCard>
@@ -324,7 +329,7 @@ export const AdminSurplusScreen: React.FC = () => {
       <MobileModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
-        title={isEditing ? `Edit Surplus Lot: ${lotSku}` : '➕ List New Surplus Lot'}
+        title={isEditing ? `Edit Surplus Lot: ${lotSku}` : '+ List New Surplus Lot'}
       >
         <ScrollView style={styles.modalScroll}>
           <Text style={styles.fieldLabel}>Lot Number / SKU *</Text>

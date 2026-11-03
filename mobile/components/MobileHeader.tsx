@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import { NavIcon } from './NavIcon';
 
 interface MobileHeaderProps {
   title: string;
@@ -97,7 +98,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
         {!isAdmin && onCartClick ? (
           <TouchableOpacity onPress={onCartClick} style={styles.cartBtn}>
-            <Text style={styles.cartIcon}>🛒</Text>
+            <NavIcon name="cart" color="#0052CC" size={18} />
             {cartCount > 0 ? (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>

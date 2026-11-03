@@ -12,6 +12,7 @@ import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { NavIcon } from '../../components/NavIcon';
 import { mobileApi } from '../../config/api';
 import { MobileOrder, MobileAuthUser } from '../../types';
 
@@ -98,7 +99,12 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
       />
 
       {/* Status Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 16 }}
+        style={styles.chipsRow}
+      >
         {statusFilters.map((st) => {
           const isActive = selectedStatus === st;
           return (
@@ -138,7 +144,7 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
         </View>
       ) : orders.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📦</Text>
+          <NavIcon name="orders" color="#94A3B8" size={36} />
           <Text style={styles.emptyTitle}>No Consignments Found</Text>
           <Text style={styles.emptySubtitle}>
             You do not have any active fastener orders matching this filter.
@@ -160,15 +166,40 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
           >
             <View style={styles.rowBetween}>
               <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-              <MobileBadge
-                label={order.status}
-                variant={getBadgeVariant(order.status)}
-                size="sm"
-              />
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                {order.paymentMethod ? (
+                  <View
+                    style={[
+                      styles.payModePill,
+                      order.paymentMethod === 'COD' ? styles.payPillCod : styles.payPillPrepaid,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.payModePillText,
+                        order.paymentMethod === 'COD' ? styles.payTextCod : styles.payTextPrepaid,
+                      ]}
+                    >
+                      {order.paymentMethod === 'COD'
+                        ? 'COD'
+                        : order.paymentMethod === 'PHONEPE'
+                        ? 'UPI'
+                        : order.paymentMethod === 'NEFT_RTGS'
+                        ? 'RTGS'
+                        : 'CREDIT'}
+                    </Text>
+                  </View>
+                ) : null}
+                <MobileBadge
+                  label={order.status}
+                  variant={getBadgeVariant(order.status)}
+                  size="sm"
+                />
+              </View>
             </View>
 
             <View style={styles.metaRow}>
-              <Text style={styles.carrierText}>🚚 {order.carrier || 'Blue Dart Express'}</Text>
+              <Text style={styles.carrierText}>Carrier: {order.carrier || 'Blue Dart Express'}</Text>
               <Text style={styles.dateText}>Date: {order.date || '2026-10-30'}</Text>
             </View>
 
@@ -215,7 +246,20 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
             </View>
 
             <View style={styles.infoBox}>
-              <Text style={styles.infoKey}>Carrier Partner</Text>
+              <Text style={styles.infoKey}>Payment Terms &amp; Mode</Text>
+              <Text style={[styles.infoVal, { fontWeight: '800', color: activeOrder.paymentMethod === 'COD' ? '#D97706' : '#0052CC' }]}>
+                {activeOrder.paymentMethod === 'COD'
+                  ? 'Cash on Delivery (Pay at Site Gate upon Inspection)'
+                  : activeOrder.paymentMethod === 'PHONEPE'
+                  ? 'Prepaid (PhonePe UPI / Cards · 100% Confirmed)'
+                  : activeOrder.paymentMethod === 'NEFT_RTGS'
+                  ? 'Prepaid (RTGS / NEFT Wire Transfer · Proforma Issued)'
+                  : activeOrder.paymentMethod === 'CREDIT_LINE'
+                  ? '30-Day B2B Corporate Credit Line'
+                  : 'Prepaid Factory Order'}
+              </Text>
+
+              <Text style={[styles.infoKey, { marginTop: 6 }]}>Carrier Partner</Text>
               <Text style={styles.infoVal}>{activeOrder.carrier || 'Blue Dart Express'}</Text>
               
               <Text style={[styles.infoKey, { marginTop: 6 }]}>AWB Tracking Number</Text>
@@ -224,11 +268,18 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
               <Text style={[styles.infoKey, { marginTop: 6 }]}>Delivery Destination</Text>
               <Text style={styles.infoVal}>{activeOrder.shippingAddress || 'Plot 42, Peenya Industrial Area, Bengaluru'}</Text>
 
+              {activeOrder.poNumber ? (
+                <>
+                  <Text style={[styles.infoKey, { marginTop: 6 }]}>Buyer Purchase Order (PO)</Text>
+                  <Text style={styles.infoVal}>{activeOrder.poNumber}</Text>
+                </>
+              ) : null}
+
               {activeOrder.mtcCertNumber ? (
                 <>
                   <Text style={[styles.infoKey, { marginTop: 6 }]}>NABL MTC Certificate</Text>
                   <Text style={[styles.infoVal, { color: '#0052CC', fontWeight: '800' }]}>
-                    📜 {activeOrder.mtcCertNumber} (EN 10204 3.1 Verified)
+                    MTC: {activeOrder.mtcCertNumber} (EN 10204 3.1 Verified)
                   </Text>
                 </>
               ) : null}
@@ -272,7 +323,7 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
               }}
               style={styles.downloadCertBtn}
             >
-              <Text style={styles.downloadCertBtnText}>📥 Download NABL MTC Certificate</Text>
+              <Text style={styles.downloadCertBtnText}>Download NABL MTC Certificate</Text>
             </TouchableOpacity>
           </View>
         </MobileModal>
@@ -395,6 +446,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  payModePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  payPillCod: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  payPillPrepaid: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  payModePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  payTextCod: {
+    color: '#B45309',
+  },
+  payTextPrepaid: {
+    color: '#0052CC',
   },
   metaRow: {
     flexDirection: 'row',

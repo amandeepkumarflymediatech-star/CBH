@@ -14,11 +14,14 @@ interface FastenerProductImageProps {
   imageUrl?: string;
   drawingUrl?: string;
   category?: string;
+  subGroup?: string;
+  name?: string;
   productName?: string;
   standard?: string;
   containerStyle?: ViewStyle;
   imageStyle?: ImageStyle;
   height?: number;
+  size?: number;
   showCadBadge?: boolean;
 }
 
@@ -60,18 +63,25 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
   imageUrl,
   drawingUrl,
   category,
+  subGroup,
+  name,
   productName,
   standard,
   containerStyle,
   imageStyle,
-  height = 140,
+  height,
+  size,
   showCadBadge = false,
 }) => {
-  const localFallback = getCategoryFallbackAsset(category, productName, standard);
+  const effectiveCategory = category || subGroup;
+  const effectiveName = productName || name;
+  const effectiveHeight = size !== undefined ? size : (height !== undefined ? height : 140);
+  const effectiveWidth = size !== undefined ? size : undefined;
+  const localFallback = getCategoryFallbackAsset(effectiveCategory, effectiveName, standard);
   
   // If the product is specifically a nut, washer, or screw but the database gave it generic bolt_zinc.jpg,
   // prefer the accurate 3D category render
-  const combined = `${category || ''} ${productName || ''} ${standard || ''}`.toLowerCase();
+  const combined = `${effectiveCategory || ''} ${effectiveName || ''} ${standard || ''}`.toLowerCase();
   const isGenericBolt = !imageUrl || imageUrl.includes('bolt_zinc') || imageUrl.includes('anchor_bolt');
   const isNonProductAsset = Boolean(
     imageUrl &&
@@ -97,7 +107,7 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
   const resolvedUri = imageUrl && !shouldUseLocalFallback ? resolveMediaUrl(imageUrl) : null;
 
   return (
-    <View style={[styles.container, { height }, containerStyle]}>
+    <View style={[styles.container, { height: effectiveHeight }, effectiveWidth !== undefined ? { width: effectiveWidth } : null, containerStyle]}>
       {hasError || !resolvedUri ? (
         <Image
           source={localFallback}
@@ -127,7 +137,7 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
 
       {showCadBadge && drawingUrl ? (
         <View style={styles.cadBadge}>
-          <Text style={styles.cadBadgeText}>📐 CAD</Text>
+          <Text style={styles.cadBadgeText}>CAD 2D</Text>
         </View>
       ) : null}
     </View>

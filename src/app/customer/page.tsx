@@ -1390,7 +1390,7 @@ export default function CustomerDashboardPage() {
               <div>
                 <span className="text-xs text-slate-400 font-mono uppercase">Revolving Credit Limit</span>
                 <div className="text-3xl font-black font-mono tracking-tight text-white mt-1">
-                  ₹50,00,000.00
+                  {formatINR(currentUser?.creditLimit || 2500000)}
                 </div>
               </div>
               <div className="text-right">
@@ -1404,12 +1404,12 @@ export default function CustomerDashboardPage() {
             <div className="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
               <div
                 className="bg-gradient-to-r from-[#5B4DF6] to-emerald-400 h-full transition-all"
-                style={{ width: `${Math.min(100, Math.round((totalSpend / 5000000) * 100))}%` }}
+                style={{ width: `${Math.min(100, Math.round((totalSpend / Math.max(1, currentUser?.creditLimit || 2500000)) * 100))}%` }}
               />
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-300 font-mono">
-              <span>Utilized: {formatINR(totalSpend)} ({Math.min(100, Math.round((totalSpend / 5000000) * 100))}%)</span>
+              <span>Utilized: {formatINR(totalSpend)} ({Math.min(100, Math.round((totalSpend / Math.max(1, currentUser?.creditLimit || 2500000)) * 100))}%)</span>
               <span>Payment Cycle: Net 30 Days from LR</span>
             </div>
           </div>

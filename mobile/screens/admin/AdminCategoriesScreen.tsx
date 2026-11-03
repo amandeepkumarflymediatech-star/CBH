@@ -219,7 +219,7 @@ export const AdminCategoriesScreen: React.FC = () => {
       <View style={styles.rowBetween}>
         <Text style={styles.countText}>{filteredCategories.length} Categories Registered</Text>
         <TouchableOpacity onPress={handleOpenAdd} style={styles.addBtn} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>➕ Add Category</Text>
+          <Text style={styles.addBtnText}>+ Add Category</Text>
         </TouchableOpacity>
       </View>
 
@@ -258,7 +258,7 @@ export const AdminCategoriesScreen: React.FC = () => {
 
           <View style={styles.rowBetween}>
             <Text style={styles.prodCountText}>
-              🔩 {cat.productsCount || 0} Products in Family
+              {cat.productsCount || 0} Products in Family
             </Text>
             <View style={styles.rowInline}>
               <TouchableOpacity
@@ -266,7 +266,7 @@ export const AdminCategoriesScreen: React.FC = () => {
                 style={styles.editBtn}
                 activeOpacity={0.8}
               >
-                <Text style={styles.editBtnText}>✏ Edit</Text>
+                <Text style={styles.editBtnText}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
@@ -276,7 +276,7 @@ export const AdminCategoriesScreen: React.FC = () => {
                 style={styles.deleteBtn}
                 activeOpacity={0.8}
               >
-                <Text style={styles.deleteBtnText}>🗑</Text>
+                <Text style={styles.deleteBtnText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -289,7 +289,7 @@ export const AdminCategoriesScreen: React.FC = () => {
       <MobileModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditing ? `Edit Category: ${catName}` : '➕ Add Catalog Category'}
+        title={isEditing ? `Edit Category: ${catName}` : '+ Add Catalog Category'}
       >
         <ScrollView style={styles.modalScroll}>
           <Text style={styles.fieldLabel}>Category Display Name *</Text>
