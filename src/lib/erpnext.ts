@@ -79,9 +79,18 @@ function getErpNextHeaders(config: ErpNextConfig): HeadersInit {
   };
 }
 
-// Clean and normalize ERPNext Base URL
+// Clean and normalize ERPNext Base URL (strips any accidentally pasted /desk or path suffixes)
 function cleanUrl(url: string): string {
-  return url.trim().replace(/\/+$/, '');
+  let cleaned = url.trim();
+  if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+    cleaned = `https://${cleaned}`;
+  }
+  try {
+    const parsed = new URL(cleaned);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return cleaned.replace(/\/+$/, '');
+  }
 }
 
 // Test Connection with ERPNext

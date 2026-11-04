@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { MobileAuthUser, UserRole } from '../types';
+import { setPersistedUser } from './storage';
 
 const MOBILE_AUTH_USER_KEY = 'cbh_mobile_auth_user';
 const MOBILE_AUTH_TOKEN_KEY = 'cbh_mobile_auth_token';
@@ -52,6 +53,8 @@ export function getMobileStoredUser(): MobileAuthUser | null {
 export function setMobileStoredUser(user: MobileAuthUser | null, token?: string): void {
   memoryUser = user;
   if (token) memoryToken = token;
+  // Sync to native AsyncStorage in background
+  setPersistedUser(user, token).catch(() => {});
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       if (user) {

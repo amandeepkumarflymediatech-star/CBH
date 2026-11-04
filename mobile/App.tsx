@@ -59,9 +59,15 @@ import { CustomerProfileScreen } from './screens/customer/CustomerProfileScreen'
 
 import { AuthScreen } from './screens/auth/AuthScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
+import {
+  getHasSeenWelcome,
+  setHasSeenWelcome,
+  getPersistedUser,
+} from './config/storage';
 
 export default function App() {
-  const [isWelcome, setIsWelcome] = useState<boolean>(true);
+  const [isWelcome, setIsWelcome] = useState<boolean>(false);
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [role, setRole] = useState<UserRole>('customer');
   // User state: starts null (Guest Explore mode) so first-time visitors can browse catalog
   const [user, setUser] = useState<MobileAuthUser | null>(null);
@@ -82,36 +88,69 @@ export default function App() {
   const [authInitialView, setAuthInitialView] = useState<'login' | 'register'>('login');
   const [postAuthRedirectTab, setPostAuthRedirectTab] = useState<string>('home');
 
-  // Auth sync
+  // Initial session & onboarding check
   useEffect(() => {
-    // 1. Immediate memory check
-    const stored = getMobileStoredUser();
-    if (stored) {
-      setUser(stored);
-      setRole(stored.role);
-      setIsWelcome(false);
-      setActiveTab(stored.role === 'admin' ? 'dashboard' : 'home');
+    async function initSession() {
+      try {
+        const [hasSeen, persistedUser] = await Promise.all([
+          getHasSeenWelcome(),
+          getPersistedUser(),
+        ]);
+
+        const memoryStored = getMobileStoredUser();
+        const activeUser = memoryStored || persistedUser;
+
+        if (activeUser) {
+          setUser(activeUser);
+          setRole(activeUser.role);
+          setIsWelcome(false);
+          setActiveTab(activeUser.role === 'admin' ? 'dashboard' : 'home');
+        } else if (!hasSeen) {
+          // New user: display WelcomeScreen once
+          setIsWelcome(true);
+        } else {
+          // Returning user / guest: skip welcome screen, go straight to storefront
+          setIsWelcome(false);
+          setActiveTab('home');
+        }
+      } catch (err) {
+        console.warn('[App Init Error]:', err);
+        setIsWelcome(false);
+        setActiveTab('home');
+      } finally {
+        setIsReady(true);
+      }
+
+      // 2. Persistent session sync from server (survives app refresh & Metro reload)
+      mobileApi.auth
+        .getSession()
+        .then((res) => {
+          if (res && res.success && res.user) {
+            setUser(res.user);
+            setRole(res.user.role);
+            setMobileStoredUser(res.user, res.token || 'token_live');
+            setHasSeenWelcome(true).catch(() => {});
+            setIsWelcome(false);
+            setActiveTab(res.user.role === 'admin' ? 'dashboard' : 'home');
+          }
+        })
+        .catch(() => {});
     }
 
-    // 2. Persistent session sync from server (survives app refresh & Metro reload)
-    mobileApi.auth
-      .getSession()
-      .then((res) => {
-        if (res && res.success && res.user) {
-          setUser(res.user);
-          setRole(res.user.role);
-          setMobileStoredUser(res.user, res.token || 'token_live');
-          setIsWelcome(false);
-          setActiveTab(res.user.role === 'admin' ? 'dashboard' : 'home');
-        }
-      })
-      .catch(() => {});
+    initSession();
   }, []);
+
+  const handleDismissWelcome = (destination: string = 'home') => {
+    setHasSeenWelcome(true).catch(() => {});
+    setIsWelcome(false);
+    setActiveTab(destination);
+  };
 
   const handleAuthSuccess = (u: MobileAuthUser, fallbackTab: string = 'home') => {
     setUser(u);
     setRole(u.role);
     setMobileStoredUser(u);
+    setHasSeenWelcome(true).catch(() => {});
     mobileApi.auth.saveSession(u).catch(() => {});
     setIsWelcome(false);
     const destination = postAuthRedirectTab || (u.role === 'admin' ? 'dashboard' : fallbackTab);
@@ -121,6 +160,7 @@ export default function App() {
   };
 
   const handleRoleSwitch = (newRole: UserRole) => {
+    setHasSeenWelcome(true).catch(() => {});
     setIsWelcome(false);
     setRole(newRole);
     setSelectedProduct(null);
@@ -142,7 +182,7 @@ export default function App() {
     setMobileStoredUser(null);
     setUser(null);
     setRole('customer');
-    setIsWelcome(true);
+    setIsWelcome(false);
     setActiveTab('home');
   };
 
@@ -322,7 +362,7 @@ export default function App() {
         <AuthScreen
           initialView={authInitialView}
           onSuccess={(u) => handleAuthSuccess(u, postAuthRedirectTab || 'home')}
-          onBackToWelcome={() => setIsWelcome(true)}
+          onBackToWelcome={() => setActiveTab('home')}
         />
       );
     }
@@ -332,7 +372,7 @@ export default function App() {
         return (
           <AuthScreen
             onSuccess={(u) => handleAuthSuccess(u, 'dashboard')}
-            onBackToWelcome={() => setIsWelcome(true)}
+            onBackToWelcome={() => setActiveTab('home')}
           />
         );
       }
@@ -431,7 +471,7 @@ export default function App() {
             return (
               <AuthScreen
                 onSuccess={(u) => handleAuthSuccess(u, 'orders')}
-                onBackToWelcome={() => setIsWelcome(true)}
+                onBackToWelcome={() => setActiveTab('home')}
               />
             );
           }
@@ -500,7 +540,7 @@ export default function App() {
             return (
               <AuthScreen
                 onSuccess={(u) => handleAuthSuccess(u, 'profile')}
-                onBackToWelcome={() => setIsWelcome(true)}
+                onBackToWelcome={() => setActiveTab('home')}
               />
             );
           }
@@ -552,6 +592,14 @@ export default function App() {
   const isCustomBlueHeader =
     activeTab === 'catalog' || Boolean(selectedProduct) || activeTab === 'cart' || isAuthScreen;
 
+  if (!isReady) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#FFFFFF' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, isCustomBlueHeader ? { backgroundColor: '#0047AB' } : null]}>
       <StatusBar
@@ -563,14 +611,8 @@ export default function App() {
       {isWelcome ? (
         <View style={styles.viewport}>
           <WelcomeScreen
-            onExplore={() => {
-              setIsWelcome(false);
-              setActiveTab('home');
-            }}
-            onSignIn={() => {
-              setIsWelcome(false);
-              setActiveTab('auth');
-            }}
+            onExplore={() => handleDismissWelcome('home')}
+            onSignIn={() => handleDismissWelcome('auth')}
           />
         </View>
       ) : (

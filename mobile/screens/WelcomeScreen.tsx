@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { setHasSeenWelcome } from '../config/storage';
 
 interface WelcomeScreenProps {
   onExplore: () => void;
@@ -129,6 +130,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     }).start();
   };
 
+  const handleExplore = () => {
+    setHasSeenWelcome(true).catch(() => {});
+    onExplore();
+  };
+
+  const handleSignIn = () => {
+    setHasSeenWelcome(true).catch(() => {});
+    onSignIn();
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -190,7 +201,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.85}
-            onPress={onExplore}
+            onPress={handleExplore}
           >
             <Text style={styles.primaryBtnText}>Explore Fastener Catalog</Text>
             <Text style={styles.arrowIcon}>→</Text>
@@ -199,7 +210,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.8}
-            onPress={onSignIn}
+            onPress={handleSignIn}
           >
             <Text style={styles.secondaryBtnText}>
               Sign In / Register Company Account

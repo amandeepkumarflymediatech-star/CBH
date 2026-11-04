@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchErpNextProducts, getErpNextConfig, saveErpNextConfig } from '@/lib/erpnext';
-import { setProductsDb } from '@/lib/products-db';
+import { getProductsDb, setProductsDb } from '@/lib/products-db';
+import { syncProductsToMySQL } from '@/lib/sync-products-mysql';
 import fs from 'fs';
 import path from 'path';
 
@@ -125,14 +126,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update memory products database
+    // Non-destructive Merge (Upsert): update matching SKUs, append new SKUs, and keep all existing products
     if (result.products.length > 0) {
-      setProductsDb(result.products);
+      const currentProducts = getProductsDb();
+      const erpSkuMap = new Map(result.products.map((p) => [p.sku.toUpperCase(), p]));
+
+      // Update existing items with new ERP rates and stock
+      const merged = currentProducts.map((existing) => {
+        const erpMatch = erpSkuMap.get(existing.sku.toUpperCase());
+        if (erpMatch) {
+          erpSkuMap.delete(existing.sku.toUpperCase());
+          return {
+            ...existing,
+            ...erpMatch,
+            pricePerPiece: erpMatch.pricePerPiece || existing.pricePerPiece,
+            pricePerKg: erpMatch.pricePerKg || existing.pricePerKg,
+            stockPcs: erpMatch.stockPcs !== undefined ? erpMatch.stockPcs : existing.stockPcs,
+            stockKg: erpMatch.stockKg !== undefined ? erpMatch.stockKg : existing.stockKg,
+            isInStock: erpMatch.isInStock !== undefined ? erpMatch.isInStock : existing.isInStock,
+          };
+        }
+        return existing;
+      });
+
+      // Add any new items from ERPNext to top of catalog
+      Array.from(erpSkuMap.values()).forEach((newErpItem) => {
+        merged.unshift(newErpItem);
+      });
+
+      setProductsDb(merged);
+
+      // Persist to MySQL as well
+      syncProductsToMySQL(merged, 'merge').catch((err) =>
+        console.warn('[ERPNext Sync] MySQL sync warning:', err)
+      );
 
       // Persist to local cache file for high availability
       try {
         const cacheFile = path.join(process.cwd(), 'src', 'data', 'erpnext-cached-products.json');
-        fs.writeFileSync(cacheFile, JSON.stringify(result.products, null, 2), 'utf-8');
+        fs.writeFileSync(cacheFile, JSON.stringify(merged, null, 2), 'utf-8');
       } catch (err) {
         console.error('Could not cache ERPNext products:', err);
       }
