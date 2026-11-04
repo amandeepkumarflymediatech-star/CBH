@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Linking,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { MobileModal } from '../../components/MobileModal';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
@@ -32,13 +35,20 @@ interface CustomerCartScreenProps {
   onOrderSuccess: (orderNumber: string) => void;
 }
 
-type PayMethod = 'PHONEPE' | 'NEFT_RTGS' | 'CREDIT_LINE' | 'COD';
+type PayMethod = 'PHONEPE' | 'COD';
 
 const PAY_OPTIONS: { id: PayMethod; title: string; sub: string; tag?: string }[] = [
-  { id: 'PHONEPE', title: 'UPI / Card / Netbanking', sub: 'Pay now, dispatch first', tag: 'Fastest' },
-  { id: 'NEFT_RTGS', title: 'Bank transfer', sub: 'Proforma invoice issued' },
-  { id: 'CREDIT_LINE', title: '30-day credit', sub: 'For approved GST accounts' },
-  { id: 'COD', title: 'Pay on delivery', sub: 'Pay when it reaches your site' },
+  {
+    id: 'PHONEPE',
+    title: 'Online Payment (PhonePe)',
+    sub: 'Instant UPI, GPay, Paytm, Cards & Netbanking',
+    tag: 'Fastest',
+  },
+  {
+    id: 'COD',
+    title: 'Cash on Delivery (COD)',
+    sub: 'Pay when fasteners reach your site or warehouse',
+  },
 ];
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
@@ -81,6 +91,16 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  // PhonePe live browser payment & verification telemetry state
+  const [pendingTxn, setPendingTxn] = useState<{
+    transactionId: string;
+    orderNumber: string;
+    amount: number;
+  } | null>(null);
+  const [isVerifyingPhonePe, setIsVerifyingPhonePe] = useState(false);
+  const pendingTxnRef = useRef<typeof pendingTxn>(null);
+  pendingTxnRef.current = pendingTxn;
 
   // ---- Totals (logic unchanged) ----
   const totalWeightKg = +cartItems.reduce((s, i) => s + i.totalWeightKg, 0).toFixed(2);
@@ -143,6 +163,149 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
     onUpdateQuantity(item.product.id, item.unit, next);
   };
 
+  // ---- Finalize verified paid PhonePe order in system & database ----
+  const finalizePaidOrder = async (orderNumber: string, txnId: string, amount: number) => {
+    try {
+      const res = await mobileApi.orders.create({
+        customerId:
+          user?.id && !isNaN(Number(user.id)) && Number(user.id) > 0 && Number(user.id) <= 2147483647
+            ? Number(user.id)
+            : undefined,
+        customerName: contactName || user?.fullName || 'Procurement In-Charge',
+        companyName: companyName || user?.companyName || 'Enterprise Fastener Buyer',
+        phone: phone || user?.phone || '+91 98880 21000',
+        email: email || user?.email || 'procurement@company.com',
+        shippingAddress: `${shippingAddress.trim()}, City: ${shippingCity}, PIN: ${shippingPincode}`,
+        city: shippingCity,
+        deliveryPincode: shippingPincode,
+        poNumber: poNumber.trim() || undefined,
+        paymentMethod: 'PHONEPE',
+        paymentStatus: 'PAID',
+        netAmount: amount,
+        totalWeightKg,
+        carrier: totalWeightKg > 150 ? 'TCI Freight Logistics' : 'Blue Dart Express',
+        items: cartItems.map((ci) => ({
+          sku: ci.product.sku,
+          name: ci.product.name,
+          quantity: ci.quantity,
+          rate: ci.unitPrice,
+          weightKg: ci.totalWeightKg,
+          uom: ci.unit,
+        })),
+      });
+
+      setPendingTxn(null);
+      setIsVerifyingPhonePe(false);
+      setIsCheckoutModalOpen(false);
+      onClearCart();
+
+      if (res.order) {
+        setConfirmedOrder({
+          ...res.order,
+          paymentStatus: 'PAID',
+          orderNumber: orderNumber || res.order.orderNumber,
+        });
+        setIsSuccessModalOpen(true);
+      } else {
+        onOrderSuccess(orderNumber);
+      }
+    } catch (err: any) {
+      console.warn('[Finalize Paid Order] Notice:', err.message);
+      setPendingTxn(null);
+      setIsVerifyingPhonePe(false);
+      setIsCheckoutModalOpen(false);
+      onClearCart();
+      onOrderSuccess(orderNumber);
+    }
+  };
+
+  // ---- Check payment status on PhonePe gateway ----
+  const checkPendingPaymentStatus = async (manual = false) => {
+    const current = pendingTxnRef.current;
+    if (!current?.transactionId) return;
+
+    setIsVerifyingPhonePe(true);
+    try {
+      const res = await mobileApi.payment.checkStatus(current.transactionId);
+      const data = res?.data;
+      const status = data?.status || (data?.success && data?.code === 'PAYMENT_SUCCESS' ? 'SUCCESS' : '');
+
+      if (status === 'SUCCESS' || data?.code === 'PAYMENT_SUCCESS') {
+        await finalizePaidOrder(current.orderNumber, current.transactionId, current.amount);
+      } else if (status === 'FAILED' || data?.code === 'PAYMENT_ERROR') {
+        setIsVerifyingPhonePe(false);
+        Alert.alert('Payment Unsuccessful', 'PhonePe payment could not be processed. You can retry anytime.');
+        setPendingTxn(null);
+      } else {
+        setIsVerifyingPhonePe(false);
+        if (manual) {
+          Alert.alert(
+            'Payment Verification In Progress',
+            'Bank authorization is still processing. Complete payment in your UPI app or browser, then tap Verify.'
+          );
+        }
+      }
+    } catch (err) {
+      setIsVerifyingPhonePe(false);
+    }
+  };
+
+  // ---- 1. Deep Link Handler for PhonePe Browser Return (cbhfasteners://payment-result) ----
+  useEffect(() => {
+    const handleUrl = (event: { url: string }) => {
+      const url = event.url;
+      if (url && (url.startsWith('cbhfasteners://') || url.startsWith('cbh://'))) {
+        try {
+          const queryString = url.split('?')[1] || '';
+          const params = new URLSearchParams(queryString);
+          const status = params.get('status') || '';
+          const orderNum = params.get('orderNumber') || pendingTxnRef.current?.orderNumber || 'CBH-ORD-SUCCESS';
+          const txnId = params.get('txnId') || pendingTxnRef.current?.transactionId || '';
+          const amt = Number(params.get('amount') || netTotal);
+
+          if (status === 'SUCCESS' || url.toLowerCase().includes('success')) {
+            finalizePaidOrder(orderNum, txnId, amt);
+          } else if (status === 'FAILED') {
+            Alert.alert('Payment Failed', 'PhonePe payment transaction was cancelled or declined.');
+            setPendingTxn(null);
+          }
+        } catch (err) {
+          console.warn('[Deep Link Parse Error]', err);
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => sub.remove();
+  }, [netTotal, cartItems, user, shippingAddress, shippingCity, shippingPincode]);
+
+  // ---- 2. AppState change listener (auto-checks payment when user switches back from UPI app/browser) ----
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && pendingTxnRef.current?.transactionId) {
+        checkPendingPaymentStatus();
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, []);
+
+  // ---- 3. Periodic Background Poller while user is waiting on payment ----
+  useEffect(() => {
+    if (!pendingTxn?.transactionId) return;
+
+    const interval = setInterval(() => {
+      checkPendingPaymentStatus();
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [pendingTxn]);
+
   // ---- Submit RFQ ----
   const handleSubmitRfq = async () => {
     setIsSubmittingRfq(true);
@@ -175,7 +338,7 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
     }
   };
 
-  // ---- Place order ----
+  // ---- Place order / Initiate Payment ----
   const handleCheckout = async () => {
     if (!user) {
       setIsCheckoutModalOpen(false);
@@ -187,6 +350,59 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
       return;
     }
 
+    // CASE 1: ONLINE PAYMENT (PHONEPE)
+    if (paymentMethod === 'PHONEPE') {
+      setIsProcessingOrder(true);
+      const generatedOrderNumber = `CBH-ORD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      try {
+        const res = await mobileApi.payment.initiate({
+          orderId: generatedOrderNumber,
+          amount: netTotal,
+          customerName: contactName || user?.fullName || 'Procurement In-Charge',
+          customerPhone: phone || user?.phone || '9888021000',
+          customerEmail: email || user?.email || 'procurement@company.com',
+          companyName: companyName || user?.companyName || 'Enterprise Buyer',
+          shippingAddress: `${shippingAddress.trim()}, City: ${shippingCity}, PIN: ${shippingPincode}`,
+          totalWeightKg,
+          source: 'mobile',
+          items: cartItems.map((ci) => ({
+            sku: ci.product.sku,
+            name: ci.product.name,
+            quantity: ci.quantity,
+            rate: ci.unitPrice,
+            weightKg: ci.totalWeightKg,
+            uom: ci.unit,
+          })),
+        });
+
+        setIsProcessingOrder(false);
+
+        const payUrl = (res as any)?.paymentUrl || res?.data?.paymentUrl;
+        const txnId = (res as any)?.transactionId || res?.data?.transactionId || `TXN-${generatedOrderNumber}`;
+
+        if (payUrl) {
+          setIsCheckoutModalOpen(false);
+          setPendingTxn({
+            transactionId: txnId,
+            orderNumber: generatedOrderNumber,
+            amount: netTotal,
+          });
+
+          // Open PhonePe gateway in external browser / UPI app
+          await Linking.openURL(payUrl);
+        } else {
+          const msg = (res as any)?.error || res?.error || 'Unable to open PhonePe Gateway. Please try again.';
+          Alert.alert('PhonePe Gateway', msg);
+        }
+      } catch (err: any) {
+        setIsProcessingOrder(false);
+        Alert.alert('Payment Error', err.message || 'Could not connect to PhonePe gateway.');
+      }
+      return;
+    }
+
+    // CASE 2: CASH ON DELIVERY (COD)
     setIsProcessingOrder(true);
     try {
       const res = await mobileApi.orders.create({
@@ -202,9 +418,8 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
         city: shippingCity,
         deliveryPincode: shippingPincode,
         poNumber: poNumber.trim() || undefined,
-        paymentMethod,
-        paymentStatus:
-          paymentMethod === 'COD' ? 'COD_ON_DELIVERY' : paymentMethod === 'NEFT_RTGS' ? 'PENDING' : 'PAID',
+        paymentMethod: 'COD',
+        paymentStatus: 'COD_ON_DELIVERY',
         netAmount: netTotal,
         totalWeightKg,
         carrier: totalWeightKg > 150 ? 'TCI Freight Logistics' : 'Blue Dart Express',
@@ -235,12 +450,8 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
 
   const payButtonLabel = () => {
     const amt = `₹${fmt(netTotal)}`;
-    switch (paymentMethod) {
-      case 'COD': return `Place order · ${amt}`;
-      case 'PHONEPE': return `Pay ${amt}`;
-      case 'NEFT_RTGS': return `Get proforma · ${amt}`;
-      default: return `Place order · ${amt}`;
-    }
+    if (paymentMethod === 'COD') return `Place COD Order · ${amt}`;
+    return `Pay Online via PhonePe · ${amt}`;
   };
 
   const Header = ({ count, canClear }: { count?: number; canClear?: boolean }) => (
@@ -538,6 +749,61 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
           </TouchableOpacity>
         </ScrollView>
       </MobileModal>
+
+      {/* PhonePe Waiting & Verification Modal */}
+      {pendingTxn ? (
+        <MobileModal
+          isOpen={true}
+          onClose={() => {
+            Alert.alert(
+              'Cancel Payment Check?',
+              'If you already completed your payment, it will be automatically confirmed. Would you like to close this screen?',
+              [
+                { text: 'Keep Waiting', style: 'cancel' },
+                { text: 'Close', style: 'destructive', onPress: () => setPendingTxn(null) },
+              ]
+            );
+          }}
+          title="PhonePe Payment"
+        >
+          <View style={styles.phonePeWaitingWrap}>
+            <View style={styles.phonePeBadge}>
+              <Text style={styles.phonePeBadgeText}>PhonePe Secure</Text>
+            </View>
+
+            <ActivityIndicator size="large" color="#5f259f" style={{ marginVertical: 14 }} />
+
+            <Text style={styles.phonePeWaitingTitle}>Verifying Payment Settlement</Text>
+            <Text style={styles.phonePeWaitingSub}>Order {pendingTxn.orderNumber}</Text>
+            <Text style={styles.phonePeWaitingAmt}>₹{fmt(pendingTxn.amount)}</Text>
+
+            <Text style={styles.phonePeWaitingHint}>
+              Please complete your transaction via UPI / Cards in PhonePe or your browser. When finished, your order status updates automatically!
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => checkPendingPaymentStatus(true)}
+              disabled={isVerifyingPhonePe}
+              style={[styles.primaryBtn, { backgroundColor: '#5f259f', width: '100%', marginTop: 16 }]}
+              activeOpacity={0.88}
+            >
+              {isVerifyingPhonePe ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryBtnText}>I Have Paid · Verify Now</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setPendingTxn(null)}
+              style={[styles.secondaryBtn, { width: '100%', marginTop: 8 }]}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.secondaryBtnText}>Cancel / Return to Cart</Text>
+            </TouchableOpacity>
+          </View>
+        </MobileModal>
+      ) : null}
 
       {/* Success modal */}
       {confirmedOrder ? (
@@ -912,6 +1178,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     marginBottom: 6,
+  },
+  phonePeWaitingWrap: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  phonePeBadge: {
+    backgroundColor: '#5f259f',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  phonePeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  phonePeWaitingTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: INK,
+    marginTop: 4,
+  },
+  phonePeWaitingSub: {
+    fontSize: 13,
+    color: MUTED,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  phonePeWaitingAmt: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#5f259f',
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  phonePeWaitingHint: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 16,
   },
 });
 

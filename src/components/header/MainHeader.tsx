@@ -375,9 +375,9 @@ export default function MainHeader({
                             <Building2 size={15} color="#FF6B00" />
                             <strong style={{ fontSize: '13px', color: '#9A3412' }}>Sign In to Client Portal</strong>
                           </div>
-                          <span style={{ fontSize: '11px', color: '#C2410C', paddingLeft: '23px' }}>
+                          {/* <span style={{ fontSize: '11px', color: '#C2410C', paddingLeft: '23px' }}>
                             Track live LR shipments, MTCs &amp; RFQs
-                          </span>
+                          </span> */}
                         </Link>
                         <Link
                           href="/register"

@@ -12,21 +12,21 @@ export const ENV = {
   DEV_API_URL: `http://${LOCAL_IP}:${PORT}/api`,
 
   // 2. Local Area Network (Testing on a real physical phone connected to same Wi-Fi)
-  LAN_HOST: 'http://192.168.1.146:3000',
-  LAN_API_URL: 'http://192.168.1.146:3000/api',
+  LAN_HOST: 'http://192.168.1.9:3000',
+  LAN_API_URL: 'http://192.168.1.9:3000/api',
 
   // 3. Live Production Server (Official deployed backend)
   PROD_HOST: 'https://cbh.socialflymediatech.com',
   PROD_API_URL: 'https://cbh.socialflymediatech.com/api',
 
   // Active environment toggle:
+  // - 'prod': Live cloud production backend (https://cbh.socialflymediatech.com/api) - FAST & ALWAYS ACCESSIBLE
+  // - 'lan': Physical phone on Wi-Fi (http://192.168.1.9:3000/api)
   // - 'local': Local Next.js server on computer (http://10.0.2.2:3000/api)
-  // - 'lan': Physical phone on Wi-Fi (http://192.168.1.146:3000/api)
-  // - 'prod': Live cloud production backend (https://cbh.socialflymediatech.com/api)
-  ACTIVE_ENV: 'lan' as ApiEnvironment,
+  ACTIVE_ENV: 'prod' as ApiEnvironment,
 
   // Legacy boolean flag (kept for backwards compatibility)
-  IS_PROD: false,
+  IS_PROD: true,
 };
 
 // Runtime dynamic environment switch

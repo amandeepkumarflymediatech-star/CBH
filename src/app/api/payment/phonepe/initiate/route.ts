@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
 
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const redirectUrl = `${protocol}://${host}/api/payment/phonepe/redirect`;
+    const source = body.source || 'web';
+    const redirectUrl = `${protocol}://${host}/api/payment/phonepe/redirect?source=${encodeURIComponent(source)}`;
     const callbackUrl = `${protocol}://${host}/api/payment/phonepe/callback`;
 
     const result = await initiatePhonePePayment({
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         companyName: body.companyName || '',
         gstin: body.gstin || '',
         totalWeightKg: String(body.totalWeightKg || '0'),
+        source,
       },
     });
 

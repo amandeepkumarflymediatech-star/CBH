@@ -18,6 +18,7 @@ import {
   MIN_QTY_PCS,
   MIN_QTY_KGS,
   formatQtyDisplay,
+  FALLBACK_PRODUCTS,
 } from '../../config/api';
 import { MobileProduct, GlobalUnit } from '../../types';
 
@@ -118,9 +119,9 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
   onSelectProduct,
   onAddToCart,
 }) => {
-  const [products, setProducts] = useState<MobileProduct[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState<MobileProduct[]>(FALLBACK_PRODUCTS.slice(0, PAGE_SIZE));
+  const [totalCount, setTotalCount] = useState(FALLBACK_PRODUCTS.length);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);

@@ -15,7 +15,7 @@ import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { NavIcon } from '../../components/NavIcon';
-import { mobileApi } from '../../config/api';
+import { mobileApi, FALLBACK_PRODUCTS } from '../../config/api';
 import { MobileProduct, MobileOrder, MobileSurplusLot, GlobalUnit } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -94,12 +94,12 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   onSelectProduct,
   onAddToCart,
 }) => {
-  const [products, setProducts] = useState<MobileProduct[]>([]);
+  const [products, setProducts] = useState<MobileProduct[]>(FALLBACK_PRODUCTS.slice(0, 12));
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrder, setActiveOrder] = useState<MobileOrder | null>(null);
   const [surplusLots, setSurplusLots] = useState<MobileSurplusLot[]>([]);
   const [stats, setStats] = useState({ total: 605, inStock: 602 });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toast, setToast] = useState('');
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);

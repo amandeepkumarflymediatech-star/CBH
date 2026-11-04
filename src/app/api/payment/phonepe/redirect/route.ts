@@ -12,6 +12,7 @@ async function handleRedirect(req: NextRequest) {
   let amount = 0;
   let status = 'PENDING';
   let erpnextOrderId = '';
+  let existing: any = null;
 
   if (req.method === 'GET') {
     const sp = req.nextUrl.searchParams;
@@ -56,7 +57,7 @@ async function handleRedirect(req: NextRequest) {
     }
 
     // Update transaction record and push Sales Order to ERPNext if SUCCESS
-    const existing = getPhonePeTransactions().find((t) => t.transactionId === transactionId);
+    existing = getPhonePeTransactions().find((t) => t.transactionId === transactionId);
     erpnextOrderId = existing?.erpnextSalesOrderId || '';
 
     if (status === 'SUCCESS' && existing && !erpnextOrderId) {
@@ -136,6 +137,9 @@ async function handleRedirect(req: NextRequest) {
   if (amount) successUrl.searchParams.set('amount', String(amount));
   if (status) successUrl.searchParams.set('status', status);
   if (erpnextOrderId) successUrl.searchParams.set('erpId', erpnextOrderId);
+
+  const sourceParam = req.nextUrl.searchParams.get('source') || (existing?.notes as any)?.source;
+  if (sourceParam) successUrl.searchParams.set('source', sourceParam);
 
   return NextResponse.redirect(successUrl.toString(), 303);
 }

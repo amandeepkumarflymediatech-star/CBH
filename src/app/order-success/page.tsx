@@ -26,8 +26,21 @@ function OrderSuccessContent() {
   const amount = parseFloat(amountStr) || 56935;
   const isSimulated = searchParams.get('simulated') === 'true';
   const erpId = searchParams.get('erpId');
+  const source = searchParams.get('source');
+
+  const deepLink = `cbhfasteners://payment-result?txnId=${encodeURIComponent(txnId)}&orderNumber=${encodeURIComponent(orderNumber)}&amount=${encodeURIComponent(amount)}&status=SUCCESS${erpId ? `&erpId=${encodeURIComponent(erpId)}` : ''}`;
 
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (source === 'mobile' && typeof window !== 'undefined') {
+      // Auto-return to mobile app if opened in mobile browser
+      const timer = setTimeout(() => {
+        window.location.href = deepLink;
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [source, deepLink]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -146,6 +159,16 @@ function OrderSuccessContent() {
 
         {/* Action Buttons */}
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          {source === 'mobile' ? (
+            <a
+              href={deepLink}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-colors"
+            >
+              <Sparkles size={16} />
+              <span>Return to CBH Fasteners Mobile App</span>
+            </a>
+          ) : null}
+
           <Link
             href="/customer"
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-colors"

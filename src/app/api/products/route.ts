@@ -186,9 +186,9 @@ export async function GET(request: Request) {
   const limitParam = searchParams.get('limit');
   const isAll = limitParam === 'all';
   
-  // If explicitly requested paginated OR if limit/page specified, use pagination
+  // Default to 50 items if neither limit nor page is specified (prevents dumping 27,000 items unless explicitly limit=all)
   const page = Math.max(1, parseInt(pageParam || '1') || 1);
-  const limit = isAll ? 0 : (limitParam ? Math.max(1, Math.min(500, parseInt(limitParam) || 10)) : (pageParam ? 10 : 0));
+  const limit = isAll ? 0 : (limitParam ? Math.max(1, Math.min(500, parseInt(limitParam) || 50)) : (pageParam ? 10 : 50));
 
   // 1. FAST MYSQL DIRECT PAGINATION
   try {

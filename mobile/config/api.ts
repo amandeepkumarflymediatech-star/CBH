@@ -156,14 +156,13 @@ function toQueryString(params: Record<string, unknown>): string {
 }
 
 /**
- * Core HTTP Request Wrapper with Auth Token & Error Handling
+ * Core HTTP Request Wrapper with Auth Token, 6s Timeout & Environment Fallback
  */
 async function request<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs = 6000
 ): Promise<MobileApiResponse<T>> {
-  const url = buildApiUrl(endpoint);
-
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -174,11 +173,37 @@ async function request<T = any>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const tryFetch = async (targetUrl: string): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(targetUrl, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const primaryUrl = buildApiUrl(endpoint);
+
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers,
-    });
+    let res: Response;
+    try {
+      res = await tryFetch(primaryUrl);
+    } catch (primaryErr: any) {
+      // If primary (e.g. LAN/Local) times out or fails, gracefully try live production backend
+      const activeEnv = getApiEnvironment();
+      if (activeEnv !== 'prod' && !primaryUrl.includes('cbh.socialflymediatech.com')) {
+        const prodUrl = buildApiUrl(endpoint, 'prod');
+        res = await tryFetch(prodUrl);
+      } else {
+        throw primaryErr;
+      }
+    }
 
     const json = await res.json().catch(() => ({}));
 
@@ -195,10 +220,11 @@ async function request<T = any>(
       ...json,
     };
   } catch (error: any) {
-    console.warn(`[Mobile API Request Warning] ${endpoint}:`, error.message);
+    const isTimeout = error.name === 'AbortError' || error.message?.includes('aborted');
+    console.warn(`[Mobile API Request Warning] ${endpoint}:`, isTimeout ? 'Request timed out' : error.message);
     return {
       success: false,
-      error: error.message || 'Network request failed. Operating in offline/cached mode.',
+      error: isTimeout ? 'Network timeout. Operating in offline/cached mode.' : (error.message || 'Network request failed.'),
     };
   }
 }
@@ -277,6 +303,23 @@ export const authApi = {
 
 // ============================================================================
 // ============================================================================
+// IN-MEMORY FAST CACHE FOR MOBILE CATALOG
+// ============================================================================
+const memoryProductCache = new Map<string, { data: any; expiresAt: number }>();
+
+function getProductFromCache(key: string) {
+  const item = memoryProductCache.get(key);
+  if (item && item.expiresAt > Date.now()) {
+    return item.data;
+  }
+  return null;
+}
+
+function setProductToCache(key: string, data: any, ttlMs = 60000) {
+  memoryProductCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+// ============================================================================
 // 2. PRODUCTS & INVENTORY APIS
 // ============================================================================
 export const productsApi = {
@@ -306,10 +349,15 @@ export const productsApi = {
       diameter: params?.diameter,
       surplus: params?.isSurplus,
       stockStatus: params?.stockStatus,
-      limit: params?.limit,
+      limit: params?.limit || 24,
       offset: params?.offset,
       page: params?.page,
     });
+
+    const cacheKey = `getAll:${qs}`;
+    const cached = getProductFromCache(cacheKey);
+    if (cached) return cached;
+
     const res = await request<any>(`${API_ENDPOINTS.PRODUCTS.LIST}${qs}`);
 
     // Dynamic API returns { success: true, data: [...], total: ..., filterOptions: {...}, stats: {...} }
@@ -320,7 +368,7 @@ export const productsApi = {
       : [];
 
     if (res.success && (list.length > 0 || res.data !== undefined)) {
-      return {
+      const out = {
         ...res,
         success: true,
         products: list,
@@ -330,6 +378,8 @@ export const productsApi = {
         filterOptions: res.filterOptions,
         stats: res.stats,
       };
+      setProductToCache(cacheKey, out, 45000);
+      return out;
     }
 
     // Offline / Network fallback
@@ -396,9 +446,14 @@ export const productsApi = {
       inStockOnly: params?.inStockOnly ? 'true' : undefined,
       sortBy: params?.sortBy,
     });
+
+    const cacheKey = `paginated:${qs}`;
+    const cached = getProductFromCache(cacheKey);
+    if (cached) return cached;
+
     const res = await request<any>(`${API_ENDPOINTS.PRODUCTS.PAGINATED}${qs}`);
     if (res.success && Array.isArray(res.data)) {
-      return {
+      const out = {
         ...res,
         products: res.data as MobileProduct[],
         total: res.total ?? res.data.length,
@@ -407,7 +462,11 @@ export const productsApi = {
         filterOptions: res.filterOptions,
         relatedProducts: res.relatedProducts || [],
       };
+      setProductToCache(cacheKey, out, 45000);
+      return out;
     }
+
+    // Return instant fallback without cascading into another slow request
     return productsApi.getAll(params);
   },
 
@@ -913,8 +972,23 @@ export const paymentApi = {
     amount: number;
     customerPhone: string;
     customerEmail?: string;
+    customerName?: string;
+    companyName?: string;
+    shippingAddress?: string;
+    totalWeightKg?: number;
+    source?: string;
+    items?: any[];
   }) => {
-    return request(API_ENDPOINTS.PAYMENT.PHONEPE_INITIATE, {
+    return request<{
+      success: boolean;
+      paymentUrl?: string;
+      transactionId?: string;
+      orderNumber?: string;
+      isSimulated?: boolean;
+      amount?: number;
+      message?: string;
+      error?: string;
+    }>(API_ENDPOINTS.PAYMENT.PHONEPE_INITIATE, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
