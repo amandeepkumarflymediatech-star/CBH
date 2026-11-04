@@ -1133,7 +1133,7 @@ export default function AdminProductsSection({
   return (
     <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* 1. TOP METRIC TELEMETRY CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Total Fasteners</span>
@@ -1994,9 +1994,10 @@ export default function AdminProductsSection({
             />
           </div>
         ) : (
-          /* VIEW MODE: RESPONSIVE TABLE (NO HORIZONTAL SCROLL) */
+          /* VIEW MODE: RESPONSIVE TABLE */
           <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+            <div className="overflow-x-auto w-full">
+              <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   <th style={{ padding: '12px 10px 12px 16px', width: '38px', textAlign: 'center' }}>
@@ -2339,6 +2340,7 @@ export default function AdminProductsSection({
                 )}
               </tbody>
             </table>
+            </div>
             <TablePagination
               currentPage={currentPage}
               totalItems={totalCount}

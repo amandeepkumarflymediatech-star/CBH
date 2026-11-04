@@ -662,7 +662,7 @@ export default function AdminLayout({
               className="fixed inset-0 bg-black/40 backdrop-blur-xs"
               onClick={() => setIsMobileNavOpen(false)}
             />
-            <div className="fixed top-0 bottom-0 left-0 w-[280px] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+            <div className="fixed top-0 bottom-0 left-0 w-[280px] max-w-[85vw] bg-white p-5 flex flex-col justify-between shadow-2xl z-50 animate-in slide-in-from-left duration-200 overflow-y-auto">
               <div className="space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <Link href="/admin" onClick={() => setIsMobileNavOpen(false)} className="flex items-center no-underline" title="CBH Admin">
@@ -707,6 +707,22 @@ export default function AdminLayout({
                     <span>Orders</span>
                   </Link>
                   <Link
+                    href="/admin/surplus"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <TrendingUp size={16} />
+                    <span>Sales & Surplus</span>
+                  </Link>
+                  <Link
+                    href="/admin/custom-requests"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Sparkles size={16} className="text-amber-500" />
+                    <span>Custom Requests</span>
+                  </Link>
+                  <Link
                     href="/admin/users"
                     onClick={() => setIsMobileNavOpen(false)}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
@@ -723,12 +739,28 @@ export default function AdminLayout({
                     <span>RFQs</span>
                   </Link>
                   <Link
+                    href="/admin/erpnext"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Database size={16} />
+                    <span>Marketplace Sync</span>
+                  </Link>
+                  <Link
                     href="/admin/payments"
                     onClick={() => setIsMobileNavOpen(false)}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
                   >
                     <CreditCard size={16} />
                     <span>Payment Gateways</span>
+                  </Link>
+                  <Link
+                    href="/admin/seo"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Globe size={16} />
+                    <span>Settings & SEO</span>
                   </Link>
                   <Link
                     href="/admin/profile"

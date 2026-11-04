@@ -355,14 +355,7 @@ export default function AdminOrdersSection({
   return (
     <div className="portal-main-card">
       {/* 1. TOP SUMMARY METRIC CARDS */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '14px',
-          marginBottom: '24px',
-        }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         {/* Total Orders & Value */}
         <div
           style={{
@@ -547,7 +540,7 @@ export default function AdminOrdersSection({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
             type="button"
             className="btn-outline"
@@ -1521,7 +1514,7 @@ export default function AdminOrdersSection({
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                 <button
                   type="button"
                   className="btn-outline"

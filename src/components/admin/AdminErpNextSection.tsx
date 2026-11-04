@@ -444,7 +444,7 @@ export default function AdminErpNextSection({
       {/* ============================================================== */}
       {/* TELEMETRY STATS CARDS                                          */}
       {/* ============================================================== */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div style={{ background: '#FFFFFF', padding: '18px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>ERP Server Host</span>
           <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', marginTop: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -489,7 +489,7 @@ export default function AdminErpNextSection({
       {/* ============================================================== */}
       {/* 2-COLUMN SETUP: CREDENTIALS & WEBHOOKS                         */}
       {/* ============================================================== */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         
         {/* PANEL 1: CREDENTIALS & API CONNECTION */}
         <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
@@ -529,7 +529,7 @@ export default function AdminErpNextSection({
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                   API Key:
@@ -582,7 +582,7 @@ export default function AdminErpNextSection({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                   Selling Price List:
@@ -639,7 +639,7 @@ export default function AdminErpNextSection({
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-2">
               <button
                 type="button"
                 onClick={handleTestConnection}
@@ -905,8 +905,8 @@ export default function AdminErpNextSection({
           </div>
         )}
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+        <div className="overflow-x-auto w-full">
+          <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: '#F1F5F9', borderBottom: '2px solid #CBD5E1', color: '#334155' }}>
                 <th style={{ width: '38px', textAlign: 'center', padding: '10px 8px' }}>

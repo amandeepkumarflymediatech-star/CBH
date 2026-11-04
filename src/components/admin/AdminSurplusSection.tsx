@@ -213,7 +213,7 @@ export default function AdminSurplusSection({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <Link
             href="/admin/custom-requests"
             className="btn-outline"

@@ -216,7 +216,7 @@ export default function AdminRfqsSection({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
             type="button"
             className="btn-outline"

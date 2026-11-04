@@ -312,7 +312,7 @@ export default function AdminPaymentsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleTestPing}
@@ -577,8 +577,8 @@ export default function AdminPaymentsPage() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse text-xs min-w-[760px]">
             <thead>
               <tr className="bg-slate-50 border-b border-[#D8DFE7] text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <th className="py-3.5 px-4 w-10">

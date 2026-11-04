@@ -6222,6 +6222,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .admin-table {
   width: 100%;
+  min-width: 820px;
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;

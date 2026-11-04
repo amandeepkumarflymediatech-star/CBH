@@ -402,8 +402,8 @@ export default function AdminSeoPage() {
 
           {/* Table of Routes */}
           <div className="bg-white rounded-2xl border border-[#D8DFE7] shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse text-xs min-w-[720px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-[#D8DFE7] text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                     <th className="py-3.5 px-4">Route Path</th>

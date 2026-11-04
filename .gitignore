@@ -34,3 +34,5 @@ Thumbs.db
 # Generated / runtime cache
 src/data/erpnext-cached-products.json
 .mobile_session.json
+
+*.apk

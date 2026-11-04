@@ -252,9 +252,9 @@ export default function AdminProfilePage() {
       )}
 
       {/* Main Grid: Left Side (Clearance Badge) + Right Side (Editable Profile & Keys) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Card: Clearance Card */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="lg:col-span-1 flex flex-col gap-5">
           {/* Operator Station Badge */}
           <div style={{
             background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
@@ -534,7 +534,7 @@ export default function AdminProfilePage() {
         </div>
 
         {/* Right Side: Form details */}
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSave} className="lg:col-span-2 flex flex-col gap-5">
           {/* Operator Information */}
           <div style={{
             background: '#FFFFFF',
@@ -551,7 +551,7 @@ export default function AdminProfilePage() {
               <span>Operator Profile Information</span>
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px' }}>
                   OPERATOR FULL NAME
@@ -719,7 +719,7 @@ export default function AdminProfilePage() {
               <span>Terminal Passcode &amp; Security Clearance</span>
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px' }}>
                   CURRENT OPERATOR PASSCODE
@@ -783,7 +783,7 @@ export default function AdminProfilePage() {
           </div>
 
           {/* Submit Action */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
             <Link
               href="/admin"
               style={{
