@@ -68,6 +68,7 @@ function getCleanFastenerTitle(name: string, subGroup?: string): string {
 
 const CATEGORIES: Array<{ id: string; label: string }> = [
   { id: 'All', label: 'All' },
+  { id: 'SURPLUS', label: '🔥 Surplus Deals' },
   { id: 'BOLTS', label: 'Bolts' },
   { id: 'NUTS', label: 'Nuts' },
   { id: 'SCREWS', label: 'Screws' },
@@ -223,7 +224,7 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
     try {
       const res = await mobileApi.products.getPaginated({
         search: debouncedQuery || undefined,
-        category: selectedCategory === 'All' ? undefined : selectedCategory,
+        category: selectedCategory === 'All' ? undefined : selectedCategory.toLowerCase(),
         standard: selectedStandard === 'All' ? undefined : selectedStandard,
         grade: selectedGrade === 'All' ? undefined : selectedGrade,
         diameter: selectedDiameter === 'All' ? undefined : selectedDiameter,
@@ -606,7 +607,12 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
 
       {/* Categories + filter */}
       <View style={styles.categoriesRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pills}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pills}
+          style={{ flex: 1 }}
+        >
           {CATEGORIES.map((c) => {
             const active = selectedCategory === c.id;
             return (
@@ -809,6 +815,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 7,
+    flexShrink: 0,
   },
   filterText: { fontSize: 13, fontWeight: '800', color: BLUE },
   filterBadge: {

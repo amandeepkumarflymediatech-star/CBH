@@ -185,6 +185,10 @@ export default function CheckoutPage() {
           companyName: formData.companyName,
           shippingAddress: `${formData.shippingAddress}, ${formData.city}, ${formData.state} - ${formData.pincode}`,
           totalWeightKg: summary.totalWeightKg,
+          pincode: formData.pincode,
+          grossAmount: summary.grossAmount,
+          discountAmount: summary.slabDiscountAmount,
+          gstAmount: summary.gstAmount,
           items: checkoutItems,
         }),
       });

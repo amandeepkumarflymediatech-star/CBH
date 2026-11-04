@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
-import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS, toTitleCase } from '@/lib/rfq-calculator';
 import {
   CheckCircle2,
   ShieldCheck,
@@ -34,7 +34,8 @@ import {
   ArrowRight,
   PhoneCall,
   Clock,
-  Flame
+  Flame,
+  Heading4
 } from 'lucide-react';
 import { showToast, showSuccessAlert, showInfoAlert } from '@/lib/swal';
 
@@ -377,50 +378,39 @@ export default function ProductDetailPage() {
       />
 
       {/* Top Breadcrumb Navigation */}
-      <div className="pdp-breadcrumb-bar" style={{ background: '#FFFFFF', borderBottom: '1px solid #E2E8F0', padding: '12px 0' }}>
-        <div className="container" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-            <nav className="pdp-breadcrumbs" aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '12px', color: '#64748B' }}>
-              <Link href="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-              <span className="separator" style={{ color: '#CBD5E1' }}>/</span>
-              <Link href="/products" style={{ color: '#64748B', textDecoration: 'none' }}>Catalog</Link>
+      {/* Breadcrumbs Banner */}
+      <div className="pdp-breadcrumb-bar bg-white border-b border-slate-200 py-2.5 sm:py-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <nav className="pdp-breadcrumbs flex items-center flex-wrap gap-1.5 text-xs text-slate-500" aria-label="Breadcrumb">
+              <Link href="/" className="hover:text-blue-700 transition-colors">Home</Link>
+              <span className="text-slate-300">/</span>
+              <Link href="/products" className="hover:text-blue-700 transition-colors">Catalog</Link>
               {product.subGroup && (
                 <>
-                  <span className="separator" style={{ color: '#CBD5E1' }}>/</span>
-                  <span style={{ color: '#64748B' }}>{product.subGroup}</span>
+                  <span className="text-slate-300">/</span>
+                  <span>{toTitleCase(product.subGroup)}</span>
                 </>
               )}
               {product.category && (
                 <>
-                  <span className="separator" style={{ color: '#CBD5E1' }}>/</span>
-                  <span style={{ color: '#64748B', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {product.category}
+                  <span className="text-slate-300">/</span>
+                  <span className="max-w-[140px] sm:max-w-[200px] truncate">
+                    {toTitleCase(product.category)}
                   </span>
                 </>
               )}
-              <span className="separator" style={{ color: '#CBD5E1' }}>/</span>
-              <span className="current" style={{ color: '#0F172A', fontWeight: 700 }}>
+              <span className="text-slate-300">/</span>
+              <span className="text-slate-900 font-bold">
                 {product.sizeFormatted || `${product.diameter}x${product.lengthMm}`}
               </span>
             </nav>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleCopyLink}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  background: '#F1F5F9',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  color: '#475569',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg py-1 px-2.5 text-xs text-slate-600 font-semibold cursor-pointer transition-colors"
                 title="Copy shareable product URL"
               >
                 {copiedSku ? <Check size={13} color="#059669" /> : <Share2 size={13} />}
@@ -432,58 +422,47 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Main PDP Core Section */}
-      <main className="container" style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
-        <div className="pdp-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', alignItems: 'flex-start' }}>
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 pb-28 sm:pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
           {/* ================================================================ */}
           {/* LEFT COLUMN: Technical Viewport & CAD Drawing Visualizer        */}
           {/* ================================================================ */}
-          <div className="pdp-gallery-card" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-            
-            {/* Badges Strip */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span className="badge badge-din" style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 700 }}>
-                  {product.standard || 'DIN STD'}
+          <div className="lg:col-span-5 lg:sticky lg:top-24">
+            <div className="pdp-gallery-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
+              
+              {/* Badges Strip */}
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-3 sm:mb-3.5">
+                <div className="flex gap-1.5 flex-wrap items-center">
+                  <span className="badge badge-din py-1 px-2 text-[11px] font-bold">
+                    {product.standard || 'DIN STD'}
+                  </span>
+                  {product.grade && (
+                    <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-800 py-0.5 px-2 rounded border border-slate-300">
+                      {product.grade}
+                    </span>
+                  )}
+                  {product.isSurplus && (
+                    <span className="text-[11px] font-extrabold bg-amber-100 text-amber-800 py-0.5 px-2 rounded inline-flex items-center gap-1">
+                      <Flame size={12} /> -{product.surplusDiscountPct}% Surplus
+                    </span>
+                  )}
+                </div>
+
+                <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-mono font-semibold">
+                  <CheckCircle2 size={13} />
+                  BIS / ISO Calibrated
                 </span>
-                {product.grade && (
-                  <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, background: '#F1F5F9', color: '#1E293B', padding: '2px 7px', borderRadius: '4px', border: '1px solid #CBD5E1' }}>
-                    {product.grade}
-                  </span>
-                )}
-                {product.isSurplus && (
-                  <span style={{ fontSize: '11px', fontWeight: 800, background: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                    <Flame size={12} /> -{product.surplusDiscountPct}% SURPLUS
-                  </span>
-                )}
               </div>
 
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#059669', fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                <CheckCircle2 size={13} />
-                BIS / ISO Calibrated
-              </span>
-            </div>
-
-            {/* Main Visualizer Window */}
-            <div
-              className="pdp-main-viewport"
-              style={{
-                width: '100%',
-                height: '340px',
-                background: '#F8FAFC',
-                border: '1.5px solid #E2E8F0',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-                cursor: activeMediaTab === 'photo' ? 'zoom-in' : 'default'
-              }}
-              onClick={() => {
-                if (activeMediaTab === 'photo') setIsLightboxOpen(true);
-              }}
-            >
+              {/* Main Visualizer Window */}
+              <div
+                className="pdp-main-viewport w-full h-64 sm:h-80 md:h-[340px] bg-slate-50 border border-slate-200 rounded-xl relative overflow-hidden flex items-center justify-center"
+                style={{ cursor: activeMediaTab === 'photo' ? 'zoom-in' : 'default' }}
+                onClick={() => {
+                  if (activeMediaTab === 'photo') setIsLightboxOpen(true);
+                }}
+              >
               {/* TAB 1: HIGH-RES DYNAMIC PHOTO */}
               {activeMediaTab === 'photo' && (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -529,7 +508,7 @@ export default function ProductDetailPage() {
                     color: '#0F172A'
                   }}>
                     <div style={{ fontSize: '13px', fontWeight: 800, color: '#0052CC', marginBottom: '10px' }}>
-                      ENGINEERING 2D BLUEPRINT // {product.standard}
+                      Engineering 2D Blueprint // {product.standard}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px', textAlign: 'left' }}>
                       <div><strong>Diameter (d):</strong> {product.diameter}</div>
@@ -564,7 +543,7 @@ export default function ProductDetailPage() {
               {activeMediaTab === 'cert' && (
                 <div style={{ textAlign: 'center', padding: '24px', background: '#FFFFFF', borderRadius: '8px', width: '90%', border: '1px solid #E2E8F0' }}>
                   <Award size={44} color="#0052CC" style={{ margin: '0 auto 10px' }} />
-                  <h4 style={{ fontFamily: 'var(--font-headline)', fontSize: '16px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px', color: '#0F172A' }}>
+                  <h4 style={{ fontFamily: 'var(--font-headline)', fontSize: '16px', fontWeight: 800, marginBottom: '4px', color: '#0F172A' }}>
                     NABL 3.1 Mill Test Certificate
                   </h4>
                   <p style={{ fontSize: '12px', color: '#64748B', maxWidth: '320px', margin: '0 auto 12px' }}>
@@ -584,8 +563,8 @@ export default function ProductDetailPage() {
                 className={`pdp-thumb-btn ${activeMediaTab === 'photo' ? 'active' : ''}`}
                 onClick={() => setActiveMediaTab('photo')}
                 style={{
-                  width: '68px',
-                  height: '68px',
+                  width: '60px',
+                  height: '60px',
                   borderRadius: '8px',
                   border: activeMediaTab === 'photo' ? '2px solid #0052CC' : '1px solid #E2E8F0',
                   background: activeMediaTab === 'photo' ? '#EFF6FF' : '#F8FAFC',
@@ -593,7 +572,8 @@ export default function ProductDetailPage() {
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  flexShrink: 0
                 }}
                 title="View High-Res Photo"
               >
@@ -610,8 +590,8 @@ export default function ProductDetailPage() {
                 className={`pdp-thumb-btn ${activeMediaTab === 'cad' ? 'active' : ''}`}
                 onClick={() => setActiveMediaTab('cad')}
                 style={{
-                  width: '68px',
-                  height: '68px',
+                  width: '60px',
+                  height: '60px',
                   borderRadius: '8px',
                   border: activeMediaTab === 'cad' ? '2px solid #0052CC' : '1px solid #E2E8F0',
                   background: activeMediaTab === 'cad' ? '#EFF6FF' : '#F8FAFC',
@@ -621,14 +601,15 @@ export default function ProductDetailPage() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px',
-                  fontSize: '10px',
+                  gap: '2px',
+                  fontSize: '9.5px',
                   fontFamily: 'var(--font-mono)',
-                  color: activeMediaTab === 'cad' ? '#0052CC' : '#64748B'
+                  color: activeMediaTab === 'cad' ? '#0052CC' : '#64748B',
+                  flexShrink: 0
                 }}
                 title="View CAD Blueprint"
               >
-                <Layers size={20} color={activeMediaTab === 'cad' ? '#0052CC' : '#64748B'} />
+                <Layers size={18} color={activeMediaTab === 'cad' ? '#0052CC' : '#64748B'} />
                 <span>CAD 2D</span>
               </button>
 
@@ -637,8 +618,8 @@ export default function ProductDetailPage() {
                 className={`pdp-thumb-btn ${activeMediaTab === 'cert' ? 'active' : ''}`}
                 onClick={() => setActiveMediaTab('cert')}
                 style={{
-                  width: '68px',
-                  height: '68px',
+                  width: '60px',
+                  height: '60px',
                   borderRadius: '8px',
                   border: activeMediaTab === 'cert' ? '2px solid #059669' : '1px solid #E2E8F0',
                   background: activeMediaTab === 'cert' ? '#ECFDF5' : '#F8FAFC',
@@ -648,205 +629,179 @@ export default function ProductDetailPage() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px',
-                  fontSize: '10px',
+                  gap: '2px',
+                  fontSize: '9.5px',
                   fontFamily: 'var(--font-mono)',
-                  color: activeMediaTab === 'cert' ? '#059669' : '#64748B'
+                  color: activeMediaTab === 'cert' ? '#059669' : '#64748B',
+                  flexShrink: 0
                 }}
                 title="View Inspection Certificate"
               >
-                <Award size={20} color={activeMediaTab === 'cert' ? '#059669' : '#64748B'} />
+                <Award size={18} color={activeMediaTab === 'cert' ? '#059669' : '#64748B'} />
                 <span>CERT 3.1</span>
               </button>
             </div>
 
             {/* Quality Certifications Strip */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
-              <div style={{ background: '#F8FAFC', padding: '8px', borderRadius: '6px' }}>
-                <strong style={{ color: '#0F172A', display: 'block' }}>ISO 9001:2015</strong>
-                <span style={{ color: '#64748B', fontSize: '10px' }}>Quality Audit</span>
+            <div className="mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-[10px] sm:text-xs font-mono">
+              <div className="bg-slate-50 p-2 rounded-lg">
+                <strong className="text-slate-900 block truncate">ISO 9001:2015</strong>
+                <span className="text-slate-500 text-[9px] sm:text-[10px]">Quality Audit</span>
               </div>
-              <div style={{ background: '#F8FAFC', padding: '8px', borderRadius: '6px' }}>
-                <strong style={{ color: '#0F172A', display: 'block' }}>RoHS / REACH</strong>
-                <span style={{ color: '#64748B', fontSize: '10px' }}>Non-Toxic Finish</span>
+              <div className="bg-slate-50 p-2 rounded-lg">
+                <strong className="text-slate-900 block truncate">RoHS / REACH</strong>
+                <span className="text-slate-500 text-[9px] sm:text-[10px]">Non-Toxic</span>
               </div>
-              <div style={{ background: '#F8FAFC', padding: '8px', borderRadius: '6px' }}>
-                <strong style={{ color: '#0F172A', display: 'block' }}>NABL LAB</strong>
-                <span style={{ color: '#64748B', fontSize: '10px' }}>Batch Tested</span>
+              <div className="bg-slate-50 p-2 rounded-lg">
+                <strong className="text-slate-900 block truncate">NABL LAB</strong>
+                <span className="text-slate-500 text-[9px] sm:text-[10px]">Tested</span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* ================================================================ */}
-          {/* RIGHT COLUMN: Product Intelligence & Commerce Engine            */}
-          {/* ================================================================ */}
-          <div className="pdp-info-col" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* ================================================================ */}
+        {/* RIGHT COLUMN: Product Intelligence & Commerce Engine            */}
+        {/* ================================================================ */}
+        <div className="lg:col-span-7 flex flex-col gap-4 sm:gap-5">
+          
+          {/* Title & SKU Header Block */}
+          <div className="pdp-title-block bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="font-mono text-[10.5px] sm:text-xs text-blue-700 font-bold tracking-wide">
+                Direct Factory Fasteners • Raw Industrial Hardware
+              </span>
+              <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold">
+                {toTitleCase(product.subGroup || 'Fastener')}
+              </span>
+            </div>
+
+            {/* Real Dynamic Product Name */}
+            <h4 className=" text-sm sm:text-md md:text-lg font-bold text-slate-900 ">
+              {toTitleCase(product.name)}
+            </h4>
+
+            <div className="pdp-sku-meta flex items-center flex-wrap gap-2 text-xs sm:text-[13px] text-slate-500 font-mono mt-2">
+              <span>SKU: <strong className="text-slate-900">{product.sku}</strong></span>
+              <span>•</span>
+              <span>Standard: <strong className="text-slate-900">{product.standard}</strong></span>
+              {product.din && <span>({product.din})</span>}
+              <span>•</span>
+              <span className={`font-bold ${product.stockPcs > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {product.stockPcs > 0 ? `${product.stockPcs.toLocaleString()} ${product.stockUom || 'Pcs'} Ready in Warehouse` : 'Made to Order'}
+              </span>
+            </div>
+          </div>
+
+          {/* Interactive Parametric Dimension Selectors */}
+          <div className="pdp-params-box bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col gap-3.5 sm:gap-4">
             
-            {/* Title & SKU Header Block */}
-            <div className="pdp-title-block" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#0052CC', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  DIRECT FACTORY FASTENERS • RAW INDUSTRIAL HARDWARE
-                </span>
-                <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                  {product.subGroup || 'FASTENER'}
-                </span>
+            {/* Diameter Selector */}
+            <div className="param-group">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs sm:text-sm font-bold text-slate-700">Thread Diameter (DIA):</span>
+                <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedDiameter}</span>
               </div>
-
-              {/* Real Dynamic Product Name */}
-              <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '24px', fontWeight: 900, lineHeight: '1.25', color: '#0F172A', margin: '4px 0 12px' }}>
-                {product.name}
-              </h1>
-
-              <div className="pdp-sku-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', fontSize: '12px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                <span>SKU: <strong style={{ color: '#0F172A' }}>{product.sku}</strong></span>
-                <span>•</span>
-                <span>Standard: <strong style={{ color: '#0F172A' }}>{product.standard}</strong></span>
-                {product.din && <span>({product.din})</span>}
-                <span>•</span>
-                <span style={{ color: product.stockPcs > 0 ? '#059669' : '#D97706', fontWeight: 700 }}>
-                  {product.stockPcs > 0 ? `${product.stockPcs.toLocaleString()} ${product.stockUom || 'Pcs'} Ready in Warehouse` : 'Made to Order'}
-                </span>
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                {availableDiameters.map((dia) => (
+                  <button
+                    key={dia}
+                    type="button"
+                    onClick={() => setSelectedDiameter(dia)}
+                    className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+                      selectedDiameter === dia
+                        ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold shadow-2xs'
+                        : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    {dia}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Interactive Parametric Dimension Selectors */}
-            <div className="pdp-params-box" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              {/* Diameter Selector */}
-              <div className="param-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>Thread Diameter (DIA):</span>
-                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>{selectedDiameter}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {availableDiameters.map((dia) => (
-                    <button
-                      key={dia}
-                      type="button"
-                      onClick={() => setSelectedDiameter(dia)}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        border: selectedDiameter === dia ? '2px solid #0052CC' : '1px solid #CBD5E1',
-                        background: selectedDiameter === dia ? '#EFF6FF' : '#FFFFFF',
-                        color: selectedDiameter === dia ? '#0052CC' : '#334155',
-                        fontSize: '12px',
-                        fontWeight: selectedDiameter === dia ? 700 : 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {dia}
-                    </button>
-                  ))}
-                </div>
+            {/* Length Selector */}
+            <div className="param-group">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs sm:text-sm font-bold text-slate-700">Nominal Length (L):</span>
+                <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedLength} mm</span>
               </div>
-
-              {/* Length Selector */}
-              <div className="param-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>Nominal Length (L):</span>
-                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#0052CC' }}>{selectedLength} mm</span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {availableLengths.map((len) => (
-                    <button
-                      key={len}
-                      type="button"
-                      onClick={() => setSelectedLength(len)}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        border: selectedLength === len ? '2px solid #0052CC' : '1px solid #CBD5E1',
-                        background: selectedLength === len ? '#EFF6FF' : '#FFFFFF',
-                        color: selectedLength === len ? '#0052CC' : '#334155',
-                        fontSize: '12px',
-                        fontWeight: selectedLength === len ? 700 : 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {len} mm
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                {availableLengths.map((len) => (
+                  <button
+                    key={len}
+                    type="button"
+                    onClick={() => setSelectedLength(len)}
+                    className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+                      selectedLength === len
+                        ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold shadow-2xs'
+                        : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    {len} mm
+                  </button>
+                ))}
               </div>
+            </div>
 
               {/* Material Grade & Finish Strip */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
                 <div>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '4px' }}>Property Class / Grade:</span>
                   <div style={{ padding: '6px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
-                    {product.grade || selectedGrade}
+                    {toTitleCase(product.grade || selectedGrade)}
                   </div>
                 </div>
                 <div>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '4px' }}>Surface Coating / Finish:</span>
                   <div style={{ padding: '6px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
-                    {product.finish || selectedFinish}
+                    {toTitleCase(product.finish || selectedFinish)}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Dual Pricing & Volume Discount Calculation Card */}
-            <div className="pdp-price-card" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div className="pdp-price-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs">
               
               {/* Price Head & Dual Unit Switcher */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <span style={{ fontFamily: 'var(--font-headline)', fontSize: '32px', fontWeight: 900, color: '#0052CC' }}>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-headline text-2xl sm:text-3xl font-black text-blue-700">
                       {formatINR(discountedRate)}
                     </span>
-                    <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 600 }}>
+                    <span className="text-xs sm:text-sm text-slate-500 font-semibold">
                       / {globalUnit === 'PCS' ? 'Piece' : 'Kg'}
                     </span>
                     {currentDiscount.pct > 0 && (
-                      <span style={{ fontSize: '14px', color: '#94A3B8', textDecoration: 'line-through', fontFamily: 'var(--font-mono)' }}>
+                      <span className="text-xs sm:text-sm text-slate-400 line-through font-mono">
                         {formatINR(basePrice)}
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                    Excluding GST (18%) • Unit Net Weight: ~{(product.weightPerPcKg * 1000).toFixed(2)}g / pc
+                  <span className="text-[10.5px] sm:text-xs text-slate-500 font-mono block mt-1">
+                    Excl. GST (18%) • Unit Net Wt: ~{(product.weightPerPcKg * 1000).toFixed(2)}g/pc
                   </span>
                 </div>
 
                 {/* PCS vs KGS Unit Switcher */}
-                <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <div className="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0 self-start">
                   <button
                     type="button"
                     onClick={() => handleUnitToggle('PCS')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: globalUnit === 'PCS' ? '#0052CC' : 'transparent',
-                      color: globalUnit === 'PCS' ? '#FFFFFF' : '#475569',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
+                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      globalUnit === 'PCS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
                     PCS
                   </button>
                   <button
                     type="button"
                     onClick={() => handleUnitToggle('KGS')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: globalUnit === 'KGS' ? '#0052CC' : 'transparent',
-                      color: globalUnit === 'KGS' ? '#FFFFFF' : '#475569',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
+                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      globalUnit === 'KGS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
                     KGS
                   </button>
@@ -854,8 +809,8 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Wholesale Volume Discount Slabs Table */}
-              <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
-                <table className="volume-slabs-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', borderRadius: '8px', overflow: 'hidden' }}>
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-4">
+                <table className="volume-slabs-table min-w-[300px] w-full text-xs border-collapse rounded-lg overflow-hidden border border-slate-200">
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
                       <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: '11px' }}>Order Volume Tier</th>
@@ -916,26 +871,16 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Quantity Stepper & Add to RFQ Button */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', borderRadius: '8px', border: '1px solid #CBD5E1', padding: '2px' }}>
+              <div className="flex flex-col gap-2.5 mb-3.5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+                  
+                  {/* Stepper */}
+                  <div className="flex items-center justify-between sm:justify-start bg-slate-100 rounded-xl border border-slate-300 p-1">
                     <button
                       type="button"
                       disabled={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
                       onClick={() => handleStepPDPQty(-1)}
-                      style={{
-                        width: '38px',
-                        height: '42px',
-                        background: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '18px',
-                        fontWeight: 700,
-                        cursor: quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 'not-allowed' : 'pointer',
-                        opacity: quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? 0.35 : 1,
-                        color: '#0F172A',
-                        transition: 'opacity 0.15s ease'
-                      }}
+                      className="w-10 h-10 bg-white rounded-lg font-bold text-slate-800 text-lg hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-2xs"
                       title={quantity <= (globalUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${globalUnit === 'KGS' ? '250 gm' : '100 pcs'})` : `Decrease by ${globalUnit === 'KGS' ? '0.25 Kg' : '10 Pcs'}`}
                     >
                       -
@@ -961,24 +906,24 @@ export default function ProductDetailPage() {
                         }
                       }}
                       placeholder={globalUnit === 'KGS' ? 'Kg' : 'Pcs'}
+                      className="flex-1 sm:w-24 h-10 text-center font-mono font-bold text-sm sm:text-base text-slate-900 bg-transparent outline-none px-2"
                       title="Type any custom quantity directly"
-                      style={{ width: '90px', height: '42px', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '15px', color: '#0F172A' }}
                     />
                     <button
                       type="button"
                       onClick={() => handleStepPDPQty(1)}
-                      style={{ width: '38px', height: '42px', background: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '18px', fontWeight: 700, cursor: 'pointer', color: '#0F172A' }}
+                      className="w-10 h-10 bg-white rounded-lg font-bold text-slate-800 text-lg hover:bg-slate-50 transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
                       title={`Increase by ${globalUnit === 'KGS' ? '0.25 Kg' : '10 Pcs'}`}
                     >
                       +
                     </button>
                   </div>
 
+                  {/* Add to RFQ Button */}
                   <button
                     type="button"
-                    className="btn-primary"
+                    className="btn-primary flex-1 py-3 px-5 text-sm sm:text-base font-extrabold flex items-center justify-center gap-2 rounded-xl shadow-sm cursor-pointer"
                     onClick={handleAddToCart}
-                    style={{ flex: 1, minWidth: '220px', padding: '12px 20px', fontSize: '14px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     <Zap size={18} />
                     <span>Add to RFQ Cart ({formatINR(grossTotal)})</span>
@@ -986,14 +931,14 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Clear MOQ Helper Hint */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748B', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, color: '#0052CC' }}>
+                <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                  <span className="font-bold text-blue-700">
                     {globalUnit === 'KGS' ? '⚡ Minimum Order: 250 gm (0.25 Kg)' : '⚡ Minimum Order: 100 Pcs (Step +10)'}
                   </span>
                   <span>•</span>
                   <span>Configured: <strong>{formatQtyDisplay(quantity, globalUnit)}</strong></span>
                   <span>•</span>
-                  <span style={{ color: '#059669', fontWeight: 600 }}>Click number to enter custom quantity directly</span>
+                  <span className="text-emerald-700 font-semibold">Click number to edit</span>
                 </div>
               </div>
 
@@ -1160,24 +1105,12 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Secondary Action Strip (WhatsApp + Datasheet) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #F1F5F9' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 pt-4 border-t border-slate-100">
                 <a
                   href={`https://wa.me/919888021000?text=Hello%20CBH%20Fasteners%2C%20inquiry%20regarding%20SKU%3A%20${encodeURIComponent(product.sku)}%20(${encodeURIComponent(product.name)})%20Qty%3A%20${quantity}%20${globalUnit}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    background: '#25D366',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    textDecoration: 'none'
-                  }}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-[#25D366] text-white font-bold text-xs sm:text-sm no-underline shadow-2xs hover:opacity-95 transition-opacity"
                 >
                   <MessageSquare size={16} />
                   <span>WhatsApp Inquiry</span>
@@ -1186,8 +1119,7 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => showSuccessAlert('Datasheet Generated', `Generating technical engineering specification sheet for ${product.sku}...`, 2000)}
-                  className="btn-outline"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', fontSize: '13px' }}
+                  className="btn-outline flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-semibold cursor-pointer"
                 >
                   <FileDown size={16} />
                   <span>Download Spec Sheet (PDF)</span>
@@ -1196,39 +1128,39 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Warehouse Stock & Pincode Telemetry */}
-            <div className="pdp-telemetry-card" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div className="pdp-telemetry-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
               
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '14px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div className="flex gap-3 items-start mb-3.5">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                   <Truck size={18} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <strong style={{ fontSize: '13px', color: '#0F172A', display: 'block' }}>
+                <div className="flex-1 min-w-0">
+                  <strong className="text-xs sm:text-sm text-slate-900 block font-bold">
                     Pan-India Heavy Logistics Carrier Dispatch
                   </strong>
-                  <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 8px' }}>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 mb-2 leading-relaxed">
                     Same-day dispatch for confirmed orders before 3:00 PM IST via BlueDart, SafeXpress, or Dedicated Full Truck Load.
                   </p>
                   
                   {/* Pincode Checker */}
-                  <div style={{ display: 'flex', gap: '6px', maxWidth: '320px' }}>
+                  <div className="flex gap-2 w-full max-w-sm">
                     <input
                       type="text"
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value)}
                       placeholder="6-Digit PIN"
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:border-blue-600"
                     />
                     <button
                       type="button"
                       onClick={() => setPincodeMsg(`Estimated Delivery in 24-48 Hours to PIN: ${pincode}`)}
-                      style={{ padding: '6px 12px', background: '#0F172A', color: '#FFFFFF', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      className="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 cursor-pointer transition-colors"
                     >
                       Check PIN
                     </button>
                   </div>
                   {pincodeMsg && (
-                    <span style={{ display: 'block', fontSize: '11px', color: '#059669', marginTop: '6px', fontWeight: 600 }}>
+                    <span className="block text-[11px] text-emerald-700 mt-1.5 font-semibold">
                       ✓ {pincodeMsg}
                     </span>
                   )}
@@ -1236,31 +1168,31 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Master Factory Packaging Telemetry */}
-              <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '14px', border: '1px solid #E2E8F0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#0F172A', letterSpacing: '0.5px' }}>
+              <div className="bg-slate-50 rounded-xl p-3 sm:p-3.5 border border-slate-200">
+                <div className="flex justify-between items-center mb-2 flex-wrap gap-1">
+                  <span className="text-[11px] font-bold text-slate-800">
                     Factory Packaging & Dispatch Details
                   </span>
-                  <span style={{ fontSize: '11px', background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                  <span className="text-[10.5px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono font-semibold">
                     HSN: {product.hsnCode || '73181500'}
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '11px' }}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Small Box:</span>
-                    <strong>{Math.round(Number(product.pcsPerBox)) || 500} pcs ({product.smallBoxWeightKg || 2.5} kg)</strong>
+                    <span className="text-slate-500 block text-[10px]">Small Box:</span>
+                    <strong className="text-slate-900 block truncate">{Math.round(Number(product.pcsPerBox)) || 500} pcs ({product.smallBoxWeightKg || 2.5} kg)</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Master Carton:</span>
-                    <strong>{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs ({product.masterCtnWeightKg || 20} kg)</strong>
+                    <span className="text-slate-500 block text-[10px]">Master Carton:</span>
+                    <strong className="text-slate-900 block truncate">{Math.round(Number(product.pcsPerMasterCtn)) || 4000} pcs ({product.masterCtnWeightKg || 20} kg)</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Minimum Order (MOQ):</span>
-                    <strong>{product.moq || '25 KGS'}</strong>
+                    <span className="text-slate-500 block text-[10px]">Min Order (MOQ):</span>
+                    <strong className="text-slate-900 block truncate">{product.moq || '25 KGS'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Lead Time:</span>
-                    <strong>{product.leadTimeDays || 10} Days ({product.productionDays || 7}d + {product.packingDays || 3}d)</strong>
+                    <span className="text-slate-500 block text-[10px]">Lead Time:</span>
+                    <strong className="text-slate-900 block truncate">{product.leadTimeDays || 10} Days ({product.productionDays || 7}d + {product.packingDays || 3}d)</strong>
                   </div>
                 </div>
               </div>
@@ -1272,12 +1204,12 @@ export default function ProductDetailPage() {
         {/* ================================================================ */}
         {/* SECTION: Tabbed Technical Engineering Specification Desk         */}
         {/* ================================================================ */}
-        <div className="pdp-specs-desk" style={{ marginTop: '36px', background: '#FFFFFF', borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        <div className="pdp-specs-desk mt-6 sm:mt-8 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
           
           {/* Tabs Navigation (Horizontally scrollable for mobile) */}
-          <div className="pdp-tabs-nav" style={{ display: 'flex', borderBottom: '2px solid #E2E8F0', background: '#F8FAFC', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div className="pdp-tabs-nav flex border-b-2 border-slate-200 bg-slate-50 overflow-x-auto scrollbar-none">
             {[
-              { id: 'excel_master', label: '1. Excel Master Specifications' },
+              { id: 'excel_master', label: '1. Master Specifications' },
               { id: 'mechanical', label: '2. Mechanical & Dimensions' },
               { id: 'chemical', label: '3. Chemical & Metallurgy' },
               { id: 'torque', label: '4. Torque & Fastening' },
@@ -1289,18 +1221,18 @@ export default function ProductDetailPage() {
                 className={`pdp-tab-trigger ${activeSpecsTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveSpecsTab(tab.id as any)}
                 style={{
-                  padding: '14px 20px',
+                  padding: '12px 18px',
                   fontFamily: 'var(--font-headline)',
-                  fontSize: '13px',
+                  fontSize: '12.5px',
                   fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  letterSpacing: '0.3px',
                   border: 'none',
                   borderBottom: activeSpecsTab === tab.id ? '3px solid #0052CC' : '3px solid transparent',
                   background: activeSpecsTab === tab.id ? '#FFFFFF' : 'transparent',
                   color: activeSpecsTab === tab.id ? '#0052CC' : '#64748B',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -1310,12 +1242,12 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="pdp-tab-content" style={{ padding: '24px' }}>
+          <div className="pdp-tab-content p-4 sm:p-6">
             
             {/* TAB 1: ALL 30+ EXCEL MASTER SPECIFICATIONS */}
             {activeSpecsTab === 'excel_master' && (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="specs-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <table className="specs-table min-w-[480px] sm:min-w-full w-full border-collapse text-xs sm:text-sm">
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ width: '30%', padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Item SKU / Code</th>
@@ -1323,11 +1255,11 @@ export default function ProductDetailPage() {
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Official Item Name</th>
-                      <td style={{ padding: '10px 14px', fontWeight: 600 }}>{product.name}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 600 }}>{toTitleCase(product.name)}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Sub-Group & Category</th>
-                      <td style={{ padding: '10px 14px' }}>{product.subGroup || 'SCREW'} • {product.category} {product.subCategory ? `(${product.subCategory})` : ''}</td>
+                      <td style={{ padding: '10px 14px' }}>{toTitleCase(product.subGroup || 'Screw')} • {toTitleCase(product.category)} {product.subCategory ? `(${toTitleCase(product.subCategory)})` : ''}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Standards (DIN / ISO / BS / ASME)</th>
@@ -1357,15 +1289,15 @@ export default function ProductDetailPage() {
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Thread Length & Type</th>
-                      <td style={{ padding: '10px 14px' }}>{product.threadLength || product.threadType || 'Full Thread'}</td>
+                      <td style={{ padding: '10px 14px' }}>{toTitleCase(product.threadLength || product.threadType || 'Full Thread')}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Property Class / Grade</th>
-                      <td style={{ padding: '10px 14px', fontWeight: 800 }}>{product.grade}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 800 }}>{toTitleCase(product.grade)}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Surface Finish / Coating</th>
-                      <td style={{ padding: '10px 14px' }}>{product.finish}</td>
+                      <td style={{ padding: '10px 14px' }}>{toTitleCase(product.finish)}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <th style={{ padding: '10px 14px', background: '#F8FAFC', textAlign: 'left', color: '#64748B', fontSize: '12px' }}>Unit Weight (Kg/Pc)</th>
@@ -1595,62 +1527,59 @@ export default function ProductDetailPage() {
         {/* ================================================================ */}
         {/* SECTION: Matching Companion Hardware Assembly Kit                */}
         {/* ================================================================ */}
-        <div style={{ marginTop: '36px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <div className="mt-6 sm:mt-8 bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs">
+          <div className="flex justify-between items-center mb-3.5 sm:mb-4 flex-wrap gap-2">
             <div>
-              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '18px', fontWeight: 800, textTransform: 'uppercase', color: '#0F172A', margin: 0 }}>
+              <h3 className="font-headline text-base sm:text-lg font-bold text-slate-900 m-0">
                 Frequently Procured Assembly Kit (Screw + Nut + Washer)
               </h3>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0' }}>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Engineered matching hardware calibrated for {selectedDiameter} diameter assembly.
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <div>
-                <span className="badge badge-din" style={{ fontSize: '10px', marginBottom: '4px' }}>DIN 934</span>
-                <strong style={{ fontSize: '13px', display: 'block', color: '#0F172A' }}>Hexagon Full Nuts Grade 8 ({selectedDiameter})</strong>
-                <span style={{ fontSize: '12px', color: '#0052CC', fontWeight: 700 }}>₹ 1.84 / Pc</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
+              <div className="min-w-0 flex-1 mr-2">
+                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 934</span>
+                <strong className="text-xs sm:text-sm block text-slate-900 truncate">Hexagon Full Nuts Grade 8 ({selectedDiameter})</strong>
+                <span className="text-xs text-blue-700 font-bold">₹ 1.84 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Hexagon Nut DIN 934', 'DIN 934', 1.84)}
-                style={{ padding: '6px 10px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
                 <Plus size={12} /> Add
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <div>
-                <span className="badge badge-din" style={{ fontSize: '10px', marginBottom: '4px' }}>DIN 125A</span>
-                <strong style={{ fontSize: '13px', display: 'block', color: '#0F172A' }}>Form A Plain Flat Washers ({selectedDiameter})</strong>
-                <span style={{ fontSize: '12px', color: '#0052CC', fontWeight: 700 }}>₹ 0.72 / Pc</span>
+            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
+              <div className="min-w-0 flex-1 mr-2">
+                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 125A</span>
+                <strong className="text-xs sm:text-sm block text-slate-900 truncate">Form A Plain Flat Washers ({selectedDiameter})</strong>
+                <span className="text-xs text-blue-700 font-bold">₹ 0.72 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Flat Washer DIN 125A', 'DIN 125A', 0.72)}
-                style={{ padding: '6px 10px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
                 <Plus size={12} /> Add
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <div>
-                <span className="badge badge-din" style={{ fontSize: '10px', marginBottom: '4px' }}>DIN 127B</span>
-                <strong style={{ fontSize: '13px', display: 'block', color: '#0F172A' }}>Split Spring Lock Washers ({selectedDiameter})</strong>
-                <span style={{ fontSize: '12px', color: '#0052CC', fontWeight: 700 }}>₹ 0.95 / Pc</span>
+            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
+              <div className="min-w-0 flex-1 mr-2">
+                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 127B</span>
+                <strong className="text-xs sm:text-sm block text-slate-900 truncate">Split Spring Lock Washers ({selectedDiameter})</strong>
+                <span className="text-xs text-blue-700 font-bold">₹ 0.95 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Spring Washer DIN 127B', 'DIN 127B', 0.95)}
-                style={{ padding: '6px 10px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
                 <Plus size={12} /> Add
               </button>
@@ -1701,49 +1630,47 @@ export default function ProductDetailPage() {
       {isLightboxOpen && (
         <div className="modal-overlay active" onClick={() => setIsLightboxOpen(false)}>
           <div
-            className="modal-window"
+            className="modal-window max-w-2xl w-[94%] max-h-[92vh] overflow-y-auto p-4 sm:p-6 text-center rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
-            style={{ padding: '24px', maxWidth: '700px', width: '95%', textAlign: 'center' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ textAlign: 'left' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#0052CC', fontWeight: 700 }}>
+            <div className="flex justify-between items-center mb-3">
+              <div className="text-left min-w-0 flex-1 mr-2">
+                <span className="text-xs font-mono text-blue-700 font-bold block">
                   {product.sku}
                 </span>
-                <h4 style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>
-                  {product.name}
+                <h4 className="m-0 text-sm sm:text-base font-bold text-slate-900 truncate">
+                  {toTitleCase(product.name)}
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={() => setIsLightboxOpen(false)}
-                style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                className="bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center cursor-pointer transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '20px', minHeight: '300px', maxHeight: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+            <div className="bg-slate-50 rounded-xl p-3 sm:p-5 min-h-[200px] max-h-[50vh] flex items-center justify-center overflow-hidden border border-slate-200">
               <img
                 src={product.imageUrl || '/assets/bolt_zinc.jpg'}
                 alt={product.name}
-                style={{ maxWidth: '100%', maxHeight: '450px', objectFit: 'contain' }}
+                className="max-w-full max-h-[46vh] object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'var(--font-mono)' }}>
-                {product.sizeFormatted} • Grade {product.grade} • {product.finish}
+            <div className="flex justify-between items-center mt-3.5 flex-wrap gap-2">
+              <div className="text-xs text-slate-500 font-mono">
+                {product.sizeFormatted} • Grade {product.grade} • {toTitleCase(product.finish)}
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex gap-2">
                 {product.gdriveImageUrl && (
                   <a
                     href={product.gdriveImageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-outline"
-                    style={{ fontSize: '11px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                    className="btn-outline text-xs py-1.5 px-3 inline-flex items-center gap-1 no-underline"
                   >
                     <ExternalLink size={12} />
                     <span>View Drive Original</span>
@@ -1751,9 +1678,8 @@ export default function ProductDetailPage() {
                 )}
                 <button
                   type="button"
-                  className="btn-primary"
+                  className="btn-primary text-xs py-1.5 px-3.5 cursor-pointer"
                   onClick={() => setIsLightboxOpen(false)}
-                  style={{ fontSize: '12px', padding: '6px 14px' }}
                 >
                   Close Zoom
                 </button>
@@ -1764,19 +1690,18 @@ export default function ProductDetailPage() {
       )}
 
       {/* Mobile Sticky Bottom Commerce Dock */}
-      <div className="pdp-mobile-sticky-dock show-mobile-only" style={{ background: '#FFFFFF', borderTop: '1px solid #E2E8F0', padding: '12px 16px', alignItems: 'center', justifyContent: 'space-between', gap: '12px', boxShadow: '0 -4px 16px rgba(0,0,0,0.08)' }}>
-        <div>
-          <span style={{ fontSize: '10px', color: '#64748B', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+      <div className="pdp-mobile-sticky-dock show-mobile-only fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 z-50">
+        <div className="min-w-0">
+          <span className="text-[10px] text-slate-500 block font-semibold leading-tight">
             Unit Rate ({globalUnit}):
           </span>
-          <strong style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', color: '#0052CC' }}>
+          <strong className="font-headline text-lg sm:text-xl text-blue-700 leading-tight">
             {formatINR(discountedRate)}
           </strong>
         </div>
         <button
           type="button"
-          className="btn-primary"
-          style={{ padding: '10px 18px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          className="btn-primary py-2.5 px-4 text-xs sm:text-sm font-bold inline-flex items-center gap-1.5 shrink-0 shadow-sm"
           onClick={handleAddToCart}
         >
           <ShoppingCart size={15} />

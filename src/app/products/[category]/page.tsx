@@ -76,7 +76,7 @@ export default function CategoryDetailPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-8">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(255,107,0,0.15)] text-[#FF6B00] text-xs font-semibold tracking-wide uppercase mb-3 border border-[#FF6B00]/40">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(255,107,0,0.15)] text-[#FF6B00] text-xs font-semibold tracking-wide mb-3 border border-[#FF6B00]/40">
                 <Layers className="w-3.5 h-3.5 text-[#FF6B00]" />
                 Category Overview
               </span>
@@ -111,7 +111,7 @@ export default function CategoryDetailPage() {
               Select an anchor technology to view product families and engineering matrix charts
             </p>
           </div>
-          <div className="mt-4 sm:mt-0 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-white border border-[#D8DFE7] px-3 py-1.5 rounded-lg">
+          <div className="mt-4 sm:mt-0 text-xs font-semibold text-slate-600 bg-white border border-[#D8DFE7] px-3 py-1.5 rounded-lg">
             {subcategories.length} Subcategories
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function CategoryDetailPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#121518] via-[#121518]/20 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF8533]">
+                  <span className="text-[10px] font-bold text-[#FF8533]">
                     Subcategory
                   </span>
                   <h3 className="text-lg font-bold text-white group-hover:text-[#2684FF] transition-colors">

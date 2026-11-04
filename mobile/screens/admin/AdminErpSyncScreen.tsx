@@ -32,7 +32,7 @@ export const AdminErpSyncScreen: React.FC = () => {
 
   const [syncLogs, setSyncLogs] = useState<Array<{ id: number; time: string; msg: string; type: 'success' | 'info' }>>([
     { id: 1, time: '14:45:10', msg: 'Sales Order SO-2026-00441 pushed to ERPNext', type: 'success' },
-    { id: 2, time: '12:20:00', msg: 'Product catalog sync completed (605 warehouse items)', type: 'success' },
+    { id: 2, time: '12:20:00', msg: 'Product catalog sync completed (Warehouse catalog)', type: 'success' },
     { id: 3, time: '09:15:33', msg: 'Webhook handshake verified with Ludhiana Central DC1', type: 'info' },
   ]);
 
@@ -152,7 +152,7 @@ export const AdminErpSyncScreen: React.FC = () => {
           style={styles.splitBtn}
           activeOpacity={0.8}
         >
-          <Text style={styles.splitBtnText}>Sync 605 SKUs</Text>
+          <Text style={styles.splitBtnText}>Sync Catalog SKUs</Text>
         </TouchableOpacity>
       </View>
 

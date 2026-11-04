@@ -15,16 +15,18 @@ import { mobileApi } from '../../config/api';
 
 interface OtpVerificationScreenProps {
   email: string;
+  initialOtp?: string;
   onNavigateToLogin: () => void;
   onPasswordResetSuccess: () => void;
 }
 
 export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
   email,
+  initialOtp = '',
   onNavigateToLogin,
   onPasswordResetSuccess,
 }) => {
-  const [otpCode, setOtpCode] = useState('');
+  const [otpCode, setOtpCode] = useState(initialOtp);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +35,12 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [resendCooldown, setResendCooldown] = useState(45);
+
+  useEffect(() => {
+    if (initialOtp && !otpCode) {
+      setOtpCode(initialOtp);
+    }
+  }, [initialOtp]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -52,19 +60,22 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     try {
-      await mobileApi.auth.resendVerification(email);
+      const res = await mobileApi.auth.resendVerification(email);
+      if (res?.otp) {
+        setOtpCode(res.otp);
+      }
       setSuccessMsg('A fresh 6-digit verification code has been dispatched.');
-      setResendCooldown(60);
+      setResendCooldown(45);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch {
       setSuccessMsg('Verification code resent successfully.');
-      setResendCooldown(60);
+      setResendCooldown(45);
     }
   };
 
   const handleVerifyAndReset = async () => {
     if (otpCode.length < 4) {
-      setErrorMsg('Please enter a valid verification code.');
+      setErrorMsg('Please enter a valid 6-digit verification code.');
       return;
     }
 
@@ -82,11 +93,22 @@ export const OtpVerificationScreen: React.FC<OtpVerificationScreenProps> = ({
     setErrorMsg('');
 
     try {
-      // Simulate/call API reset
-      await new Promise((r) => setTimeout(r, 600));
-      onPasswordResetSuccess();
+      const res = await mobileApi.auth.resetPassword({
+        email: email.trim().toLowerCase(),
+        otp: otpCode.trim(),
+        newPassword: newPassword.trim(),
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to update credentials. Please verify your code.');
+      }
+
+      setSuccessMsg('Password updated successfully! Returning to sign in...');
+      setTimeout(() => {
+        onPasswordResetSuccess();
+      }, 1000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update credentials.');
+      setErrorMsg(err.message || 'Failed to update credentials. Try again.');
     } finally {
       setIsLoading(false);
     }

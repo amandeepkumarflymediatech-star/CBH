@@ -328,7 +328,8 @@ export const AdminSurplusScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </MobileCard>
-      )))
+        ))
+      )}
 
       {/* ================================================================ */}
       {/* ADD / EDIT SURPLUS MODAL (100% All Inputs)                        */}

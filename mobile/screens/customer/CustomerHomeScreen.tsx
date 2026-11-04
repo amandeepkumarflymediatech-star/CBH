@@ -20,7 +20,7 @@ import { mobileApi, FALLBACK_PRODUCTS } from '../../config/api';
 import { MobileProduct, MobileOrder, MobileSurplusLot, GlobalUnit } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SURPLUS_WIDTH = Math.round(SCREEN_WIDTH * 0.72);
+const SURPLUS_WIDTH = SCREEN_WIDTH - 32;
 
 const WHATSAPP_URL =
   'https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20am%20sending%20a%20photo%20of%20fasteners%20I%20need.%20Please%20give%20me%20the%20wholesale%20rate.';
@@ -40,7 +40,7 @@ const CATEGORIES = [
   { id: 'bolts', name: 'Hex bolts', hindi: 'हेक्स बोल्ट', standard: 'DIN 933', abbr: 'HEX', color: '#0052CC' },
   { id: 'nuts', name: 'Hex nuts', hindi: 'हेक्स नट', standard: 'DIN 934', abbr: 'NUT', color: '#059669' },
   { id: 'washers', name: 'Washers', hindi: 'वाशर', standard: 'DIN 125', abbr: 'WSH', color: '#4F46E5' },
-  { id: 'socket', name: 'Allen screws', hindi: 'एलन बोल्ट', standard: 'DIN 912', abbr: 'SHC', color: '#D97706' },
+  { id: 'socket', name: 'Allen bolt', hindi: 'एलन बोल्ट', standard: 'DIN 912', abbr: 'SHC', color: '#D97706' },
   { id: 'studs', name: 'Studs & rods', hindi: 'स्टड / रॉड', standard: 'DIN 975', abbr: 'STD', color: '#0284C7' },
   { id: 'flange', name: 'Flange bolts', hindi: 'फ्लैंज बोल्ट', standard: 'DIN 6921', abbr: 'FLG', color: '#7C3AED' },
 ];
@@ -99,7 +99,8 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrder, setActiveOrder] = useState<MobileOrder | null>(null);
   const [surplusLots, setSurplusLots] = useState<MobileSurplusLot[]>([]);
-  const [stats, setStats] = useState({ total: 605, inStock: 602 });
+  const [activeSurplusIndex, setActiveSurplusIndex] = useState(0);
+  const [stats, setStats] = useState({ total: 0, inStock: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toast, setToast] = useState('');
@@ -136,7 +137,11 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         mobileApi.surplus.getAll(),
       ]);
       if (prodRes.products?.length) setProducts(prodRes.products);
-      if (prodRes.stats) setStats(prodRes.stats);
+      if (prodRes.stats) {
+        setStats(prodRes.stats);
+      } else if (prodRes.total) {
+        setStats({ total: prodRes.total, inStock: prodRes.total });
+      }
       if (ordersRes.orders?.length) setActiveOrder(ordersRes.orders[0]);
       if (surplusRes.surplus?.length) setSurplusLots(surplusRes.surplus);
     } catch (err) {
@@ -169,6 +174,56 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
     setTimeout(() => setRecentlyAddedId(null), 2000);
   };
 
+  const convertSurplusLotToProduct = (lot: MobileSurplusLot): MobileProduct => {
+    const diameterMatch = lot.name.match(/M\d+/i)?.[0] || 'M12';
+    const lengthMatch = parseInt(lot.name.match(/\d+mm/i)?.[0] || '50', 10) || 50;
+    const weightPerPc =
+      lot.excessQtyPcs > 0 && lot.excessQtyKg > 0
+        ? +(lot.excessQtyKg / lot.excessQtyPcs).toFixed(3)
+        : 0.05;
+
+    return {
+      id: lot.id || Date.now(),
+      sku: lot.sku,
+      name: `${lot.name} [SURPLUS LOT -${lot.clearanceDiscountPct || 35}%]`,
+      category: 'Surplus',
+      subGroup: 'SURPLUS',
+      standard: lot.standard || 'DIN 933',
+      grade: lot.grade || '8.8',
+      finish: 'Industrial Standard',
+      threadType: 'Full Thread',
+      diameter: diameterMatch,
+      lengthMm: lengthMatch,
+      pitchMm: 1.75,
+      sizeFormatted: `${diameterMatch} × ${lengthMatch}mm`,
+      weightPerPcKg: weightPerPc,
+      pricePerPiece: +(lot.clearancePriceKg * weightPerPc).toFixed(2),
+      originalPricePerPiece: +(lot.regularPriceKg * weightPerPc).toFixed(2),
+      pricePerKg: lot.clearancePriceKg,
+      originalPricePerKg: lot.regularPriceKg,
+      stockPcs: lot.excessQtyPcs || 5000,
+      stockKg: lot.excessQtyKg || 250,
+      isInStock: true,
+      isSurplus: true,
+      surplusDiscountPct: lot.clearanceDiscountPct || 35,
+    };
+  };
+
+  const handleClaimSurplusLot = (lot: MobileSurplusLot) => {
+    const product = convertSurplusLotToProduct(lot);
+    const claimQty = Math.max(10, Math.min(25, lot.excessQtyKg || 25));
+    onAddToCart(product, 'KGS', claimQty);
+    showToast(`Claimed lot ${lot.sku} (${claimQty} kg) · Added to Cart`);
+  };
+
+  const handleSurplusScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / (SURPLUS_WIDTH + 10));
+    if (index >= 0 && index < surplusLots.length && index !== activeSurplusIndex) {
+      setActiveSurplusIndex(index);
+    }
+  };
+
   const filteredProducts = products.filter((p) => {
     const grade = p.grade || '';
     switch (catalogTab) {
@@ -193,7 +248,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
   });
 
   const quickActions = [
-    { key: 'rfq', label: 'Get quote', onPress: () => onNavigate('cart'), icon: <NavIcon name="doc" color="#0052CC" size={22} /> },
+    { key: 'rfq', label: 'Get quote', onPress: () => onNavigate('rfqs'), icon: <NavIcon name="doc" color="#0052CC" size={22} /> },
     { key: 'bom', label: 'Bulk order', onPress: () => onNavigate('bulk-order'), icon: <Text style={styles.qaGlyph}>BOM</Text> },
     { key: 'wa', label: 'WhatsApp', onPress: () => Linking.openURL(WHATSAPP_URL), icon: <NavIcon name="whatsapp" color="#059669" size={22} /> },
     { key: 'call', label: 'Call', onPress: () => Linking.openURL(CALL_URL), icon: <Text style={styles.qaGlyph}>☎</Text> },
@@ -214,7 +269,11 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           <View>
             <Text style={styles.brand}>CBH Fasteners</Text>
             <Text style={styles.brandSub}>
-              {stats.inStock}+ items in stock
+              {stats.inStock > 0
+                ? `${stats.inStock}+ items in stock`
+                : stats.total > 0
+                ? `${stats.total}+ items in stock`
+                : 'Live stock inventory'}
             </Text>
           </View>
           <View style={styles.liveChip}>
@@ -300,12 +359,8 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hList}
-        >
-          {CATEGORIES.map((cat) => (
+        <View style={styles.catRow}>
+          {CATEGORIES.slice(0, 4).map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={styles.catCard}
@@ -319,14 +374,23 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
               <Text style={styles.catHindi} numberOfLines={1}>{cat.hindi}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         {/* SURPLUS DEALS */}
         {surplusLots.length > 0 ? (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Surplus deals</Text>
-              <TouchableOpacity onPress={() => setCatalogTab('surplus')}>
+              <View style={styles.sectionHeaderLeft}>
+                <Text style={styles.sectionTitle}>Surplus deals</Text>
+                {surplusLots.length > 1 && (
+                  <View style={styles.dealCounterBadge}>
+                    <Text style={styles.dealCounterText}>
+                      {activeSurplusIndex + 1} of {surplusLots.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => onNavigate('catalog', { search: 'surplus' })}>
                 <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
@@ -334,34 +398,63 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
               horizontal
               showsHorizontalScrollIndicator={false}
               snapToInterval={SURPLUS_WIDTH + 10}
+              snapToAlignment="start"
               decelerationRate="fast"
+              onScroll={handleSurplusScroll}
+              scrollEventThrottle={16}
               contentContainerStyle={styles.hList}
             >
-              {surplusLots.map((lot) => (
-                <View key={lot.id} style={[styles.dealCard, { width: SURPLUS_WIDTH }]}>
-                  <View style={styles.rowBetween}>
-                    <View style={styles.dealBadge}>
-                      <Text style={styles.dealBadgeText}>-{lot.clearanceDiscountPct || 35}%</Text>
+              {surplusLots.map((lot) => {
+                const product = convertSurplusLotToProduct(lot);
+                return (
+                  <TouchableOpacity
+                    key={lot.id}
+                    style={[styles.dealCard, { width: SURPLUS_WIDTH }]}
+                    activeOpacity={0.92}
+                    onPress={() => onSelectProduct(product)}
+                  >
+                    <View style={styles.rowBetween}>
+                      <View style={styles.dealBadge}>
+                        <Text style={styles.dealBadgeText}>-{lot.clearanceDiscountPct || 35}%</Text>
+                      </View>
+                      <Text style={styles.dealMeta}>{lot.standard} · Gr {lot.grade}</Text>
                     </View>
-                    <Text style={styles.dealMeta}>{lot.standard} · Gr {lot.grade}</Text>
-                  </View>
-                  <Text style={styles.dealName} numberOfLines={2}>{lot.name}</Text>
-                  <View style={styles.rowBetween}>
-                    <View>
-                      <Text style={styles.dealOld}>₹{lot.regularPriceKg}/kg</Text>
-                      <Text style={styles.dealNew}>₹{lot.clearancePriceKg}/kg</Text>
+                    <Text style={styles.dealName} numberOfLines={2}>{lot.name}</Text>
+                    <View style={styles.rowBetween}>
+                      <View>
+                        <Text style={styles.dealOld}>₹{lot.regularPriceKg}/kg</Text>
+                        <Text style={styles.dealNew}>₹{lot.clearancePriceKg}/kg</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.dealBtn}
+                        activeOpacity={0.85}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          handleClaimSurplusLot(lot);
+                        }}
+                      >
+                        <Text style={styles.dealBtnText}>Claim</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                      style={styles.dealBtn}
-                      activeOpacity={0.85}
-                      onPress={() => showToast(`Claimed lot ${lot.sku}`)}
-                    >
-                      <Text style={styles.dealBtnText}>Claim</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
+
+            {/* Dots Pagination */}
+            {surplusLots.length > 1 && (
+              <View style={styles.dotsRow}>
+                {surplusLots.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      activeSurplusIndex === i && styles.dotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </>
         ) : null}
 
@@ -720,30 +813,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: -4,
   },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dealCounterBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  dealCounterText: { fontSize: 11, fontWeight: '800', color: '#DC2626' },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: INK },
   seeAll: { fontSize: 13, fontWeight: '700', color: BLUE },
   hList: { gap: 10, paddingRight: 16 },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
+  },
+  dotActive: {
+    width: 18,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#DC2626',
+  },
 
   // Categories
+  catRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'stretch',
+  },
   catCard: {
-    width: 104,
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: LINE,
-    gap: 3,
+    gap: 2,
   },
   catBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 6,
+    alignSelf: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 4,
   },
-  catBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.4 },
-  catName: { fontSize: 13, fontWeight: '800', color: INK },
-  catHindi: { fontSize: 11, fontWeight: '600', color: '#B45309' },
+  catBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 0.3 },
+  catName: { fontSize: 11, fontWeight: '800', color: INK, textAlign: 'center' },
+  catHindi: { fontSize: 9.5, fontWeight: '600', color: '#B45309', textAlign: 'center' },
 
   // Surplus deals
   dealCard: {

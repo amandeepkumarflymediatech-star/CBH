@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initiatePhonePePayment } from '@/lib/phonepe';
+import { saveOrderToMySQL } from '@/lib/orders-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,34 @@ export async function POST(req: NextRequest) {
     const redirectUrl = `${protocol}://${host}/api/payment/phonepe/redirect?source=${encodeURIComponent(source)}`;
     const callbackUrl = `${protocol}://${host}/api/payment/phonepe/callback`;
 
+    // 1. Immediately persist the incoming order into MySQL orders and order_items
+    // so the admin panel can identify the order and all its items right away.
+    try {
+      await saveOrderToMySQL({
+        orderNumber: orderId,
+        customerId: body.customerId || null,
+        customerName: body.customerName || 'Procurement In-Charge',
+        companyName: body.companyName || 'Enterprise Fastener Buyer',
+        email: body.customerEmail || body.email,
+        phone: body.customerPhone || body.phone,
+        shippingAddress: body.shippingAddress || 'Plot 12, Industrial Area',
+        pincode: body.pincode || body.deliveryPincode,
+        grossAmount: body.grossAmount,
+        discountAmount: body.discountAmount,
+        gstAmount: body.gstAmount,
+        netAmount: Number(body.amount),
+        totalWeightKg: Number(body.totalWeightKg) || 0,
+        itemsCount: Array.isArray(body.items) ? body.items.length : 1,
+        status: 'PROCESSING',
+        paymentStatus: 'PENDING',
+        carrier: body.carrier || 'TCI Freight Express',
+        items: body.items,
+      });
+    } catch (dbErr) {
+      console.warn('[PhonePe Initiate] MySQL initial order save notice:', dbErr);
+    }
+
+    // 2. Initiate PhonePe Payment Gateway session
     const result = await initiatePhonePePayment({
       merchantTransactionId: transactionId,
       merchantUserId: body.customerPhone ? `CUST-${body.customerPhone.slice(-10)}` : `USER-${Date.now()}`,

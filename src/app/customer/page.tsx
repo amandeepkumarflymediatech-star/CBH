@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { CustomerOrder, BulkQuotation } from '@/lib/types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_QUOTES } from '@/lib/mock-data';
-import { formatINR } from '@/lib/rfq-calculator';
+import { formatINR, toTitleCase } from '@/lib/rfq-calculator';
 import { getStoredUser, AuthUser } from '@/lib/auth';
 import { showErrorAlert, showInfoAlert, showLoadingAlert } from '@/lib/swal';
 
@@ -133,8 +133,14 @@ export default function CustomerDashboardPage() {
     };
     window.addEventListener('cbh_auth_change', handleAuthChange);
 
+    const orderApiUrl = user?.email
+      ? `/api/orders?customerEmail=${encodeURIComponent(user.email)}`
+      : user?.id
+      ? `/api/orders?customerId=${user.id}`
+      : '/api/orders';
+
     Promise.allSettled([
-      fetch('/api/orders').then((r) => r.json()),
+      fetch(orderApiUrl).then((r) => r.json()),
       fetch('/api/rfq').then((r) => r.json()),
       fetch('/api/products').then((r) => r.json()),
     ]).then(([ordRes, rfqRes, prodRes]) => {
@@ -2018,12 +2024,32 @@ export default function CustomerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr>
-                      <td className="p-2 font-bold">7318 15 00</td>
-                      <td className="p-2">Industrial Metric Fasteners DIN 933 8.8 / DIN 934</td>
-                      <td className="p-2 text-right">{activeInvoiceModal.totalWeightKg.toFixed(1)} KG</td>
-                      <td className="p-2 text-right">{formatINR(activeInvoiceModal.netAmount / 1.18)}</td>
-                    </tr>
+                    {activeInvoiceModal.items && activeInvoiceModal.items.length > 0 ? (
+                      activeInvoiceModal.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="p-2 font-bold font-mono text-slate-600">7318 15 00</td>
+                          <td className="p-2">
+                            <span className="font-bold text-slate-900 block">{toTitleCase(item.name)}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              SKU: {item.sku} {item.standard ? `| ${item.standard}` : ''}
+                            </span>
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold">
+                            {item.quantity} {item.unit}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold">
+                            {formatINR(item.rowTotal || item.quantity * item.rate)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="p-2 font-bold font-mono text-slate-600">7318 15 00</td>
+                        <td className="p-2">Industrial Metric Fasteners DIN / ISO Precision Lot</td>
+                        <td className="p-2 text-right font-mono font-bold">{activeInvoiceModal.totalWeightKg.toFixed(1)} KG</td>
+                        <td className="p-2 text-right font-mono font-bold">{formatINR(activeInvoiceModal.netAmount / 1.18)}</td>
+                      </tr>
+                    )}
                     <tr className="bg-slate-50">
                       <td colSpan={3} className="p-2 text-right font-bold">CGST (9%):</td>
                       <td className="p-2 text-right font-bold">{formatINR((activeInvoiceModal.netAmount / 1.18) * 0.09)}</td>

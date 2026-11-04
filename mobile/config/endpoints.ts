@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
     SESSION: '/api/auth/session',
     REGISTER: '/api/auth/register',
     FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
     CHECK_EMAIL: '/api/auth/check-email',
     RESEND_VERIFICATION: '/api/auth/resend',
   },

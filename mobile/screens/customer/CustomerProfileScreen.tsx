@@ -29,12 +29,10 @@ interface CustomerProfileScreenProps {
   onLogout: () => void;
   onSwitchToAdmin?: () => void;
   onNavigateToCertificates: () => void;
-  onNavigateToAbout?: () => void;
-  onNavigateToBlogs?: () => void;
-  onNavigateToGallery?: () => void;
-  onNavigateToContact?: () => void;
   onNavigateToBulkOrder?: () => void;
+  onNavigateToContact?: () => void;
   onNavigateToPolicies?: () => void;
+  onNavigateToCatalog?: () => void;
 }
 
 // Same palette as the product detail screen
@@ -57,12 +55,10 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
   onLogout,
   onSwitchToAdmin,
   onNavigateToCertificates,
-  onNavigateToAbout,
-  onNavigateToBlogs,
-  onNavigateToGallery,
   onNavigateToContact,
   onNavigateToBulkOrder,
   onNavigateToPolicies,
+  onNavigateToCatalog,
 }) => {
   const initialUser: MobileAuthUser = user || getMobileStoredUser() || DEMO_MOBILE_CUSTOMER;
   const [currentUser, setCurrentUser] = useState<MobileAuthUser>(initialUser);
@@ -312,10 +308,8 @@ export const CustomerProfileScreen: React.FC<CustomerProfileScreenProps> = ({
   const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
   const resources: { show: boolean; onPress?: () => void; title: string; sub: string }[] = [
+    { show: !!onNavigateToCatalog, onPress: onNavigateToCatalog, title: 'Fastener catalog & matrix', sub: '2,00,000+ certified DIN, ISO and ASTM specifications' },
     { show: !!onNavigateToBulkOrder, onPress: onNavigateToBulkOrder, title: 'Bulk order and BOM upload', sub: 'Send a tender or project line list for quotation' },
-    { show: !!onNavigateToBlogs, onPress: onNavigateToBlogs, title: 'Technical fastener library', sub: 'DIN/ISO standards, metallurgy and coatings' },
-    { show: !!onNavigateToGallery, onPress: onNavigateToGallery, title: 'Plant and testing lab', sub: 'Cold headers, optical sorting, tensile testing' },
-    { show: !!onNavigateToAbout, onPress: onNavigateToAbout, title: 'About Capital Bolts & Hardwares', sub: '65-year legacy and 500 MT capacity' },
     { show: !!onNavigateToContact, onPress: onNavigateToContact, title: 'Factory contact and bank details', sub: 'Ludhiana hub, direct phone, RTGS and IFSC' },
     { show: !!onNavigateToPolicies, onPress: onNavigateToPolicies, title: 'Terms and policies', sub: 'B2B terms, data privacy and freight SLA' },
   ].filter((r) => r.show);

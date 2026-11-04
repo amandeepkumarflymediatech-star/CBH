@@ -685,7 +685,7 @@ export default function AdminOrdersSection({
                   <tr key={o.id}>
                     {/* Column 1: Order # & Date */}
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <strong
                           style={{
                             fontFamily: 'var(--font-mono)',
@@ -695,6 +695,19 @@ export default function AdminOrdersSection({
                         >
                           {o.orderNumber}
                         </strong>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            background: '#EFF6FF',
+                            color: '#1D4ED8',
+                            border: '1px solid #BFDBFE',
+                          }}
+                        >
+                          {(o.items?.length || o.itemsCount || 1)} Items
+                        </span>
                       </div>
                       <div
                         style={{
@@ -841,11 +854,18 @@ export default function AdminOrdersSection({
                       <span
                         style={{
                           fontSize: '10px',
-                          color: '#059669',
-                          fontWeight: 700,
+                          color:
+                            o.paymentStatus === 'PAID'
+                              ? '#059669'
+                              : o.paymentStatus === 'PENDING'
+                              ? '#D97706'
+                              : '#4F46E5',
+                          fontWeight: 800,
                           textTransform: 'uppercase',
+                          fontFamily: 'var(--font-mono)',
                         }}
                       >
+                        {o.paymentMethod ? `${o.paymentMethod} • ` : ''}
                         {o.paymentStatus || 'PAID'}
                       </span>
                     </td>

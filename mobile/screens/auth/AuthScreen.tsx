@@ -103,6 +103,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { LoginScreen } from './LoginScreen';
 import { RegisterScreen } from './RegisterScreen';
@@ -135,6 +136,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 }) => {
   const [currentView, setCurrentView] = useState<AuthView>(initialView);
   const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
 
   useEffect(() => {
     if (initialView) {
@@ -142,14 +144,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   }, [initialView]);
 
-  const handleCodeSent = (email: string) => {
+  const handleCodeSent = (email: string, otp?: string) => {
     setResetEmail(email);
+    if (otp) setResetOtp(otp);
     setCurrentView('otp_verify');
   };
 
   const handlePasswordResetDone = () => {
     setCurrentView('login');
   };
+
+  // Hardware Android Back button interceptor inside Auth
+  useEffect(() => {
+    const onHardwareBack = () => {
+      if (currentView === 'otp_verify') {
+        setCurrentView('forgot_password');
+        return true;
+      }
+      if (currentView === 'forgot_password' || currentView === 'register') {
+        setCurrentView('login');
+        return true;
+      }
+      if (currentView === 'login') {
+        if (onBackToWelcome) {
+          onBackToWelcome();
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => sub.remove();
+  }, [currentView, onBackToWelcome]);
 
   // Where the back arrow goes from each step (undefined = hide arrow)
   const handleBack = (): (() => void) | undefined => {
@@ -233,6 +260,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         {currentView === 'otp_verify' && (
           <OtpVerificationScreen
             email={resetEmail}
+            initialOtp={resetOtp}
             onNavigateToLogin={() => setCurrentView('login')}
             onPasswordResetSuccess={handlePasswordResetDone}
           />

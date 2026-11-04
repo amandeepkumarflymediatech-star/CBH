@@ -26,7 +26,10 @@ import {
   LogOut,
   ShieldAlert,
   Images,
-  MessageCircle
+  MessageCircle,
+  Truck,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { GlobalUnit } from '@/lib/types';
 import { getStoredUser, logout, AuthUser } from '@/lib/auth';
@@ -277,83 +280,201 @@ export default function MainHeader({
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
-                    width: '260px',
+                    width: '240px',
                     background: '#FFFFFF',
                     borderRadius: '12px',
                     border: '1px solid #E2E8F0',
-                    boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                    padding: '8px',
+                    boxShadow: '0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.04)',
+                    padding: '6px',
                     zIndex: 999,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '2px',
                     animation: 'fade-in 0.15s ease'
                   }}>
-                    {currentUser ? (
-                      <>
-                        {/* Authenticated User Header Card */}
-                        <div style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '8px', marginBottom: '6px', border: '1px solid #F1F5F9' }}>
-                          <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            {currentUser.role === 'admin' ? 'CENTRAL HQ STATION' : 'VERIFIED OEM ACCOUNT'}
-                          </span>
-                          <strong style={{ display: 'block', fontSize: '13px', color: '#0F172A', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {currentUser.companyName || currentUser.fullName}
-                          </strong>
-                          <span style={{ fontSize: '11px', color: currentUser.role === 'admin' ? '#0052CC' : '#EA580C', fontWeight: 700, display: 'block', marginTop: '2px' }}>
-                            {currentUser.role === 'admin' ? 'Harpreet Singh (Chief Operations)' : (currentUser.tier ? `${currentUser.tier} OEM (-${currentUser.tierDiscountPct || 18}%)` : 'Procurement Buyer')}
-                          </span>
-                        </div>
+                    {currentUser ? (() => {
+                      const userInitials = (currentUser.companyName || currentUser.fullName || 'CBH')
+                        .replace(/[^a-zA-Z0-9 ]/g, '')
+                        .trim()
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((w: string) => w[0].toUpperCase())
+                        .join('') || 'CB';
 
-                        <Link
-                          href={currentUser.role === 'admin' ? '/admin' : '/customer'}
-                          onClick={() => setIsUserMenuOpen(false)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#0F172A', textDecoration: 'none', background: '#F8FAFC' }}
-                        >
-                          <Building2 size={15} color={currentUser.role === 'admin' ? '#0052CC' : '#FF6B00'} />
-                          <span>{currentUser.role === 'admin' ? 'Admin Dashboard' : 'Client Dashboard'}</span>
-                        </Link>
-                        <Link
-                          href="/bulk-order"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#475569', textDecoration: 'none' }}
-                        >
-                          <Zap size={15} color="#FF6B00" />
-                          <span>Rapid RFQ Engine</span>
-                        </Link>
+                      const isAdmin = currentUser.role === 'admin';
+                      const displayName = currentUser.companyName || currentUser.fullName || 'User';
 
-                        <div style={{ borderTop: '1px solid #F1F5F9', marginTop: '6px', paddingTop: '6px' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsUserMenuOpen(false);
-                              logout('/');
-                            }}
-                            style={{
-                              width: '100%',
+                      return (
+                        <>
+                          {/* Authenticated User Header Card - Compact, Clean & Unique */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '9px',
+                            padding: '8px 10px',
+                            background: isAdmin ? '#F8FAFC' : '#FDFBF7',
+                            borderRadius: '8px',
+                            border: isAdmin ? '1px solid #E2E8F0' : '1px solid #FED7AA',
+                            marginBottom: '4px'
+                          }}>
+                            {/* Monogram Avatar */}
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              background: isAdmin
+                                ? 'linear-gradient(135deg, #0052CC 0%, #1D4ED8 100%)'
+                                : 'linear-gradient(135deg, #FF6B00 0%, #EA580C 100%)',
+                              color: '#FFFFFF',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '10px',
-                              padding: '8px 12px',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '12px',
+                              flexShrink: 0,
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)'
+                            }}>
+                              {userInitials}
+                            </div>
+
+                            {/* Name & Role */}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <strong style={{
+                                display: 'block',
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                color: '#0F172A',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                lineHeight: 1.2
+                              }}>
+                                {displayName}
+                              </strong>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+                                <span style={{
+                                  width: '5px',
+                                  height: '5px',
+                                  borderRadius: '50%',
+                                  backgroundColor: isAdmin ? '#0052CC' : '#16A34A',
+                                  flexShrink: 0
+                                }} />
+                                <span style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 600,
+                                  color: isAdmin ? '#0052CC' : '#EA580C',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {isAdmin ? 'Central HQ Admin' : (currentUser.tier ? `${currentUser.tier} OEM (-${currentUser.tierDiscountPct || 18}%)` : 'Verified Buyer')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Navigation Links */}
+                          <Link
+                            href={isAdmin ? '/admin' : '/customer'}
+                            onClick={() => setIsUserMenuOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '7px 10px',
                               borderRadius: '6px',
                               fontSize: '12px',
                               fontWeight: 600,
-                              color: '#EF4444',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              textAlign: 'left'
+                              color: '#0F172A',
+                              textDecoration: 'none',
+                              background: '#F8FAFC',
+                              transition: 'background 0.15s ease'
                             }}
                           >
-                            <LogOut size={14} />
-                            <span>Sign Out</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Building2 size={14} color={isAdmin ? '#0052CC' : '#FF6B00'} />
+                              <span>{isAdmin ? 'Admin Dashboard' : 'Client Dashboard'}</span>
+                            </div>
+                            <ChevronRight size={13} color="#94A3B8" />
+                          </Link>
+
+                          <Link
+                            href={isAdmin ? '/admin/orders' : '/customer?tab=orders'}
+                            onClick={() => setIsUserMenuOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '7px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              color: '#475569',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <Truck size={14} color="#64748B" />
+                            <span>{isAdmin ? 'Orders & Dispatches' : 'My Orders & Tracking'}</span>
+                          </Link>
+
+                          <Link
+                            href="/bulk-order"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '7px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              color: '#475569',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <Zap size={14} color="#FF6B00" />
+                            <span>Rapid RFQ Engine</span>
+                          </Link>
+
+                          {/* Sign Out */}
+                          <div style={{ borderTop: '1px solid #F1F5F9', marginTop: '3px', paddingTop: '3px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                logout('/');
+                              }}
+                              style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '7px 10px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: '#EF4444',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <LogOut size={13} />
+                              <span>Sign Out</span>
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })() : (
                       <>
-                        <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            PROCUREMENT &amp; CLIENT ACCESS
+                        <div style={{ padding: '6px 10px 4px', borderBottom: '1px solid #F1F5F9', marginBottom: '3px' }}>
+                          <span style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Procurement Access
                           </span>
                         </div>
                         <Link
@@ -361,30 +482,25 @@ export default function MainHeader({
                           onClick={() => setIsUserMenuOpen(false)}
                           style={{
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                            padding: '10px 12px',
-                            borderRadius: '8px',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            borderRadius: '6px',
                             background: '#FFF7ED',
                             border: '1px solid #FFEDD5',
                             textDecoration: 'none',
-                            marginBottom: '4px'
+                            marginBottom: '2px'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Building2 size={15} color="#FF6B00" />
-                            <strong style={{ fontSize: '13px', color: '#9A3412' }}>Sign In to Client Portal</strong>
-                          </div>
-                          {/* <span style={{ fontSize: '11px', color: '#C2410C', paddingLeft: '23px' }}>
-                            Track live LR shipments, MTCs &amp; RFQs
-                          </span> */}
+                          <Building2 size={14} color="#FF6B00" />
+                          <strong style={{ fontSize: '12.5px', color: '#9A3412', fontWeight: 700 }}>Sign In to Portal</strong>
                         </Link>
                         <Link
                           href="/register"
                           onClick={() => setIsUserMenuOpen(false)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, color: '#334155', textDecoration: 'none' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#334155', textDecoration: 'none' }}
                         >
-                          <User size={15} color="#0284C7" />
+                          <User size={14} color="#0284C7" />
                           <span>Register OEM Company</span>
                         </Link>
                       </>

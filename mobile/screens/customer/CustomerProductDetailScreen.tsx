@@ -76,11 +76,19 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
   const [showAllSpecs, setShowAllSpecs] = useState(false);
 
   // Search
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MobileProduct[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const handleSearchSubmit = () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setShowDropdown(false);
+    if (onSearch) {
+      onSearch(q);
+    }
+  };
 
   const weightPerPc = product.weightPerPcKg || 0.05;
   const minQty = selectedUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS;
@@ -195,25 +203,15 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
 
   return (
     <View style={styles.screen}>
-      {/* Header */}
+      {/* Header with Integrated Search */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.headerBack}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {product.sku}
-        </Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => {
-              setSearchOpen((o) => !o);
-              setShowDropdown(false);
-            }}
-            style={styles.headerBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <NavIcon name="search" color="#FFFFFF" size={20} />
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={onBack} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.headerBack}>←</Text>
           </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {product.sku || product.name}
+          </Text>
           <TouchableOpacity
             onPress={onNavigateToCart}
             style={styles.headerBtn}
@@ -227,28 +225,20 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
             ) : null}
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Search (opens from the header icon) */}
-      {searchOpen ? (
-        <View style={styles.searchWrap}>
+        {/* Permanent Search Row */}
+        <View style={styles.searchRow}>
           <View style={styles.searchBar}>
             <NavIcon name="search" color={MUTED} size={16} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search products"
+              placeholder="Search size, DIN, grade"
               placeholderTextColor="#94A3B8"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              autoFocus
               autoCorrect={false}
               returnKeyType="search"
-              onSubmitEditing={() => {
-                if (onSearch && searchQuery.trim()) {
-                  setShowDropdown(false);
-                  onSearch(searchQuery.trim());
-                }
-              }}
+              onSubmitEditing={handleSearchSubmit}
             />
             {isSearching ? (
               <ActivityIndicator size="small" color={BLUE} />
@@ -264,54 +254,58 @@ export const CustomerProductDetailScreen: React.FC<CustomerProductDetailScreenPr
               </TouchableOpacity>
             ) : null}
           </View>
+          <TouchableOpacity
+            style={styles.searchBtn}
+            onPress={handleSearchSubmit}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.searchBtnText}>Search</Text>
+          </TouchableOpacity>
+        </View>
 
-          {showDropdown && searchResults.length > 0 ? (
-            <View style={styles.dropdown}>
-              {searchResults.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.dropdownItem}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setShowDropdown(false);
-                    setSearchQuery('');
-                    setSearchOpen(false);
-                    if (onSelectProduct) onSelectProduct(item);
-                    else if (onSearch) onSearch(item.name);
-                  }}
-                >
-                  <View style={styles.dropdownImg}>
-                    <FastenerProductImage
-                      imageUrl={item.imageUrl}
-                      category={item.category || item.subGroup}
-                      productName={item.name}
-                      standard={item.standard}
-                      height={38}
-                    />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.dropdownTitle} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.dropdownSub}>
-                      {item.standard || 'DIN 933'} · ₹{item.pricePerPiece}/pc
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+        {/* Search Suggestions Dropdown Overlay */}
+        {showDropdown && searchResults.length > 0 ? (
+          <View style={styles.dropdown}>
+            {searchResults.map((item) => (
               <TouchableOpacity
-                style={styles.dropdownFooter}
+                key={item.id}
+                style={styles.dropdownItem}
+                activeOpacity={0.8}
                 onPress={() => {
                   setShowDropdown(false);
-                  if (onSearch && searchQuery.trim()) onSearch(searchQuery.trim());
+                  setSearchQuery('');
+                  if (onSelectProduct) onSelectProduct(item);
+                  else if (onSearch) onSearch(item.name);
                 }}
               >
-                <Text style={styles.dropdownFooterText}>See all results</Text>
+                <View style={styles.dropdownImg}>
+                  <FastenerProductImage
+                    imageUrl={item.imageUrl}
+                    category={item.category || item.subGroup}
+                    productName={item.name}
+                    standard={item.standard}
+                    height={38}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.dropdownTitle} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.dropdownSub}>
+                    {item.standard || 'DIN 933'} · ₹{item.pricePerPiece}/pc
+                  </Text>
+                </View>
               </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+            ))}
+            <TouchableOpacity
+              style={styles.dropdownFooter}
+              onPress={handleSearchSubmit}
+            >
+              <Text style={styles.dropdownFooterText}>See all results for "{searchQuery}"</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Hero */}
@@ -547,22 +541,26 @@ const styles = StyleSheet.create({
   // Header
   header: {
     backgroundColor: BLUE,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    zIndex: 20,
+    zIndex: 99,
+    gap: 10,
   },
-  headerBtn: { padding: 6 },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerBtn: { padding: 4 },
   headerBack: { fontSize: 24, color: '#FFFFFF', fontWeight: '700' },
-  headerTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginLeft: 4 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: '#FFFFFF', marginLeft: 8 },
   cartBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: -4,
+    right: -6,
     backgroundColor: ORANGE,
     minWidth: 17,
     height: 17,
@@ -574,32 +572,50 @@ const styles = StyleSheet.create({
   cartBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
 
   // Search
-  searchWrap: { paddingHorizontal: 16, paddingTop: 10, zIndex: 30 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 14,
+    borderRadius: 12,
+    paddingHorizontal: 12,
     height: 42,
     gap: 8,
     borderWidth: 1,
     borderColor: LINE,
   },
   searchInput: { flex: 1, fontSize: 14, color: INK, paddingVertical: 0 },
-  searchClear: { fontSize: 14, color: '#94A3B8' },
+  searchClear: { fontSize: 14, color: '#94A3B8', paddingHorizontal: 4 },
+  searchBtn: {
+    backgroundColor: ORANGE,
+    paddingHorizontal: 14,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   dropdown: {
+    position: 'absolute',
+    top: 114,
+    left: 16,
+    right: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    marginTop: 6,
     borderWidth: 1,
     borderColor: LINE,
     overflow: 'hidden',
-    elevation: 8,
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    zIndex: 9999,
   },
   dropdownItem: {
     flexDirection: 'row',

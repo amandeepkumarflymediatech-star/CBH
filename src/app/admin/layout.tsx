@@ -32,7 +32,8 @@ import {
   FileCheck2,
   Sparkles,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -313,6 +314,22 @@ export default function AdminLayout({
             </button>
           </div>
 
+          {/* Top-Left Sidebar Back to Main Website */}
+          <div className="px-1">
+            <Link
+              href="/"
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all no-underline ${
+                isDarkMode
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  : 'text-slate-600 hover:text-[#5B4DF6] hover:bg-[#EEF0FD] border border-slate-200'
+              }`}
+              title="Return to Main Storefront"
+            >
+              <ArrowLeft size={15} className="shrink-0" />
+              {!isSidebarCollapsed && <span>Back to Store</span>}
+            </Link>
+          </div>
+
           
 
           {/* Navigation Stack */}
@@ -562,15 +579,34 @@ export default function AdminLayout({
         <header className={`border-b sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors ${
           isDarkMode ? 'bg-[#0F172A] border-[#1E293B] text-white' : 'bg-white border-[#EAEAEA] text-slate-800'
         }`}>
-          {/* Left: Mobile hamburger + Page Title */}
+          {/* Left: Mobile hamburger + Top-Left Back Button + Page Title */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
               className="md:hidden p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              title="Open Navigation"
+              aria-label="Open Navigation"
             >
               <Menu size={20} />
             </button>
+
+            {pathname !== '/admin' && (
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className={`p-2 rounded-xl transition-all flex items-center justify-center border cursor-pointer ${
+                  isDarkMode
+                    ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Go Back"
+                aria-label="Go Back"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+
             <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${
               isDarkMode ? 'text-white' : 'text-[#0F172A]'
             }`}>
@@ -682,6 +718,14 @@ export default function AdminLayout({
                 </div>
 
                 <nav className="space-y-1">
+                  <Link
+                    href="/"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 border border-slate-200 mb-2 no-underline"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Back to Store</span>
+                  </Link>
                   <Link
                     href="/admin"
                     onClick={() => setIsMobileNavOpen(false)}

@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import MainHeader from '@/components/header/MainHeader';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { Product, GlobalUnit, RfqLineItem } from '@/lib/types';
-import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
+import { formatINR, clampQty, formatQtyDisplay, getMinQty, MIN_QTY_PCS, MIN_QTY_KGS, toTitleCase } from '@/lib/rfq-calculator';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
 import {
   Search,
@@ -231,17 +231,17 @@ function FastenerCard({
         {/* Specs Matrix Strip */}
         <div className="grid grid-cols-3 text-center bg-slate-50/90 rounded-lg p-1.5 text-[10px] font-mono border border-slate-100 mb-2">
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase font-sans">GRADE</span>
-            <strong className="text-slate-900 truncate block">{p.grade}</strong>
+            <span className="text-slate-400 block text-[9px] font-sans font-medium">Grade</span>
+            <strong className="text-slate-900 truncate block">{toTitleCase(p.grade)}</strong>
           </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase font-sans">SIZE</span>
+            <span className="text-slate-400 block text-[9px] font-sans font-medium">Size</span>
             <strong className="text-slate-900 truncate block" title={p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}>
               {p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}
             </strong>
           </div>
           <div>
-            <span className="text-slate-400 block text-[9px] uppercase font-sans">PITCH</span>
+            <span className="text-slate-400 block text-[9px] font-sans font-medium">Pitch</span>
             <strong className="text-slate-900 truncate block">{p.pitchMm}mm</strong>
           </div>
         </div>
@@ -249,7 +249,7 @@ function FastenerCard({
         {/* Title (exact 2-line height, no descender overflow) */}
         <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 h-[34px] leading-[17px] mb-2 overflow-hidden">
           <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
-            {p.name}
+            {toTitleCase(p.name)}
           </Link>
         </h3>
 
@@ -262,7 +262,7 @@ function FastenerCard({
             Lead: <strong>{leadDays}d</strong>
           </div>
           <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Finish: ${p.finish || 'Standard'}`}>
-            <strong>{p.finish || 'Self'}</strong>
+            <strong>{toTitleCase(p.finish || 'Self')}</strong>
           </div>
         </div>
       </div>
@@ -272,7 +272,7 @@ function FastenerCard({
         {/* Dual Pricing Box */}
         <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-200/80">
           <div className="flex justify-between items-baseline mb-1">
-            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold uppercase tracking-wider">
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold">
               {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
             </span>
             <span className="text-base sm:text-lg font-black text-blue-700 font-mono">
@@ -708,7 +708,7 @@ function ProductsPageInner() {
       {hasActiveFilters && (
         <div className="bg-blue-50/80 border border-blue-200/90 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+            <span className="text-[10px] font-black text-blue-900 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
               Applied Filters ({activeFilterCount})
             </span>
@@ -827,7 +827,7 @@ function ProductsPageInner() {
             <div className="text-xs font-black text-slate-900 flex items-center gap-1.5">
               <span>Ready Dispatch Only</span>
               {inStockOnly && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
                   Live Stock
                 </span>
               )}
@@ -853,7 +853,7 @@ function ProductsPageInner() {
       {/* 1. Metric Diameter */}
       <div className="space-y-2 pt-1">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
             <Ruler size={13} className="text-blue-600" />
             <span>Metric Diameter (Size)</span>
           </label>
@@ -911,7 +911,7 @@ function ProductsPageInner() {
       {/* 2. Property Class / Grade */}
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
             <ShieldCheck size={13} className="text-blue-600" />
             <span>Grade & Tensile Strength</span>
           </label>
@@ -979,7 +979,7 @@ function ProductsPageInner() {
       {/* 3. Fastener Standard */}
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
             <Tag size={13} className="text-blue-600" />
             <span>Standard (DIN / ISO)</span>
           </label>
@@ -1049,7 +1049,7 @@ function ProductsPageInner() {
       {/* 4. Surface Coating / Finish */}
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
             <Sparkles size={13} className="text-blue-600" />
             <span>Surface Coating / Finish</span>
           </label>
@@ -1140,7 +1140,7 @@ function ProductsPageInner() {
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full text-[11px] font-bold mb-3 border border-white/15">
                 <ShieldCheck size={14} className="text-[#FF6B00]" />
-                <span className="tracking-wide">DIRECT FACTORY WHOLESALE • 100% BIS / NABL CERTIFIED</span>
+                <span className="tracking-wide">Direct Factory Wholesale • 100% BIS / NABL Certified</span>
               </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
                 All Nuts, Bolts &amp; Fasteners <span className="text-[#FF6B00]">(सभी नट-बोल्ट)</span>
@@ -1152,7 +1152,7 @@ function ProductsPageInner() {
 
             {/* Global Pricing Unit Switcher */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3.5 sm:p-4 self-start lg:self-center shrink-0 w-full sm:w-auto sm:min-w-[240px]">
-              <span className="text-[11px] text-slate-300 font-bold uppercase tracking-wider block mb-2">
+              <span className="text-[11px] text-slate-300 font-bold block mb-2">
                 Procurement Pricing Unit:
               </span>
               <div className="flex bg-black/30 p-1 rounded-lg">
@@ -1387,7 +1387,7 @@ function ProductsPageInner() {
 
               {/* Mobile Sort Option */}
               <div className="sm:hidden mb-5 pb-5 border-b border-slate-100">
-                <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-extrabold text-slate-500 mb-1.5">
                   Sort Fasteners
                 </label>
                 <select

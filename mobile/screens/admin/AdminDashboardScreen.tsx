@@ -55,7 +55,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
   const [orders, setOrders] = useState<MobileOrder[]>([]);
   const [rfqs, setRfqs] = useState<MobileRfq[]>([]);
   const [products, setProducts] = useState<MobileProduct[]>([]);
-  const [productsTotal, setProductsTotal] = useState<number>(605);
+  const [productsTotal, setProductsTotal] = useState<number>(0);
   const [usersCount, setUsersCount] = useState<number>(12);
   const [erpStatus, setErpStatus] = useState<any>({ status: 'CONNECTED', latencyMs: 28 });
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -84,7 +84,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       if (rfqRes.quotes) setRfqs(rfqRes.quotes);
       if (prodRes.products) {
         setProducts(prodRes.products);
-        setProductsTotal(prodRes.total ?? prodRes.count ?? prodRes.products.length);
+        setProductsTotal(prodRes.stats?.total ?? prodRes.total ?? prodRes.count ?? prodRes.products.length);
       }
       if (usersRes.users) setUsersCount(usersRes.users.length);
       if (erpRes) setErpStatus(erpRes);

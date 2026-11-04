@@ -122,9 +122,17 @@ export const CustomerBulkOrderScreen: React.FC<CustomerBulkOrderScreenProps> = (
         `Your bulk procurement request has been generated under ${generatedNum}. An official stamped quotation with wholesale discount margins will be issued shortly.`,
         [
           {
-            text: 'View Quotes',
+            text: 'Return to Home',
             onPress: () => {
-              if (onOrderSubmitted) onOrderSubmitted(generatedNum);
+              if (onBack) onBack();
+              else if (onOrderSubmitted) onOrderSubmitted('home');
+            },
+            style: 'cancel',
+          },
+          {
+            text: 'View My Orders',
+            onPress: () => {
+              if (onOrderSubmitted) onOrderSubmitted('orders');
             },
           },
         ]
@@ -137,11 +145,11 @@ export const CustomerBulkOrderScreen: React.FC<CustomerBulkOrderScreenProps> = (
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {onBack ? (
+      {/* {onBack ? (
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← Back</Text>
         </TouchableOpacity>
-      ) : null}
+      ) : null} */}
 
       {/* Banner */}
       <View style={styles.banner}>

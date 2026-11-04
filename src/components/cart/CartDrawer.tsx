@@ -98,6 +98,16 @@ export default function CartDrawer({
       }
 
       const newOrderId = `CBH-ORD-${Date.now()}`;
+      const checkoutItems = items.map((it) => ({
+        sku: it.sku,
+        name: it.name,
+        standard: it.standard,
+        quantity: it.quantity,
+        unit: it.unit,
+        rate: it.unitRate,
+        weightKg: it.weightPerPcKg,
+      }));
+
       const res = await fetch('/api/payment/phonepe/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,7 +118,12 @@ export default function CartDrawer({
           customerPhone: user.phone || '9888021000',
           customerEmail: user.email || 'procurement@buyer.in',
           companyName: user.companyName || 'Verified Enterprise Client',
+          shippingAddress: user.address || 'Plot 12, Industrial Area',
           totalWeightKg: summary.totalWeightKg,
+          grossAmount: summary.grossAmount,
+          discountAmount: summary.slabDiscountAmount,
+          gstAmount: summary.gstAmount,
+          items: checkoutItems,
         }),
       });
       const data = await res.json();

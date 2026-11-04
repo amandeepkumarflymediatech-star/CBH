@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createPasswordReset } from '@/lib/password-reset-db';
 
 export async function POST(request: Request) {
   try {
@@ -12,11 +13,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const result = await createPasswordReset(email);
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error || 'Failed to resend code' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Fresh verification token and OTP re-sent to ${email}.`,
+      message: `Fresh verification token and 6-digit OTP re-sent to ${email}.`,
+      otp: result.otp,
+      resetToken: result.resetToken,
       sentAt: new Date().toISOString(),
-      countdownSeconds: 60,
+      countdownSeconds: 45,
     });
   } catch (error: any) {
     return NextResponse.json(

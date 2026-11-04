@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
+  BackHandler,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 
 // Config & Auth
@@ -72,7 +75,21 @@ export default function App() {
   const [role, setRole] = useState<UserRole>('customer');
   // User state: starts null (Guest Explore mode) so first-time visitors can browse catalog
   const [user, setUser] = useState<MobileAuthUser | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTabState] = useState<string>('home');
+  const [tabHistory, setTabHistory] = useState<string[]>([]);
+  const lastBackPressRef = useRef<number>(0);
+
+  // Set tab and track navigation history stack
+  const setActiveTab = (newTab: string) => {
+    setActiveTabState((currentTab) => {
+      if (newTab === currentTab) return currentTab;
+      setTabHistory((prev) => {
+        if (prev.length > 0 && prev[prev.length - 1] === currentTab) return prev;
+        return [...prev.slice(-25), currentTab];
+      });
+      return newTab;
+    });
+  };
   const [selectedProduct, setSelectedProduct] = useState<MobileProduct | null>(null);
 
   const [catalogFilterStandard, setCatalogFilterStandard] = useState<string>('All');
@@ -168,6 +185,74 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
+  // Hardware Android Back button interceptor & Navigation stack manager
+  useEffect(() => {
+    const onHardwareBackPress = () => {
+      // 1. If Cart Popup Modal is visible, close it
+      if (isCartPopupVisible) {
+        setIsCartPopupVisible(false);
+        return true;
+      }
+
+      // 2. If viewing a Product Detail screen, return to the current tab
+      if (selectedProduct) {
+        setSelectedProduct(null);
+        return true;
+      }
+
+      // 3. If in Auth Screen, return to previous tab or home
+      if (activeTab === 'auth' || activeTab === 'login') {
+        const fallback = postAuthRedirectTab || 'home';
+        setPostAuthRedirectTab('home');
+        setActiveTabState(fallback);
+        return true;
+      }
+
+      // 4. If there is history in navigation stack, pop to previous tab
+      if (tabHistory.length > 0) {
+        const nextHistory = [...tabHistory];
+        const previousTab = nextHistory.pop()!;
+        setTabHistory(nextHistory);
+        setActiveTabState(previousTab);
+        return true;
+      }
+
+      // 5. If on a non-root tab, navigate back to home/dashboard root
+      const rootTab = role === 'admin' ? 'dashboard' : 'home';
+      if (activeTab !== rootTab) {
+        setActiveTabState(rootTab);
+        return true;
+      }
+
+      // 6. On root screen with empty history: Double-tap back within 2s to exit app
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+
+      lastBackPressRef.current = now;
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Press back again to exit CBH', ToastAndroid.SHORT);
+      }
+      return true;
+    };
+
+    const backSub = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onHardwareBackPress
+    );
+
+    return () => backSub.remove();
+  }, [
+    isCartPopupVisible,
+    selectedProduct,
+    activeTab,
+    tabHistory,
+    role,
+    postAuthRedirectTab,
+  ]);
+
   const handleDismissWelcome = (destination: string = 'home') => {
     setHasSeenWelcome(true).catch(() => {});
     setIsWelcome(false);
@@ -192,6 +277,8 @@ export default function App() {
     setIsWelcome(false);
     setRole(newRole);
     setSelectedProduct(null);
+    setTabHistory([]);
+    setIsCartPopupVisible(false);
     if (newRole === 'admin') {
       setUser(DEMO_MOBILE_ADMIN);
       setMobileStoredUser(DEMO_MOBILE_ADMIN);
@@ -211,6 +298,9 @@ export default function App() {
     setUser(null);
     setRole('customer');
     setIsWelcome(false);
+    setSelectedProduct(null);
+    setTabHistory([]);
+    setIsCartPopupVisible(false);
     setActiveTab('home');
   };
 
@@ -323,7 +413,15 @@ export default function App() {
     } else {
       switch (activeTab) {
         case 'home':
-          return { title: 'CBH Fasteners', subtitle: 'Bulk Industrial Platform' };
+          const customerName = user?.fullName || user?.companyName;
+          return {
+            title: customerName ? customerName : 'CBH Fasteners',
+            subtitle: user?.companyName && user?.fullName
+              ? user.companyName
+              : user?.email
+              ? user.email
+              : 'Bulk Industrial Platform',
+          };
         case 'catalog':
           return { title: 'Fastener Catalog', subtitle: 'DIN, ISO & ASTM Standards' };
         case 'cart':
@@ -351,7 +449,7 @@ export default function App() {
         case 'auth':
           return { title: 'Client Sign In', subtitle: 'Procurement Access' };
         default:
-          return { title: 'CBH Fasteners', subtitle: 'Industrial Store' };
+          // return { title: 'CBH Fasteners', subtitle: 'Industrial Store' };
       }
     }
   };
@@ -364,6 +462,7 @@ export default function App() {
     if (selectedProduct) {
       return (
         <CustomerProductDetailScreen
+          key={String(selectedProduct.id || selectedProduct.sku)}
           product={selectedProduct}
           cartCount={cartItems.length}
           onBack={() => setSelectedProduct(null)}
@@ -374,6 +473,7 @@ export default function App() {
           }}
           onSearch={(query) => {
             setCatalogSearchQuery(query);
+            setCatalogFilterStandard('All');
             setSelectedProduct(null);
             setActiveTab('catalog');
           }}
@@ -469,7 +569,16 @@ export default function App() {
               initialSearch={catalogSearchQuery}
               cartCount={cartItems.length}
               onNavigateToCart={() => setActiveTab('cart')}
-              onNavigateHome={() => setActiveTab('home')}
+              onNavigateHome={() => {
+                if (tabHistory.length > 0) {
+                  const nextHistory = [...tabHistory];
+                  const previousTab = nextHistory.pop()!;
+                  setTabHistory(nextHistory);
+                  setActiveTabState(previousTab);
+                } else {
+                  setActiveTab('home');
+                }
+              }}
               onSelectProduct={setSelectedProduct}
               onAddToCart={handleAddToCart}
             />
@@ -488,7 +597,16 @@ export default function App() {
               onRemoveItem={handleRemoveCartItem}
               onClearCart={handleClearCart}
               onNavigateToCatalog={() => setActiveTab('catalog')}
-              onNavigateHome={() => setActiveTab('home')}
+              onNavigateHome={() => {
+                if (tabHistory.length > 0) {
+                  const nextHistory = [...tabHistory];
+                  const previousTab = nextHistory.pop()!;
+                  setTabHistory(nextHistory);
+                  setActiveTabState(previousTab);
+                } else {
+                  setActiveTab('home');
+                }
+              }}
               onOrderSuccess={(orderId) => {
                 setActiveTab('orders');
               }}
@@ -547,7 +665,7 @@ export default function App() {
             <CustomerBulkOrderScreen
               user={user}
               onBack={() => setActiveTab('home')}
-              onOrderSubmitted={() => setActiveTab('rfqs')}
+              onOrderSubmitted={(dest) => setActiveTab(dest === 'home' ? 'home' : 'orders')}
             />
           );
         case 'gallery':
@@ -582,12 +700,10 @@ export default function App() {
               onLogout={handleLogout}
               onSwitchToAdmin={() => handleRoleSwitch('admin')}
               onNavigateToCertificates={() => setActiveTab('certificates')}
-              onNavigateToAbout={() => setActiveTab('about')}
-              onNavigateToBlogs={() => setActiveTab('blogs')}
-              onNavigateToGallery={() => setActiveTab('gallery')}
               onNavigateToContact={() => setActiveTab('contact')}
               onNavigateToBulkOrder={() => setActiveTab('bulk-order')}
               onNavigateToPolicies={() => setActiveTab('policies')}
+              onNavigateToCatalog={() => setActiveTab('catalog')}
             />
           );
         default:
@@ -654,18 +770,30 @@ export default function App() {
               showBack={
                 Boolean(selectedProduct) ||
                 activeTab === 'auth' ||
-                (role === 'admin' && activeTab !== 'dashboard')
+                (role === 'admin'
+                  ? activeTab !== 'dashboard'
+                  : activeTab !== 'home')
               }
               showLogo={
                 role === 'admin'
                   ? activeTab === 'dashboard'
-                  : !selectedProduct && activeTab !== 'auth'
+                  : activeTab === 'home' && !selectedProduct && activeTab !== 'auth'
               }
               onBack={() => {
                 if (selectedProduct) {
                   setSelectedProduct(null);
-                } else if (role === 'admin' && activeTab !== 'dashboard') {
-                  setActiveTab('dashboard');
+                } else if (tabHistory.length > 0) {
+                  const nextHistory = [...tabHistory];
+                  const previousTab = nextHistory.pop()!;
+                  setTabHistory(nextHistory);
+                  setActiveTabState(previousTab);
+                } else if (role === 'admin') {
+                  if (activeTab !== 'dashboard') {
+                    setActiveTabState('dashboard');
+                  } else {
+                    setRole('customer');
+                    setActiveTabState('home');
+                  }
                 } else if (activeTab === 'auth') {
                   setActiveTab('home');
                 } else {
@@ -683,6 +811,11 @@ export default function App() {
                   setActiveTab('home');
                 }
               }}
+              onTitleClick={
+                activeTab === 'home'
+                  ? () => setActiveTab(user ? 'profile' : 'auth')
+                  : undefined
+              }
               rightAction={
                 role === 'admin' ? (
                   <TouchableOpacity

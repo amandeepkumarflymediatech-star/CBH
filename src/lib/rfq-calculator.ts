@@ -134,3 +134,43 @@ export function formatINR(val: number): string {
     maximumFractionDigits: 2,
   });
 }
+
+/**
+ * Converts ALL CAPS or messy text into clean Title Case while preserving
+ * standard fastener industry acronyms and specifications (DIN, ISO, ASME, HDG, M10, etc.)
+ */
+export function toTitleCase(str?: string | null): string {
+  if (!str) return '';
+
+  const ACRONYMS = new Set([
+    'DIN', 'ISO', 'ASME', 'ASTM', 'BS', 'IS', 'ANSI', 'EN', 'JIS', 'GOST',
+    'HDG', 'BZP', 'ZP', 'BP', 'SS', 'MS', 'GI', 'PTFE', 'BLKZP',
+    'MOQ', 'HSN', 'SKU', 'NABL', 'CAD', 'PDF', 'RFQ', 'GST', 'B2B', 'OEM',
+    'ROHS', 'REACH', 'UNC', 'UNF', 'BSW', 'BA', 'BSF', 'TPI', 'PCD',
+    'CBH', 'FT', 'PT', 'HT', 'SS304', 'SS316', 'AISI'
+  ]);
+
+  const MINOR_WORDS = new Set(['and', 'or', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'of', 'a', 'an', 'the']);
+
+  return str.replace(/[A-Za-z0-9]+(?:'[a-z]+)?/g, (match, offset) => {
+    const upper = match.toUpperCase();
+    if (ACRONYMS.has(upper)) return upper;
+
+    // Alphanumeric standard codes like 125A, 127B, 934M
+    if (/^\d+[A-Z]$/i.test(match)) return match.toUpperCase();
+
+    // Metric size notation like M10, M12, M10X1.5
+    if (/^M\d+/i.test(match)) {
+      return match.charAt(0).toUpperCase() + match.slice(1).replace(/X/g, 'x');
+    }
+
+    // Pure numbers
+    if (/^\d+(\.\d+)?$/.test(match)) return match;
+
+    const lower = match.toLowerCase();
+    if (offset > 0 && MINOR_WORDS.has(lower)) return lower;
+
+    return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+  });
+}
+

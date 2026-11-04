@@ -38,7 +38,8 @@ import {
   Settings,
   ShieldCheck,
   Building2,
-  PackageCheck
+  PackageCheck,
+  ArrowLeft
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_CLIENT, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -241,6 +242,18 @@ export default function CustomerLayout({
             >
               <SlidersHorizontal size={15} />
             </button>
+          </div>
+
+          {/* Top-Left Sidebar Back to Fastener Catalog */}
+          <div className="px-1">
+            <Link
+              href="/products"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-[#5B4DF6] hover:bg-[#EEF0FD] border border-slate-200 transition-all no-underline"
+              title="Return to Fastener Catalog"
+            >
+              <ArrowLeft size={15} className="shrink-0" />
+              {!isSidebarCollapsed && <span>Back to Catalog</span>}
+            </Link>
           </div>
 
          
@@ -482,15 +495,30 @@ export default function CustomerLayout({
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         {/* Top Header Row matching Admin Panel */}
         <header className="bg-white border-b border-[#EAEAEA] sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
-          {/* Left: Mobile hamburger + Page Title */}
+          {/* Left: Mobile hamburger + Top-Left Back Button + Page Title */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
               className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+              title="Open Navigation"
+              aria-label="Open Navigation"
             >
               <Menu size={20} />
             </button>
+
+            {pathname !== '/customer' && (
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="p-2 rounded-xl transition-all flex items-center justify-center border bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                title="Go Back"
+                aria-label="Go Back"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+
             <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
               {getPageTitle()}
             </h1>
@@ -685,6 +713,14 @@ export default function CustomerLayout({
                 </div>
 
                 <nav className="mt-5 space-y-1">
+                  <Link
+                    href="/products"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 border border-slate-200 mb-2 no-underline"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Back to Catalog</span>
+                  </Link>
                   {[
                     { label: 'Dashboard', href: '/customer', icon: LayoutDashboard, exact: true },
                     { label: 'Orders & Dispatches', href: '/customer/orders', icon: Truck },

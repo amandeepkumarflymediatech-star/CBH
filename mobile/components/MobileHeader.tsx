@@ -18,6 +18,7 @@ interface MobileHeaderProps {
   cartCount?: number;
   onCartClick?: () => void;
   onLogoClick?: () => void;
+  onTitleClick?: () => void;
   rightAction?: React.ReactNode;
 }
 
@@ -31,6 +32,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   cartCount = 0,
   onCartClick,
   onLogoClick,
+  onTitleClick,
   rightAction,
 }) => {
   const isAdmin = role === 'admin';
@@ -41,7 +43,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       {/* Left: Brand Icon or Back */}
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.75}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <Text style={styles.backBtnText}>←</Text>
           </TouchableOpacity>
         ) : null}
@@ -60,7 +69,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </TouchableOpacity>
         ) : null}
 
-        <View style={styles.titleContainer}>
+        <TouchableOpacity
+          activeOpacity={onTitleClick ? 0.75 : 1}
+          onPress={onTitleClick}
+          disabled={!onTitleClick}
+          style={styles.titleContainer}
+        >
           <View style={styles.titleRow}>
             <Text numberOfLines={1} style={styles.title}>
               {title}
@@ -89,7 +103,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               {subtitle}
             </Text>
           ) : null}
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Right: Actions & Cart */}

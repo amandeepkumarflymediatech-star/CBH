@@ -197,6 +197,7 @@ export async function getOrdersFromMySQL(): Promise<CustomerOrder[]> {
 
       return rows.map((r: any) => ({
         id: String(r.id),
+        customerId: r.customer_id ? Number(r.customer_id) : undefined,
         orderNumber: r.order_number,
         date: r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         customerName: r.resolved_customer_name,

@@ -61,6 +61,7 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
   onRemoveItem,
   onClearCart,
   onNavigateToCatalog,
+  onNavigateHome,
   onOrderSuccess,
 }) => {
   const [companyName, setCompanyName] = useState(user?.companyName || '');
@@ -456,7 +457,11 @@ export const CustomerCartScreen: React.FC<CustomerCartScreenProps> = ({
 
   const Header = ({ count, canClear }: { count?: number; canClear?: boolean }) => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={onNavigateToCatalog} style={styles.headerBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <TouchableOpacity
+        onPress={onNavigateHome || onNavigateToCatalog}
+        style={styles.headerBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
         <Text style={styles.headerBack}>←</Text>
       </TouchableOpacity>
       <View style={styles.headerCenter}>

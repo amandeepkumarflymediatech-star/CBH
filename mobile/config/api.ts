@@ -286,6 +286,17 @@ export const authApi = {
     });
   },
 
+  resetPassword: async (payload: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }) => {
+    return request(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   checkEmail: async (email: string) => {
     return request(API_ENDPOINTS.AUTH.CHECK_EMAIL, {
       method: 'POST',
@@ -415,9 +426,9 @@ export const productsApi = {
         subGroups: ['Hex Screws', 'Flange Bolts', 'Socket Screws', 'Nuts', 'Washers'],
       },
       stats: {
-        total: 605,
-        inStock: 602,
-        erpSynced: 513,
+        total: FALLBACK_PRODUCTS.length,
+        inStock: FALLBACK_PRODUCTS.filter((p) => p.isInStock).length || FALLBACK_PRODUCTS.length,
+        erpSynced: FALLBACK_PRODUCTS.length,
       },
     };
   },

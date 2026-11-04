@@ -207,7 +207,7 @@ export const AdminCategoriesScreen: React.FC = () => {
         <View style={styles.bannerTop}>
           <Text style={styles.bannerTitle}>CATALOG TAXONOMY CONTROL</Text>
           <View style={styles.badgePill}>
-            <Text style={styles.badgeText}>605 SKUs CLUSTERED</Text>
+            <Text style={styles.badgeText}>{categories.length} TAXONOMIES SYNCED</Text>
           </View>
         </View>
         <Text style={styles.bannerSub}>

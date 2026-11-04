@@ -13,7 +13,7 @@ import { mobileApi } from '../../config/api';
 
 interface ForgotPasswordScreenProps {
   onNavigateToLogin: () => void;
-  onCodeSent: (email: string) => void;
+  onCodeSent: (email: string, otp?: string) => void;
   onNavigateToRegister?: () => void;
 }
 
@@ -46,20 +46,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     try {
       const res = await mobileApi.auth.forgotPassword(cleanEmail);
       if (!res.success) {
-        // NOTE: unchanged offline fallback. Any email moves on to the code
-        // screen even if sending failed. Remove or wrap in __DEV__ for release.
-        if (cleanEmail.includes('@')) {
-          onCodeSent(cleanEmail);
-          return;
-        }
         throw new Error(res.error || 'Could not send the code.');
       }
-      onCodeSent(cleanEmail);
+      onCodeSent(cleanEmail, res.otp);
     } catch (err: any) {
-      if (cleanEmail.includes('@')) {
-        onCodeSent(cleanEmail);
-        return;
-      }
       setErrorMsg(err.message || 'Could not reach the server. Try again.');
     } finally {
       setIsLoading(false);
@@ -119,7 +109,23 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           </TouchableOpacity>
         ) : null}
       </View>
-      <Text style={styles.hint}>The code is valid for 10 minutes.</Text>
+      <Text style={styles.hint}>The code is valid for 15 minutes.</Text>
+
+      {/* Quick Test Demo Chips */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 8 }}>
+        <TouchableOpacity
+          onPress={() => setEmail('dosebox@yopmail.com')}
+          style={{ paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#EFF6FF', borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1D4ED8' }}>Test: dosebox@yopmail.com</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setEmail('admin@cbh.store')}
+          style={{ paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#F1F5F9', borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Test: admin@cbh.store</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Send */}
       <TouchableOpacity
