@@ -156,8 +156,8 @@ export async function POST(request: Request) {
 
       setProductsDb(merged);
 
-      // Persist to MySQL as well
-      syncProductsToMySQL(merged, 'merge').catch((err) =>
+      // Persist newly synced ERP items to MySQL as well (upsert only synced batch)
+      syncProductsToMySQL(result.products, 'merge').catch((err) =>
         console.warn('[ERPNext Sync] MySQL sync warning:', err)
       );
 

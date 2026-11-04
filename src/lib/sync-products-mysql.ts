@@ -21,58 +21,68 @@ export async function syncProductsToMySQL(
       }
     }
 
-    const chunkSize = 200;
+    const chunkSize = 50;
     for (let i = 0; i < products.length; i += chunkSize) {
       const chunk = products.slice(i, i + chunkSize);
-      const rows = chunk.map((p) => [
-        p.sku,
-        p.name,
-        p.category || 'Hex Screws',
-        p.subGroup || '',
-        p.subCategory || '',
-        p.standard || 'DIN 933',
-        p.din || '',
-        p.isoStandard || '',
-        p.bsStandard || '',
-        p.asmeStandard || '',
-        p.grade || '8.8',
-        p.finish || 'Black Passivated (BP)',
-        p.threadType || 'Full Thread',
-        p.threadLength || '',
-        p.diameter || 'M10',
-        p.lengthMm || 100,
-        p.pitchMm || 1.5,
-        p.sizeFormatted || `${p.diameter || 'M10'}x${p.lengthMm || 100}`,
-        p.weightPerPcKg || 0.06,
-        p.weightPer1000PcsKg || +(p.weightPerPcKg * 1000).toFixed(3),
-        p.pricePerPiece || 5.0,
-        p.originalPricePerPiece || p.pricePerPiece || 5.0,
-        p.pricePerKg || 90.0,
-        p.originalPricePerKg || p.pricePerKg || 90.0,
-        p.price100Pcs || +(p.pricePerPiece * 100).toFixed(2),
-        p.price1000Pcs || +(p.pricePerPiece * 1000).toFixed(2),
-        p.pcsPerBox || '',
-        p.smallBoxWeightKg || 2.5,
-        p.pcsPerMasterCtn || '',
-        p.masterCtnWeightKg || 20.0,
-        p.moq || '25 KGS',
-        p.leadTimeDays || 10,
-        p.productionDays || 7,
-        p.packingDays || 3,
-        Math.min(Math.max(0, Math.round(Number(p.stockPcs) || 0)), 2000000000),
-        Math.min(Math.max(0, parseFloat(String(p.stockKg || ((Number(p.stockPcs) || 10000) * (p.weightPerPcKg || 0.05)))) || 0), 99999999.99),
-        p.stockUom || 'Nos',
-        p.isInStock !== false ? 1 : 0,
-        p.isSurplus ? 1 : 0,
-        p.surplusDiscountPct || 0,
-        p.brand || 'CBH',
-        p.hsnCode || '73181500',
-        p.imageUrl || '/assets/bolt_zinc.jpg',
-        p.drawingUrl || '',
-        p.gdriveImageUrl || '',
-        p.descriptionHtml || '',
-        p.description || p.name,
-      ]);
+      const rows = chunk.map((p) => {
+        const weight = Number.isFinite(Number(p.weightPerPcKg)) && Number(p.weightPerPcKg) > 0 ? Number(p.weightPerPcKg) : 0.06;
+        const pricePc = Number.isFinite(Number(p.pricePerPiece)) && Number(p.pricePerPiece) > 0 ? Number(p.pricePerPiece) : 5.0;
+        const origPricePc = Number.isFinite(Number(p.originalPricePerPiece)) && Number(p.originalPricePerPiece) > 0 ? Number(p.originalPricePerPiece) : pricePc;
+        const priceKg = Number.isFinite(Number(p.pricePerKg)) && Number(p.pricePerKg) > 0 ? Number(p.pricePerKg) : 90.0;
+        const origPriceKg = Number.isFinite(Number(p.originalPricePerKg)) && Number(p.originalPricePerKg) > 0 ? Number(p.originalPricePerKg) : priceKg;
+        const stockPcs = Math.min(Math.max(0, Math.round(Number(p.stockPcs) || 0)), 2000000000);
+        const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 99999999.99);
+
+        return [
+          p.sku || `SKU-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          p.name || p.sku || 'Industrial Fastener',
+          p.category || 'Hex Screws',
+          p.subGroup || '',
+          p.subCategory || '',
+          p.standard || 'DIN 933',
+          p.din || '',
+          p.isoStandard || '',
+          p.bsStandard || '',
+          p.asmeStandard || '',
+          p.grade || '8.8',
+          p.finish || 'Black Passivated (BP)',
+          p.threadType || 'Full Thread',
+          p.threadLength || '',
+          p.diameter || 'M10',
+          Number(p.lengthMm) || 100,
+          Number(p.pitchMm) || 1.5,
+          p.sizeFormatted || `${p.diameter || 'M10'}x${p.lengthMm || 100}`,
+          weight,
+          Number((weight * 1000).toFixed(3)),
+          pricePc,
+          origPricePc,
+          priceKg,
+          origPriceKg,
+          Number((pricePc * 100).toFixed(2)),
+          Number((pricePc * 1000).toFixed(2)),
+          p.pcsPerBox || '',
+          Number(p.smallBoxWeightKg) || 2.5,
+          p.pcsPerMasterCtn || '',
+          Number(p.masterCtnWeightKg) || 20.0,
+          p.moq || '25 KGS',
+          Number(p.leadTimeDays) || 10,
+          Number(p.productionDays) || 7,
+          Number(p.packingDays) || 3,
+          stockPcs,
+          stockKg,
+          p.stockUom || 'Nos',
+          p.isInStock !== false ? 1 : 0,
+          p.isSurplus ? 1 : 0,
+          Number(p.surplusDiscountPct) || 0,
+          p.brand || 'CBH',
+          p.hsnCode || '73181500',
+          p.imageUrl || '/assets/bolt_zinc.jpg',
+          p.drawingUrl || '',
+          p.gdriveImageUrl || '',
+          p.descriptionHtml || '',
+          p.description || p.name || '',
+        ];
+      });
 
       await query(
         `INSERT INTO products (
