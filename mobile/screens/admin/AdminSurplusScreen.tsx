@@ -13,6 +13,7 @@ import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileSurplusLot } from '../../types';
 
@@ -260,7 +261,13 @@ export const AdminSurplusScreen: React.FC = () => {
       </ScrollView>
 
       {/* Surplus Lot Cards */}
-      {filteredLots.map((lot) => (
+      {isLoading ? (
+        <View style={{ gap: 10 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+        </View>
+      ) : (
+        filteredLots.map((lot) => (
         <MobileCard key={lot.id}>
           <View style={styles.rowBetween}>
             <View style={styles.rowInline}>
@@ -321,7 +328,7 @@ export const AdminSurplusScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </MobileCard>
-      ))}
+      )))
 
       {/* ================================================================ */}
       {/* ADD / EDIT SURPLUS MODAL (100% All Inputs)                        */}

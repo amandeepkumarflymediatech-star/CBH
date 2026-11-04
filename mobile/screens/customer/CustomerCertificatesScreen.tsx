@@ -11,6 +11,7 @@ import {
 import { MobileCard } from '../../components/MobileCard';
 import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileCertificate } from '../../types';
 
@@ -83,9 +84,9 @@ export const CustomerCertificatesScreen: React.FC<CustomerCertificatesScreenProp
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="small" color="#0052CC" />
-          <Text style={styles.loadingText}>Accessing NABL Quality Vault...</Text>
+        <View style={{ gap: 10 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
         </View>
       ) : certificates.length === 0 ? (
         <View style={styles.emptyBox}>

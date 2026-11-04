@@ -15,6 +15,7 @@ import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { NavIcon } from '../../components/NavIcon';
+import { ProductCardSkeleton, OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi, FALLBACK_PRODUCTS } from '../../config/api';
 import { MobileProduct, MobileOrder, MobileSurplusLot, GlobalUnit } from '../../types';
 
@@ -452,9 +453,10 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
         </ScrollView>
 
         {isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color="#0052CC" />
-            <Text style={styles.loadingText}>Loading products…</Text>
+          <View style={{ paddingHorizontal: 14, gap: 10, marginTop: 4 }}>
+            <ProductCardSkeleton />
+            <ProductCardSkeleton />
+            <ProductCardSkeleton />
           </View>
         ) : filteredProducts.length === 0 ? (
           <View style={styles.loadingBox}>

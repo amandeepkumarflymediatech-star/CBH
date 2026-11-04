@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileOrder } from '../../types';
 
@@ -309,9 +310,10 @@ export const AdminOrdersScreen: React.FC = () => {
 
       {/* List */}
       {isLoading ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={styles.loadingText}>Loading orders</Text>
+        <View style={{ gap: 10 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
         </View>
       ) : orders.length === 0 ? (
         <View style={styles.centerBlock}>

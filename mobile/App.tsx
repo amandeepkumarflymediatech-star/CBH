@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  Linking,
 } from 'react-native';
 
 // Config & Auth
@@ -138,6 +139,33 @@ export default function App() {
     }
 
     initSession();
+
+    // Listen for PhonePe Browser return deep links (cbhfasteners://payment-result)
+    const handleDeepLink = (event: { url: string }) => {
+      const url = event.url;
+      if (url && (url.startsWith('cbhfasteners://') || url.startsWith('cbh://'))) {
+        try {
+          const queryString = url.split('?')[1] || '';
+          const params = new URLSearchParams(queryString);
+          const status = params.get('status') || '';
+
+          if (status === 'SUCCESS' || url.toLowerCase().includes('success')) {
+            // Instant cart wipe and redirect to orders screen
+            setCartItems([]);
+            setActiveTab('orders');
+          }
+        } catch (e) {
+          console.warn('[App DeepLink Error]', e);
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => sub.remove();
   }, []);
 
   const handleDismissWelcome = (destination: string = 'home') => {

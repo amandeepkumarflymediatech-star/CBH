@@ -30,17 +30,29 @@ function OrderSuccessContent() {
 
   const deepLink = `cbhfasteners://payment-result?txnId=${encodeURIComponent(txnId)}&orderNumber=${encodeURIComponent(orderNumber)}&amount=${encodeURIComponent(amount)}&status=SUCCESS${erpId ? `&erpId=${encodeURIComponent(erpId)}` : ''}`;
 
+  const isMobileClient =
+    source === 'mobile' ||
+    (typeof navigator !== 'undefined' && /android|iphone|ipad|ipod/i.test(navigator.userAgent));
+
+  const [countdown, setCountdown] = useState(3);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (source === 'mobile' && typeof window !== 'undefined') {
-      // Auto-return to mobile app if opened in mobile browser
-      const timer = setTimeout(() => {
-        window.location.href = deepLink;
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [source, deepLink]);
+    if (!isMobileClient || typeof window === 'undefined') return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          window.location.href = deepLink;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isMobileClient, deepLink]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -82,6 +94,30 @@ function OrderSuccessContent() {
         {isSimulated && !erpId && (
           <div className="mt-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium max-w-md mx-auto">
             ⚡ PhonePe Sandbox Simulation Active: Test payment verified without debiting live bank account.
+          </div>
+        )}
+
+        {isMobileClient && (
+          <div className="mt-5 p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-950 text-center shadow-sm max-w-md mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#5f259f] animate-ping" />
+              <span className="text-xs font-black uppercase tracking-wider text-[#5f259f]">
+                Returning to CBH Fasteners App
+              </span>
+            </div>
+            <p className="text-xs text-purple-900 font-medium mt-1">
+              Payment confirmed! Returning to your mobile app in{' '}
+              <strong className="text-sm font-black text-[#5f259f]">{countdown}s</strong>...
+            </p>
+            <div className="mt-3">
+              <a
+                href={deepLink}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#5f259f] hover:bg-[#4d1d82] text-white text-xs font-black shadow-md transition-all active:scale-95"
+              >
+                <Sparkles size={14} />
+                <span>Return to Mobile App Now</span>
+              </a>
+            </div>
           </div>
         )}
 

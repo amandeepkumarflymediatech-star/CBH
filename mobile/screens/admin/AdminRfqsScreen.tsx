@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileRfq } from '../../types';
 
@@ -243,9 +244,9 @@ export const AdminRfqsScreen: React.FC = () => {
 
       {/* List */}
       {isLoading ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={styles.loadingText}>Loading quotes</Text>
+        <View style={{ gap: 10 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
         </View>
       ) : rfqs.length === 0 ? (
         <View style={styles.centerBlock}>

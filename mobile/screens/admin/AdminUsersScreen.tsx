@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
+import { ListRowSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileUserAccount } from '../../types';
 
@@ -268,9 +269,11 @@ export const AdminUsersScreen: React.FC = () => {
 
       {/* List */}
       {isLoading ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={styles.loadingText}>Loading accounts</Text>
+        <View style={{ gap: 8 }}>
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
         </View>
       ) : users.length === 0 ? (
         <View style={styles.centerBlock}>

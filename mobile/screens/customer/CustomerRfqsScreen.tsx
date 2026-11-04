@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MobileSearch } from '../../components/MobileSearch';
 import { NavIcon } from '../../components/NavIcon';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileRfq, MobileAuthUser } from '../../types';
 
@@ -154,9 +155,10 @@ export const CustomerRfqsScreen: React.FC<CustomerRfqsScreenProps> = ({
       </View>
 
       {isLoading ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={styles.loadingText}>Loading your quotes</Text>
+        <View style={{ gap: 10 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
         </View>
       ) : rfqs.length === 0 ? (
         <View style={styles.centerBlock}>

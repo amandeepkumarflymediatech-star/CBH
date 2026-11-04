@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { NavIcon } from '../../components/NavIcon';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileOrder, MobileRfq, MobileProduct } from '../../types';
 
@@ -435,7 +436,10 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="small" color={ORANGE} style={{ marginVertical: 24 }} />
+        <View style={{ gap: 8 }}>
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+        </View>
       ) : (
         orders.slice(0, 3).map((order) => (
           <TouchableOpacity

@@ -13,6 +13,7 @@ import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
 import { NavIcon } from '../../components/NavIcon';
+import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileOrder, MobileAuthUser } from '../../types';
 

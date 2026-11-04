@@ -14,6 +14,7 @@ import {
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
+import { ProductCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileProduct } from '../../types';
 
@@ -287,9 +288,10 @@ export const AdminProductsScreen: React.FC = () => {
 
       {/* List */}
       {isLoading ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={ORANGE} />
-          <Text style={styles.loadingText}>Loading catalog</Text>
+        <View style={{ gap: 10 }}>
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
         </View>
       ) : products.length === 0 ? (
         <View style={styles.centerBlock}>

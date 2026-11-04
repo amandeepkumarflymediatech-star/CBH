@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { FastenerProductImage } from '../../components/FastenerProductImage';
 import { NavIcon } from '../../components/NavIcon';
+import { ProductCardSkeleton } from '../../components/SkeletonLoader';
 import {
   mobileApi,
   MIN_QTY_PCS,
@@ -457,9 +458,8 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
 
   const renderFooter = () =>
     isLoadingMore ? (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={BLUE} />
-        <Text style={styles.footerText}>Loading more…</Text>
+      <View style={{ paddingHorizontal: 4, paddingVertical: 8 }}>
+        <ProductCardSkeleton />
       </View>
     ) : (
       <View style={{ height: 24 }} />
@@ -645,9 +645,11 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
 
       {/* List */}
       {isLoading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={BLUE} />
-          <Text style={styles.loadingText}>Loading products…</Text>
+        <View style={{ paddingHorizontal: 12, paddingTop: 10 }}>
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
         </View>
       ) : (
         <FlatList
