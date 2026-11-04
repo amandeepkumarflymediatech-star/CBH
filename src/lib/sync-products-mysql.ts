@@ -34,12 +34,12 @@ export async function syncProductsToMySQL(
         const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 99999999.99);
 
         return [
-          p.sku || `SKU-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-          p.name || p.sku || 'Industrial Fastener',
-          p.category || 'Hex Screws',
-          p.subGroup || '',
-          p.subCategory || '',
-          p.standard || 'DIN 933',
+          (p.sku || `SKU-${Date.now()}-${Math.random().toString(36).substring(7)}`).slice(0, 255),
+          (p.name || p.sku || 'Industrial Fastener').slice(0, 500),
+          (p.category || 'Hex Screws').slice(0, 100),
+          (p.subGroup || '').slice(0, 100),
+          (p.subCategory || '').slice(0, 150),
+          (p.standard || 'DIN 933').slice(0, 100),
           p.din || '',
           p.isoStandard || '',
           p.bsStandard || '',

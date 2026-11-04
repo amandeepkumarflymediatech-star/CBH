@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS categories (
 -- 3. Fastener Product Inventory with Dual Pricing, Excel Master Specs & Technical Metallurgy
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    sku VARCHAR(100) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    sku VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(500) NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     
     -- Excel Master Classification & Hierarchy

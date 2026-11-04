@@ -161,6 +161,16 @@ async function main() {
     { name: 'description', def: 'TEXT DEFAULT NULL' },
   ];
 
+  // Ensure VARCHAR columns are wide enough for long OEM fastener descriptions and ERP codes
+  try {
+    console.log('  + Expanding sku to VARCHAR(255) and name to VARCHAR(500)...');
+    await connection.query('ALTER TABLE `products` MODIFY COLUMN `sku` VARCHAR(255) NOT NULL');
+    await connection.query('ALTER TABLE `products` MODIFY COLUMN `name` VARCHAR(500) NOT NULL');
+    console.log('✓ Successfully widened `sku` and `name` columns.');
+  } catch (err) {
+    console.warn('  ⚠️ Could not modify column widths:', err.message);
+  }
+
   let addedCount = 0;
   for (const col of productColumns) {
     const added = await safeAddColumn(connection, targetDb, 'products', col.name, col.def);
