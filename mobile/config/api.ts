@@ -428,7 +428,7 @@ export const productsApi = {
       stats: {
         total: FALLBACK_PRODUCTS.length,
         inStock: FALLBACK_PRODUCTS.filter((p) => p.isInStock).length || FALLBACK_PRODUCTS.length,
-        erpSynced: FALLBACK_PRODUCTS.length,
+        erpSynced: 0,
       },
     };
   },
@@ -943,35 +943,23 @@ export const surplusApi = {
 // 8. ERPNEXT INTEGRATION APIS
 // ============================================================================
 export const erpnextApi = {
-  getStatus: async () => {
-    const res = await request(API_ENDPOINTS.ERPNEXT.STATUS);
-    if (!res.success) {
-      return {
-        success: true,
-        status: 'CONNECTED',
-        host: 'erp.cbhfasteners.com',
-        latencyMs: 42,
-        lastSynced: new Date().toISOString(),
-        pendingSalesOrders: 2,
-        pendingItems: 0,
-      };
-    }
-    return res;
-  },
+  getStatus: async () => ({
+    success: true,
+    status: 'DISABLED',
+    enabled: false,
+    message: 'ERPNext integration is disabled.',
+  }),
 
-  triggerSync: async (doctype: 'item' | 'order' | 'customer' | 'all' = 'all') => {
-    return request(API_ENDPOINTS.ERPNEXT.SYNC, {
-      method: 'POST',
-      body: JSON.stringify({ doctype }),
-    });
-  },
+  triggerSync: async () => ({
+    success: true,
+    count: 0,
+    message: 'ERPNext sync is disabled.',
+  }),
 
-  saveConfig: async (config: any) => {
-    return request(API_ENDPOINTS.ERPNEXT.SYNC, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'save_config', config }),
-    });
-  },
+  saveConfig: async () => ({
+    success: true,
+    message: 'ERPNext integration is disabled.',
+  }),
 };
 
 // ============================================================================

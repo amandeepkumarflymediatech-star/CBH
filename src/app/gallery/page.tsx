@@ -91,7 +91,7 @@ const GALLERY_DATA: GalleryItem[] = [
     location: 'National Central Depot, GT Road Ludhiana',
     date: '2,00,000+ SKUs In Stock',
     description: 'High-bay racking depot housing 2 Lacs+ Fastener SKUs in designated barcoded bin locations for rapid same-day dispatches via TCI Express, Safexpress, and V-Trans fleet.',
-    specs: ['Over 10,000 MT active inventory holding', 'Dual weighbridge digital tally integration', 'Real-time ERPNext barcode picking system']
+    specs: ['Over 10,000 MT active inventory holding', 'Dual weighbridge digital tally integration', 'Real-time barcode picking and automated dispatch']
   },
   {
     id: 'gal-manufacturing-1',

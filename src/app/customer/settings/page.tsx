@@ -7,14 +7,12 @@ import {
   ShieldCheck,
   CreditCard,
   Bell,
-  Lock,
   Mail,
   Phone,
-  MapPin,
   Save,
   CheckCircle2,
   LogOut,
-  ArrowLeft,
+  Settings,
   Loader2
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, AuthUser } from '@/lib/auth';
@@ -107,208 +105,223 @@ export default function CustomerSettingsPage() {
 
     setIsSaving(false);
     setSavedSuccess(true);
-    showToast('Company profile & notification preferences updated successfully!', 'success');
-    setTimeout(() => setSavedSuccess(false), 3500);
+    showToast('Company profile & preferences updated!', 'success');
+    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   const creditLimitFormatted = Number(currentUser?.creditLimit || 2500000).toLocaleString('en-IN');
 
   return (
-    <div className="max-w-[1000px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/customer"
-              className="text-xs font-bold text-slate-500 hover:text-[#5B4DF6] flex items-center gap-1 no-underline"
-            >
-              <ArrowLeft size={13} />
-              <span>Back to Overview</span>
-            </Link>
+    <div className="space-y-4 max-w-[1100px] mx-auto">
+      {/* Sleek Single-Viewport Top Ops Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <Settings size={18} />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">
-            Enterprise Account Settings
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage your company procurement credentials, delivery site contacts, and billing notifications.
-          </p>
+          <div>
+            <h1 className="text-sm sm:text-base font-black text-[#0F172A] leading-tight flex items-center gap-2">
+              <span>Enterprise Account Settings</span>
+              <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                Active Client
+              </span>
+            </h1>
+            <p className="text-[11px] text-slate-500 hidden sm:block">
+              Corporate credentials, delivery notification channels, and revolving credit ledger alerts
+            </p>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => logout('/')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
-        >
-          <LogOut size={13} />
-          <span>Sign Out</span>
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={() => logout('/')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-colors cursor-pointer"
+          >
+            <LogOut size={13} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {savedSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
-          <CheckCircle2 size={16} className="text-emerald-600" />
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-xl flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in">
+          <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
           <span>Company profile and notification preferences successfully updated.</span>
         </div>
       )}
 
-      {/* Main Settings Form Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Section: Company Profile */}
-          <div>
-            <h2 className="text-sm font-bold text-[#0F172A] flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-              <Building2 size={16} className="text-[#5B4DF6]" />
+      {/* Main Settings Form */}
+      <form onSubmit={handleSave} className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left Column (7 Cols): Company Info */}
+          <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3">
+            <h2 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-100">
+              <Building2 size={14} className="text-[#5B4DF6]" />
               <span>Company Information</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company Registered Name</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Company Registered Name</label>
                 <input
                   type="text"
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">GSTIN (Verified Tax Identifier)</label>
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">GSTIN</label>
                 <div className="relative">
                   <input
                     type="text"
                     value={gstin}
                     onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-mono focus:outline-none focus:border-[#5B4DF6]"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-mono focus:outline-none focus:border-[#5B4DF6]"
                   />
-                  <ShieldCheck size={16} className="text-emerald-600 absolute right-3 top-1/2 -translate-y-1/2" />
+                  <ShieldCheck size={14} className="text-emerald-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Primary Procurement Officer</label>
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Credit Facility</label>
+                <div className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-bold flex items-center justify-between">
+                  <span>₹{creditLimitFormatted}</span>
+                  <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded font-extrabold">
+                    NET-30
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Procurement Officer</label>
                 <input
                   type="text"
                   required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Official Work Email</label>
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Official Work Email</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Phone / WhatsApp Alerts</label>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Phone / WhatsApp</label>
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] font-mono focus:outline-none focus:border-[#5B4DF6]"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] font-mono focus:outline-none focus:border-[#5B4DF6]"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Sanctioned Credit Facility</label>
-                <div className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] bg-slate-50 font-bold flex items-center justify-between">
-                  <span>₹{creditLimitFormatted} (30 Days Revolving)</span>
-                  <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-extrabold">
-                    ACTIVE FACILITY
-                  </span>
-                </div>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Primary Registered Commercial Address</label>
-                <input
-                  type="text"
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Commercial Address</label>
+                <textarea
+                  rows={2}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6]"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#5B4DF6] resize-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Section: Notification Preferences */}
-          <div>
-            <h2 className="text-sm font-bold text-[#0F172A] flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-              <Bell size={16} className="text-[#5B4DF6]" />
-              <span>Real-Time Logistics &amp; RFQ Alerts</span>
-            </h2>
+          {/* Right Column (5 Cols): Real-time Logistics & Alerts */}
+          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3 flex flex-col justify-between">
+            <div>
+              <h2 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                <Bell size={14} className="text-[#5B4DF6]" />
+                <span>Logistics &amp; RFQ Alerts</span>
+              </h2>
 
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50 cursor-pointer">
-                <div>
-                  <div className="text-xs font-bold text-[#0F172A]">Fleet Dispatch &amp; Road LR Notifications</div>
-                  <div className="text-[11px] text-slate-500">Receive instant SMS and email when transport truck departs factory</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={smsDispatchAlerts}
-                  onChange={(e) => setSmsDispatchAlerts(e.target.checked)}
-                  className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
-                />
-              </label>
+              <div className="space-y-2.5">
+                <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <div className="pr-3">
+                    <div className="text-xs font-bold text-[#0F172A]">Fleet Dispatch &amp; Road LR</div>
+                    <div className="text-[10px] text-slate-500">Instant SMS &amp; email when transporter leaves plant</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={smsDispatchAlerts}
+                    onChange={(e) => setSmsDispatchAlerts(e.target.checked)}
+                    className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
+                  />
+                </label>
 
-              <label className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50 cursor-pointer">
-                <div>
-                  <div className="text-xs font-bold text-[#0F172A]">Formal RFQ Quotations Ready</div>
-                  <div className="text-[11px] text-slate-500">Get notified when CBH pricing team formalizes custom BOM quote</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={rfqQuotations}
-                  onChange={(e) => setRfqQuotations(e.target.checked)}
-                  className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
-                />
-              </label>
+                <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <div className="pr-3">
+                    <div className="text-xs font-bold text-[#0F172A]">Formal RFQ Quotations</div>
+                    <div className="text-[10px] text-slate-500">Alerts when CBH engineering formalizes custom quote</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={rfqQuotations}
+                    onChange={(e) => setRfqQuotations(e.target.checked)}
+                    className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
+                  />
+                </label>
 
-              <label className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50 cursor-pointer">
-                <div>
-                  <div className="text-xs font-bold text-[#0F172A]">Credit Facility Utilization Warnings</div>
-                  <div className="text-[11px] text-slate-500">Alerts when credit utilization exceeds 70% threshold</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={creditAlerts}
-                  onChange={(e) => setCreditAlerts(e.target.checked)}
-                  className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
-                />
-              </label>
+                <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <div className="pr-3">
+                    <div className="text-xs font-bold text-[#0F172A]">Credit Facility Utilization</div>
+                    <div className="text-[10px] text-slate-500">Alerts when credit utilization crosses 75% limit</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={creditAlerts}
+                    onChange={(e) => setCreditAlerts(e.target.checked)}
+                    className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <div className="pr-3">
+                    <div className="text-xs font-bold text-[#0F172A]">Email Invoices &amp; MTCs</div>
+                    <div className="text-[10px] text-slate-500">Send signed PDF certificates on order generation</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={emailAlerts}
+                    onChange={(e) => setEmailAlerts(e.target.checked)}
+                    className="w-4 h-4 accent-[#5B4DF6] rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <Link
+                href="/customer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors no-underline"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-[#5B4DF6] hover:bg-[#4D3FF0] text-white shadow-xs transition-all cursor-pointer"
+              >
+                {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                <span>Save Settings</span>
+              </button>
             </div>
           </div>
-
-          {/* Submit Button */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <Link
-              href="/customer"
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors no-underline"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#5B4DF6] hover:bg-[#4D3FF0] text-white shadow-sm transition-all cursor-pointer"
-            >
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              <span>Save Changes</span>
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }

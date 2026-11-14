@@ -11,7 +11,6 @@ async function handleRedirect(req: NextRequest) {
   let orderNumber = '';
   let amount = 0;
   let status = 'PENDING';
-  let erpnextOrderId = '';
   let existing: any = null;
 
   if (req.method === 'GET') {
@@ -56,46 +55,12 @@ async function handleRedirect(req: NextRequest) {
       console.warn('[PhonePe Redirect] Status check error:', err);
     }
 
-    // Update transaction record and push Sales Order to ERPNext if SUCCESS
     existing = getPhonePeTransactions().find((t) => t.transactionId === transactionId);
-    erpnextOrderId = existing?.erpnextSalesOrderId || '';
-
-    if (status === 'SUCCESS' && existing && !erpnextOrderId) {
-      try {
-        const { pushSalesOrderToErpNext } = await import('@/lib/erpnext');
-        const erpRes = await pushSalesOrderToErpNext({
-          orderNumber: orderNumber || existing.orderNumber,
-          customerName: existing.customerName || 'Procurement In-Charge',
-          companyName: existing.companyName,
-          email: existing.customerEmail,
-          phone: existing.customerPhone,
-          shippingAddress: existing.shippingAddress,
-          totalAmount: amount || existing.amount,
-          items: existing.items || [
-            {
-              sku: 'CBH-125A-M10-HDG',
-              name: 'Plain Flat Washer DIN 125A M10',
-              quantity: 100,
-              rate: 14.5,
-            },
-          ],
-          submitOrder: true,
-          deductStockImmediately: true,
-        });
-
-        if (erpRes.success && erpRes.erpnextSalesOrderId) {
-          erpnextOrderId = erpRes.erpnextSalesOrderId;
-        }
-      } catch (err) {
-        console.warn('[PhonePe Redirect] ERPNext Sales Order push notice:', err);
-      }
-    }
 
     if (existing) {
       savePhonePeTransaction({
         ...existing,
         status: status as any,
-        erpnextSalesOrderId: erpnextOrderId || existing.erpnextSalesOrderId,
         updatedAt: new Date().toISOString(),
       });
       if (!orderNumber) orderNumber = existing.orderNumber;
@@ -121,7 +86,6 @@ async function handleRedirect(req: NextRequest) {
             totalWeightKg: calcWeight || 25.0,
             status: 'CONFIRMED',
             paymentStatus: 'PAID',
-            erpnextSalesOrderId: erpnextOrderId || existing.erpnextSalesOrderId,
             items: existing.items,
           });
         } catch (dbErr) {
@@ -136,7 +100,6 @@ async function handleRedirect(req: NextRequest) {
   if (orderNumber) successUrl.searchParams.set('orderNumber', orderNumber);
   if (amount) successUrl.searchParams.set('amount', String(amount));
   if (status) successUrl.searchParams.set('status', status);
-  if (erpnextOrderId) successUrl.searchParams.set('erpId', erpnextOrderId);
 
   const sourceParam = req.nextUrl.searchParams.get('source') || (existing?.notes as any)?.source;
   if (sourceParam) successUrl.searchParams.set('source', sourceParam);

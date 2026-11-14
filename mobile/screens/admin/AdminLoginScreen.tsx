@@ -91,7 +91,7 @@ export const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="admin@cbh.store"
+          placeholder="Please Enter Email ID"
           placeholderTextColor="#94A3B8"
           autoCapitalize="none"
           keyboardType="email-address"

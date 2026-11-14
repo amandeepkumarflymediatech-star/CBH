@@ -6,25 +6,31 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
+
+const GRAPHITE = '#0F172A';
+const STEEL = '#475569';
+const LIGHT_STEEL = '#94A3B8';
+const WHITE = '#FFFFFF';
+const BLUE = '#0052CC';
+const GREEN = '#16A34A';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export const AdminPaymentsScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'config' | 'ledger'>('config');
 
-  // PhonePe Gateway Configuration (100% of Web inputs)
+  // PhonePe Gateway Configuration
   const [merchantId, setMerchantId] = useState('PGTESTPAYUAT');
   const [saltKey, setSaltKey] = useState('099eb0cd-02cf-4e2a-8aca-3e6c6aff0399');
   const [saltIndex, setSaltIndex] = useState('1');
   const [environment, setEnvironment] = useState<'SANDBOX' | 'PRODUCTION'>('SANDBOX');
-  const [enableSimulator, setEnableSimulator] = useState(true);
   const [callbackUrl, setCallbackUrl] = useState('https://cbh.store/api/payment/phonepe/callback');
   const [redirectUrl, setRedirectUrl] = useState('http://localhost:3000/order-success');
-  const [autoConfirmOrders, setAutoConfirmOrders] = useState(true);
   const [showSecret, setShowSecret] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -35,9 +41,9 @@ export const AdminPaymentsScreen: React.FC = () => {
       orderNumber: 'CBH-ORD-8821',
       client: 'Apex Heavy Infrastructure Ltd.',
       amount: 142850,
-      mode: 'PHONEPE_UPI',
+      mode: 'PhonePe UPI',
       status: 'CAPTURED',
-      date: '2026-10-28 16:30',
+      date: '28 Oct 16:30',
       utr: 'UTR889920192831',
     },
     {
@@ -45,9 +51,9 @@ export const AdminPaymentsScreen: React.FC = () => {
       orderNumber: 'CBH-ORD-8819',
       client: 'L&T Power Transmission Div',
       amount: 268400,
-      mode: 'NEFT_RTGS',
+      mode: 'NEFT / RTGS Wire',
       status: 'VERIFIED',
-      date: '2026-10-27 11:15',
+      date: '27 Oct 11:15',
       utr: 'HDFCR9928172910',
     },
     {
@@ -55,9 +61,9 @@ export const AdminPaymentsScreen: React.FC = () => {
       orderNumber: 'CBH-ORD-8815',
       client: 'Tata Projects Industrial Division',
       amount: 98500,
-      mode: 'PHONEPE_CARDS',
+      mode: 'PhonePe Cards',
       status: 'CAPTURED',
-      date: '2026-10-26 14:20',
+      date: '26 Oct 14:20',
       utr: 'AXISPG2026001928',
     },
   ];
@@ -71,8 +77,8 @@ export const AdminPaymentsScreen: React.FC = () => {
     setIsTesting(true);
     setTimeout(() => {
       setIsTesting(false);
-      showToast('PhonePe PG UAT Sandbox handshake verified (SHA256 checksum matched)!');
-    }, 800);
+      showToast('PhonePe PG Sandbox Handshake Verified (SHA256 Match)!');
+    }, 600);
   };
 
   const handleSaveConfig = () => {
@@ -90,37 +96,39 @@ export const AdminPaymentsScreen: React.FC = () => {
   });
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Top Settlement Summary Card */}
-      <View style={styles.revenueCard}>
-        <Text style={styles.revenueLabel}>Gross Settled Dispatches (October 2026)</Text>
-        <Text style={styles.revenueAmount}>₹5,09,750.00</Text>
-        <View style={styles.revenueFooter}>
-          <Text style={styles.footerNote}>PhonePe PG: ACTIVE ({environment})</Text>
-          <Text style={styles.footerNote}>T+1 Settlement Cycle</Text>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      {/* Top Settlement Summary - Compact Header */}
+      <View style={styles.topHeader}>
+        <View style={styles.settleRow}>
+          <View>
+            <Text style={styles.settleLabel}>Gross Settled Dispatches</Text>
+            <Text style={styles.settleAmount}>₹5,09,750.00</Text>
+          </View>
+          <View style={styles.gatewayBadge}>
+            <View style={styles.onlineDot} />
+            <Text style={styles.gatewayBadgeText}>PhonePe {environment}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Mode Switcher */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          onPress={() => setActiveTab('config')}
-          style={[styles.tabBtn, activeTab === 'config' && styles.tabBtnActive]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.tabText, activeTab === 'config' && styles.tabTextActive]}>
-            Gateway Configuration
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('ledger')}
-          style={[styles.tabBtn, activeTab === 'ledger' && styles.tabBtnActive]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.tabText, activeTab === 'ledger' && styles.tabTextActive]}>
-            Transaction Ledger
-          </Text>
-        </TouchableOpacity>
+        {/* Segmented Mode Switcher */}
+        <View style={styles.segmentedBar}>
+          <TouchableOpacity
+            onPress={() => setActiveTab('config')}
+            style={[styles.segmentBtn, activeTab === 'config' && styles.segmentBtnActive]}
+          >
+            <Text style={[styles.segmentText, activeTab === 'config' && styles.segmentTextActive]}>
+              Gateway Parameters
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab('ledger')}
+            style={[styles.segmentBtn, activeTab === 'ledger' && styles.segmentBtnActive]}
+          >
+            <Text style={[styles.segmentText, activeTab === 'ledger' && styles.segmentTextActive]}>
+              Transaction Ledger ({transactions.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Toast Feedback */}
@@ -130,280 +138,287 @@ export const AdminPaymentsScreen: React.FC = () => {
         </View>
       ) : null}
 
-      {/* VIEW 1: GATEWAY CONFIGURATION */}
-      {activeTab === 'config' ? (
-        <MobileCard>
-          <View style={styles.rowBetween}>
-            <Text style={styles.configHeading}>PhonePe Business PG Parameters</Text>
-            <TouchableOpacity
-              onPress={handleTestHandshake}
-              disabled={isTesting}
-              style={styles.testBtn}
-            >
-              <Text style={styles.testBtnText}>
-                {isTesting ? 'Testing...' : 'Test Handshake'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.fieldLabel}>Merchant ID *</Text>
-          <TextInput
-            style={styles.input}
-            value={merchantId}
-            onChangeText={setMerchantId}
-            placeholder="PGTESTPAYUAT"
-            autoCapitalize="none"
-          />
-
-          <View style={styles.rowBetween}>
-            <Text style={styles.fieldLabel}>Salt Secret Key *</Text>
-            <TouchableOpacity onPress={() => setShowSecret(!showSecret)}>
-              <Text style={styles.eyeToggleText}>{showSecret ? 'Hide Key' : 'Show Key'}</Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.input}
-            value={saltKey}
-            onChangeText={setSaltKey}
-            secureTextEntry={!showSecret}
-            placeholder="••••••••••••••••"
-            autoCapitalize="none"
-          />
-
-          <View style={styles.formSplit}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Key Index</Text>
-              <TextInput
-                style={styles.input}
-                value={saltIndex}
-                onChangeText={setSaltIndex}
-                placeholder="1"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Environment Mode</Text>
+      {/* Content Area */}
+      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        {activeTab === 'config' ? (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>PhonePe Business PG Setup</Text>
               <TouchableOpacity
-                onPress={() =>
-                  setEnvironment(environment === 'SANDBOX' ? 'PRODUCTION' : 'SANDBOX')
-                }
-                style={[
-                  styles.envBtn,
-                  environment === 'PRODUCTION' ? styles.envProd : styles.envSandbox,
-                ]}
+                onPress={handleTestHandshake}
+                disabled={isTesting}
+                style={styles.testBtn}
               >
-                <Text style={styles.envBtnText}>{environment}</Text>
+                <Text style={styles.testBtnText}>
+                  {isTesting ? 'Testing...' : 'Test Connection'}
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
 
-          <Text style={styles.fieldLabel}>Default Webhook S2S Callback URL</Text>
-          <TextInput
-            style={styles.input}
-            value={callbackUrl}
-            onChangeText={setCallbackUrl}
-            placeholder="https://..."
-            autoCapitalize="none"
-          />
+            <Text style={styles.inputLabel}>Merchant ID *</Text>
+            <TextInput
+              style={[styles.input, { fontFamily: MONO }]}
+              value={merchantId}
+              onChangeText={setMerchantId}
+              autoCapitalize="none"
+            />
 
-          <Text style={styles.fieldLabel}>User Return / Success Redirect URL</Text>
-          <TextInput
-            style={styles.input}
-            value={redirectUrl}
-            onChangeText={setRedirectUrl}
-            placeholder="http://..."
-            autoCapitalize="none"
-          />
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Salt Secret Key *</Text>
+              <TouchableOpacity onPress={() => setShowSecret(!showSecret)}>
+                <Text style={styles.toggleText}>{showSecret ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={[styles.input, { fontFamily: MONO }]}
+              value={saltKey}
+              onChangeText={setSaltKey}
+              secureTextEntry={!showSecret}
+              autoCapitalize="none"
+            />
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Auto-Confirm &amp; Generate Dispatch on Success</Text>
-            <TouchableOpacity
-              onPress={() => setAutoConfirmOrders(!autoConfirmOrders)}
-              style={[styles.toggleBtn, autoConfirmOrders && styles.toggleBtnActive]}
-            >
-              <Text style={styles.toggleText}>{autoConfirmOrders ? 'ENABLED' : 'MANUAL'}</Text>
+            <View style={styles.twoCols}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Key Index</Text>
+                <TextInput
+                  style={styles.input}
+                  value={saltIndex}
+                  onChangeText={setSaltIndex}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Environment</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    setEnvironment(environment === 'SANDBOX' ? 'PRODUCTION' : 'SANDBOX')
+                  }
+                  style={[
+                    styles.envBtn,
+                    environment === 'PRODUCTION' ? styles.envProd : styles.envSandbox,
+                  ]}
+                >
+                  <Text style={styles.envBtnText}>{environment}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>S2S Webhook Callback URL</Text>
+            <TextInput
+              style={[styles.input, { fontSize: 11 }]}
+              value={callbackUrl}
+              onChangeText={setCallbackUrl}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>User Redirect URL</Text>
+            <TextInput
+              style={[styles.input, { fontSize: 11 }]}
+              value={redirectUrl}
+              onChangeText={setRedirectUrl}
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveConfig} activeOpacity={0.88}>
+              <Text style={styles.saveBtnText}>Save Gateway Parameters</Text>
             </TouchableOpacity>
           </View>
+        ) : (
+          <View>
+            <View style={{ marginBottom: 10 }}>
+              <MobileSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search UTR, Order # or Client..."
+              />
+            </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Developer Sandbox Mock Simulator</Text>
-            <TouchableOpacity
-              onPress={() => setEnableSimulator(!enableSimulator)}
-              style={[styles.toggleBtn, enableSimulator && styles.toggleBtnActive]}
-            >
-              <Text style={styles.toggleText}>{enableSimulator ? 'ACTIVE' : 'OFF'}</Text>
-            </TouchableOpacity>
+            {filteredTxns.map((t) => (
+              <View key={t.id} style={styles.txnCard}>
+                <View style={styles.txnTopRow}>
+                  <View style={styles.txnIdGroup}>
+                    <Text style={styles.txnId}>{t.id}</Text>
+                    <Text style={styles.txnOrderNum}>{t.orderNumber}</Text>
+                  </View>
+                  <View style={styles.capturedBadge}>
+                    <Text style={styles.capturedBadgeText}>{t.status}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.txnMidRow}>
+                  <Text style={styles.txnClient} numberOfLines={1}>
+                    {t.client}
+                  </Text>
+                  <Text style={styles.txnAmount}>{inr(t.amount)}</Text>
+                </View>
+
+                <View style={styles.txnBottomRow}>
+                  <Text style={styles.txnMeta}>
+                    {t.mode} • {t.date}
+                  </Text>
+                  <Text style={styles.txnUtr}>UTR: {t.utr}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-
-          <TouchableOpacity onPress={handleSaveConfig} style={styles.saveBtn} activeOpacity={0.8}>
-            <Text style={styles.saveBtnText}>Save Gateway Configuration</Text>
-          </TouchableOpacity>
-        </MobileCard>
-      ) : (
-        /* VIEW 2: TRANSACTION LEDGER */
-        <View style={{ gap: 10 }}>
-          <MobileSearch
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search TXN ID, UTR, Client..."
-          />
-
-          {filteredTxns.map((txn) => (
-            <MobileCard key={txn.id}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.txnId}>{txn.id}</Text>
-                <MobileBadge label={txn.status} variant="success" size="sm" />
-              </View>
-
-              <Text style={styles.clientName}>{txn.client}</Text>
-              <Text style={styles.modeText}>
-                Order: {txn.orderNumber} • Mode: {txn.mode}
-              </Text>
-              <Text style={styles.utrText}>Bank UTR: {txn.utr}</Text>
-
-              <View style={styles.divider} />
-
-              <View style={styles.rowBetween}>
-                <Text style={styles.dateText}>{txn.date}</Text>
-                <Text style={styles.amountText}>₹{txn.amount.toLocaleString('en-IN')}</Text>
-              </View>
-            </MobileCard>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
+  topHeader: {
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
-  revenueCard: {
-    backgroundColor: '#0052CC',
-    borderRadius: 14,
-    padding: 16,
-    elevation: 3,
-  },
-  revenueLabel: {
-    fontSize: 10,
-    color: '#BFDBFE',
-    textTransform: 'uppercase',
-    fontWeight: '700',
-  },
-  revenueAmount: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginVertical: 4,
-  },
-  revenueFooter: {
+  settleRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    paddingTop: 8,
-    marginTop: 6,
+    marginBottom: 8,
   },
-  footerNote: {
+  settleLabel: {
     fontSize: 10,
-    color: '#DBEAFE',
     fontWeight: '600',
+    color: STEEL,
+    textTransform: 'uppercase',
   },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
-    borderRadius: 10,
-    padding: 3,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabBtnActive: {
-    backgroundColor: '#FFFFFF',
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  tabTextActive: {
-    color: '#0052CC',
+  settleAmount: {
+    fontSize: 16,
     fontWeight: '800',
+    fontFamily: MONO,
+    color: GRAPHITE,
   },
-  toast: {
-    backgroundColor: '#ECFDF5',
+  gatewayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 8,
-    padding: 10,
+    borderColor: '#E2E8F0',
   },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+  },
+  gatewayBadgeText: {
+    fontSize: 10,
     fontWeight: '700',
+    color: STEEL,
   },
-  rowBetween: {
+  segmentedBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
     alignItems: 'center',
   },
-  configHeading: {
-    fontSize: 13,
+  segmentBtnActive: {
+    backgroundColor: WHITE,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  segmentText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  segmentTextActive: {
+    color: BLUE,
     fontWeight: '800',
-    color: '#0F172A',
+  },
+  contentContainer: {
+    padding: 12,
+    paddingBottom: 24,
+  },
+  card: {
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 8,
+    marginBottom: 10,
+  },
+  cardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: GRAPHITE,
   },
   testBtn: {
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
   testBtnText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#0052CC',
+    color: BLUE,
   },
-  fieldLabel: {
+  inputLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
-    marginTop: 8,
+    color: STEEL,
     marginBottom: 4,
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  toggleText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: BLUE,
+  },
   input: {
+    height: 38,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 6,
+    paddingHorizontal: 10,
     fontSize: 12,
-    color: '#0F172A',
+    color: GRAPHITE,
+    marginBottom: 8,
   },
-  eyeToggleText: {
-    fontSize: 10,
-    color: '#0052CC',
-    fontWeight: '700',
-  },
-  formSplit: {
+  twoCols: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   envBtn: {
-    paddingVertical: 8,
-    borderRadius: 8,
+    height: 38,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
   },
   envSandbox: {
     backgroundColor: '#FEF3C7',
@@ -417,85 +432,111 @@ const styles = StyleSheet.create({
   },
   envBtnText: {
     fontSize: 11,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  switchLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#334155',
-    flex: 1,
-    marginRight: 10,
-  },
-  toggleBtn: {
-    backgroundColor: '#CBD5E1',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  toggleBtnActive: {
-    backgroundColor: '#10B981',
-  },
-  toggleText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
+    color: GRAPHITE,
   },
   saveBtn: {
-    backgroundColor: '#0F172A',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: BLUE,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: WHITE,
     fontSize: 12,
     fontWeight: '800',
   },
+  txnCard: {
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  txnTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  txnIdGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   txnId: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0052CC',
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: BLUE,
   },
-  clientName: {
-    fontSize: 13,
+  txnOrderNum: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: MONO,
+    color: STEEL,
+  },
+  capturedBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  capturedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: GREEN,
+  },
+  txnMidRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  txnClient: {
+    fontSize: 12,
     fontWeight: '700',
-    color: '#0F172A',
-    marginTop: 4,
+    color: GRAPHITE,
+    flex: 1,
+    paddingRight: 8,
   },
-  modeText: {
+  txnAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: GREEN,
+  },
+  txnBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 4,
+  },
+  txnMeta: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
+  },
+  txnUtr: {
+    fontSize: 10,
+    fontFamily: MONO,
+    color: STEEL,
+  },
+  toast: {
+    backgroundColor: GRAPHITE,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginTop: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: WHITE,
     fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  utrText: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#475569',
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  dateText: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  amountText: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: '700',
   },
 });

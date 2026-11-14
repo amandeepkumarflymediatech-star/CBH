@@ -119,7 +119,7 @@ async function getCachedStats() {
         COUNT(*) as total,
         SUM(CASE WHEN stock_pcs > 0 THEN 1 ELSE 0 END) as in_stock,
         SUM(CASE WHEN is_surplus = 1 THEN 1 ELSE 0 END) as surplus_count,
-        SUM(CASE WHEN image_url LIKE '%frappe.cloud%' THEN 1 ELSE 0 END) as erp_synced,
+        0 as erp_synced,
         SUM(CASE WHEN UPPER(sub_group) LIKE '%SCREW%' OR UPPER(name) LIKE '%SCREW%' THEN 1 ELSE 0 END) as screws_count,
         SUM(CASE WHEN UPPER(sub_group) LIKE '%BOLT%' OR UPPER(name) LIKE '%BOLT%' THEN 1 ELSE 0 END) as bolts_count
       FROM products
@@ -402,7 +402,7 @@ export async function GET(request: Request) {
       total: productsDb.length,
       inStock: productsDb.filter((p) => p.stockPcs > 0).length,
       surplusCount: productsDb.filter((p) => p.isSurplus).length,
-      erpSynced: productsDb.filter((p) => p.imageUrl && p.imageUrl.includes('frappe.cloud')).length,
+      erpSynced: 0,
       screwsCount: productsDb.filter((p) => (p.subGroup || '').toUpperCase().includes('SCREW')).length,
       boltsCount: productsDb.filter((p) => (p.subGroup || '').toUpperCase().includes('BOLT')).length,
     },

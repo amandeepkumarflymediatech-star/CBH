@@ -31,7 +31,6 @@ export async function POST(req: NextRequest) {
       stockPcs: body.stockPcs !== undefined ? Number(body.stockPcs) : 5000,
       isSurplus: Boolean(body.isSurplus),
       surplusDiscountPct: Number(body.surplusDiscountPct) || 0,
-      syncToErpNext: Boolean(body.syncToErpNext),
       adminNotes: body.adminNotes,
       moq: body.moq,
       leadTimeDays: body.leadTimeDays ? Number(body.leadTimeDays) : undefined,

@@ -10,14 +10,8 @@ import {
   ArrowRight,
   CheckCircle2,
   ShieldAlert,
-  KeyRound,
-  Terminal,
-  Activity,
-  Cpu,
-  Zap,
   Eye,
   EyeOff,
-  Server,
   ArrowLeft
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, DEMO_ADMIN, AuthUser } from '@/lib/auth';
@@ -29,7 +23,6 @@ export default function AdminPortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [stationKey, setStationKey] = useState(DEFAULT_ADMIN_SECURITY_KEY);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,13 +35,6 @@ export default function AdminPortalLoginPage() {
     }
   }, [router]);
 
-  const fillDemoAdmin = () => {
-    setEmail('admin@cbh.store');
-    setPassword('Admin@Fastener2025');
-    setStationKey(DEFAULT_ADMIN_SECURITY_KEY);
-    setErrorMsg('');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -59,7 +45,12 @@ export default function AdminPortalLoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'admin', securityKey: stationKey }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          role: 'admin',
+          securityKey: DEFAULT_ADMIN_SECURITY_KEY,
+        }),
       });
 
       const data = await res.json();
@@ -72,517 +63,151 @@ export default function AdminPortalLoginPage() {
       const authUser: AuthUser = data.user || DEMO_ADMIN;
       setStoredUser(authUser, data.token);
 
-      setSuccessMsg(`Operator clearance verified for ${authUser.fullName}! Initializing control matrix...`);
+      setSuccessMsg('Authentication successful. Redirecting to admin console...');
       setTimeout(() => {
         router.push('/admin');
-      }, 700);
+      }, 500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Access denied. Security protocol triggered.');
+      setErrorMsg(err.message || 'Access denied. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <main style={{
-      background: 'linear-gradient(180deg, #F8FAFC 0%, #EEF2F6 100%)',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      color: '#0F172A',
-      fontFamily: 'var(--font-sans)'
-    }}>
-      {/* Blueprint Grid Background Pattern */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundImage: `
-          radial-gradient(#CBD5E1 1px, transparent 1px)
-        `,
-        backgroundSize: '24px 24px',
-        opacity: 0.6,
-        pointerEvents: 'none'
-      }} />
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      {/* Top Header with Company Logo on the Left */}
+      <header className="w-full bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+        <Link
+          href="/"
+          className="flex items-center gap-3 transition-opacity hover:opacity-90 no-underline"
+          title="CBH Fasteners Home"
+        >
+          <img
+            src="/assets/cbh-logo-stacked.png"
+            alt="CBH Fasteners"
+            className="h-8 sm:h-9 w-auto object-contain"
+          />
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 tracking-wider">
+            ADMIN
+          </span>
+        </Link>
 
-      {/* TOP TELEMETRY BAR (WHITE/LIGHT ENTERPRISE THEME) */}
-      <header style={{
-        position: 'relative',
-        zIndex: 10,
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '12px 28px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '12px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
-      }}>
-        {/* Left: Console Node & Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #0052CC 0%, #003685 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(0, 82, 204, 0.3)'
-            }}>
-              <Terminal size={16} color="#FFFFFF" />
-            </div>
-            <div>
-              <span style={{ fontWeight: 800, fontSize: '13px', letterSpacing: '0.04em', color: '#0F172A' }}>CBH FASTENERS</span>
-              <span style={{ fontSize: '11px', color: '#0052CC', marginLeft: '6px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                OPERATIONS ENCLAVE
-              </span>
-            </div>
-          </Link>
-
-          <span style={{ color: '#E2E8F0' }}>|</span>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
-            <Server size={13} color="#0052CC" />
-            <span>NODE: LUDHIANA-CENTRAL-DC1</span>
-          </div>
-        </div>
-
-        {/* Right: Security Telemetry */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#ECFDF5',
-            border: '1px solid #A7F3D0',
-            padding: '4px 10px',
-            borderRadius: '20px'
-          }}>
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-            <span style={{ color: '#065F46', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-              CLEARANCE LEVEL 4 ACTIVE
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
-            <Activity size={12} color="#0052CC" />
-            <span>TLS 1.3 / AES-256</span>
-          </div>
-
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              color: '#334155',
-              textDecoration: 'none',
-              fontSize: '12px',
-              fontWeight: 600,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#E2E8F0';
-              e.currentTarget.style.color = '#0F172A';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#F1F5F9';
-              e.currentTarget.style.color = '#334155';
-            }}
-          >
-            <ArrowLeft size={13} />
-            <span>Storefront</span>
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors no-underline"
+        >
+          <ArrowLeft size={14} />
+          <span>Back to Store</span>
+        </Link>
       </header>
 
-      {/* CENTER CONSOLE STAGE */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px',
-        position: 'relative',
-        zIndex: 10
-      }}>
-        <div style={{ width: '100%', maxWidth: '480px' }}>
-
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '54px',
-              height: '54px',
-              borderRadius: '16px',
-              background: '#EFF6FF',
-              border: '1.5px solid #BFDBFE',
-              boxShadow: '0 4px 12px rgba(0, 82, 204, 0.12)',
-              marginBottom: '14px'
-            }}>
-              <Cpu size={26} color="#0052CC" />
-            </div>
-
-            <h1 style={{
-              fontSize: '25px',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: '#0F172A',
-              margin: '0 0 6px 0'
-            }}>
-              CBH Operations Terminal
-            </h1>
-
-            <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
-              Authorized dispatch controllers, plant supervisors &amp; administrators only.
-            </p>
-          </div>
-
-          {/* Command Card Chassis (White / Crisp Theme) */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderTop: '4px solid #0052CC',
-            borderRadius: '18px',
-            padding: '36px 32px',
-            boxShadow: '0 20px 45px -10px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(226, 232, 240, 0.8)',
-            position: 'relative'
-          }}>
-
-            {/* Quick Demo Operator Shortcut */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-              paddingBottom: '14px',
-              borderBottom: '1px solid #F1F5F9'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#0052CC', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0052CC' }} />
-                <span>OPERATOR CLEARANCE</span>
+      {/* Main Login Stage */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-14">
+        <div className="w-full max-w-[420px]">
+          {/* Login Card */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-6 sm:p-9">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-[#0052CC] flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <ShieldCheck size={26} strokeWidth={2.2} />
               </div>
-
-              {/* <button
-                type="button"
-                onClick={fillDemoAdmin}
-                style={{
-                  background: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#0052CC',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#DBEAFE';
-                  e.currentTarget.style.borderColor = '#93C5FD';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#EFF6FF';
-                  e.currentTarget.style.borderColor = '#BFDBFE';
-                }}
-              >
-                <Zap size={12} color="#FF6B00" />
-                <span>Fill Lead Operator</span>
-              </button> */}
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Admin Portal
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Sign in to access your administrative dashboard
+              </p>
             </div>
 
-            {/* Alerts */}
+            {/* Error Alert */}
             {errorMsg && (
-              <div style={{
-                background: '#FEF2F2',
-                border: '1px solid #F87171',
-                color: '#991B1B',
-                padding: '12px 14px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                marginBottom: '20px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <ShieldAlert size={16} color="#DC2626" />
-                <span>{errorMsg}</span>
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2.5">
+                <ShieldAlert size={16} className="shrink-0 text-red-600" />
+                <span className="flex-1">{errorMsg}</span>
               </div>
             )}
 
+            {/* Success Alert */}
             {successMsg && (
-              <div style={{
-                background: '#ECFDF5',
-                border: '1px solid #34D399',
-                color: '#065F46',
-                padding: '12px 14px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                marginBottom: '20px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <CheckCircle2 size={16} color="#059669" />
-                <span>{successMsg}</span>
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                <span className="flex-1">{successMsg}</span>
               </div>
             )}
 
-            {/* Operator Form */}
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {/* Field 1: Operator Email */}
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Email Address */}
               <div>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#334155',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  marginBottom: '7px'
-                }}>
-                  <Mail size={13} color="#0052CC" />
-                  <span>Command Operator ID / Email</span>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Email Address
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail size={16} />
+                  </div>
                   <input
                     type="email"
                     required
-                    placeholder="admin@cbh.store"
+                    autoComplete="email"
+                    autoFocus
+                    placeholder="Please Enter Email ID"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: '#F8FAFC',
-                      border: '1.5px solid #CBD5E1',
-                      borderRadius: '8px',
-                      color: '#0F172A',
-                      fontSize: '13px',
-                      fontFamily: 'var(--font-mono)',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#0052CC';
-                      e.target.style.background = '#FFFFFF';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#CBD5E1';
-                      e.target.style.background = '#F8FAFC';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-300 focus:border-[#0052CC] focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-xl text-slate-900 text-sm font-medium outline-none transition-all placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
-              {/* Field 2: Password */}
+              {/* Password */}
               <div>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#334155',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  marginBottom: '7px'
-                }}>
-                  <Lock size={13} color="#0052CC" />
-                  <span>Security Master Passcode</span>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Password
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Lock size={16} />
+                  </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
+                    placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 42px 12px 14px',
-                      background: '#F8FAFC',
-                      border: '1.5px solid #CBD5E1',
-                      borderRadius: '8px',
-                      color: '#0F172A',
-                      fontSize: '13px',
-                      fontFamily: 'var(--font-mono)',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#0052CC';
-                      e.target.style.background = '#FFFFFF';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.12)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#CBD5E1';
-                      e.target.style.background = '#F8FAFC';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    className="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-slate-50 border border-slate-300 focus:border-[#0052CC] focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-xl text-slate-900 text-sm font-medium outline-none transition-all placeholder:text-slate-400"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#64748B',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff size={15} color="#64748B" /> : <Eye size={15} color="#64748B" />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
-              {/* Field 3: Hardware Security Key */}
-              {/* <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: '#334155',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em'
-                  }}>
-                    <KeyRound size={13} color="#0052CC" />
-                    <span>Station Token / Hardware Key</span>
-                  </label>
-                  <span style={{
-                    fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#059669',
-                    background: '#ECFDF5',
-                    border: '1px solid #A7F3D0',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontWeight: 700
-                  }}>
-                    ENV CONFIGURED
-                  </span>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    required
-                    value={stationKey}
-                    onChange={(e) => setStationKey(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: '#F0F7FF',
-                      border: '1.5px solid #93C5FD',
-                      borderRadius: '8px',
-                      color: '#0052CC',
-                      fontSize: '13px',
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#0052CC';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(0, 82, 204, 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#93C5FD';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                </div>
-              </div> */}
-
-              {/* Submit CTA */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: '13px 20px',
-                  marginTop: '6px',
-                  background: 'linear-gradient(135deg, #0052CC 0%, #003685 100%)',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  boxShadow: '0 6px 20px rgba(0, 82, 204, 0.35)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 82, 204, 0.45)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 82, 204, 0.35)';
-                  }
-                }}
+                className="w-full mt-2 py-3 px-4 bg-[#0052CC] hover:bg-[#0747A6] active:bg-[#003685] text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
-                <span>{isLoading ? 'Decrypting Session Handshake...' : 'Authorize Terminal Session'}</span>
+                <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
                 <ArrowRight size={16} />
               </button>
             </form>
-
-            {/* Bottom Security Footer */}
-            <div style={{
-              marginTop: '24px',
-              paddingTop: '18px',
-              borderTop: '1px solid #F1F5F9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              color: '#64748B',
-              fontFamily: 'var(--font-mono)'
-            }}>
-              <span>STATION: CENTRAL HUB #1</span>
-              <span>GEO: IN-PB-LDH</span>
-            </div>
           </div>
 
-          {/* Compliance Tagline */}
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '11px', color: '#64748B' }}>
-            CBH Fasteners Tech Pvt. Ltd. • ISO 9001:2015 Operations Enclave
-          </div>
+          {/* Discreet Footer */}
+          <p className="text-center text-xs text-slate-400 mt-6">
+            Protected Admin Area • CBH Fasteners
+          </p>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

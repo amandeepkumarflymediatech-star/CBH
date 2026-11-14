@@ -15,22 +15,30 @@ import {
   X,
   FileDown,
   Printer,
-  Sparkles
+  Sparkles,
+  Zap,
+  Building2
 } from 'lucide-react';
 import TablePagination from '@/components/common/TablePagination';
 import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 import { BulkQuotation } from '@/lib/types';
 import { getStoredUser } from '@/lib/auth';
-import { INITIAL_QUOTES } from '@/lib/mock-data';
 import { formatINR } from '@/lib/rfq-calculator';
 import { showSuccessAlert, showToast } from '@/lib/swal';
+
+const STATUS_FILTERS = [
+  { label: 'All Quotes', value: 'ALL' },
+  { label: 'Quotes Ready', value: 'QUOTED' },
+  { label: 'Under Review', value: 'PENDING' },
+  { label: 'PO Issued', value: 'PO_ISSUED' },
+];
 
 export default function CustomerRfqsPage() {
   const [quotes, setQuotes] = useState<BulkQuotation[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isBOMModalOpen, setIsBOMModalOpen] = useState(false);
   const [isCustomRequestOpen, setIsCustomRequestOpen] = useState(false);
   const [activeQuoteModal, setActiveQuoteModal] = useState<BulkQuotation | null>(null);
@@ -89,374 +97,313 @@ export default function CustomerRfqsPage() {
         'BOM Submitted Successfully',
         'Your Bill of Materials (BOM) has been submitted! Our chief metallurgist and pricing engine will review the index rates within 30 minutes.'
       );
-    }, 1200);
+    }, 1000);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'QUOTED':
+        return { label: 'QUOTE READY', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'PO_ISSUED':
+      case 'CONVERTED_TO_PO':
+        return { label: 'PO ISSUED', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+      default:
+        return { label: 'UNDER REVIEW', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#0052CC]" />
-            <span>Industrial Quotations &amp; Bulk RFQ Desk</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Submit Bill of Materials (BOM) spreadsheets, review wholesale tier discounts, and convert finalized quotations into purchase orders.
-          </p>
+    <div className="space-y-4">
+      {/* INTEGRATED TOP BAR */}
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-50 text-[#0052CC] rounded-lg shrink-0">
+            <Zap className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                Bulk RFQs &amp; Tenders Desk
+              </h1>
+              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                {quotes.length} RFQs
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Instant contractor pricing, BOM spreadsheets, and wholesale rate contracts
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
           <button
             type="button"
             onClick={() => setIsCustomRequestOpen(true)}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 border border-slate-200"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-slate-200"
           >
-            <Sparkles size={14} className="text-[#0052CC]" />
-            <span>+ Request Custom Spec</span>
+            <Sparkles size={13} className="text-[#0052CC]" />
+            <span>+ Custom Spec</span>
           </button>
           <button
             type="button"
             onClick={() => setIsBOMModalOpen(true)}
-            className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
           >
-            <UploadCloud size={14} />
-            <span>+ Upload BOM Spreadsheet</span>
+            <UploadCloud size={13} />
+            <span>+ Upload BOM</span>
           </button>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* FILTER & SEARCH STRIP */}
+      <div className="bg-white rounded-xl border border-slate-200/80 p-2.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search RFQs by RFQ Number, Contact, or Project..."
+            placeholder="Search RFQ #, project or contact..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-[#0052CC] focus:bg-white"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-          {[
-            { label: 'ALL', value: 'ALL' },
-            { label: 'UNDER REVIEW', value: 'PENDING' },
-            { label: 'QUOTES READY', value: 'QUOTED' },
-            { label: 'PO ISSUED', value: 'PO_ISSUED' },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => {
-                setStatusFilter(tab.value);
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                statusFilter === tab.value
-                  ? 'bg-[#0052CC] text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Status Filters */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {STATUS_FILTERS.map((tab) => {
+            const isActive = statusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(tab.value);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                  isActive
+                    ? 'bg-[#0052CC] text-white shadow-xs font-bold'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Quotations Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* HIGH-DENSITY RFQ TABLE */}
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[720px]">
-          <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
-            <tr>
-              <th className="py-3 px-4">RFQ Ref &amp; Date</th>
-              <th className="py-3 px-4">Project Contact</th>
-              <th className="py-3 px-3 text-center">Items</th>
-              <th className="py-3 px-3 text-right">Quoted Net Total</th>
-              <th className="py-3 px-3 text-center">Rebate Slab</th>
-              <th className="py-3 px-3 text-center">Status</th>
-              <th className="py-3 px-4 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {paginatedQuotes.length === 0 ? (
+          <table className="w-full text-left text-xs min-w-[680px]">
+            <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
-                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="font-semibold text-slate-600">No quotation requests found matching filter.</p>
-                </td>
+                <th className="py-2.5 px-3">RFQ Code &amp; Date</th>
+                <th className="py-2.5 px-3">Company / Project</th>
+                <th className="py-2.5 px-3 text-center">BOM Items</th>
+                <th className="py-2.5 px-3 text-right">Quoted Value</th>
+                <th className="py-2.5 px-3 text-center">Status</th>
+                <th className="py-2.5 px-3 text-right">Actions</th>
               </tr>
-            ) : (
-              paginatedQuotes.map((q) => (
-                <tr key={q.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <div className="font-mono font-bold text-[#0052CC] text-sm">{q.rfqNumber}</div>
-                    <div className="text-[11px] text-slate-400">{q.date || 'Active RFQ'}</div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-[#0F172A]">{q.customerName || 'Enterprise Buyer'}</div>
-                    <div className="text-[11px] text-slate-500">{q.companyName || 'Corporate Client'}</div>
-                  </td>
-                  <td className="py-3.5 px-3 text-center font-bold text-slate-700">
-                    {q.itemsCount || 4} SKUs
-                  </td>
-                  <td className="py-3.5 px-3 text-right font-mono font-extrabold text-[#0F172A]">
-                    {formatINR(q.netTotal)}
-                  </td>
-                  <td className="py-3.5 px-3 text-center">
-                    <span className="font-bold text-emerald-600 font-mono">
-                      -{q.discountPct}% Vol
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-3 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      q.status === 'PO_ISSUED' || q.status === 'CONVERTED_TO_PO'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : q.status === 'QUOTED'
-                        ? 'bg-blue-50 text-[#0052CC] border border-blue-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}>
-                      {q.status === 'CONVERTED_TO_PO' || q.status === 'PO_ISSUED'
-                        ? 'PO ISSUED'
-                        : q.status === 'QUOTED'
-                        ? 'QUOTE READY'
-                        : 'UNDER REVIEW'}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setActiveQuoteModal(q)}
-                      className="px-3 py-1 rounded-lg bg-[#0052CC] hover:bg-[#0747A6] text-white text-[11px] font-bold transition-colors"
-                    >
-                      View Formal Quote
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedQuotes.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-slate-400">
+                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-700">No RFQ records found</h3>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-0.5">
+                      Submit an RFQ or upload a BOM spreadsheet to generate rate contracts.
+                    </p>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                paginatedQuotes.map((q) => {
+                  const badge = getStatusBadge(q.status);
+                  const isQuoted = q.status === 'QUOTED';
+
+                  return (
+                    <tr key={q.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveQuoteModal(q)}
+                          className="font-mono font-bold text-[#0052CC] hover:underline text-xs block text-left"
+                        >
+                          {q.rfqNumber}
+                        </button>
+                        <span className="text-[10px] text-slate-400 font-mono">{q.date || 'Recent'}</span>
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-800">{q.companyName || q.customerName}</div>
+                        <div className="text-[10px] text-slate-400">{q.customerName}</div>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono font-semibold text-slate-700">
+                        {q.itemsCount || q.items?.length || 1} SKUs
+                      </td>
+
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                        {q.netTotal ? formatINR(q.netTotal) : 'Evaluating'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${badge.bg}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setActiveQuoteModal(q)}
+                            className="px-2.5 py-1 rounded bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-200"
+                          >
+                            Inspect
+                          </button>
+                          {isQuoted && (
+                            <Link
+                              href="/checkout"
+                              className="px-2.5 py-1 rounded bg-[#0052CC] hover:bg-[#0747A6] text-white text-[11px] font-bold"
+                            >
+                              Issue PO →
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
-        {filteredQuotes.length > 0 && (
-          <div className="p-4 border-t border-slate-200">
+        {filteredQuotes.length > itemsPerPage && (
+          <div className="p-3 border-t border-slate-100">
             <TablePagination
               currentPage={currentPage}
               totalItems={filteredQuotes.length}
               itemsPerPage={itemsPerPage}
-              onPageChange={(p) => setCurrentPage(p)}
-              onItemsPerPageChange={(n) => {
-                setItemsPerPage(n);
-                setCurrentPage(1);
-              }}
-              itemLabel="quotations"
+              onPageChange={setCurrentPage}
             />
           </div>
         )}
       </div>
 
-      {/* Quote Detail Modal */}
+      {/* INSPECT QUOTE MODAL */}
       {activeQuoteModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-2xl w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-xl max-w-xl w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">Formal Wholesale Quotation: {activeQuoteModal.rfqNumber}</h3>
-                <span className="text-xs text-slate-500 block mt-0.5">Status: {activeQuoteModal.status} • Valid until {activeQuoteModal.validUntil || '14 Days'}</span>
+                <h3 className="text-sm font-bold text-slate-900 font-mono">Quotation {activeQuoteModal.rfqNumber}</h3>
+                <p className="text-xs text-slate-400">{activeQuoteModal.companyName}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveQuoteModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="py-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Consignee Enterprise</span>
-                  <strong className="text-[#0F172A]">{activeQuoteModal.companyName || 'Corporate Client'}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Estimated Tonnage</span>
-                  <strong className="text-[#0F172A]">{(activeQuoteModal.totalWeightKg || 0).toFixed(1)} Kg</strong>
-                </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status:</span>
+                <span className="font-bold text-blue-700">{activeQuoteModal.status}</span>
               </div>
-
-              {/* Items summary */}
-              <div>
-                <span className="text-[11px] font-bold text-slate-600 uppercase block mb-2">Quoted Line Items ({activeQuoteModal.itemsCount} SKUs):</span>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                    <div>
-                      <strong className="text-slate-800">Hex Head Bolt ISO 4014 / DIN 931</strong>
-                      <div className="text-[11px] text-slate-500 font-mono">DIN 931 • Class 8.8 High-Tensile Steel</div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <div>5,000 PCS</div>
-                      <strong className="text-slate-900">{formatINR(Math.round(activeQuoteModal.grossAmount * 0.45))}</strong>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                    <div>
-                      <strong className="text-slate-800">Heavy Hex Nut ISO 4032 / DIN 934</strong>
-                      <div className="text-[11px] text-slate-500 font-mono">DIN 934 • Grade 8 Hot-Dip Galvanized</div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <div>10,000 PCS</div>
-                      <strong className="text-slate-900">{formatINR(Math.round(activeQuoteModal.grossAmount * 0.35))}</strong>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                    <div>
-                      <strong className="text-slate-800">Hardened Plain Washer ISO 7089 / DIN 125A</strong>
-                      <div className="text-[11px] text-slate-500 font-mono">DIN 125A • 200 HV Zinc Flake Geomet</div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <div>15,000 PCS</div>
-                      <strong className="text-slate-900">{formatINR(Math.round(activeQuoteModal.grossAmount * 0.20))}</strong>
-                    </div>
-                  </div>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Fastener Lines:</span>
+                <span className="font-bold text-slate-800">{activeQuoteModal.itemsCount || 1} Lines</span>
               </div>
-
-              <div className="pt-3 border-t border-slate-200 space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Gross Goods Total:</span>
-                  <span className="font-mono">{formatINR(activeQuoteModal.grossAmount)}</span>
-                </div>
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>Volume Slab Rebate ({activeQuoteModal.discountPct}%):</span>
-                  <span className="font-mono">- {formatINR(Math.round(activeQuoteModal.grossAmount * (activeQuoteModal.discountPct / 100)))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">GST (18% IGST):</span>
-                  <span className="font-mono">{formatINR(Math.round((activeQuoteModal.netTotal * 0.18) / 1.18))}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 text-[#0052CC]">
-                  <span>Net Commercial PO Amount:</span>
-                  <span className="font-mono">{formatINR(activeQuoteModal.netTotal)}</span>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Estimated Total:</span>
+                <span className="font-bold text-emerald-700 font-mono text-sm">
+                  {formatINR(activeQuoteModal.netTotal || 0)}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-slate-200">
+            <div className="pt-2 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setActiveQuoteModal(null)}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer text-center"
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Close
               </button>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                {activeQuoteModal.status === 'QUOTED' ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/rfq', {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            id: activeQuoteModal.id,
-                            status: 'CONVERTED_TO_PO',
-                          }),
-                        });
-                        const data = await res.json();
-                        const soId = data.data?.erpnextSalesOrderId;
-                        showSuccessAlert(
-                          'Quotation Accepted!',
-                          soId
-                            ? `ERPNext Sales Order ${soId} generated and stock allocated in warehouse.`
-                            : `Purchase Order registered successfully into system.`
-                        );
-                        loadQuotes();
-                      } catch {
-                        showSuccessAlert('Quotation Accepted', `Quotation ${activeQuoteModal.rfqNumber} accepted and marked as PO.`);
-                      }
-                      setActiveQuoteModal(null);
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow cursor-pointer"
-                  >
-                    <CheckCircle2 size={14} /> Accept Quote &amp; Generate PO
-                  </button>
-                ) : activeQuoteModal.status === 'CONVERTED_TO_PO' || activeQuoteModal.status === 'PO_ISSUED' ? (
-                  <Link
-                    href="/customer/orders"
-                    onClick={() => setActiveQuoteModal(null)}
-                    className="w-full sm:w-auto px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow no-underline"
-                  >
-                    <span>View in Purchase Orders</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                ) : (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200 font-semibold text-center">
-                    <Clock size={14} className="text-amber-600 shrink-0" />
-                    <span>Awaiting CBH Metallurgy Review &amp; Quotation</span>
-                  </div>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  showToast('Quotation PDF downloading...', 'success');
+                  setActiveQuoteModal(null);
+                }}
+                className="px-4 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5"
+              >
+                <Download size={13} />
+                <span>Download Quote PDF</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* BOM Uploader Modal */}
+      {/* BOM UPLOAD MODAL */}
       {isBOMModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet size={20} className="text-[#0052CC] shrink-0" />
-                <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">Upload Bill of Materials (BOM)</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Upload BOM Spreadsheet</h3>
+                <p className="text-xs text-slate-400">Supported formats: .XLSX, .CSV</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsBOMModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleUploadBOM} className="py-4 space-y-4">
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Upload your project procurement spreadsheet (.XLSX, .CSV, or .PDF). Our automated parsing engine will match standard metric fastener sizes, compute dual PCS/KGS weights, and apply maximum volume tier discounts.
-              </p>
-
-              <div className="border-2 border-dashed border-slate-300 hover:border-[#0052CC] p-6 sm:p-8 rounded-2xl text-center bg-slate-50 transition-colors cursor-pointer">
-                <UploadCloud size={36} className="text-[#0052CC] mx-auto mb-2" />
-                <span className="text-xs font-bold text-slate-700 block">Drag &amp; drop your BOM file here</span>
-                <span className="text-[11px] text-slate-400 mt-1 block">Supports .xlsx, .xls, .csv, .pdf (Max 25 MB)</span>
-                <input type="file" required className="hidden" id="bomFileInput" />
-                <label
-                  htmlFor="bomFileInput"
-                  className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-bold text-slate-700 cursor-pointer shadow-sm hover:bg-slate-100"
-                >
-                  Browse Computer
-                </label>
+            <form onSubmit={handleUploadBOM} className="space-y-4 text-xs">
+              <div className="p-6 border-2 border-dashed border-slate-200 rounded-xl text-center hover:bg-slate-50 transition-colors cursor-pointer">
+                <FileSpreadsheet className="w-8 h-8 text-[#0052CC] mx-auto mb-2" />
+                <p className="font-semibold text-slate-800">Drag &amp; drop your BOM file here</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">Or click to select from your device</p>
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t border-slate-200">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsBOMModalOpen(false)}
-                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold text-center"
+                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isUploading}
-                  className="w-full sm:w-auto px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                  className="px-4 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-lg text-xs font-bold"
                 >
-                  {isUploading ? 'Parsing BOM File...' : 'Submit BOM for Quotation'}
+                  {isUploading ? 'Uploading...' : 'Submit for Pricing'}
                 </button>
               </div>
             </form>
@@ -464,10 +411,13 @@ export default function CustomerRfqsPage() {
         </div>
       )}
 
-      {/* Custom Fastener Request Modal */}
+      {/* CUSTOM SPEC MODAL */}
       <CustomProductRequestModal
         isOpen={isCustomRequestOpen}
-        onClose={() => setIsCustomRequestOpen(false)}
+        onClose={() => {
+          setIsCustomRequestOpen(false);
+          loadQuotes();
+        }}
         sourceContext="CUSTOMER_PORTAL"
       />
     </div>

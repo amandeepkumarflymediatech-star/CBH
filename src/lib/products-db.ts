@@ -3,7 +3,8 @@ import path from 'path';
 import { Product } from './types';
 import { ALL_STATIC_PRODUCTS } from './catalog-products-all';
 
-const CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'erpnext-cached-products.json');
+const CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'products-cache.json');
+const LEGACY_CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'erpnext-cached-products.json');
 
 // Memory cache state tracking
 let isDbInitialized = false;
@@ -11,24 +12,21 @@ let productsDb: Product[] = [];
 
 export function loadCombinedProducts(): Product[] {
   try {
-    if (fs.existsSync(CACHE_FILE)) {
-      const fileContent = fs.readFileSync(CACHE_FILE, 'utf-8').trim();
+    const fileToRead = fs.existsSync(CACHE_FILE) ? CACHE_FILE : (fs.existsSync(LEGACY_CACHE_FILE) ? LEGACY_CACHE_FILE : null);
+    if (fileToRead) {
+      const fileContent = fs.readFileSync(fileToRead, 'utf-8').trim();
       if (fileContent) {
-        const erpItems = JSON.parse(fileContent);
-        if (Array.isArray(erpItems)) {
-          // IMPORTANT: If CACHE_FILE exists and is a valid JSON array, respect it!
-          // Even if erpItems is empty [], that means the admin deliberately deleted all products.
-          // Never re-seed static demo products unless CACHE_FILE does not exist at all.
-          return erpItems;
+        const items = JSON.parse(fileContent);
+        if (Array.isArray(items)) {
+          return items;
         }
       }
     }
   } catch (err) {
-    console.error('Failed reading ERPNext cache:', err);
+    console.error('Failed reading products cache:', err);
   }
 
   // If no data is available in cache or DB, return empty array.
-  // Never automatically insert or fallback to static demo data.
   return [];
 }
 

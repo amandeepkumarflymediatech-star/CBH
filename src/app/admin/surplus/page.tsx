@@ -96,7 +96,7 @@ export default function AdminSurplusPage() {
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       <AdminSurplusSection
         lots={lots}
         onAdd={handleAddSurplusLot}
@@ -107,8 +107,8 @@ export default function AdminSurplusPage() {
       />
 
       {toastMessage && (
-        <div className="admin-toast">
-          <CheckCircle2 size={16} color="#059669" />
+        <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg border text-xs font-bold flex items-center gap-2 bg-slate-900 text-white border-slate-700 animate-fade-in">
+          <CheckCircle2 size={15} className="text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}

@@ -133,7 +133,7 @@ export const CustomerOrdersScreen: React.FC<CustomerOrdersScreenProps> = ({
           Found {orders.length} consignments
         </Text>
         <TouchableOpacity onPress={() => fetchOrders(true)}>
-          <Text style={styles.reloadText}>↻ Sync ERP</Text>
+          <Text style={styles.reloadText}>↻ Refresh Orders</Text>
         </TouchableOpacity>
       </View>
 

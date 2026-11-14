@@ -165,8 +165,7 @@ export default function AdminOrdersSection({
           o.trackingNumber?.toLowerCase().includes(q) ||
           o.companyName?.toLowerCase().includes(q) ||
           o.customerName?.toLowerCase().includes(q) ||
-          o.shippingAddress?.toLowerCase().includes(q) ||
-          (o.erpnextSalesOrderId && o.erpnextSalesOrderId.toLowerCase().includes(q))
+          o.shippingAddress?.toLowerCase().includes(q)
       );
     }
 
@@ -255,7 +254,6 @@ export default function AdminOrdersSection({
       'Tracking Docket',
       'Status',
       'MTC Cert',
-      'ERPNext SO',
       'Address',
     ];
     const rows = filteredOrders.map((o) => [
@@ -270,7 +268,6 @@ export default function AdminOrdersSection({
       `"${o.trackingNumber}"`,
       `"${o.status}"`,
       `"${o.mtcCertNumber}"`,
-      `"${o.erpnextSalesOrderId || ''}"`,
       `"${(o.shippingAddress || '').replace(/"/g, '""')}"`,
     ]);
 
@@ -353,681 +350,332 @@ export default function AdminOrdersSection({
   };
 
   return (
-    <div className="portal-main-card">
-      {/* 1. TOP SUMMARY METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
-        {/* Total Orders & Value */}
-        <div
-          style={{
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: '12px',
-            padding: '16px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-          }}
-        >
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: '#EFF6FF',
-              color: '#0052CC',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Package size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Total Orders
-            </span>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-              {metrics.totalOrders}{' '}
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#0052CC' }}>
-                ({formatINR(metrics.totalRevenue)})
+    <div className="space-y-4">
+      {/* MAIN ORDERS CARD */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+      {/* 1. TOP HEADER & QUICK METRICS ROW (Mobile-First, Clean, No Scroll) */}
+      <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200/80 bg-white">
+        {/* Row A: Title & Action Buttons */}
+        <div className="flex items-center justify-between gap-2.5 pb-2 sm:pb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
+              <span>Orders</span>
+              <span className="hidden xs:inline">&amp; Dispatches</span>
+              <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                {filteredOrders.length}
               </span>
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-mono">
+              <span className="text-slate-400">Total:</span>
+              <strong className="text-slate-900 font-bold">{formatINR(metrics.totalRevenue)}</strong>
             </div>
-          </div>
-        </div>
 
-        {/* Active Dispatches */}
-        <div
-          style={{
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: '12px',
-            padding: '16px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-          }}
-        >
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: '#FAF5FF',
-              color: '#7E22CE',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Truck size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              In-Transit / Dispatched
-            </span>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#7E22CE', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-              {metrics.activeDispatches}{' '}
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748B' }}>Active Cargo</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Delivered / POD Verified */}
-        <div
-          style={{
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: '12px',
-            padding: '16px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-          }}
-        >
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: '#ECFDF5',
-              color: '#059669',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <CheckCircle2 size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Delivered Shipments
-            </span>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#059669', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-              {metrics.deliveredCount}{' '}
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748B' }}>POD Verified</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Packaging / Confirmation */}
-        <div
-          style={{
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: '12px',
-            padding: '16px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-          }}
-        >
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: '#FEF3C7',
-              color: '#B45309',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Clock size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Pending / Packaging
-            </span>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#B45309', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-              {metrics.pendingCount}{' '}
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748B' }}>To Dispatch</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. SECTION HEADER & ACTION BUTTONS */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          gap: '12px',
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              fontFamily: 'var(--font-headline)',
-              fontSize: '20px',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              margin: 0,
-              color: '#0F172A',
-            }}
-          >
-            Orders &amp; Carrier Dispatch Management ({orders.length} Shipments)
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
-            Multi-modal freight tracking, instant status adjustment, and NABL 3.1 Mill Test Certificate dispatch
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-          <button
-            type="button"
-            className="btn-outline"
-            style={{ padding: '8px 14px', fontSize: '12px', background: '#FFFFFF' }}
-            onClick={handleExportCSV}
-            title="Download CSV report of filtered orders"
-          >
-            <Download size={14} color="#0052CC" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn-primary"
-            style={{ padding: '8px 16px', fontSize: '13px' }}
-            onClick={() => setIsAddOpen(true)}
-            title="Create and dispatch a new shipment"
-          >
-            <Plus size={15} />
-            <span>New Dispatch Shipment</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. FILTER & SEARCH BAR */}
-      <div className="admin-filter-bar">
-        <div className="admin-filter-group">
-          <div className="admin-search-wrap">
-            <Search size={15} className="admin-search-icon" />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search Order #, docket, client, destination..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <select
-            className="admin-select"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="all">Status: All Statuses</option>
-            <option value="CONFIRMED">CONFIRMED (Order Placed)</option>
-            <option value="PROCESSING">PROCESSING (Packaging)</option>
-            <option value="DISPATCHED">DISPATCHED (Hub Picked)</option>
-            <option value="IN_TRANSIT">IN_TRANSIT (Line Haul)</option>
-            <option value="DELIVERED">DELIVERED (POD Verified)</option>
-            <option value="CANCELLED">CANCELLED</option>
-          </select>
-
-          <select
-            className="admin-select"
-            value={selectedCarrier}
-            onChange={(e) => setSelectedCarrier(e.target.value)}
-          >
-            <option value="all">Carrier: All Carriers</option>
-            <option value="TCI">TCI Freight Express</option>
-            <option value="Blue Dart">Blue Dart Logistics</option>
-            <option value="Safechem">Safechem Express</option>
-            <option value="V-Trans">V-Trans India</option>
-            <option value="Delhivery">Delhivery Freight</option>
-          </select>
-
-          <select
-            className="admin-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="date_desc">Date: Newest First</option>
-            <option value="date_asc">Date: Oldest First</option>
-            <option value="amount_desc">Amount: High to Low</option>
-            <option value="weight_desc">Weight: High to Low</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span className="admin-filter-count">
-            Showing {filteredOrders.length} of {orders.length} Orders
-          </span>
-          {(search ||
-            selectedStatus !== 'all' ||
-            selectedCarrier !== 'all' ||
-            sortBy !== 'date_desc') && (
             <button
               type="button"
-              className="btn-outline"
-              style={{ padding: '4px 8px', fontSize: '11px', background: '#FFFFFF' }}
-              onClick={handleResetFilters}
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer"
+              title="Download CSV report"
             >
-              <RefreshCw size={11} />
-              <span>Reset</span>
+              <Download size={13} color="#0052CC" />
+              <span className="hidden sm:inline">Export</span>
             </button>
-          )}
+
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-lg bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              title="Create new dispatch order"
+            >
+              <Plus size={14} />
+              <span>New Order</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Row B: Horizontal Scrollable Status Tabs (Never wraps on mobile, smooth swipe) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 flex-nowrap">
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('all')}
+            className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              selectedStatus === 'all'
+                ? 'bg-[#0052CC] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All ({metrics.totalOrders})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('PROCESSING')}
+            className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              selectedStatus === 'PROCESSING'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span>Processing ({metrics.pendingCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('IN_TRANSIT')}
+            className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              selectedStatus === 'IN_TRANSIT'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            <span>In-Transit ({metrics.activeDispatches})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatus('DELIVERED')}
+            className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              selectedStatus === 'DELIVERED'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>Delivered ({metrics.deliveredCount})</span>
+          </button>
+        </div>
+
+        {/* Row C: Search & Filter Toolbar (Full-width search, 2-col selects on mobile) */}
+        <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-0">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by order #, client, tracking..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 focus:border-[#0052CC] focus:bg-white rounded-lg text-xs text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={13} />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Carrier Select */}
+            <select
+              value={selectedCarrier}
+              onChange={(e) => setSelectedCarrier(e.target.value)}
+              className="flex-1 sm:flex-initial px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="all">All Carriers</option>
+              <option value="TCI">TCI Freight</option>
+              <option value="Blue Dart">Blue Dart</option>
+              <option value="Safechem">Safechem</option>
+              <option value="V-Trans">V-Trans</option>
+              <option value="Delhivery">Delhivery</option>
+            </select>
+
+            {/* Sort By */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="flex-1 sm:flex-initial px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="date_desc">Newest First</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="amount_desc">Amount: High-Low</option>
+              <option value="weight_desc">Weight: High-Low</option>
+            </select>
+
+            {/* Active Filter Clear */}
+            {(search || selectedStatus !== 'all' || selectedCarrier !== 'all' || sortBy !== 'date_desc') && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="p-1.5 rounded-lg border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors shrink-0"
+                title="Reset filters"
+              >
+                <RefreshCw size={12} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 4. ORDERS DATA TABLE */}
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+      {/* 3. STREAMLINED COMPACT TABLE */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left border-collapse">
           <thead>
-            <tr>
-              <th>Order # &amp; Date</th>
-              <th>Client &amp; Destination</th>
-              <th>Cargo Weight</th>
-              <th>Logistics Carrier</th>
-              <th>Tracking Docket</th>
-              <th>Order Total</th>
-              <th>Shipment Status</th>
-              <th>NABL 3.1 MTC</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+              <th className="py-2.5 px-3.5">Order &amp; Date</th>
+              <th className="py-2.5 px-3.5">Client &amp; Destination</th>
+              <th className="py-2.5 px-3.5">Carrier &amp; Tracking</th>
+              <th className="py-2.5 px-3.5">Cargo &amp; Total</th>
+              <th className="py-2.5 px-3.5">Status</th>
+              <th className="py-2.5 px-3.5 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan={9}>
-                  <div className="admin-empty-state">
-                    <AlertTriangle size={32} color="#D97706" style={{ margin: '0 auto' }} />
-                    <h4>No Dispatch Shipments Matched</h4>
-                    <p>No customer orders match your current filter parameters.</p>
-                    <button
-                      type="button"
-                      className="btn-outline"
-                      onClick={handleResetFilters}
-                      style={{ background: '#FFFFFF' }}
-                    >
-                      Clear All Filters
-                    </button>
-                  </div>
+                <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <AlertTriangle size={24} className="mx-auto text-amber-500 mb-2" />
+                  <p className="font-bold text-slate-700 text-sm">No orders matched</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Try clearing filters or search query.</p>
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
                 </td>
               </tr>
             ) : (
               paginatedOrders.map((o) => {
-                const statusCfg =
-                  ORDER_STATUS_CONFIG[o.status] || ORDER_STATUS_CONFIG.PROCESSING;
+                const statusCfg = ORDER_STATUS_CONFIG[o.status] || ORDER_STATUS_CONFIG.PROCESSING;
                 const isUpdating = updatingOrderId === o.id;
                 const isCopied = copiedTrackingId === o.id;
+                const itemsCount = o.items?.length || o.itemsCount || 1;
 
                 return (
-                  <tr key={o.id}>
+                  <tr key={o.id} className="hover:bg-slate-50/80 transition-colors">
                     {/* Column 1: Order # & Date */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <strong
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '13px',
-                            color: '#0F172A',
-                          }}
+                    <td className="py-2.5 px-3.5 align-middle">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewOrder(o)}
+                          className="font-mono font-bold text-slate-900 hover:text-[#0052CC] transition-colors text-xs text-left cursor-pointer"
+                          title="Click to view invoice & details"
                         >
                           {o.orderNumber}
-                        </strong>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            background: '#EFF6FF',
-                            color: '#1D4ED8',
-                            border: '1px solid #BFDBFE',
-                          }}
-                        >
-                          {(o.items?.length || o.itemsCount || 1)} Items
+                        </button>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                          {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
                         </span>
                       </div>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#64748B',
-                          fontFamily: 'var(--font-mono)',
-                          marginTop: '2px',
-                        }}
-                      >
-                        Date: {o.date}
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        {o.date}
                       </div>
-                      {o.erpnextSalesOrderId && (
-                        <div style={{ marginTop: '4px' }}>
-                          <span
-                            style={{
-                              fontSize: '10px',
-                              color: '#065F46',
-                              backgroundColor: '#D1FAE5',
-                              border: '1px solid #A7F3D0',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontWeight: 800,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                            }}
-                            title="Synchronized with ERPNext Sales Order"
-                          >
-                            ERPNext: {o.erpnextSalesOrderId}
-                          </span>
-                        </div>
-                      )}
                     </td>
 
                     {/* Column 2: Client & Destination */}
-                    <td>
-                      <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '13px' }}>
-                        {o.companyName || 'Enterprise Plant'}
+                    <td className="py-2.5 px-3.5 align-middle max-w-[220px]">
+                      <div className="font-bold text-slate-900 truncate" title={o.companyName || o.customerName}>
+                        {o.companyName || o.customerName || 'Enterprise Buyer'}
                       </div>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#64748B',
-                          maxWidth: '240px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          marginTop: '2px',
-                        }}
-                        title={o.shippingAddress}
-                      >
-                        {o.shippingAddress || 'Pan-India Commercial Dispatch'}
+                      <div className="text-[11px] text-slate-500 truncate" title={o.shippingAddress}>
+                        {o.shippingAddress || 'Pan-India Delivery'}
                       </div>
                     </td>
 
-                    {/* Column 3: Cargo Weight */}
-                    <td>
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontWeight: 700,
-                          color: '#0F172A',
-                        }}
-                      >
-                        {o.totalWeightKg ? `${o.totalWeightKg.toLocaleString()} Kg` : 'Batch Lot'}
-                      </span>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#64748B',
-                          fontFamily: 'var(--font-mono)',
-                        }}
-                      >
-                        ({((o.totalWeightKg || 0) / 1000).toFixed(2)} MT)
+                    {/* Column 3: Carrier & Tracking */}
+                    <td className="py-2.5 px-3.5 align-middle">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-xs">
+                        <Truck size={13} className="text-[#0052CC] shrink-0" />
+                        <span className="truncate">{o.carrier || 'TCI Freight'}</span>
                       </div>
-                    </td>
-
-                    {/* Column 4: Logistics Carrier */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Truck size={14} color="#0284C7" />
-                        <span style={{ fontWeight: 600, color: '#334155', fontSize: '13px' }}>
-                          {o.carrier}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Column 5: Tracking Docket */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 700,
-                            color: '#0284C7',
-                            fontSize: '12px',
-                          }}
-                        >
-                          {o.trackingNumber || 'Pending Allocation'}
-                        </span>
-                        {o.trackingNumber && (
+                      <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono mt-0.5">
+                        <span>{o.trackingNumber || 'Pending AWB'}</span>
+                        {o.trackingNumber ? (
                           <button
                             type="button"
                             onClick={() => handleCopyTracking(o.trackingNumber, o.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '2px',
-                              cursor: 'pointer',
-                              color: isCopied ? '#059669' : '#94A3B8',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                            }}
-                            title="Copy Tracking Docket"
+                            className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                            title="Copy tracking number"
                           >
-                            {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                            {isCopied ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
                           </button>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#64748B',
-                          fontFamily: 'var(--font-mono)',
-                          marginTop: '2px',
-                        }}
-                      >
-                        Dispatched: {o.dispatchDate || o.date}
+                        ) : null}
                       </div>
                     </td>
 
-                    {/* Column 6: Order Total */}
-                    <td>
-                      <div
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontWeight: 800,
-                          color: '#0052CC',
-                          fontSize: '14px',
-                        }}
-                      >
+                    {/* Column 4: Cargo & Total */}
+                    <td className="py-2.5 px-3.5 align-middle">
+                      <div className="font-mono font-black text-[#0052CC] text-xs">
                         {formatINR(o.netAmount)}
                       </div>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          color:
-                            o.paymentStatus === 'PAID'
-                              ? '#059669'
-                              : o.paymentStatus === 'PENDING'
-                              ? '#D97706'
-                              : '#4F46E5',
-                          fontWeight: 800,
-                          textTransform: 'uppercase',
-                          fontFamily: 'var(--font-mono)',
-                        }}
-                      >
-                        {o.paymentMethod ? `${o.paymentMethod} • ` : ''}
-                        {o.paymentStatus || 'PAID'}
-                      </span>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                        <span>{o.totalWeightKg ? `${o.totalWeightKg.toLocaleString()} kg` : 'Standard Lot'}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className={`font-bold ${o.paymentStatus === 'PAID' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {o.paymentStatus || 'PAID'}
+                        </span>
+                      </div>
                     </td>
 
-                    {/* Column 7: Direct Status Selector Badge */}
-                    <td>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                    {/* Column 5: Status Selector */}
+                    <td className="py-2.5 px-3.5 align-middle">
+                      <div className="relative inline-block">
                         <select
                           value={o.status}
                           disabled={isUpdating}
                           onChange={(e) =>
                             handleDirectStatusChange(o, e.target.value as CustomerOrder['status'])
                           }
+                          className="appearance-none font-bold text-[11px] px-2.5 py-1 pr-6 rounded-full border cursor-pointer outline-none transition-all shadow-2xs font-mono"
                           style={{
-                            appearance: 'none',
-                            WebkitAppearance: 'none',
                             backgroundColor: statusCfg.bg,
                             color: statusCfg.text,
                             borderColor: statusCfg.border,
-                            borderWidth: '1px',
-                            borderStyle: 'solid',
-                            borderRadius: '999px',
-                            padding: '4px 24px 4px 10px',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            cursor: isUpdating ? 'wait' : 'pointer',
-                            outline: 'none',
-                            transition: 'all 0.2s ease',
-                            fontFamily: 'var(--font-mono)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                           }}
-                          title="Click to directly adjust order status"
                         >
-                          <option value="CONFIRMED">📋 CONFIRMED</option>
-                          <option value="PROCESSING">⚙️ PROCESSING</option>
-                          <option value="DISPATCHED">📦 DISPATCHED</option>
-                          <option value="IN_TRANSIT">🚚 IN TRANSIT</option>
-                          <option value="DELIVERED">✓ DELIVERED</option>
-                          <option value="CANCELLED">✕ CANCELLED</option>
+                          <option value="CONFIRMED">CONFIRMED</option>
+                          <option value="PROCESSING">PROCESSING</option>
+                          <option value="DISPATCHED">DISPATCHED</option>
+                          <option value="IN_TRANSIT">IN TRANSIT</option>
+                          <option value="DELIVERED">DELIVERED</option>
+                          <option value="CANCELLED">CANCELLED</option>
                         </select>
-
-                        {/* Dropdown Indicator or Inline Spinner */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            pointerEvents: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}
-                        >
+                        <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
                           {isUpdating ? (
-                            <Loader2 size={12} className="animate-spin" color={statusCfg.text} />
+                            <Loader2 size={11} className="animate-spin text-slate-500" />
                           ) : (
-                            <span style={{ fontSize: '9px', color: statusCfg.text }}>▼</span>
+                            <span style={{ color: statusCfg.text, fontSize: '8px' }}>▼</span>
                           )}
                         </div>
                       </div>
                     </td>
 
-                    {/* Column 8: NABL 3.1 MTC */}
-                    <td>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontFamily: 'var(--font-mono)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          color: '#059669',
-                          fontWeight: 700,
-                          background: '#ECFDF5',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid #A7F3D0',
-                        }}
-                        title={o.mtcCertNumber}
-                      >
-                        <FileText size={11} />{' '}
-                        {o.mtcCertNumber
-                          ? o.mtcCertNumber.length > 14
-                            ? o.mtcCertNumber.substring(0, 14) + '...'
-                            : o.mtcCertNumber
-                          : 'NABL-3.1'}
-                      </span>
-                    </td>
-
-                    {/* Column 9: Clear Explicit Action Buttons */}
-                    <td>
-                      <div
-                        className="admin-action-btn-group"
-                        style={{ justifyContent: 'flex-end', gap: '6px' }}
-                      >
-                        {/* View Details Modal Button */}
+                    {/* Column 6: Actions */}
+                    <td className="py-2.5 px-3.5 align-middle text-right">
+                      <div className="inline-flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setViewOrder(o)}
-                          style={{
-                            background: '#EFF6FF',
-                            color: '#0052CC',
-                            border: '1px solid #BFDBFE',
-                            borderRadius: '6px',
-                            padding: '5px 9px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                          title="View complete order details & invoice"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="View order details and print tax invoice"
                         >
-                          <Eye size={13} />
-                          <span>View</span>
+                          <Eye size={14} />
                         </button>
-
-                        {/* Edit Button */}
                         <button
                           type="button"
                           onClick={() => setEditOrder({ ...o })}
-                          style={{
-                            background: '#F1F5F9',
-                            color: '#334155',
-                            border: '1px solid #CBD5E1',
-                            borderRadius: '6px',
-                            padding: '5px 9px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                          title="Edit carrier, docket, or delivery notes"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit carrier, docket, or shipment"
                         >
-                          <Edit size={13} />
-                          <span>Edit</span>
+                          <Edit size={14} />
                         </button>
-
-                        {/* Delete Button */}
                         <button
                           type="button"
                           onClick={() => setDeleteOrder(o)}
-                          style={{
-                            background: '#FEF2F2',
-                            color: '#DC2626',
-                            border: '1px solid #FECACA',
-                            borderRadius: '6px',
-                            padding: '5px 8px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                          title="Delete order record from database"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Delete order"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -1037,17 +685,21 @@ export default function AdminOrdersSection({
             )}
           </tbody>
         </table>
+      </div>
 
+      {/* 4. COMPACT PAGINATION FOOTER */}
+      <div className="p-3 bg-slate-50/60 border-t border-slate-200">
         <TablePagination
           currentPage={currentPage}
           totalItems={filteredOrders.length}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
           onItemsPerPageChange={setItemsPerPage}
-          itemLabel="shipment orders"
-          pageSizeOptions={[5, 10, 20, 50]}
+          itemLabel="orders"
+          pageSizeOptions={[8, 10, 20, 50]}
         />
       </div>
+    </div>
 
       {/* 5. VIEW ORDER DETAILS & TAX INVOICE MODAL */}
       {viewOrder && (
@@ -1103,24 +755,6 @@ export default function AdminOrdersSection({
                   >
                     {ORDER_STATUS_CONFIG[viewOrder.status]?.icon} {viewOrder.status}
                   </span>
-                  {viewOrder.erpnextSalesOrderId && (
-                    <span
-                      style={{
-                        backgroundColor: '#ECFDF5',
-                        color: '#059669',
-                        border: '1px solid #A7F3D0',
-                        padding: '3px 10px',
-                        borderRadius: '999px',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <CheckCircle2 size={12} /> ERPNext: {viewOrder.erpnextSalesOrderId}
-                    </span>
-                  )}
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>
                   Booked on {viewOrder.date} • Pan-India Commercial Freight Logistics

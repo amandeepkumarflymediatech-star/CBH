@@ -8,25 +8,19 @@ import CustomProductRequestModal from '@/components/common/CustomProductRequestM
 import { GlobalUnit, Product, RfqLineItem } from '@/lib/types';
 import {
   Flame,
-  CheckCircle2,
-  ShieldCheck,
   MapPin,
-  Sparkles,
   Plus,
-  ArrowRight,
   ShoppingCart,
   Search,
-  Filter,
   Building2,
-  Truck,
   RotateCcw,
   X,
   Package,
-  Layers,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
-import { formatINR, clampQty, MIN_QTY_PCS, MIN_QTY_KGS } from '@/lib/rfq-calculator';
-import { showConfirmDialog, showSuccessAlert } from '@/lib/swal';
+import { formatINR, clampQty } from '@/lib/rfq-calculator';
+import { showSuccessAlert } from '@/lib/swal';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
 
 interface FormattedSurplusLot {
@@ -117,7 +111,6 @@ export default function SurplusPage() {
         // 2. Process Dedicated Surplus Lots Table
         if (surplusRes && surplusRes.success && Array.isArray(surplusRes.data)) {
           surplusRes.data.forEach((sl: any) => {
-            // Avoid duplicate SKUs if already added from products
             if (!dynamicLots.some((d) => d.sku === sl.sku)) {
               let lotCat = sl.category || 'Industrial Fasteners';
               const stdLower = (sl.standard || '').toLowerCase();
@@ -161,7 +154,6 @@ export default function SurplusPage() {
           });
         }
 
-        // Strictly live dynamic lots from database
         setLots(dynamicLots);
       })
       .catch((err) => {
@@ -272,167 +264,132 @@ export default function SurplusPage() {
       />
 
       {/* ============================================================== */}
-      {/* HERO BANNER: CERTIFIED SURPLUS CLEARANCE DEPOT                 */}
+      {/* COMPACT CLEAN TOP BAR (Hero & Actions Merged)                  */}
       {/* ============================================================== */}
-      <section className="bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#0A192F] text-white py-8 sm:py-12 px-4 sm:px-6 lg:px-8 border-b-2 border-[#FF6B00]">
-        <div className="max-w-7xl mx-auto">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-xs text-slate-300 mb-3 sm:mb-4 overflow-x-auto whitespace-nowrap">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <ChevronRight size={13} className="text-slate-400 shrink-0" />
-            <Link href="/products" className="hover:text-white transition-colors">Catalog</Link>
-            <ChevronRight size={13} className="text-slate-400 shrink-0" />
-            <span className="text-[#FF6B00] font-bold">Surplus Depot</span>
-          </nav>
-
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 bg-[#FF6B00]/20 border border-[#FF6B00]/40 px-3 py-1 rounded-full text-[11px] font-bold text-[#FF6B00] mb-3 tracking-wide">
-                <Flame size={14} />
-                <span>CERTIFIED FACTORY CLEARANCE &amp; DEAD-STOCK LIQUIDATION DEPOT</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
-                Verified Industrial Fastener Surplus Batches
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-                Direct access to authentic factory over-runs, project surplus inventory, and EPC clearances at up to <strong>60% below standard tariffs</strong>. 100% verified with authentic EN 10204 3.1 Mill Test Certificates.
-              </p>
+      <section className="bg-[#0B132B] text-white pt-4 pb-5 px-4 sm:px-6 lg:px-8 border-b-2 border-[#FF6B00]">
+        <div className="max-w-7xl mx-auto space-y-3.5">
+          {/* Breadcrumb & Action Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-slate-300">
+              <Link href="/" className="hover:text-white transition-colors">Home</Link>
+              <ChevronRight size={12} className="text-slate-500 shrink-0" />
+              <Link href="/products" className="hover:text-white transition-colors">Catalog</Link>
+              <ChevronRight size={12} className="text-slate-500 shrink-0" />
+              <span className="text-[#FF6B00] font-bold">Surplus Clearance</span>
             </div>
 
-            {/* Header Two-Way Action Hub */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 w-full sm:w-auto">
-              {/* Option A: Vendor Sell Surplus Button */}
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 type="button"
                 onClick={() => {
                   setModalContext('SURPLUS_VENDOR');
                   setIsCustomRequestOpen(true);
                 }}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white font-bold text-xs shadow-md transition-all active:scale-[0.98]"
-                title="Have 1,000 nuts or excess project inventory? List and sell on CBH Surplus Depot."
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF6B00] hover:bg-[#e05e00] text-white font-bold text-xs shadow-xs transition-colors"
               >
-                <Building2 size={16} />
-                <span>Sell Your Surplus Stock (Vendor Inward)</span>
+                <Building2 size={13} />
+                <span>Sell Excess Stock</span>
               </button>
 
-              {/* Option B: Buyer Custom Inquiry Button */}
               <button
                 type="button"
                 onClick={() => {
                   setModalContext('SURPLUS');
                   setIsCustomRequestOpen(true);
                 }}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all backdrop-blur-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 transition-colors"
               >
-                <Plus size={16} />
-                <span>Request Specific Clearance Lot</span>
+                <Plus size={13} />
+                <span>Custom Inquiry</span>
               </button>
             </div>
           </div>
 
-          {/* Search & Pricing Unit Strip */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search surplus lots by SKU (SURP-DIN933), Standard (DIN 934, B7), Diameter (M12, M24), or Hub location..."
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-white/95 text-slate-900 text-xs placeholder-slate-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
+          {/* Title & Description */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Surplus Fastener Liquidation
+                </h1>
+                <span className="px-2 py-0.5 rounded-full bg-[#FF6B00]/20 text-[#FF6B00] border border-[#FF6B00]/40 text-[10px] font-bold flex items-center gap-1">
+                  <Flame size={11} /> Up to 60% Off
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                Factory overruns, dead stock &amp; project clearance lots. Fully certified with Mill Test Certificates.
+              </p>
             </div>
 
-            {/* Pricing Switcher */}
-            <div className="flex bg-black/40 p-1 rounded-xl shrink-0 w-full sm:w-auto border border-white/10">
+            {/* Pricing Unit Switcher */}
+            <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 self-start md:self-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setGlobalUnit('PCS')}
-                className={`flex-1 sm:flex-initial py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                className={`py-1 px-2.5 rounded-md text-xs font-bold transition-all ${
                   globalUnit === 'PCS' ? 'bg-[#FF6B00] text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Pieces (Pcs)
+                Pcs
               </button>
               <button
                 type="button"
                 onClick={() => setGlobalUnit('KGS')}
-                className={`flex-1 sm:flex-initial py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                className={`py-1 px-2.5 rounded-md text-xs font-bold transition-all ${
                   globalUnit === 'KGS' ? 'bg-[#FF6B00] text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Kilograms (Kg)
+                Kg
               </button>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ============================================================== */}
-      {/* VENDOR CLEARANCE CALLOUT (FLYMEDIA SCENARIO)                    */}
-      {/* ============================================================== */}
-      <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 -mt-4 z-10">
-        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#FF6B00] rounded-2xl p-4 sm:p-5 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 bg-black/20 rounded-xl shrink-0 mt-0.5 sm:mt-0">
-              <Building2 size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black tracking-tight text-white">
-                Have Excess Project Inventory or Dead Fastener Stock? (e.g. 1,000 Nuts or Leftover Bolts)
-              </h2>
-              <p className="text-xs text-orange-100 leading-relaxed mt-0.5">
-                Companies like <strong>Flymedia</strong> can list excess fasteners on the CBH Clearinghouse. We inspect, certify, and match your dead stock with 5,000+ infrastructure contractors across India.
-              </p>
-            </div>
+          {/* Search Bar */}
+          <div className="relative w-full max-w-xl">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by SKU, Standard (DIN 933, B7), size (M12, M24), or depot..."
+              className="w-full pl-9 pr-8 py-2 rounded-lg bg-white/95 text-slate-900 text-xs placeholder-slate-400 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setModalContext('SURPLUS_VENDOR');
-              setIsCustomRequestOpen(true);
-            }}
-            className="self-start md:self-center shrink-0 bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all"
-          >
-            <Plus size={14} />
-            <span>List Your Surplus Stock (Vendor Inward)</span>
-          </button>
         </div>
       </section>
 
       {/* ============================================================== */}
       {/* MAIN CATALOG BODY & LOTS GRID                                  */}
       {/* ============================================================== */}
-      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 flex flex-col gap-6">
-        
-        {/* Category Pills & Count Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap py-0.5">
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-1 flex flex-col gap-4">
+        {/* Category Pills Strip */}
+        <div className="flex items-center justify-between gap-3 bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
-              { id: 'all', label: `All Clearance Lots (${filteredLots.length})` },
-              { id: 'nuts', label: 'Hex Nuts (DIN 934)' },
-              { id: 'screws', label: 'Hex Screws (DIN 933)' },
-              { id: 'bolts', label: 'Hex Bolts (DIN 931)' },
-              { id: 'studs', label: 'Stud Rods (B7/2H)' },
-              { id: 'socket', label: 'Socket Caps (DIN 912)' },
+              { id: 'all', label: `All Lots (${filteredLots.length})` },
+              { id: 'nuts', label: 'Hex Nuts' },
+              { id: 'screws', label: 'Hex Screws' },
+              { id: 'bolts', label: 'Hex Bolts' },
+              { id: 'studs', label: 'Stud Rods' },
+              { id: 'socket', label: 'Socket Caps' },
             ].map((cat) => (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0 ${
                   selectedCategory === cat.id
-                    ? 'bg-blue-700 text-white shadow-xs'
+                    ? 'bg-[#0052CC] text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -448,27 +405,27 @@ export default function SurplusPage() {
                 setSearchQuery('');
                 setSelectedCategory('all');
               }}
-              className="text-red-600 font-semibold hover:underline text-xs flex items-center gap-1"
+              className="text-rose-600 font-semibold hover:underline text-xs flex items-center gap-1 shrink-0"
             >
-              <RotateCcw size={12} />
-              <span>Reset filter</span>
+              <RotateCcw size={11} />
+              <span>Reset</span>
             </button>
           )}
         </div>
 
         {/* Lots Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 h-64 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 h-48 animate-pulse" />
             ))}
           </div>
         ) : filteredLots.length === 0 ? (
-          <div className="bg-white rounded-2xl border-2 border-dashed border-slate-300 p-10 text-center space-y-3">
-            <Package size={40} className="mx-auto text-slate-400" />
-            <h3 className="text-base font-extrabold text-slate-900">No surplus lots matched your search</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Looking for a custom size or need to liquidate a dead-stock lot? Our engineering desk will verify and onboard your lot in under 24 hours.
+          <div className="bg-white rounded-xl border-2 border-dashed border-slate-200 p-8 text-center space-y-2.5">
+            <Package size={32} className="mx-auto text-slate-400" />
+            <h3 className="text-sm font-bold text-slate-800">No surplus lots matched your search</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Looking for a custom size or need to liquidate dead stock? We inspect and list lots within 24 hours.
             </p>
             <button
               type="button"
@@ -476,13 +433,13 @@ export default function SurplusPage() {
                 setModalContext('SURPLUS_VENDOR');
                 setIsCustomRequestOpen(true);
               }}
-              className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-bold text-xs shadow-xs"
+              className="px-3.5 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-lg font-bold text-xs shadow-xs"
             >
-              Submit Surplus Inquiry
+              Submit Surplus Request
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredLots.map((lot) => {
               const isPcs = globalUnit === 'PCS';
               const displayRate = isPcs
@@ -496,69 +453,67 @@ export default function SurplusPage() {
               return (
                 <div
                   key={lot.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between border-t-4 border-t-blue-700 relative"
+                  className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between"
                 >
-                  <div>
+                  <div className="space-y-2">
                     {/* Header Badges */}
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="bg-slate-900 text-white px-2.5 py-0.5 rounded font-mono text-[11px] font-extrabold tracking-wider">
-                        {lot.id}
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span
+                        className="bg-blue-50 text-[#0052CC] border border-blue-200/80 px-2 py-0.5 rounded font-mono text-[10px] font-bold truncate max-w-[170px]"
+                        title={lot.sku || lot.id}
+                      >
+                        {lot.sku || lot.id}
                       </span>
-                      <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold text-[11px]">
-                        -{lot.discount}% SURPLUS OFF
+                      <span className="bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5 shrink-0">
+                        <Flame size={10} /> -{lot.discount}%
                       </span>
                     </div>
 
                     {/* Lot Title */}
-                    <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 mb-1.5">
+                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 leading-snug" title={lot.title}>
                       {lot.title}
                     </h3>
 
                     {/* Spec Summary */}
-                    <p className="text-xs font-bold text-blue-700 font-mono mb-2.5 leading-relaxed">
+                    <p className="text-[11px] font-mono text-slate-600 truncate">
                       {lot.spec}
                     </p>
 
                     {/* Depot Location */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-4">
-                      <MapPin size={13} className="text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                      <MapPin size={12} className="text-slate-400 shrink-0" />
                       <span className="truncate">{lot.location}</span>
                     </div>
 
-                    {/* Commercials Matrix */}
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-1.5 font-mono text-xs mb-4">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Available Volume:</span>
-                        <strong className="text-slate-900">{lot.weight}</strong>
+                    {/* Commercials Box */}
+                    <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200/80 space-y-1 text-xs">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-slate-500 text-[11px]">Stock:</span>
+                        <strong className="text-slate-800 font-mono text-xs">{lot.weight}</strong>
                       </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Regular Market Tariff:</span>
-                        <span className="line-through text-slate-400">
-                          {formatINR(lot.marketRate)} / Kg
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-slate-500 text-[11px]">Standard Tariff:</span>
+                        <span className="line-through text-slate-400 font-mono text-[11px]">
+                          {formatINR(lot.marketRate)}/Kg
                         </span>
                       </div>
-                      <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-                          Clearance Rate ({globalUnit}):
-                        </span>
-                        <strong className="text-base font-black text-[#FF6B00]">
-                          {formatINR(displayRate)} / {globalUnit === 'PCS' ? 'Pc' : 'Kg'}
+                      <div className="flex justify-between items-baseline pt-1 border-t border-slate-200">
+                        <span className="text-[11px] font-semibold text-slate-700">Clearance Rate:</span>
+                        <strong className="text-sm font-black text-orange-600 font-mono">
+                          {formatINR(displayRate)} <span className="text-[10px] font-normal text-slate-500">/{globalUnit === 'PCS' ? 'pc' : 'kg'}</span>
                         </strong>
-                      </div>
-                      <div className="text-[10px] text-slate-500 text-right">
-                        Alt Rate: {formatINR(altRate)} / {globalUnit === 'PCS' ? 'Kg' : 'Pc'}
                       </div>
                     </div>
                   </div>
 
                   {/* Actions Strip */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                  <div className="pt-2.5 mt-2 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => handleClaimLot(lot)}
-                      className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.98]"
+                      className="w-full bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
                     >
-                      <ShoppingCart size={14} />
+                      <ShoppingCart size={13} />
                       <span>Claim Lot Allocation</span>
                     </button>
                   </div>

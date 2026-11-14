@@ -4,7 +4,6 @@ import { query } from './db';
 import { CustomProductRequest, CustomRequestStatus, Product } from './types';
 import { getProductsDb, setProductsDb } from './products-db';
 import { syncProductsToMySQL } from './sync-products-mysql';
-import { ensureItemInErpNext } from './erpnext';
 
 const DATA_FILE = path.join(process.cwd(), 'src', 'data', 'custom-product-requests.json');
 
@@ -391,18 +390,17 @@ export interface ConvertCustomRequestParams {
   stockPcs?: number;
   isSurplus?: boolean;
   surplusDiscountPct?: number;
-  syncToErpNext?: boolean;
   adminNotes?: string;
   moq?: string;
   leadTimeDays?: number;
 }
 
 /**
- * Converts a customer product request into a live catalog Product (and optionally pushes to ERPNext)
+ * Converts a customer product request into a live catalog Product
  */
 export async function convertCustomRequestToProduct(
   params: ConvertCustomRequestParams
-): Promise<{ product: Product; request: CustomProductRequest; erpItemCode?: string }> {
+): Promise<{ product: Product; request: CustomProductRequest }> {
   const req = await getCustomRequestById(params.requestId);
   if (!req) {
     throw new Error(`Custom product request #${params.requestId} not found.`);
@@ -480,34 +478,17 @@ export async function convertCustomRequestToProduct(
     console.warn('[CustomRequests] MySQL product sync warning:', err);
   }
 
-  // 3. Optionally push/ensure in ERPNext
-  let erpItemCode: string | undefined;
-  if (params.syncToErpNext) {
-    try {
-      erpItemCode = await ensureItemInErpNext({
-        sku: newProduct.sku,
-        name: newProduct.name,
-        rate: newProduct.pricePerPiece,
-        weightPerPcKg: newProduct.weightPerPcKg,
-      });
-    } catch (err) {
-      console.warn('[CustomRequests] ERPNext sync warning:', err);
-    }
-  }
-
-  // 4. Update Custom Request status to ADDED_TO_CATALOG
+  // 3. Update Custom Request status to ADDED_TO_CATALOG
   const updatedReq = await updateCustomRequest(params.requestId, {
     status: 'ADDED_TO_CATALOG',
     adminNotes: params.adminNotes || `Added to live catalog as SKU: ${newProduct.sku}`,
     convertedProductId: newProduct.id,
     convertedSku: newProduct.sku,
-    erpnextItemCode: erpItemCode,
   });
 
   return {
     product: newProduct,
     request: updatedReq || req,
-    erpItemCode,
   };
 }
 

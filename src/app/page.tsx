@@ -23,7 +23,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  // Fetch live products dynamically from API & ERPNext database
+  // Fetch live products dynamically from database
   useEffect(() => {
     fetch('/api/products')
       .then((res) => res.json())

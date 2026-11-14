@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { CustomerOrder } from '@/lib/types';
 import { query } from '@/lib/db';
-import { pushSalesOrderToErpNext } from '@/lib/erpnext';
 import { getOrdersFromMySQL, saveOrderToMySQL } from '@/lib/orders-db';
 import { getPhonePeTransactions } from '@/lib/phonepe';
 
@@ -36,7 +35,6 @@ async function getOrders(): Promise<CustomerOrder[]> {
           dispatchDate: '',
           shippingAddress: t.shippingAddress || 'Plot 12, Industrial Area',
           mtcCertNumber: 'MTC-CBH-2026-NABL',
-          erpnextSalesOrderId: t.erpnextSalesOrderId,
           items: t.items || [],
         });
       }
@@ -77,8 +75,7 @@ export async function GET(request: Request) {
         ord.trackingNumber?.toLowerCase().includes(search) ||
         ord.customerName?.toLowerCase().includes(search) ||
         ord.companyName?.toLowerCase().includes(search) ||
-        ord.shippingAddress?.toLowerCase().includes(search) ||
-        (ord.erpnextSalesOrderId && ord.erpnextSalesOrderId.toLowerCase().includes(search))
+        ord.shippingAddress?.toLowerCase().includes(search)
     );
   }
 
@@ -132,36 +129,7 @@ export async function POST(request: Request) {
       items: body.items,
     };
 
-    // 1. Push to ERPNext Sales Order & trigger stock reservation / deduction
-    try {
-      const erpResult = await pushSalesOrderToErpNext({
-        orderNumber: newOrder.orderNumber,
-        customerName: newOrder.customerName || 'Procurement In-Charge',
-        companyName: newOrder.companyName,
-        email: body.email,
-        phone: body.phone,
-        shippingAddress: newOrder.shippingAddress,
-        totalAmount: newOrder.netAmount,
-        items: body.items || [
-          {
-            sku: 'CBH-125A-M10-HDG',
-            name: 'Plain Flat Washer DIN 125A M10',
-            quantity: Math.max(10, Math.round(newOrder.totalWeightKg / 0.05)),
-            rate: parseFloat((newOrder.netAmount / Math.max(1, newOrder.itemsCount)).toFixed(2)),
-          },
-        ],
-        submitOrder: true,
-        deductStockImmediately: true,
-      });
-
-      if (erpResult.success && erpResult.erpnextSalesOrderId) {
-        newOrder.erpnextSalesOrderId = erpResult.erpnextSalesOrderId;
-      }
-    } catch (erpErr) {
-      console.warn('[Orders API] Background ERPNext push notice:', erpErr);
-    }
-
-    // 2. Persist order and line items to MySQL database
+    // 1. Persist order and line items to MySQL database
     try {
       const dbOrderId = await saveOrderToMySQL({
         orderNumber: newOrder.orderNumber,
@@ -184,7 +152,6 @@ export async function POST(request: Request) {
         trackingNumber: newOrder.trackingNumber,
         dispatchDate: newOrder.dispatchDate,
         mtcCertNumber: newOrder.mtcCertNumber,
-        erpnextSalesOrderId: newOrder.erpnextSalesOrderId,
         items: body.items,
       });
 
@@ -200,11 +167,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
-        message: `Order ${newOrder.orderNumber} dispatched into logistics tracking.${
-          newOrder.erpnextSalesOrderId
-            ? ` Created ERPNext Sales Order: ${newOrder.erpnextSalesOrderId}`
-            : ''
-        }`,
+        message: `Order ${newOrder.orderNumber} placed successfully and dispatched into logistics tracking.`,
         data: newOrder,
       },
       { status: 201 }
@@ -249,38 +212,6 @@ export async function PUT(request: Request) {
           id,
         ]
       );
-
-      // If status changed to CONFIRMED or explicitly requested, push Sales Order to ERPNext
-      if (updates.status === 'CONFIRMED' || updates.syncToErp) {
-        try {
-          const rows = await query<any>('SELECT * FROM orders WHERE id = ? OR order_number = ? LIMIT 1', [id, id]);
-          if (rows && rows.length > 0 && !rows[0].erpnext_sales_order_id) {
-            const itemRows = await query<any>('SELECT * FROM order_items WHERE order_id = ?', [rows[0].id]);
-            const erpRes = await pushSalesOrderToErpNext({
-              orderNumber: rows[0].order_number,
-              customerName: rows[0].customer_name || 'Procurement In-Charge',
-              companyName: rows[0].company_name,
-              shippingAddress: rows[0].shipping_address,
-              totalAmount: parseFloat(rows[0].net_amount) || 0,
-              items: (itemRows || []).map((it: any) => ({
-                sku: it.sku,
-                name: it.item_name,
-                standard: it.standard,
-                quantity: Number(it.quantity) || 1,
-                rate: Number(it.unit_price) || 0,
-              })),
-              submitOrder: true,
-              deductStockImmediately: true,
-            });
-            if (erpRes.success && erpRes.erpnextSalesOrderId) {
-              await query('UPDATE orders SET erpnext_sales_order_id = ? WHERE id = ?', [erpRes.erpnextSalesOrderId, rows[0].id]);
-              updates.erpnextSalesOrderId = erpRes.erpnextSalesOrderId;
-            }
-          }
-        } catch (erpErr) {
-          console.warn('[Orders API PUT] ERPNext auto-sync notice:', erpErr);
-        }
-      }
     } catch (mysqlErr) {
       console.warn('[Orders API] MySQL update error:', mysqlErr);
     }

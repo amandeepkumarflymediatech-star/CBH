@@ -8,13 +8,20 @@ import {
   TextInput,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
-import { MobileBadge } from '../../components/MobileBadge';
 import { MobileSearch } from '../../components/MobileSearch';
 import { MobileModal } from '../../components/MobileModal';
 import { mobileApi } from '../../config/api';
 import { MobileCategory } from '../../types';
+
+const GRAPHITE = '#0F172A';
+const STEEL = '#475569';
+const LIGHT_STEEL = '#94A3B8';
+const WHITE = '#FFFFFF';
+const BLUE = '#0052CC';
+const RED = '#DC2626';
+const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 export const AdminCategoriesScreen: React.FC = () => {
   const [categories, setCategories] = useState<MobileCategory[]>([]);
@@ -29,12 +36,11 @@ export const AdminCategoriesScreen: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
-  // Form inputs (100% all fields)
+  // Form inputs
   const [catName, setCatName] = useState('');
   const [catSlug, setCatSlug] = useState('');
   const [catTagline, setCatTagline] = useState('');
   const [catDescription, setCatDescription] = useState('');
-  const [catImageUrl, setCatImageUrl] = useState('');
   const [catFeatured, setCatFeatured] = useState(false);
 
   // Delete Modal
@@ -55,13 +61,12 @@ export const AdminCategoriesScreen: React.FC = () => {
       if (res.categories && res.categories.length > 0) {
         setCategories(res.categories);
       } else {
-        // Fallback default taxonomy categories
         setCategories([
           {
             slug: 'hex-screws',
             name: 'Hex Screws & Bolts',
             tagline: 'DIN 933, 931 & ISO 4017 Full/Partial Thread',
-            description: 'Precision hot-forged and cold-headed bolts for heavy infrastructure.',
+            description: 'Precision hot-forged and cold-headed bolts.',
             productsCount: 320,
             featured: true,
           },
@@ -69,15 +74,15 @@ export const AdminCategoriesScreen: React.FC = () => {
             slug: 'socket-screws',
             name: 'Socket Head Cap Screws',
             tagline: 'DIN 912 Grade 10.9 & 12.9 High-Tensile',
-            description: 'Allen socket caps for machinery and precision die equipment.',
+            description: 'Allen socket caps for machinery.',
             productsCount: 160,
             featured: true,
           },
           {
             slug: 'anchor-systems',
             name: 'Heavy Duty Anchor Bolts',
-            tagline: 'ETA Option 1 & 7 Cracked Concrete Fixings',
-            description: 'Through-bolts, drop-in anchors, and chemical injection capsules.',
+            tagline: 'ETA Option 1 & 7 Concrete Fixings',
+            description: 'Through-bolts, drop-in anchors.',
             productsCount: 75,
             featured: false,
           },
@@ -85,7 +90,7 @@ export const AdminCategoriesScreen: React.FC = () => {
             slug: 'threaded-rods',
             name: 'Threaded Rods & Studs',
             tagline: 'DIN 975 / 976 Grade 4.6, 8.8, SS304/316',
-            description: '1-meter and 3-meter all-thread rods and flange double-end studs.',
+            description: 'All-thread rods and flange double-end studs.',
             productsCount: 50,
             featured: false,
           },
@@ -110,7 +115,6 @@ export const AdminCategoriesScreen: React.FC = () => {
     setCatSlug('');
     setCatTagline('');
     setCatDescription('');
-    setCatImageUrl('https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80');
     setCatFeatured(false);
     setIsModalOpen(true);
   };
@@ -122,7 +126,6 @@ export const AdminCategoriesScreen: React.FC = () => {
     setCatSlug(cat.slug);
     setCatTagline(cat.tagline || '');
     setCatDescription(cat.description || '');
-    setCatImageUrl(cat.imageUrl || '');
     setCatFeatured(Boolean(cat.featured));
     setIsModalOpen(true);
   };
@@ -141,7 +144,7 @@ export const AdminCategoriesScreen: React.FC = () => {
       slug,
       tagline: catTagline.trim(),
       description: catDescription.trim(),
-      imageUrl: catImageUrl.trim() || 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
       featured: catFeatured,
       productsCount: isEditing ? (categories.find((c) => c.slug === activeSlug)?.productsCount || 0) : 0,
     };
@@ -152,11 +155,11 @@ export const AdminCategoriesScreen: React.FC = () => {
         setCategories((prev) =>
           prev.map((c) => (c.slug === activeSlug ? { ...c, ...payload } : c))
         );
-        showToast(`Category "${payload.name}" updated!`);
+        showToast(`"${payload.name}" updated`);
       } else {
         await mobileApi.catalog.createCategory(payload);
         setCategories((prev) => [payload, ...prev]);
-        showToast(`Category "${payload.name}" created!`);
+        showToast(`"${payload.name}" registered`);
       }
       setIsModalOpen(false);
     } catch (err: any) {
@@ -173,7 +176,7 @@ export const AdminCategoriesScreen: React.FC = () => {
       await mobileApi.catalog.deleteCategory(catToDelete.slug);
       setCategories((prev) => prev.filter((c) => c.slug !== catToDelete.slug));
       setIsDeleteModalOpen(false);
-      showToast(`Category "${catToDelete.name}" removed.`);
+      showToast(`Category removed`);
       setCatToDelete(null);
     } catch (err: any) {
       Alert.alert('Delete Error', err.message || 'Failed to delete category');
@@ -192,35 +195,21 @@ export const AdminCategoriesScreen: React.FC = () => {
   });
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={() => loadCategories(true)}
-          colors={['#0052CC']}
-        />
-      }
-    >
-      {/* Banner */}
-      <View style={styles.banner}>
-        <View style={styles.bannerTop}>
-          <Text style={styles.bannerTitle}>CATALOG TAXONOMY CONTROL</Text>
-          <View style={styles.badgePill}>
-            <Text style={styles.badgeText}>{categories.length} TAXONOMIES SYNCED</Text>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      {/* Top Search & Add Bar */}
+      <View style={styles.topHeader}>
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <MobileSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search category or standard..."
+            />
           </View>
+          <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd} activeOpacity={0.85}>
+            <Text style={styles.addBtnText}>+ Category</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.bannerSub}>
-          Structured categories, subcategories, and product families synchronized across web and mobile.
-        </Text>
-      </View>
-
-      {/* Action Header */}
-      <View style={styles.rowBetween}>
-        <Text style={styles.countText}>{filteredCategories.length} Categories Registered</Text>
-        <TouchableOpacity onPress={handleOpenAdd} style={styles.addBtn} activeOpacity={0.8}>
-          <Text style={styles.addBtnText}>+ Add Category</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Toast Feedback */}
@@ -230,393 +219,348 @@ export const AdminCategoriesScreen: React.FC = () => {
         </View>
       ) : null}
 
-      {/* Search */}
-      <MobileSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Search category name or slug..."
-      />
+      {/* High Density Category List */}
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => loadCategories(true)} colors={[BLUE]} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.countRow}>
+          <Text style={styles.countText}>{filteredCategories.length} Categories Registered</Text>
+        </View>
 
-      {/* Category Cards */}
-      {filteredCategories.map((cat) => (
-        <MobileCard key={cat.slug}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.catName}>{cat.name}</Text>
-            {cat.featured ? (
-              <MobileBadge label="FEATURED" variant="primary" size="sm" />
-            ) : (
-              <MobileBadge label="STANDARD" variant="neutral" size="sm" />
-            )}
-          </View>
+        {filteredCategories.map((cat) => (
+          <View key={cat.slug} style={styles.catCard}>
+            <View style={styles.catTopRow}>
+              <View style={styles.nameGroup}>
+                <Text style={styles.catName} numberOfLines={1}>
+                  {cat.name}
+                </Text>
+                {cat.featured && (
+                  <View style={styles.featuredBadge}>
+                    <Text style={styles.featuredText}>FEATURED</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.productCount}>{cat.productsCount || 0} SKUs</Text>
+            </View>
 
-          <Text style={styles.catSlug}>slug: /{cat.slug}</Text>
-
-          {cat.tagline ? <Text style={styles.catTagline}>{cat.tagline}</Text> : null}
-          {cat.description ? <Text style={styles.catDesc}>{cat.description}</Text> : null}
-
-          <View style={styles.divider} />
-
-          <View style={styles.rowBetween}>
-            <Text style={styles.prodCountText}>
-              {cat.productsCount || 0} Products in Family
+            <Text style={styles.tagline} numberOfLines={1}>
+              {cat.tagline || cat.description}
             </Text>
-            <View style={styles.rowInline}>
-              <TouchableOpacity
-                onPress={() => handleOpenEdit(cat)}
-                style={styles.editBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.editBtnText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setCatToDelete(cat);
-                  setIsDeleteModalOpen(true);
-                }}
-                style={styles.deleteBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.deleteBtnText}>Delete</Text>
-              </TouchableOpacity>
+
+            <View style={styles.catBottomRow}>
+              <Text style={styles.slugText}>/{cat.slug}</Text>
+
+              <View style={styles.actionGroup}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setCatToDelete(cat);
+                    setIsDeleteModalOpen(true);
+                  }}
+                  style={styles.deleteBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.deleteBtnText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleOpenEdit(cat)}
+                  style={styles.editBtn}
+                >
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </MobileCard>
-      ))}
+        ))}
+      </ScrollView>
 
-      {/* ================================================================ */}
-      {/* ADD / EDIT CATEGORY MODAL (100% All Inputs)                      */}
-      {/* ================================================================ */}
+      {/* Add / Edit Category Modal */}
       <MobileModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditing ? `Edit Category: ${catName}` : '+ Add Catalog Category'}
+        title={isEditing ? `Edit ${catName}` : 'Add Taxonomy Category'}
       >
-        <ScrollView style={styles.modalScroll}>
-          <Text style={styles.fieldLabel}>Category Display Name *</Text>
+        <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.inputLabel}>Category Name *</Text>
           <TextInput
             style={styles.input}
             value={catName}
-            onChangeText={(text) => {
-              setCatName(text);
-              if (!isEditing && !catSlug) {
-                setCatSlug(text.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'));
-              }
-            }}
-            placeholder="e.g. Hex Screws &amp; Structural Bolts"
+            onChangeText={setCatName}
+            placeholder="Hex Screws & Bolts"
           />
 
-          <Text style={styles.fieldLabel}>URL Slug Identifier *</Text>
+          <Text style={styles.inputLabel}>URL Slug</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontFamily: MONO }]}
             value={catSlug}
             onChangeText={setCatSlug}
-            placeholder="e.g. hex-screws"
+            placeholder="hex-screws"
             autoCapitalize="none"
           />
 
-          <Text style={styles.fieldLabel}>Technical Tagline</Text>
+          <Text style={styles.inputLabel}>Standard Norms Tagline</Text>
           <TextInput
             style={styles.input}
             value={catTagline}
             onChangeText={setCatTagline}
-            placeholder="e.g. DIN 933, DIN 931 &amp; ISO 4017 Range"
+            placeholder="DIN 933, 931 & ISO 4017"
           />
 
-          <Text style={styles.fieldLabel}>Engineering Description</Text>
-          <TextInput
-            style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
-            value={catDescription}
-            onChangeText={setCatDescription}
-            placeholder="Detailed application standards and metallurgy specs..."
-            multiline
-          />
-
-          <Text style={styles.fieldLabel}>Cover Image URL</Text>
-          <TextInput
-            style={styles.input}
-            value={catImageUrl}
-            onChangeText={setCatImageUrl}
-            placeholder="https://..."
-            autoCapitalize="none"
-          />
-
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Feature on Mobile Storefront</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.inputLabel}>Feature on Customer Home Screen</Text>
             <TouchableOpacity
               onPress={() => setCatFeatured(!catFeatured)}
               style={[styles.toggleBtn, catFeatured && styles.toggleBtnActive]}
             >
-              <Text style={styles.toggleText}>{catFeatured ? 'YES' : 'NO'}</Text>
+              <Text style={[styles.toggleBtnText, catFeatured && styles.toggleBtnTextActive]}>
+                {catFeatured ? 'YES' : 'NO'}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
+            style={styles.saveBtn}
             onPress={handleSaveCategory}
             disabled={isSubmitting}
-            style={styles.modalSubmitBtn}
+            activeOpacity={0.88}
           >
-            <Text style={styles.modalSubmitText}>
-              {isSubmitting ? 'Saving Category...' : isEditing ? 'Save Changes' : 'Create Category'}
-            </Text>
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Saving...' : 'Save Category'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </MobileModal>
 
-      {/* DELETE MODAL */}
+      {/* Delete Confirmation Modal */}
       <MobileModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Confirm Category Deletion"
+        title="Delete Category"
       >
-        <View style={{ padding: 6, gap: 12 }}>
-          <Text style={styles.deleteWarning}>
-            Are you sure you want to delete category{' '}
-            <Text style={{ fontWeight: '800' }}>{catToDelete?.name}</Text>?
+        <View style={{ paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: STEEL, marginBottom: 14 }}>
+            Delete category <Text style={{ fontWeight: '800', color: GRAPHITE }}>{catToDelete?.name}</Text>?
           </Text>
-          <View style={styles.rowBetween}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
               onPress={() => setIsDeleteModalOpen(false)}
-              style={styles.cancelBtn}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center' }}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: STEEL }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleConfirmDelete}
               disabled={isSubmitting}
-              style={styles.confirmDeleteBtn}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: RED, alignItems: 'center' }}
             >
-              <Text style={styles.confirmDeleteText}>
-                {isSubmitting ? 'Deleting...' : 'Yes, Delete Category'}
+              <Text style={{ fontSize: 12, fontWeight: '700', color: WHITE }}>
+                {isSubmitting ? 'Deleting...' : 'Delete'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </MobileModal>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
+  topHeader: {
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
-  banner: {
-    backgroundColor: '#0F172A',
-    borderRadius: 14,
-    padding: 16,
-  },
-  bannerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  bannerTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-  },
-  badgePill: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  badgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#38BDF8',
-  },
-  bannerSub: {
-    fontSize: 11,
-    color: '#F1F5F9',
-    fontWeight: '500',
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  rowInline: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  countText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
   addBtn: {
-    backgroundColor: '#0052CC',
+    backgroundColor: BLUE,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 9,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addBtnText: {
-    color: '#FFFFFF',
+    color: WHITE,
     fontSize: 12,
     fontWeight: '800',
   },
-  toast: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 8,
-    padding: 10,
+  countRow: {
+    paddingVertical: 4,
+    marginBottom: 6,
   },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
+  countText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: STEEL,
+  },
+  listContent: {
+    padding: 12,
+    paddingBottom: 24,
+  },
+  catCard: {
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  catTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  nameGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    paddingRight: 6,
   },
   catName: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  catSlug: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#0052CC',
-    marginTop: 2,
-  },
-  catTagline: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-    marginTop: 4,
+    fontWeight: '800',
+    color: GRAPHITE,
   },
-  catDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-    lineHeight: 16,
+  featuredBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 1,
+    paddingHorizontal: 5,
+    borderRadius: 4,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
+  featuredText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: BLUE,
   },
-  prodCountText: {
+  productCount: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0F172A',
+    fontFamily: MONO,
+    color: STEEL,
+  },
+  tagline: {
+    fontSize: 11,
+    color: STEEL,
+    marginBottom: 6,
+  },
+  catBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 6,
+  },
+  slugText: {
+    fontSize: 10,
+    fontFamily: MONO,
+    color: LIGHT_STEEL,
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deleteBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  deleteBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: RED,
   },
   editBtn: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#CBD5E1',
   },
   editBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0052CC',
+    color: GRAPHITE,
   },
-  deleteBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
+  toast: {
+    backgroundColor: GRAPHITE,
     paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginTop: 6,
     borderRadius: 6,
+    alignItems: 'center',
   },
-  deleteBtnText: {
-    fontSize: 12,
-  },
-  modalScroll: {
-    maxHeight: 480,
-  },
-  fieldLabel: {
+  toastText: {
+    color: WHITE,
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
+  },
+  modalScroll: {
+    paddingVertical: 6,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STEEL,
     marginBottom: 4,
-    marginTop: 8,
   },
   input: {
+    height: 38,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 6,
+    paddingHorizontal: 10,
     fontSize: 12,
-    color: '#0F172A',
+    color: GRAPHITE,
+    marginBottom: 8,
   },
-  switchRow: {
+  toggleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  switchLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    marginBottom: 8,
   },
   toggleBtn: {
-    backgroundColor: '#CBD5E1',
+    paddingVertical: 4,
     paddingHorizontal: 10,
-    paddingVertical: 5,
     borderRadius: 6,
+    backgroundColor: '#F1F5F9',
   },
   toggleBtnActive: {
-    backgroundColor: '#0052CC',
+    backgroundColor: '#DCFCE7',
   },
-  toggleText: {
-    color: '#FFFFFF',
+  toggleBtnText: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
+    color: STEEL,
   },
-  modalSubmitBtn: {
-    backgroundColor: '#0052CC',
-    paddingVertical: 12,
-    borderRadius: 10,
+  toggleBtnTextActive: {
+    color: '#16A34A',
+  },
+  saveBtn: {
+    backgroundColor: BLUE,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 10,
+    marginTop: 6,
   },
-  modalSubmitText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  saveBtnText: {
+    color: WHITE,
+    fontSize: 12,
     fontWeight: '800',
-  },
-  deleteWarning: {
-    fontSize: 12,
-    color: '#334155',
-    lineHeight: 18,
-  },
-  cancelBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  cancelBtnText: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  confirmDeleteBtn: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  confirmDeleteText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

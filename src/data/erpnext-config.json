@@ -1,13 +1,13 @@
 {
-  "erpnextUrl": "https://cbhtech.m.frappe.cloud",
-  "apiKey": "b30fbfcf1eb3ef2",
-  "apiSecret": "e23af56c82cef2d",
+  "erpnextUrl": "",
+  "apiKey": "",
+  "apiSecret": "",
   "company": "CBC Technologies Private Limited",
   "defaultPriceList": "Standard Selling",
   "defaultWarehouse": "Stores - CBH",
-  "autoSync": true,
-  "lastSyncTime": "2026-11-04T07:12:47.655Z",
-  "lastSyncStatus": "CONNECTED",
+  "autoSync": false,
+  "lastSyncTime": null,
+  "lastSyncStatus": "DISABLED",
   "lastError": null,
-  "syncedItemsCount": 84
+  "syncedItemsCount": 0
 }

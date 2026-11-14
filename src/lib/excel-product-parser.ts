@@ -860,7 +860,7 @@ export function generateFastenersExcelTemplate(): Buffer {
     ['Lead Time (Days)', 'Optional', '7, 10, 14', 'Production + packing turnaround days.'],
     ['Is Surplus', 'Optional', 'TRUE or FALSE', 'Whether this item is featured in the OEM Surplus Clearance section.'],
     ['Surplus Discount %', 'Optional', '25, 35', 'Percentage discount off standard rates for surplus lots.'],
-    ['Image URL', 'Optional', '/assets/bolt_zinc.jpg or frappe cloud URL', 'If empty, CBH assigns an appropriate category preset photo.'],
+    ['Image URL', 'Optional', '/assets/bolt_zinc.jpg or CDN photo URL', 'If empty, CBH assigns an appropriate category preset photo.'],
   ];
 
   const wsInstructions = XLSX.utils.aoa_to_sheet(instructionsData);

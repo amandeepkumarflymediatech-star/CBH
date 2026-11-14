@@ -78,7 +78,7 @@ export default function ProductDetailPage() {
   const [pincode, setPincode] = useState('400001');
   const [pincodeMsg, setPincodeMsg] = useState('Estimated Delivery in 24-48 Hours to Mumbai Metropolitan Region');
 
-  // Fetch dynamic products from live API / ERPNext cache on mount
+  // Fetch dynamic products from live API / local database on mount
   useEffect(() => {
     setIsLoading(true);
     const isNumeric = /^\d+$/.test(rawId);
@@ -1354,11 +1354,11 @@ export default function ProductDetailPage() {
                   </tbody>
                 </table>
 
-                {/* Embedded HTML Specification Sheet from ERPNext if available */}
+                {/* Embedded HTML Specification Sheet if available */}
                 {/* {product.descriptionHtml && (
                   <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
                     <strong style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: '#334155' }}>
-                      ERPNext / Frappe Technical Specification Table:
+                      Technical Specification Table:
                     </strong>
                     <div dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} />
                   </div>

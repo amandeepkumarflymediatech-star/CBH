@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   RefreshControl,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -17,15 +16,14 @@ import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileOrder } from '../../types';
 
-// Same palette as the other screens
-const GRAPHITE = '#1C2228';
-const STEEL = '#5E6A74';
-const MIST = '#EDEFF1';
-const HAIR = '#D6DBE0';
+const GRAPHITE = '#0F172A';
+const STEEL = '#475569';
+const LIGHT_STEEL = '#94A3B8';
 const WHITE = '#FFFFFF';
-const ORANGE = '#F26B1D';
-const GREEN = '#17803D';
-const RED = '#C62828';
+const BLUE = '#0052CC';
+const ORANGE = '#D97706';
+const GREEN = '#16A34A';
+const RED = '#DC2626';
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -35,23 +33,7 @@ const statusLabel = (s: string) => {
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 
-// Dispatch stages; the tracker fills as an order moves along
-const STAGES = ['Processing', 'Dispatched', 'In transit', 'Delivered'];
-const stageIndex = (status: string) => {
-  switch (status) {
-    case 'DISPATCHED':
-      return 1;
-    case 'IN_TRANSIT':
-      return 2;
-    case 'DELIVERED':
-      return 3;
-    default:
-      return 0;
-  }
-};
-
-const payLabel = (m?: string) =>
-  m === 'COD' ? 'Cash on delivery' : m === 'PHONEPE' ? 'Prepaid UPI' : m === 'NEFT_RTGS' ? 'RTGS wire' : m ? '30-day credit' : '';
+const STATUS_FILTERS = ['All', 'PROCESSING', 'CONFIRMED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED'];
 
 export const AdminOrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<MobileOrder[]>([]);
@@ -117,7 +99,7 @@ export const AdminOrdersScreen: React.FC = () => {
   // CREATE
   const handleOpenCreate = () => {
     setNewClientName('Vikram Malhotra');
-    setNewCompanyName('L&T Mega Structures Ltd.');
+    setNewCompanyName('L&T Infrastructure Div');
     setNewShippingAddress('Plot 18, Phase 2, Industrial Estate, Pune, MH - 411019');
     setIsCreateModalOpen(true);
   };
@@ -202,15 +184,20 @@ export const AdminOrdersScreen: React.FC = () => {
       setOrders((prev) =>
         prev.map((o) =>
           o.id === activeOrder.id
-            ? { ...o, status: newStatus, trackingNumber: newTracking.trim(), carrier: newCarrier.trim() }
+            ? {
+                ...o,
+                status: newStatus,
+                trackingNumber: newTracking.trim(),
+                carrier: newCarrier.trim(),
+              }
             : o
         )
       );
 
       setIsUpdateModalOpen(false);
-      showToast(`${activeOrder.orderNumber} is now ${statusLabel(newStatus).toLowerCase()}`);
+      showToast(`${activeOrder.orderNumber} updated to ${statusLabel(newStatus)}`);
     } catch (err: any) {
-      Alert.alert('Could not update order', err.message || 'Try again.');
+      Alert.alert('Could not update status', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -229,7 +216,7 @@ export const AdminOrdersScreen: React.FC = () => {
       await mobileApi.orders.delete(orderToDelete.id);
       setOrders((prev) => prev.filter((o) => o.id !== orderToDelete.id));
       setIsDeleteModalOpen(false);
-      showToast(`${orderToDelete.orderNumber} deleted`);
+      showToast(`${orderToDelete.orderNumber} removed`);
       setOrderToDelete(null);
     } catch (err: any) {
       Alert.alert('Could not delete order', err.message || 'Try again.');
@@ -238,508 +225,587 @@ export const AdminOrdersScreen: React.FC = () => {
     }
   };
 
-  const statusFilters = ['All', 'PROCESSING', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'];
-
-  const statusColor = (st: string) => {
-    switch (st) {
+  const orderColor = (s: string) => {
+    switch (s) {
       case 'DELIVERED':
         return GREEN;
       case 'IN_TRANSIT':
       case 'DISPATCHED':
         return GRAPHITE;
-      case 'CANCELLED':
-        return RED;
+      case 'CONFIRMED':
+        return BLUE;
       default:
         return ORANGE;
     }
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: WHITE }}
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchOrders(true)} colors={[ORANGE]} />
-      }
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.searchWrap}>
-        <MobileSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search by order number, client or AWB"
-        />
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      {/* Top Header & Search Bar */}
+      <View style={styles.topHeader}>
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <MobileSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search Order # or Buyer..."
+            />
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={handleOpenCreate} activeOpacity={0.85}>
+            <Text style={styles.addBtnText}>+ New</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Horizontal Status Filter Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statusScroll}
+          style={styles.statusBar}
+        >
+          {STATUS_FILTERS.map((st) => {
+            const active = selectedStatus === st;
+            return (
+              <TouchableOpacity
+                key={st}
+                onPress={() => setSelectedStatus(st)}
+                style={[styles.statusPill, active && styles.statusPillActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.statusPillText, active && styles.statusPillTextActive]}>
+                  {statusLabel(st)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* Status filter tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
-        style={styles.tabs}
-      >
-        {statusFilters.map((st) => {
-          const active = selectedStatus === st;
-          return (
-            <TouchableOpacity
-              key={st}
-              onPress={() => setSelectedStatus(st)}
-              style={[styles.tab, active && styles.tabActive]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{statusLabel(st)}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
+      {/* Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>{toastMsg}</Text>
+          <Text style={styles.toastText}>✓ {toastMsg}</Text>
         </View>
       ) : null}
 
-      {/* Count + create */}
-      <View style={styles.controlBar}>
-        <Text style={styles.h2}>{isLoading ? 'Orders' : `${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`}</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={handleOpenCreate} activeOpacity={0.88}>
-          <Text style={styles.addBtnText}>New dispatch</Text>
-        </TouchableOpacity>
-      </View>
+      {/* High Density Order List */}
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchOrders(true)} colors={[BLUE]} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.countRow}>
+          <Text style={styles.countText}>{orders.length} Dispatches Recorded</Text>
+        </View>
 
-      {/* List */}
-      {isLoading ? (
-        <View style={{ gap: 10 }}>
-          <OrderCardSkeleton />
-          <OrderCardSkeleton />
-          <OrderCardSkeleton />
-        </View>
-      ) : orders.length === 0 ? (
-        <View style={styles.centerBlock}>
-          <Text style={styles.emptyTitle}>No orders found</Text>
-          <Text style={styles.emptySubtitle}>Nothing matches this search or filter.</Text>
-          <TouchableOpacity
-            onPress={() => {
-              setSearchQuery('');
-              setSelectedStatus('All');
-            }}
-            style={styles.resetBtn}
-          >
-            <Text style={styles.resetBtnText}>Clear filters</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        orders.map((order) => {
-          const idx = stageIndex(order.status);
-          const cancelled = order.status === 'CANCELLED';
-          const color = statusColor(order.status);
-          const pay = payLabel(order.paymentMethod);
-          return (
-            <View key={order.id} style={styles.order}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-                <View style={styles.statusRow}>
-                  <View style={[styles.dot, { backgroundColor: color }]} />
-                  <Text style={[styles.statusText, { color }]}>{statusLabel(order.status)}</Text>
+        {isLoading ? (
+          <View style={{ gap: 8 }}>
+            <OrderCardSkeleton />
+            <OrderCardSkeleton />
+            <OrderCardSkeleton />
+          </View>
+        ) : orders.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTitle}>No orders match criteria</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setSelectedStatus('All');
+              }}
+              style={styles.resetBtn}
+            >
+              <Text style={styles.resetBtnText}>Clear Filters</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          orders.map((order) => (
+            <View key={order.id} style={styles.orderCard}>
+              {/* Row 1: Order Number, Date, Status Pill */}
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.orderIdGroup}>
+                  <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                  <Text style={styles.orderDate}>{order.date || order.createdAt?.split('T')[0]}</Text>
                 </View>
-              </View>
-              <Text style={styles.company}>{order.companyName || 'Enterprise Buyer'}</Text>
 
-              {/* Stage tracker */}
-              <View style={styles.tracker}>
-                {STAGES.map((s, i) => (
-                  <View
-                    key={s}
-                    style={[styles.seg, i <= idx && { backgroundColor: cancelled ? RED : i === idx && idx < 3 ? ORANGE : i === 3 ? GREEN : GRAPHITE }]}
-                  />
-                ))}
-              </View>
-              <View style={styles.stageLabels}>
-                {STAGES.map((s, i) => (
-                  <Text key={s} style={[styles.stageLabel, i === idx && !cancelled && styles.stageLabelOn]}>
-                    {s}
-                  </Text>
-                ))}
-              </View>
-
-              <Text style={styles.meta} numberOfLines={2}>
-                Ship to {order.shippingAddress || 'Plant Dispatch Center'}
-              </Text>
-              <Text style={styles.meta}>
-                {order.carrier || 'Express Logistics'},{' '}
-                {order.trackingNumber ? `AWB ${order.trackingNumber}` : 'AWB pending'}
-              </Text>
-
-              <View style={styles.amountRow}>
-                <View>
-                  <Text style={styles.amount}>{inr(order.netAmount || 0)}</Text>
-                  <Text style={styles.amountSub}>
-                    {order.items ? order.items.length : 1} {(order.items ? order.items.length : 1) === 1 ? 'line' : 'lines'},{' '}
-                    {(order.totalWeightKg || 120).toLocaleString('en-IN')} kg{pay ? `, ${pay}` : ''}
+                <View style={[styles.badgePill, { backgroundColor: orderColor(order.status) + '15' }]}>
+                  <Text style={[styles.badgePillText, { color: orderColor(order.status) }]}>
+                    {statusLabel(order.status)}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={() => handlePromptDelete(order)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deleteLink}>Delete</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleOpenUpdate(order)} style={styles.updateBtn} activeOpacity={0.85}>
-                  <Text style={styles.updateBtnText}>Update status</Text>
-                </TouchableOpacity>
+              {/* Row 2: Customer / Company & Net Amount */}
+              <View style={styles.cardBodyRow}>
+                <Text style={styles.companyName} numberOfLines={1}>
+                  {order.companyName || order.customerName || 'Direct B2B Buyer'}
+                </Text>
+                <Text style={styles.netAmount}>{inr(order.netAmount || 0)}</Text>
+              </View>
+
+              {/* Row 3: Logistics Telemetry & Actions */}
+              <View style={styles.cardFooterRow}>
+                <View style={styles.logisticsInfo}>
+                  <Text style={styles.weightText}>{order.totalWeightKg || 0} kg</Text>
+                  <Text style={styles.dotSeparator}>•</Text>
+                  <Text style={styles.carrierText} numberOfLines={1}>
+                    {order.carrier || 'Blue Dart'} ({order.trackingNumber || 'Pending'})
+                  </Text>
+                </View>
+
+                <View style={styles.actionGroup}>
+                  <TouchableOpacity
+                    onPress={() => handlePromptDelete(order)}
+                    style={styles.deleteBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleOpenUpdate(order)}
+                    style={styles.updateBtn}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.updateBtnText}>Update</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          );
-        })
-      )}
+          ))
+        )}
+      </ScrollView>
 
-      {/* Create order modal */}
+      {/* Update Tracking & Status Modal */}
       <MobileModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="New dispatch order"
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        title={`Update ${activeOrder?.orderNumber || 'Order'}`}
       >
         <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.modalSubtitle}>Create a plant consignment directly in the ERP pipeline.</Text>
-
-          <Text style={styles.inputLabel}>Company name</Text>
-          <TextInput
-            style={styles.input}
-            value={newCompanyName}
-            onChangeText={setNewCompanyName}
-            placeholder="Apex Infrastructure Pvt Ltd"
-            placeholderTextColor="#8D98A1"
-          />
-
-          <Text style={styles.inputLabel}>Contact person</Text>
-          <TextInput
-            style={styles.input}
-            value={newClientName}
-            onChangeText={setNewClientName}
-            placeholder="Rajesh Sharma"
-            placeholderTextColor="#8D98A1"
-          />
-
-          <Text style={styles.inputLabel}>Delivery address</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={newShippingAddress}
-            onChangeText={setNewShippingAddress}
-            placeholder="Warehouse or site address with PIN"
-            placeholderTextColor="#8D98A1"
-            multiline
-          />
-
-          <Text style={styles.inputLabel}>Carrier</Text>
-          <TextInput
-            style={styles.input}
-            value={newCarrierSelect}
-            onChangeText={setNewCarrierSelect}
-            placeholder="Blue Dart, TCI Freight, Safexpress"
-            placeholderTextColor="#8D98A1"
-          />
-
-          <Text style={styles.inputLabel}>Items</Text>
-          <TextInput
-            style={styles.input}
-            value={newSkuDesc}
-            onChangeText={setNewSkuDesc}
-            placeholder="DIN 933 M12x50 Grade 8.8 (Hex Bolts)"
-            placeholderTextColor="#8D98A1"
-          />
-
-          <View style={styles.twoCols}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Weight (kg)</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={newQuantityKg} onChangeText={setNewQuantityKg} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Invoice value (₹)</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={newAmount} onChangeText={setNewAmount} />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            onPress={handleCreateOrder}
-            style={[styles.saveBtn, isSubmitting && styles.disabled]}
-            disabled={isSubmitting}
-            activeOpacity={0.88}
-          >
-            {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Create order</Text>}
-          </TouchableOpacity>
-        </ScrollView>
-      </MobileModal>
-
-      {/* Update status modal */}
-      {activeOrder ? (
-        <MobileModal
-          isOpen={isUpdateModalOpen}
-          onClose={() => setIsUpdateModalOpen(false)}
-          title={`Update ${activeOrder.orderNumber}`}
-        >
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalSubtitle}>Set the dispatch status, carrier and AWB tracking number.</Text>
-
-            <Text style={styles.inputLabel}>Status</Text>
-            <View style={styles.statusSelectRow}>
-              {(['PROCESSING', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'] as const).map((st) => {
+          <Text style={styles.inputLabel}>Dispatch Stage</Text>
+          <View style={styles.stageGrid}>
+            {(['PROCESSING', 'CONFIRMED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED'] as MobileOrder['status'][]).map(
+              (st) => {
                 const active = newStatus === st;
                 return (
                   <TouchableOpacity
                     key={st}
-                    style={[styles.statusSelect, active && styles.statusSelectActive]}
                     onPress={() => setNewStatus(st)}
-                    activeOpacity={0.8}
+                    style={[styles.stagePill, active && styles.stagePillActive]}
                   >
-                    <Text style={[styles.statusSelectText, active && styles.statusSelectTextActive]}>
+                    <Text style={[styles.stagePillText, active && styles.stagePillTextActive]}>
                       {statusLabel(st)}
                     </Text>
                   </TouchableOpacity>
                 );
-              })}
+              }
+            )}
+          </View>
+
+          <Text style={styles.inputLabel}>Logistics Carrier</Text>
+          <TextInput
+            style={styles.input}
+            value={newCarrier}
+            onChangeText={setNewCarrier}
+            placeholder="Blue Dart, VRL Logistics, Safechem"
+          />
+
+          <Text style={styles.inputLabel}>AWB / Tracking Number</Text>
+          <TextInput
+            style={[styles.input, { fontFamily: MONO }]}
+            value={newTracking}
+            onChangeText={setNewTracking}
+            placeholder="e.g. BD-98219082"
+          />
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSaveStatus}
+            disabled={isSubmitting}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Updating...' : 'Save Dispatch Status'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </MobileModal>
+
+      {/* Create Order Modal */}
+      <MobileModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Dispatch Order"
+      >
+        <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.inputLabel}>Company Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={newCompanyName}
+            onChangeText={setNewCompanyName}
+            placeholder="L&T Heavy Engineering"
+          />
+
+          <Text style={styles.inputLabel}>Contact Officer</Text>
+          <TextInput
+            style={styles.input}
+            value={newClientName}
+            onChangeText={setNewClientName}
+            placeholder="Vikram Malhotra"
+          />
+
+          <Text style={styles.inputLabel}>Delivery Address *</Text>
+          <TextInput
+            style={styles.input}
+            value={newShippingAddress}
+            onChangeText={setNewShippingAddress}
+            placeholder="Plot 18, Industrial Area, Pune"
+          />
+
+          <View style={styles.twoCols}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Total Weight (Kg)</Text>
+              <TextInput
+                style={styles.input}
+                value={newQuantityKg}
+                onChangeText={setNewQuantityKg}
+                keyboardType="numeric"
+              />
             </View>
-
-            <Text style={styles.inputLabel}>Carrier</Text>
-            <TextInput
-              style={styles.input}
-              value={newCarrier}
-              onChangeText={setNewCarrier}
-              placeholder="Blue Dart Express Heavy"
-              placeholderTextColor="#8D98A1"
-            />
-
-            <Text style={styles.inputLabel}>AWB tracking number</Text>
-            <TextInput
-              style={[styles.input, { fontFamily: MONO }]}
-              value={newTracking}
-              onChangeText={setNewTracking}
-              placeholder="BD-889921447IN"
-              placeholderTextColor="#8D98A1"
-              autoCapitalize="characters"
-            />
-
-            <TouchableOpacity
-              onPress={handleSaveStatus}
-              style={[styles.saveBtn, isSubmitting && styles.disabled]}
-              disabled={isSubmitting}
-              activeOpacity={0.88}
-            >
-              {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Save update</Text>}
-            </TouchableOpacity>
-          </ScrollView>
-        </MobileModal>
-      ) : null}
-
-      {/* Delete modal */}
-      {orderToDelete ? (
-        <MobileModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-          title="Delete this order?"
-        >
-          <View style={styles.modalScroll}>
-            <Text style={styles.deleteLead}>
-              {orderToDelete.orderNumber} will be permanently removed. This can’t be undone.
-            </Text>
-
-            <View style={styles.deleteTable}>
-              <View style={[styles.kv, { borderTopWidth: 0 }]}>
-                <Text style={styles.k}>Client</Text>
-                <Text style={styles.v}>{orderToDelete.companyName || 'Enterprise Buyer'}</Text>
-              </View>
-              <View style={styles.kv}>
-                <Text style={styles.k}>Status</Text>
-                <Text style={styles.v}>{statusLabel(orderToDelete.status)}</Text>
-              </View>
-              <View style={styles.kv}>
-                <Text style={styles.k}>Value</Text>
-                <Text style={styles.v}>{inr(orderToDelete.netAmount || 0)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setIsDeleteModalOpen(false)} style={styles.cancelBtn} disabled={isSubmitting}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleConfirmDelete}
-                style={[styles.confirmDeleteBtn, isSubmitting && styles.disabled]}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Delete order</Text>}
-              </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Net Amount (₹)</Text>
+              <TextInput
+                style={styles.input}
+                value={newAmount}
+                onChangeText={setNewAmount}
+                keyboardType="numeric"
+              />
             </View>
           </View>
-        </MobileModal>
-      ) : null}
-    </ScrollView>
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleCreateOrder}
+            disabled={isSubmitting}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Creating...' : 'Issue Order'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </MobileModal>
+
+      {/* Delete Confirmation Modal */}
+      <MobileModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Dispatch Record"
+      >
+        <View style={{ paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: STEEL, marginBottom: 14 }}>
+            Delete dispatch <Text style={{ fontWeight: '800', color: GRAPHITE }}>{orderToDelete?.orderNumber}</Text>?
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsDeleteModalOpen(false)}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: STEEL }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirmDelete}
+              disabled={isSubmitting}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: RED, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: WHITE }}>
+                {isSubmitting ? 'Deleting...' : 'Delete'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </MobileModal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 40, backgroundColor: WHITE },
-
-  searchWrap: { paddingHorizontal: 16, paddingTop: 16 },
-
-  tabs: { marginTop: 8, borderBottomWidth: 1, borderBottomColor: HAIR, flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 20, gap: 22 },
-  tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
-  tabActive: { borderBottomColor: ORANGE },
-  tabText: { fontSize: 14, fontWeight: '600', color: STEEL },
-  tabTextActive: { color: GRAPHITE },
-
-  toast: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: GRAPHITE,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
-
-  controlBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    marginTop: 12,
-    backgroundColor: MIST,
-    borderTopWidth: 1,
+  topHeader: {
+    backgroundColor: WHITE,
     borderBottomWidth: 1,
-    borderColor: HAIR,
-  },
-  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
-  addBtn: { height: 38, paddingHorizontal: 16, borderRadius: 8, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { color: WHITE, fontSize: 14, fontWeight: '700' },
-
-  centerBlock: { paddingHorizontal: 32, paddingVertical: 48, alignItems: 'center', gap: 8 },
-  loadingText: { fontSize: 14, color: STEEL, marginTop: 6 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: GRAPHITE },
-  emptySubtitle: { fontSize: 14, color: STEEL },
-  resetBtn: {
-    marginTop: 8,
-    height: 44,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resetBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
-
-  // One order: a hairline-separated block, not a card
-  order: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: HAIR },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  orderNumber: { fontSize: 15, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 13, fontWeight: '700' },
-  company: { fontSize: 15, fontWeight: '600', color: GRAPHITE, marginTop: 6 },
-
-  tracker: { flexDirection: 'row', gap: 4, marginTop: 14 },
-  seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: MIST },
-  stageLabels: { flexDirection: 'row', gap: 4, marginTop: 6, marginBottom: 14 },
-  stageLabel: { flex: 1, fontSize: 11, color: STEEL },
-  stageLabelOn: { color: GRAPHITE, fontWeight: '700' },
-
-  meta: { fontSize: 13, color: STEEL, marginTop: 2, lineHeight: 19 },
-
-  amountRow: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: MIST },
-  amount: { fontSize: 22, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
-  amountSub: { fontSize: 12, color: STEEL, marginTop: 2 },
-
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
-  deleteLink: { fontSize: 14, fontWeight: '600', color: RED },
-  updateBtn: {
-    height: 44,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  updateBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
-
-  // Modals
-  modalScroll: { paddingVertical: 6 },
-  modalSubtitle: { fontSize: 14, color: STEEL, lineHeight: 20, marginBottom: 6 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: GRAPHITE, marginTop: 14, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: HAIR,
-    borderRadius: 8,
+    borderBottomColor: '#E2E8F0',
     paddingHorizontal: 12,
-    height: 46,
-    fontSize: 15,
-    color: GRAPHITE,
-    backgroundColor: WHITE,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
-  textArea: { height: 84, paddingTop: 12, textAlignVertical: 'top' },
-  twoCols: { flexDirection: 'row', gap: 10 },
-  statusSelectRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statusSelect: {
-    paddingHorizontal: 14,
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  addBtn: {
+    backgroundColor: BLUE,
+    paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: HAIR,
-    backgroundColor: WHITE,
-  },
-  statusSelectActive: { backgroundColor: GRAPHITE, borderColor: GRAPHITE },
-  statusSelectText: { fontSize: 13, fontWeight: '600', color: GRAPHITE },
-  statusSelectTextActive: { color: WHITE },
-  saveBtn: {
-    height: 50,
     borderRadius: 8,
-    backgroundColor: ORANGE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 22,
+  },
+  addBtnText: {
+    color: WHITE,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  statusBar: {
+    marginTop: 2,
+  },
+  statusScroll: {
+    gap: 6,
+    paddingBottom: 4,
+  },
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statusPillActive: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  statusPillTextActive: {
+    color: WHITE,
+    fontWeight: '800',
+  },
+  countRow: {
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STEEL,
+  },
+  listContent: {
+    padding: 12,
+    paddingBottom: 24,
+  },
+  orderCard: {
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  orderIdGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  orderNumber: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: GRAPHITE,
+  },
+  orderDate: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
+    fontFamily: MONO,
+  },
+  badgePill: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  badgePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  cardBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  companyName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GRAPHITE,
+    flex: 1,
+    paddingRight: 8,
+  },
+  netAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: GREEN,
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 6,
+  },
+  logisticsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    paddingRight: 6,
+  },
+  weightText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: MONO,
+    color: STEEL,
+  },
+  dotSeparator: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
+  },
+  carrierText: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
+    flex: 1,
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deleteBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  deleteBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: RED,
+  },
+  updateBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  updateBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: GRAPHITE,
+  },
+  toast: {
+    backgroundColor: GRAPHITE,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginTop: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: WHITE,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  emptyBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 13,
+    color: STEEL,
     marginBottom: 10,
   },
-  saveText: { color: WHITE, fontSize: 15, fontWeight: '700' },
-  disabled: { opacity: 0.6 },
-
-  // Delete
-  deleteLead: { fontSize: 15, color: GRAPHITE, lineHeight: 22 },
-  deleteTable: { marginTop: 12, marginBottom: 20 },
-  kv: {
+  resetBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  resetBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BLUE,
+  },
+  modalScroll: {
+    paddingVertical: 6,
+  },
+  stageGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 11,
-    borderTopWidth: 1,
-    borderTopColor: MIST,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
   },
-  k: { fontSize: 14, color: STEEL },
-  v: { fontSize: 14, fontWeight: '600', color: GRAPHITE, flexShrink: 1, textAlign: 'right', marginLeft: 16 },
-  modalActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stagePill: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  cancelText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
-  confirmDeleteBtn: {
-    flex: 1,
-    height: 48,
+  stagePillActive: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  stagePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  stagePillTextActive: {
+    color: WHITE,
+    fontWeight: '800',
+  },
+  twoCols: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STEEL,
+    marginBottom: 4,
+  },
+  input: {
+    height: 38,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    fontSize: 12,
+    color: GRAPHITE,
+    marginBottom: 8,
+  },
+  saveBtn: {
+    backgroundColor: BLUE,
+    paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: RED,
     alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 6,
+  },
+  saveBtnText: {
+    color: WHITE,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });
-
-export default AdminOrdersScreen;

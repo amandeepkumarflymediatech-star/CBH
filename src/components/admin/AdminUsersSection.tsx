@@ -336,7 +336,7 @@ export default function AdminUsersSection({
               <th>Contact Person & City</th>
               <th>Company & GSTIN</th>
               <th>System Role</th>
-              <th>Procurement Tier</th>
+              {/* <th>Procurement Tier</th> */}
               <th>Tier Discount</th>
               <th>Revolving Credit Limit</th>
               <th>GSTIN KYC</th>
@@ -386,11 +386,11 @@ export default function AdminUsersSection({
                         {u.role}
                       </span>
                     </td>
-                    <td>
+                    {/* <td>
                       <span className="badge badge-vip">
                         {u.tier} TIER
                       </span>
-                    </td>
+                    </td> */}
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#059669' }}>
                       -{u.tierDiscountPct}% Slab
                     </td>
@@ -422,7 +422,7 @@ export default function AdminUsersSection({
                           title={u.isVerified ? 'Mark Pending' : 'Verify GSTIN'}
                         >
                           {u.isVerified ? <UserX size={12} /> : <UserCheck size={12} />}
-                          <span>{u.isVerified ? 'Unverify' : 'Verify'}</span>
+                          {/* <span>{u.isVerified ? 'Unverify' : 'Verify'}</span> */}
                         </button>
                         <button
                           type="button"
@@ -431,7 +431,7 @@ export default function AdminUsersSection({
                           title="Edit Account & Tier Details"
                         >
                           <Edit size={12} />
-                          <span>Edit</span>
+                          {/* <span>Edit</span> */}
                         </button>
                         <button
                           type="button"
@@ -551,7 +551,7 @@ export default function AdminUsersSection({
                   </select>
                 </div>
 
-                <div className="admin-form-group">
+                {/* <div className="admin-form-group">
                   <label>Procurement Tier</label>
                   <select
                     value={addForm.tier}
@@ -573,7 +573,7 @@ export default function AdminUsersSection({
                     <option value="DIAMOND">DIAMOND</option>
                     <option value="VIP">VIP MASTER</option>
                   </select>
-                </div>
+                </div> */}
 
                 <div className="admin-form-group">
                   <label>Tier Discount Slab (%)</label>
@@ -674,7 +674,7 @@ export default function AdminUsersSection({
                   />
                 </div>
 
-                <div className="admin-form-group">
+                {/* <div className="admin-form-group">
                   <label>Procurement Tier</label>
                   <select
                     value={editUser.tier}
@@ -687,7 +687,7 @@ export default function AdminUsersSection({
                     <option value="DIAMOND">DIAMOND</option>
                     <option value="VIP">VIP</option>
                   </select>
-                </div>
+                </div> */}
 
                 <div className="admin-form-group">
                   <label>Tier Discount Slab (%)</label>

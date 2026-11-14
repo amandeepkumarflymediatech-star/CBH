@@ -38,7 +38,7 @@ const MILESTONES = [
   {
     year: '2024',
     title: 'Digital B2B Matrix',
-    desc: 'Digital B2B Fastener Matrix with live dual PCS/KGS pricing, ERPNext integration, and instant RFQs.',
+    desc: 'Digital B2B Fastener Matrix with live dual PCS/KGS pricing, real-time inventory tracking, and instant RFQs.',
   },
 ];
 
@@ -80,7 +80,7 @@ const LEADERSHIP = [
     name: 'Hitesh Nagpal',
     role: 'Managing Director',
     experience: 'Supply Chain & Manufacturing Automation',
-    quote: 'Bringing modern ERP transparency, automated optical sorting, and digital instant pricing to India’s heavy engineering sector.',
+    quote: 'Bringing modern supply chain transparency, automated optical sorting, and digital instant pricing to India’s heavy engineering sector.',
   },
 ];
 

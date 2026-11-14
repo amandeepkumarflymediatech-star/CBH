@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import TablePagination from '@/components/common/TablePagination';
 import { Product } from '@/lib/types';
@@ -297,7 +298,6 @@ export default function AdminProductsSection({
 }: AdminProductsSectionProps) {
   // Table View Mode: 'table' (Clean commercial table) vs 'grid' (Mobile/Tablet Card Grid)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [isSyncing, setIsSyncing] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
 
   // Server-side Paginated Data State
@@ -515,30 +515,6 @@ export default function AdminProductsSection({
   const products = serverProducts;
   const filteredProducts = serverProducts;
   const stats = serverStats;
-
-  // Live Sync trigger with ERPNext
-  const handleSyncErpNext = async () => {
-    try {
-      setIsSyncing(true);
-      showToast('Fetching latest items & dynamic images from ERPNext Frappe Cloud...');
-      const res = await fetch('/api/erpnext/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Successfully synced ${data.count} items from ERPNext with dynamic images!`);
-        window.location.reload();
-      } else {
-        showToast(`ERPNext sync failed: ${data.error || 'Server error'}`);
-      }
-    } catch (err: any) {
-      showToast(`Sync error: ${err.message}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   // Default Add Form containing ALL Excel Sheet Attributes
   const DEFAULT_ADD_FORM = {
@@ -1131,306 +1107,186 @@ export default function AdminProductsSection({
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* 1. TOP METRIC TELEMETRY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Total Fasteners</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0052CC' }}>
-              <Boxes size={18} />
+    <div className="space-y-4">
+      {/* MAIN PRODUCTS & CATALOG CARD */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+        {/* 1. TOP HEADER & QUICK KPI STATUS TABS (Mobile-First, Clean, No Overflow) */}
+        <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200/80 bg-white">
+          {/* Row A: Title & Primary Actions */}
+          <div className="flex items-center justify-between gap-2 pb-2 sm:pb-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2">
+                <span>Fasteners</span>
+                <span className="hidden xs:inline">Inventory</span>
+                <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  {totalCount.toLocaleString()}
+                </span>
+              </h2>
             </div>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-            {stats.total.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-            {stats.screwsCount} Screws • {stats.boltsCount} Bolts
-          </div>
-        </div>
 
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>ERPNext Cloud Synced</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-              <CheckCircle2 size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#059669', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-            {stats.erpSynced.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: '#059669', marginTop: '4px', fontWeight: 600 }}>
-            Dynamic Frappe Cloud Images
-          </div>
-        </div>
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Table / Grid Switcher */}
+              <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Commercial table view"
+                >
+                  <Layers size={13} />
+                  <span className="hidden sm:inline">Table</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all ${
+                    viewMode === 'grid' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Card grid view"
+                >
+                  <LayoutGrid size={13} />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
+              </div>
 
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Ready Inventory</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
-              <Package size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-            {stats.inStock.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-            Available for immediate dispatch
-          </div>
-        </div>
-
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '16px 20px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.5px' }}>Surplus Lots</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}>
-              <Flame size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '8px', fontFamily: 'var(--font-mono)' }}>
-            {stats.surplusCount}
-          </div>
-          <div style={{ fontSize: '11px', color: '#D97706', marginTop: '4px', fontWeight: 600 }}>
-            Up to -35% OEM Clearance
-          </div>
-        </div>
-      </div>
-
-      {/* 2. MAIN WORKSPACE CARD */}
-      <div className="portal-main-card max-w-7xl mx-auto w-full">
-        {/* Header bar with Excel view switch */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h3 style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>
-                Fastener Master Inventory ({products.length} Items)
-              </h3>
-             
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
-              Full dimensional engineering, packaging, weights, pricing, and ERPNext live inventory telemetry
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Table / Cards View Switcher */}
-            <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+              {/* Upload Excel */}
               <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: viewMode === 'table' ? '#0052CC' : 'transparent',
-                  color: viewMode === 'table' ? '#FFFFFF' : '#475569',
-                  fontWeight: viewMode === 'table' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Commercial table view"
-              >
-                <Layers size={14} />
-                <span>Table View</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: viewMode === 'grid' ? '#0052CC' : 'transparent',
-                  color: viewMode === 'grid' ? '#FFFFFF' : '#475569',
-                  fontWeight: viewMode === 'grid' ? 700 : 500,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Card grid view (Optimized for all screen sizes & mobile)"
-              >
-                <LayoutGrid size={14} />
-                <span>Cards Grid</span>
-              </button>
-            </div>
-
-            {/* Quick ERPNext Sync */}
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ padding: '8px 14px', fontSize: '12px' }}
-              onClick={handleSyncErpNext}
-              disabled={isSyncing}
-              title="Pull latest live item images & prices directly from Frappe Cloud"
-            >
-              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync ERPNext'}</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ padding: '8px 14px', fontSize: '12px' }}
-              onClick={handleExportCSV}
-              title="Download full CSV with every Excel attribute"
-            >
-              <Download size={14} />
-              <span>Export CSV</span>
-            </button>
-
-            {/* Bulk Upload Products through Excel */}
-            <button
-              type="button"
-              className="btn-outline"
-              style={{
-                padding: '8px 14px',
-                fontSize: '12px',
-                borderColor: '#10B981',
-                color: '#065F46',
-                background: '#ECFDF5',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontWeight: 700,
-                boxShadow: '0 1px 2px rgba(16, 185, 129, 0.1)'
-              }}
-              onClick={() => {
-                setIsBulkUploadOpen(true);
-                if (!bulkFile) {
-                  handleResetBulkUpload();
-                }
-              }}
-              title="Upload bulk products through Excel file (.xlsx, .xls, .csv)"
-            >
-              <FileSpreadsheet size={15} color="#059669" />
-              <span>Upload Excel</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn-primary"
-              style={{ padding: '8px 16px', fontSize: '13px' }}
-              onClick={() => {
-                setAddForm(DEFAULT_ADD_FORM);
-                setAddModalTab('basic');
-                setIsAddOpen(true);
-              }}
-            >
-              <Plus size={15} />
-              <span>Add Fastener</span>
-            </button>
-
-            {totalCount > 0 && (
-              <button
-                type="button"
-                className="btn-outline"
-                style={{
-                  padding: '8px 14px',
-                  fontSize: '12px',
-                  borderColor: '#FCA5A5',
-                  color: '#DC2626',
-                  background: '#FEF2F2',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: 700,
-                }}
-                onClick={() => {
-                  selectEntireCatalog();
-                  setIsBulkDeleteModalOpen(true);
-                }}
-                title="Bulk delete entire catalog or all matching products"
-              >
-                <Trash2 size={14} color="#DC2626" />
-                <span>Bulk Delete ({totalCount.toLocaleString()})</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Filter Category Pills */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-          {[
-            { id: 'all', label: `All Fasteners (${products.length})` },
-            { id: 'screws', label: `Grub & Collar Screws (${stats.screwsCount})`, subGroup: 'SCREW' },
-            { id: 'bolts', label: `Bolts & Structural (${stats.boltsCount})`, subGroup: 'BOLTS' },
-            { id: 'in_stock', label: `In Stock Ready (${stats.inStock})`, stock: 'in_stock' },
-            { id: 'surplus', label: `Surplus Deals (${stats.surplusCount})`, catalog: 'surplus' },
-          ].map((pill) => {
-            const isActive =
-              (pill.id === 'all' && selectedSubGroup === 'all' && selectedStock === 'all' && selectedCatalog === 'all') ||
-              (pill.subGroup && selectedSubGroup === pill.subGroup) ||
-              (pill.stock && selectedStock === pill.stock) ||
-              (pill.catalog && selectedCatalog === pill.catalog);
-
-            return (
-              <button
-                key={pill.id}
                 type="button"
                 onClick={() => {
-                  if (pill.id === 'all') {
-                    handleResetFilters();
-                  } else if (pill.subGroup) {
-                    setSelectedSubGroup(pill.subGroup);
-                  } else if (pill.stock) {
-                    setSelectedStock(pill.stock);
-                  } else if (pill.catalog) {
-                    setSelectedCatalog(pill.catalog);
-                  }
+                  setIsBulkUploadOpen(true);
+                  if (!bulkFile) handleResetBulkUpload();
                 }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '999px',
-                  border: isActive ? '1.5px solid #0052CC' : '1px solid #CBD5E1',
-                  background: isActive ? '#EFF6FF' : '#FFFFFF',
-                  color: isActive ? '#0052CC' : '#475569',
-                  fontSize: '11px',
-                  fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-xs"
+                title="Upload products via Excel (.xlsx, .csv)"
               >
-                {pill.label}
+                <FileSpreadsheet size={13} className="text-emerald-600" />
+                <span className="hidden sm:inline">Upload Excel</span>
+                <span className="sm:hidden">Excel</span>
               </button>
-            );
-          })}
+
+              {/* Add Fastener */}
+              <Link
+                href="/admin/products/new"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
+              >
+                <Plus size={14} />
+                <span className="hidden sm:inline">Add Fastener</span>
+                <span className="sm:hidden">Add</span>
+              </Link>
+
+              {/* Export CSV (Icon only on mobile) */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="inline-flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                title="Download full CSV"
+              >
+                <Download size={13} />
+                <span className="hidden md:inline">Export</span>
+              </button>
+
+              {/* Bulk Delete */}
+              {totalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectEntireCatalog();
+                    setIsBulkDeleteModalOpen(true);
+                  }}
+                  className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold transition-colors"
+                  title="Bulk delete entire catalog"
+                >
+                  <Trash2 size={13} />
+                  <span>Bulk Delete</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Row B: Horizontal Scrollable Status / Category Tabs (Single row on mobile, swipes smoothly!) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 flex-nowrap">
+            {[
+              { id: 'all', label: 'All', count: stats.total || totalCount },
+              { id: 'bolts', label: 'Bolts', count: stats.boltsCount, subGroup: 'BOLTS' },
+              { id: 'screws', label: 'Screws', count: stats.screwsCount, subGroup: 'SCREW' },
+              { id: 'in_stock', label: 'Ready Stock', count: stats.inStock, stock: 'in_stock' },
+              { id: 'surplus', label: 'Surplus', count: stats.surplusCount, catalog: 'surplus', isFlame: true },
+            ].map((pill) => {
+              const isActive =
+                (pill.id === 'all' && selectedSubGroup === 'all' && selectedStock === 'all' && selectedCatalog === 'all') ||
+                (pill.subGroup && selectedSubGroup === pill.subGroup) ||
+                (pill.stock && selectedStock === pill.stock) ||
+                (pill.catalog && selectedCatalog === pill.catalog);
+
+              return (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => {
+                    if (pill.id === 'all') {
+                      handleResetFilters();
+                    } else if (pill.subGroup) {
+                      setSelectedSubGroup(pill.subGroup);
+                    } else if (pill.stock) {
+                      setSelectedStock(pill.stock);
+                    } else if (pill.catalog) {
+                      setSelectedCatalog(pill.catalog);
+                    }
+                  }}
+                  className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/60'
+                  }`}
+                >
+                  {pill.isFlame && <Flame size={11} className={isActive ? 'text-amber-300' : 'text-amber-500'} />}
+                  <span>{pill.label}</span>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500 border border-slate-200'
+                    }`}
+                  >
+                    {pill.count.toLocaleString()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Filter Toolbar */}
-        <div className="admin-filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: '100%', alignItems: 'center' }}>
-            <div className="admin-search-wrap" style={{ flex: '1 1 300px', minWidth: '240px' }}>
-              <Search size={15} className="admin-search-icon" />
+        {/* 2. UNIFIED ACTION & FILTER TOOLBAR (Mobile-First Responsive) */}
+        <div className="p-3 sm:px-4 sm:py-2.5 bg-slate-50/60 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
+            {/* Search Input - Full width on mobile */}
+            <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs sm:flex-1">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
-                className="admin-search-input"
-                placeholder="Search SKU, Name, Standard (DIN/ISO), DIA, Grade, HSN, Size..."
+                placeholder="Search SKU, name, DIN/ISO, grade..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-medium"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', flex: '2 1 500px' }}>
+            {/* Filter Dropdowns - Horizontal swipe on mobile, flex wrap on desktop */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1 flex-nowrap sm:flex-wrap sm:overflow-visible">
               <select
-                className="admin-select"
                 value={selectedSubGroup}
                 onChange={(e) => setSelectedSubGroup(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">Sub-Group: All</option>
                 {subGroups.map((sg) => (
@@ -1439,9 +1295,9 @@ export default function AdminProductsSection({
               </select>
 
               <select
-                className="admin-select"
                 value={selectedStandard}
                 onChange={(e) => setSelectedStandard(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">Standard: All</option>
                 {standards.slice(0, 15).map((std) => (
@@ -1450,9 +1306,9 @@ export default function AdminProductsSection({
               </select>
 
               <select
-                className="admin-select"
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">Grade: All</option>
                 {grades.map((grd) => (
@@ -1461,155 +1317,100 @@ export default function AdminProductsSection({
               </select>
 
               <select
-                className="admin-select"
                 value={selectedStock}
                 onChange={(e) => setSelectedStock(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">Stock: All</option>
-                <option value="in_stock">In Stock (&gt;5k pcs)</option>
-                <option value="low_stock">Low Stock (1-5k pcs)</option>
+                <option value="in_stock">In Stock (&gt;5k)</option>
+                <option value="low_stock">Low Stock (1-5k)</option>
                 <option value="out_of_stock">Out of Stock (0)</option>
               </select>
 
               <select
-                className="admin-select"
                 value={selectedCatalog}
                 onChange={(e) => setSelectedCatalog(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">Catalog: All</option>
-                <option value="standard">Standard Catalog</option>
-                <option value="surplus">Surplus Lots Only</option>
+                <option value="standard">Standard</option>
+                <option value="surplus">Surplus Lots</option>
               </select>
 
               <select
-                className="admin-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
+                className="shrink-0 h-8 text-xs bg-white border border-slate-200 rounded-lg px-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="default">Sort: Default</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="stock_desc">Stock: High to Low</option>
-                <option value="sku_asc">SKU: A to Z</option>
+                <option value="price_asc">Price: Low→High</option>
+                <option value="price_desc">Price: High→Low</option>
+                <option value="stock_desc">Stock: High→Low</option>
+                <option value="sku_asc">SKU: A→Z</option>
               </select>
+
+              {/* Reset button if active */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 transition-colors"
+                  title="Clear all filters"
+                >
+                  <RotateCcw size={11} />
+                  <span>Reset</span>
+                </button>
+              )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-            <span className="admin-filter-count" style={{ fontSize: '12px' }}>
-              Showing {totalCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, totalCount)} of <strong>{totalCount.toLocaleString()}</strong> SKUs
-              {viewMode === 'grid' && <span style={{ color: '#059669', marginLeft: '6px', fontWeight: 600 }}>• Card grid responsive layout</span>}
-            </span>
-            {(search || selectedSubGroup !== 'all' || selectedStandard !== 'all' || selectedGrade !== 'all' || selectedStock !== 'all' || selectedCatalog !== 'all' || sortBy !== 'default') && (
-              <button
-                type="button"
-                className="btn-outline"
-                style={{ padding: '4px 10px', fontSize: '11px' }}
-                onClick={handleResetFilters}
-              >
-                <RefreshCw size={11} />
-                <span>Reset Filters</span>
-              </button>
-            )}
+          {/* Showing Count */}
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium whitespace-nowrap self-end md:self-center">
+            Showing {totalCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, totalCount)} of{' '}
+            <strong className="text-slate-800 font-bold">{totalCount.toLocaleString()}</strong> SKUs
           </div>
         </div>
 
-        {/* BATCH ACTIONS BAR (WHEN 1+ PRODUCTS OR ENTIRE CATALOG IS SELECTED) */}
+        {/* 3. BATCH ACTIONS BAR (WHEN 1+ PRODUCTS OR ENTIRE CATALOG IS SELECTED) */}
         {(selectedProductIds.size > 0 || isSelectAllCatalog) && (
-          <div
-            style={{
-              marginBottom: '16px',
-              background: '#0F172A',
-              color: '#FFFFFF',
-              borderRadius: '12px',
-              padding: '12px 18px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-              boxShadow: '0 8px 20px rgba(15, 23, 42, 0.25)',
-              border: '1px solid #334155',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  background: isSelectAllCatalog ? '#DC2626' : '#0052CC',
-                  color: '#FFFFFF',
-                  fontWeight: 800,
-                  fontSize: '12px',
-                  padding: '4px 10px',
-                  borderRadius: '16px',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
+          <div className="mx-4 my-2.5 bg-slate-900 text-white rounded-xl px-4 py-2.5 flex items-center justify-between flex-wrap gap-2.5 shadow-md">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold font-mono text-white ${isSelectAllCatalog ? 'bg-rose-600' : 'bg-blue-600'}`}>
                 {isSelectAllCatalog ? `${totalCount.toLocaleString()} (ALL)` : `${selectedProductIds.size} Selected`}
               </span>
-              <span style={{ fontSize: '13px', color: '#E2E8F0', fontWeight: 600 }}>
+              <span className="text-xs text-slate-200 font-medium">
                 {isSelectAllCatalog
-                  ? `All ${totalCount.toLocaleString()} products ${hasActiveFilters ? 'matching filter' : 'in entire catalog'} selected`
-                  : `${selectedProductIds.size} product${selectedProductIds.size > 1 ? 's' : ''} selected on this page`}
+                  ? `All ${totalCount.toLocaleString()} products ${hasActiveFilters ? 'matching filter' : 'in catalog'} selected`
+                  : `${selectedProductIds.size} product${selectedProductIds.size > 1 ? 's' : ''} selected`}
               </span>
               {!isSelectAllCatalog && totalCount > selectedProductIds.size && (
                 <button
                   type="button"
                   onClick={selectEntireCatalog}
-                  style={{
-                    background: '#1E293B',
-                    border: '1px solid #3B82F6',
-                    color: '#60A5FA',
-                    fontSize: '12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    padding: '4px 10px',
-                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 text-xs rounded-md px-2.5 py-1 font-semibold transition-colors"
                 >
-                  ⚡ Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
+                  ⚡ Select all {totalCount.toLocaleString()} products in catalog
                 </button>
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={clearSelection}
-                style={{
-                  background: '#1E293B',
-                  border: '1px solid #475569',
-                  color: '#CBD5E1',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-md text-xs font-semibold transition-colors"
               >
                 Deselect All
               </button>
               <button
                 type="button"
                 onClick={() => setIsBulkDeleteModalOpen(true)}
-                style={{
-                  background: '#DC2626',
-                  border: 'none',
-                  color: '#FFFFFF',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
-                }}
+                className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors shadow-xs"
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
                 <span>
                   {isSelectAllCatalog
-                    ? `Delete Entire Catalog (${totalCount.toLocaleString()} SKUs)`
+                    ? `Delete Entire Catalog (${totalCount.toLocaleString()})`
                     : `Delete Selected (${selectedProductIds.size})`}
                 </span>
               </button>
@@ -1617,525 +1418,320 @@ export default function AdminProductsSection({
           </div>
         )}
 
-        {/* SELECT ALL CATALOG BANNER */}
-        {(isAllPageSelected || isSelectAllCatalog) && totalCount > serverProducts.length && (
-          <div
-            style={{
-              background: '#EFF6FF',
-              border: '1.5px solid #BFDBFE',
-              borderRadius: '10px',
-              padding: '12px 18px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '10px',
-              boxShadow: '0 2px 6px rgba(0, 82, 204, 0.08)',
-            }}
-          >
-            <div style={{ fontSize: '13px', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-              <Info size={18} color="#0052CC" style={{ flexShrink: 0 }} />
-              {isSelectAllCatalog ? (
-                <span>
-                  ✓ All <strong>{totalCount.toLocaleString()}</strong> products {hasActiveFilters ? 'matching current filter' : 'in catalog'} are selected across all pages.
-                </span>
-              ) : (
-                <span>
-                  All <strong>{serverProducts.length}</strong> products on this page are selected.
-                </span>
-              )}
+        {/* 4. SELECT ALL CATALOG BANNER */}
+        {(isAllPageSelected || isSelectAllCatalog) && totalCount > serverProducts.length && !selectedProductIds.size && (
+          <div className="mx-4 my-2 bg-blue-50 border border-blue-200 rounded-lg px-3.5 py-2 flex items-center justify-between text-xs text-blue-900 font-medium">
+            <div className="flex items-center gap-2">
+              <Info size={15} className="text-blue-600 shrink-0" />
+              <span>All <strong>{serverProducts.length}</strong> products on this page are selected.</span>
             </div>
-
-            <div>
-              {isSelectAllCatalog ? (
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#0052CC',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear selection
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={selectEntireCatalog}
-                  style={{
-                    background: '#0052CC',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '6px 14px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(0, 82, 204, 0.25)',
-                  }}
-                >
-                  Select all {totalCount.toLocaleString()} products in {hasActiveFilters ? 'current filter' : 'catalog'}
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={selectEntireCatalog}
+              className="text-blue-700 font-bold hover:underline"
+            >
+              Select all {totalCount.toLocaleString()} products in catalog
+            </button>
           </div>
         )}
 
-        {/* VIEW MODE 1: RESPONSIVE CARD GRID (FOR PHONES, TABLETS & MODERN BROWSING) */}
+        {/* 5. VIEW MODE: GRID OR HIGH-DENSITY TABLE */}
         {viewMode === 'grid' ? (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
               {isLoadingData ? (
-                <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                  <Loader2 size={32} className="animate-spin" color="#FF6B00" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Loading Fastener SKUs...</div>
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Querying central database catalog with limit pagination</div>
-                </div>
-              ) : totalCount === 0 && !search && selectedSubGroup === 'all' && selectedStandard === 'all' && selectedGrade === 'all' && selectedStock === 'all' && selectedCatalog === 'all' ? (
-                <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                    <PackageOpen size={28} />
-                  </div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 6px' }}>Catalog Inventory is Empty (0 SKUs)</h3>
-                  <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
-                    All fastener products have been removed from the central inventory. You can import new products using an Excel file, add a single SKU, or restore the demo fasteners.
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsBulkUploadOpen(true)}>
-                      <Upload size={14} />
-                      <span>Upload Products via Excel</span>
-                    </button>
-                    <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsAddOpen(true)}>
-                      <Plus size={14} />
-                      <span>Add Single SKU</span>
-                    </button>
-                    <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={handleRestoreDefaultsAction}>
-                      <RotateCcw size={14} />
-                      <span>Restore Demo Catalog (47 SKUs)</span>
-                    </button>
-                  </div>
+                <div className="col-span-full py-16 text-center bg-white rounded-xl border border-slate-200">
+                  <Loader2 size={26} className="animate-spin text-blue-600 mx-auto mb-2" />
+                  <div className="text-xs font-bold text-slate-800">Loading Fastener SKUs...</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Querying central database</div>
                 </div>
               ) : totalCount === 0 ? (
-                <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
-                  <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
-                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
-                  <button type="button" className="btn-outline" onClick={handleResetFilters}>
-                    Clear All Filters
+                <div className="col-span-full py-12 text-center bg-slate-50 rounded-xl border border-slate-200">
+                  <AlertTriangle size={24} className="text-amber-500 mx-auto mb-1.5" />
+                  <div className="text-xs font-bold text-slate-800">No Fasteners Matched</div>
+                  <button type="button" onClick={handleResetFilters} className="mt-2 text-xs font-semibold text-blue-600 hover:underline">
+                    Clear Filters
                   </button>
                 </div>
               ) : (
                 paginatedProducts.map((p) => {
                   const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
                   const isOutOfStock = p.stockPcs === 0;
+                  const isSelected = selectedProductIds.has(p.id);
 
                   return (
                     <div
                       key={p.id}
-                      style={{
-                        background: selectedProductIds.has(p.id) ? '#F0F7FF' : '#FFFFFF',
-                        borderRadius: '12px',
-                        border: selectedProductIds.has(p.id) ? '2px solid #0052CC' : p.isSurplus ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
-                        padding: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        boxShadow: selectedProductIds.has(p.id) ? '0 4px 14px rgba(0, 82, 204, 0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
-                        transition: 'all 0.2s ease',
-                        position: 'relative'
-                      }}
+                      className={`bg-white rounded-xl border p-3 flex flex-col justify-between transition-all group ${
+                        isSelected
+                          ? 'border-blue-600 ring-1 ring-blue-600 shadow-sm bg-blue-50/20'
+                          : p.isSurplus
+                          ? 'border-amber-200 hover:border-amber-400 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 shadow-xs'
+                      }`}
                     >
-                      {/* Top Badges & Image */}
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedProductIds.has(p.id)}
-                              onChange={() => toggleSelectProduct(p.id)}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                              title="Select product for bulk action"
-                            />
-                            <span style={{
-                              fontSize: '11px',
-                              fontFamily: 'var(--font-mono)',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: '#EFF6FF',
-                              color: '#0052CC',
-                              border: '1px solid #BFDBFE'
-                            }}>
-                              {p.standard || 'DIN'}
-                            </span>
-                          </div>
-                          {p.isSurplus ? (
-                            <span style={{
-                              fontSize: '10px',
-                              fontWeight: 800,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: '#FEF3C7',
-                              color: '#B45309',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px'
-                            }}>
-                              <Flame size={11} /> SURPLUS (-{p.surplusDiscountPct}%)
-                            </span>
-                          ) : (
-                            <span style={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: isOutOfStock ? '#FEE2E2' : isLowStock ? '#FEF3C7' : '#ECFDF5',
-                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#059669',
-                            }}>
-                              {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Ready Stock'}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Image Thumbnail Container */}
+                      {/* Top Media & Floating Badges */}
+                      <div className="relative mb-2.5">
                         <div
-                          style={{
-                            height: '140px',
-                            background: '#F8FAFC',
-                            borderRadius: '8px',
-                            border: '1px solid #E2E8F0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
-                            position: 'relative',
-                            marginBottom: '12px',
-                            cursor: 'pointer'
-                          }}
+                          className="h-32 bg-slate-50/80 rounded-lg border border-slate-100 flex items-center justify-center p-2 cursor-pointer hover:border-blue-300 transition-colors"
                           onClick={() => setPreviewProduct(p)}
                           title="Click to preview photo"
                         >
                           <img
                             src={p.imageUrl || '/assets/bolt_zinc.jpg'}
                             alt={p.sku}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }}
+                            className="max-h-full max-w-full object-contain"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                              try { (e.target as any).src = '/assets/bolt_zinc.jpg'; } catch {}
                             }}
                           />
-                          <span style={{
-                            position: 'absolute',
-                            bottom: '6px',
-                            right: '6px',
-                            background: 'rgba(15, 23, 42, 0.7)',
-                            color: '#FFFFFF',
-                            borderRadius: '4px',
-                            padding: '3px 6px',
-                            fontSize: '10px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}>
-                            <ZoomIn size={11} /> Zoom
-                          </span>
                         </div>
 
-                        {/* Title & SKU (Clickable to open pop-up bar) */}
-                        <div
-                          onClick={() => {
-                            setInspectProduct(p);
-                            setInspectTab('overview');
-                          }}
-                          style={{ cursor: 'pointer' }}
-                          title="Click to view full product specs in pop-up bar"
-                        >
-                          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#0052CC', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            <span>{p.sku}</span>
-                            <ChevronRight size={11} />
-                          </div>
-                          <h4 style={{
-                            margin: '4px 0 8px',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            color: '#0F172A',
-                            lineHeight: '1.3',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}>
-                            {p.name}
-                          </h4>
+                        {/* Top-Left Floating Checkbox */}
+                        <div className="absolute top-2 left-2 z-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectProduct(p.id)}
+                            className="w-4 h-4 rounded text-blue-600 bg-white shadow-xs cursor-pointer"
+                          />
                         </div>
 
-                        {/* Size & Grade Tags */}
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                          <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                            {p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}
+                        {/* Top-Right Floating Status Badge */}
+                        <div className="absolute top-2 right-2 z-10">
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-xs ${
+                              isOutOfStock
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : isLowStock
+                                ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Ready'}
                           </span>
-                          <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                            Gr. {p.grade}
+                        </div>
+                      </div>
+
+                      {/* Middle Details */}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        {/* SKU & Standard Tag Bar */}
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/80 truncate max-w-[130px] inline-block"
+                            title={p.sku}
+                          >
+                            {p.sku}
                           </span>
-                          {p.finish && (
-                            <span style={{ fontSize: '10px', background: '#F1F5F9', color: '#475569', padding: '2px 6px', borderRadius: '4px' }}>
-                              {p.finish.split(' ')[0]}
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">
+                            {p.standard || p.din || 'DIN'}
+                          </span>
+                          {p.isSurplus && (
+                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0 flex items-center gap-0.5">
+                              <Flame size={9} /> -{p.surplusDiscountPct}%
                             </span>
                           )}
                         </div>
 
-                        {/* Stats Grid */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '8px',
-                          padding: '10px',
-                          background: '#F8FAFC',
-                          borderRadius: '8px',
-                          border: '1px solid #E2E8F0',
-                          marginBottom: '12px',
-                          fontSize: '11px'
-                        }}>
-                          <div>
-                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Rate / Pc:</span>
-                            <strong style={{ color: '#0052CC', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                              {formatINR(p.pricePerPiece)}
-                            </strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Rate / Kg:</span>
-                            <strong style={{ color: '#059669', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                              {formatINR(p.pricePerKg)}
-                            </strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Stock:</span>
-                            <strong style={{ fontFamily: 'var(--font-mono)' }}>
-                              {p.stockPcs.toLocaleString()} pcs
-                            </strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>Weight:</span>
-                            <span style={{ fontFamily: 'var(--font-mono)' }}>
-                              {p.weightPerPcKg} kg/pc
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Actions Bar */}
-                      <div style={{ display: 'flex', gap: '6px', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
-                        <button
-                          type="button"
+                        {/* Product Title */}
+                        <h4
+                          className="font-bold text-xs text-slate-900 line-clamp-2 leading-snug cursor-pointer hover:text-blue-600 transition-colors"
+                          title={p.name}
                           onClick={() => {
                             setInspectProduct(p);
                             setInspectTab('overview');
                           }}
-                          className="btn-outline"
-                          style={{ flex: 1, padding: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          title="Open Product Details Pop-up Bar"
                         >
-                          <Eye size={12} />
-                          <span>Specs</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditProduct({ ...p });
-                            setEditModalTab('basic');
-                          }}
-                          className="btn-outline"
-                          style={{ flex: 1, padding: '6px', fontSize: '11px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          title="Edit fastener"
-                        >
-                          <Edit size={12} />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSurplus(p.id)}
-                          className="btn-outline"
-                          style={{ padding: '6px 8px', color: p.isSurplus ? '#B45309' : '#64748B' }}
-                          title="Toggle surplus deal"
-                        >
-                          <Flame size={13} color={p.isSurplus ? '#F59E0B' : '#94A3B8'} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteProduct(p)}
-                          className="btn-outline"
-                          style={{ padding: '6px 8px', color: '#DC2626' }}
-                          title="Delete SKU"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                          {p.name}
+                        </h4>
+
+                        {/* Size & Metallurgy */}
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`} • {p.grade || 'Grade 8.8'}
+                        </p>
+                      </div>
+
+                      {/* Bottom Pricing & Actions */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <span className="text-[9px] font-semibold uppercase text-slate-400 block leading-tight">Rate</span>
+                            <span className="font-mono font-bold text-xs text-blue-700">
+                              {formatINR(p.pricePerPiece)} <span className="text-[9px] font-normal text-slate-400">/pc</span>
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] font-semibold uppercase text-slate-400 block leading-tight">Stock</span>
+                            <span className="font-mono font-bold text-xs text-slate-800">
+                              {p.stockPcs.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInspectProduct(p);
+                              setInspectTab('overview');
+                            }}
+                            className="flex-1 py-1 text-center rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                          >
+                            Specs
+                          </button>
+                          <Link
+                            href={`/admin/products/${p.id}/edit`}
+                            className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Edit Fastener"
+                          >
+                            <Edit size={12} />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteProduct(p)}
+                            className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
                 })
               )}
             </div>
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={totalCount}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={(limit) => {
-                setItemsPerPage(limit);
-                setCurrentPage(1);
-              }}
-              itemLabel="fastener SKUs"
-              pageSizeOptions={[10, 20, 50, 100]}
-            />
           </div>
         ) : (
-          /* VIEW MODE: RESPONSIVE TABLE */
-          <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div className="overflow-x-auto w-full">
-              <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', color: '#475569', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '12px 10px 12px 16px', width: '38px', textAlign: 'center' }}>
+          /* HIGH-DENSITY COMMERCIAL TABLE */
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-3 text-center w-9">
                     <input
                       type="checkbox"
                       checked={isAllPageSelected}
                       onChange={toggleSelectAllOnPage}
-                      style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                      className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer"
                       title={isAllPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
                     />
                   </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '40%' }}>SKU & Product Details</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Grade & Coating</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '16%' }}>Rate (Pc / Kg)</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, width: '14%' }}>Stock & Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, width: '12%', textAlign: 'right' }}>Actions</th>
+                  <th className="py-2.5 px-3.5 font-bold">SKU &amp; Fastener Details</th>
+                  <th className="py-2.5 px-3 font-bold w-36">Grade &amp; Finish</th>
+                  <th className="py-2.5 px-3 font-bold w-36">Rate (Pc / Kg)</th>
+                  <th className="py-2.5 px-3 font-bold w-36">Stock &amp; Status</th>
+                  <th className="py-2.5 px-3 font-bold w-28 text-right pr-4">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {isLoadingData ? (
                   <tr>
-                    <td colSpan={6}>
-                      <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-                        <Loader2 size={32} className="animate-spin" color="#FF6B00" style={{ margin: '0 auto 12px' }} />
-                        <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Loading Fastener SKUs...</div>
-                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Querying central database catalog with limit pagination</div>
-                      </div>
+                    <td colSpan={6} className="py-16 text-center">
+                      <Loader2 size={26} className="animate-spin text-blue-600 mx-auto mb-2" />
+                      <div className="text-xs font-bold text-slate-800">Loading Fastener SKUs...</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Querying central database catalog with limit pagination</div>
                     </td>
                   </tr>
                 ) : totalCount === 0 && !search && selectedSubGroup === 'all' && selectedStandard === 'all' && selectedGrade === 'all' && selectedStock === 'all' && selectedCatalog === 'all' ? (
                   <tr>
-                    <td colSpan={6}>
-                      <div className="admin-empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
-                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F1F5F9', color: '#64748B', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                          <PackageOpen size={28} />
-                        </div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 6px' }}>Catalog Inventory is Empty (0 SKUs)</h3>
-                        <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
-                          All fastener products have been removed from the central inventory. You can import new products using an Excel file, add a single SKU, or restore the demo fasteners.
-                        </p>
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          <button type="button" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsBulkUploadOpen(true)}>
-                            <Upload size={14} />
-                            <span>Upload Products via Excel</span>
-                          </button>
-                          <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsAddOpen(true)}>
-                            <Plus size={14} />
-                            <span>Add Single SKU</span>
-                          </button>
-                          <button type="button" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0052CC', borderColor: '#BFDBFE', background: '#EFF6FF' }} onClick={handleRestoreDefaultsAction}>
-                            <RotateCcw size={14} />
-                            <span>Restore Demo Catalog (47 SKUs)</span>
-                          </button>
-                        </div>
+                    <td colSpan={6} className="py-14 text-center">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                        <PackageOpen size={20} />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800">Catalog Inventory is Empty</h4>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-3">All fastener products have been removed. You can upload via Excel or restore demo catalog.</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsBulkUploadOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-xs"
+                        >
+                          <Upload size={13} />
+                          <span>Upload Excel</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50"
+                        >
+                          <Plus size={13} />
+                          <span>Add Single SKU</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRestoreDefaultsAction}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100"
+                        >
+                          <RotateCcw size={13} />
+                          <span>Restore Demo</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ) : totalCount === 0 ? (
                   <tr>
-                    <td colSpan={6}>
-                      <div className="admin-empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                        <AlertTriangle size={36} color="#D97706" style={{ margin: '0 auto 8px' }} />
-                        <h4 style={{ margin: '0 0 4px', fontSize: '15px' }}>No Fastener SKUs Matched</h4>
-                        <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748B' }}>No products match your current search and filter combination.</p>
-                        <button type="button" className="btn-outline" onClick={handleResetFilters}>
-                          Clear All Filters
-                        </button>
-                      </div>
+                    <td colSpan={6} className="py-12 text-center">
+                      <AlertTriangle size={24} className="text-amber-500 mx-auto mb-1.5" />
+                      <div className="text-xs font-bold text-slate-800">No Fasteners Matched</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 mb-2.5">No products match your current search and filter combination.</div>
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Clear Filters
+                      </button>
                     </td>
                   </tr>
                 ) : (
                   paginatedProducts.map((p) => {
                     const isLowStock = p.stockPcs > 0 && p.stockPcs <= 5000;
                     const isOutOfStock = p.stockPcs === 0;
+                    const isSelected = selectedProductIds.has(p.id);
 
                     return (
                       <tr
                         key={p.id}
-                        className={p.isSurplus ? 'surplus-row' : ''}
-                        style={{
-                          borderBottom: '1px solid #F1F5F9',
-                          background: selectedProductIds.has(p.id) ? '#EFF6FF' : undefined,
-                          transition: 'background 0.15s ease'
-                        }}
+                        className={`hover:bg-slate-50/80 transition-colors ${
+                          isSelected ? 'bg-blue-50/60' : p.isSurplus ? 'bg-amber-50/20' : ''
+                        }`}
                       >
-                        {/* 0. Row Selection Checkbox */}
-                        <td style={{ padding: '12px 10px 12px 16px', width: '38px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        {/* Checkbox */}
+                        <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
-                            checked={selectedProductIds.has(p.id)}
+                            checked={isSelected}
                             onChange={() => toggleSelectProduct(p.id)}
-                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
-                            title="Select product for bulk action"
+                            className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer"
                           />
                         </td>
 
-                        {/* 1. SKU & Product Details (Clickable Tab to open Pop up bar) */}
-                        <td style={{ padding: '12px 16px' }}>
+                        {/* SKU & Product Details */}
+                        <td className="py-2 px-3.5">
                           <div
                             onClick={() => {
                               setInspectProduct(p);
                               setInspectTab('overview');
                             }}
-                            role="button"
-                            tabIndex={0}
-                            title="Click to view full product details & specs in pop up bar"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              borderRadius: '6px',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            className="flex items-center gap-2.5 cursor-pointer group"
+                            title="Click to view specifications"
                           >
-                            <div style={{
-                              width: '42px',
-                              height: '42px',
-                              borderRadius: '6px',
-                              border: '1px solid #E2E8F0',
-                              overflow: 'hidden',
-                              flexShrink: 0,
-                              background: '#F8FAFC',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              position: 'relative'
-                            }}>
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewProduct(p);
+                              }}
+                              className="w-8 h-8 rounded-md border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 hover:border-blue-400 transition-colors"
+                              title="Click to preview photo"
+                            >
                               <Image
                                 src={p.imageUrl || '/assets/bolt_zinc.jpg'}
                                 alt={p.sku}
-                                width={38}
-                                height={38}
+                                width={32}
+                                height={32}
                                 unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
-                                style={{ objectFit: 'contain' }}
+                                className="w-full h-full object-contain p-0.5"
                                 onError={(e) => {
                                   try {
                                     (e.target as any).src = '/assets/bolt_zinc.jpg';
@@ -2143,146 +1739,76 @@ export default function AdminProductsSection({
                                 }}
                               />
                             </div>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
-                                <span style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '3px',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  background: '#EFF6FF',
-                                  color: '#0052CC',
-                                  fontWeight: 700,
-                                  fontSize: '11px',
-                                  fontFamily: 'var(--font-mono)',
-                                  border: '1px solid #BFDBFE'
-                                }}>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className="font-mono font-bold text-[11px] text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.5 rounded group-hover:bg-blue-100 transition-colors truncate max-w-[140px] sm:max-w-[180px] inline-block align-middle"
+                                  title={p.sku}
+                                >
                                   {p.sku}
-                                  <ChevronRight size={11} />
                                 </span>
-                                <span style={{
-                                  display: 'inline-block',
-                                  padding: '1px 6px',
-                                  borderRadius: '3px',
-                                  background: '#F1F5F9',
-                                  color: '#475569',
-                                  fontSize: '10px',
-                                  fontWeight: 600,
-                                  fontFamily: 'var(--font-mono)'
-                                }}>
+                                <span className="font-mono text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
                                   {p.standard || p.din || 'DIN'}
                                 </span>
                                 {p.isSurplus && (
-                                  <span style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '2px',
-                                    padding: '1px 5px',
-                                    borderRadius: '3px',
-                                    background: '#FEF3C7',
-                                    color: '#B45309',
-                                    fontSize: '9px',
-                                    fontWeight: 700
-                                  }}>
-                                    <Flame size={10} /> -{p.surplusDiscountPct}%
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded">
+                                    <Flame size={9} /> -{p.surplusDiscountPct}%
                                   </span>
                                 )}
+                                <span className="text-[11px] text-slate-500 font-medium truncate">
+                                  {p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`}
+                                </span>
                               </div>
-                              <div style={{
-                                fontWeight: 600,
-                                fontSize: '13px',
-                                color: '#0F172A',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                maxWidth: '340px'
-                              }}>
+                              <div className="text-xs font-semibold text-slate-900 truncate max-w-[280px] lg:max-w-[420px]">
                                 {p.name}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', gap: '8px', marginTop: '2px' }}>
-                                <span>{p.sizeFormatted || `${p.diameter} × ${p.lengthMm}mm`}</span>
-                                <span>•</span>
-                                <span>{p.subGroup || p.category || 'Fastener'}</span>
                               </div>
                             </div>
                           </div>
                         </td>
 
-                        {/* 2. Grade & Coating */}
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{
-                              fontWeight: 700,
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: '12px',
-                              color: '#1E293B'
-                            }}>
-                              {p.grade || 'Grade 8.8'}
-                            </span>
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#64748B',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis'
-                            }}>
-                              {p.finish || 'Zinc Plated'}
-                            </span>
+                        {/* Grade & Coating */}
+                        <td className="py-2 px-3">
+                          <div className="font-mono font-bold text-xs text-slate-800">
+                            {p.grade || 'Grade 8.8'}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate max-w-[120px]">
+                            {p.finish || 'Zinc Plated'}
                           </div>
                         </td>
 
-                        {/* 3. Rate (Pc / Kg) */}
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontWeight: 700,
-                              fontSize: '13px',
-                              color: '#0052CC'
-                            }}>
-                              {formatINR(p.pricePerPiece)} <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 500 }}>/ pc</span>
-                            </span>
-                            <span style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: '11px',
-                              color: '#059669',
-                              fontWeight: 600
-                            }}>
-                              {formatINR(p.pricePerKg)} <span style={{ fontSize: '10px', color: '#64748B' }}>/ kg</span>
-                            </span>
+                        {/* Rate (Pc / Kg) */}
+                        <td className="py-2 px-3">
+                          <div className="font-mono font-bold text-xs text-blue-700">
+                            {formatINR(p.pricePerPiece)} <span className="text-[10px] font-normal text-slate-500">/ pc</span>
+                          </div>
+                          <div className="font-mono font-semibold text-[11px] text-emerald-700">
+                            {formatINR(p.pricePerKg)} <span className="text-[10px] font-normal text-slate-500">/ kg</span>
                           </div>
                         </td>
 
-                        {/* 4. Stock & Status */}
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontWeight: 700,
-                              fontSize: '12px',
-                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#0F172A'
-                            }}>
-                              {p.stockPcs.toLocaleString()} <span style={{ fontSize: '10px', fontWeight: 500, color: '#64748B' }}>pcs</span>
-                            </span>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              width: 'fit-content',
-                              background: isOutOfStock ? '#FEE2E2' : isLowStock ? '#FEF3C7' : '#ECFDF5',
-                              color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#059669'
-                            }}>
+                        {/* Stock & Status */}
+                        <td className="py-2 px-3">
+                          <div className="font-mono font-bold text-xs text-slate-900">
+                            {p.stockPcs.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">pcs</span>
+                          </div>
+                          <div>
+                            <span
+                              className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                isOutOfStock
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : isLowStock
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}
+                            >
                               {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'Ready Stock'}
                             </span>
                           </div>
                         </td>
 
-                        {/* 5. Actions */}
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                        {/* Actions */}
+                        <td className="py-2 px-3 text-right pr-4">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -2290,47 +1816,30 @@ export default function AdminProductsSection({
                                 setInspectProduct(p);
                                 setInspectTab('overview');
                               }}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '5px',
-                                border: '1px solid #CBD5E1',
-                                background: '#FFFFFF',
-                                color: '#0052CC',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              title="Open Product Details Pop-up Bar"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                              title="Specs & dimensional telemetry"
                             >
                               <Eye size={12} />
-                              <span>Specs</span>
+                              <span className="hidden xl:inline">Specs</span>
                             </button>
-                            <button
-                              type="button"
-                              className="admin-btn-action admin-btn-edit"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditProduct({ ...p });
-                                setEditModalTab('basic');
-                              }}
-                              title="Edit fastener SKU parameters"
+                            <Link
+                              href={`/admin/products/${p.id}/edit`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Edit fastener SKU"
                             >
-                              <Edit size={12} />
-                            </button>
+                              <Edit size={13} />
+                            </Link>
                             <button
                               type="button"
-                              className="admin-btn-action admin-btn-delete"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteProduct(p);
                               }}
-                              title="Delete SKU from catalog"
+                              className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Delete SKU"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </td>
@@ -2340,21 +1849,24 @@ export default function AdminProductsSection({
                 )}
               </tbody>
             </table>
-            </div>
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={totalCount}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={(limit) => {
-                setItemsPerPage(limit);
-                setCurrentPage(1);
-              }}
-              itemLabel="fastener SKUs"
-              pageSizeOptions={[10, 20, 50, 100]}
-            />
           </div>
         )}
+
+        {/* 6. COMPACT PAGINATION FOOTER */}
+        <div className="p-3 bg-slate-50/60 border-t border-slate-200">
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={totalCount}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(limit) => {
+              setItemsPerPage(limit);
+              setCurrentPage(1);
+            }}
+            itemLabel="fastener SKUs"
+            pageSizeOptions={[10, 20, 50, 100]}
+          />
+        </div>
       </div>
 
       {/* MODAL 1: ADD FASTENER MODAL WITH ALL EXCEL INPUT FIELDS */}
@@ -3908,22 +3420,25 @@ export default function AdminProductsSection({
               alignItems: 'center',
               flexShrink: 0
             }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                   <span style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '12px',
-                    fontWeight: 800,
+                    fontSize: '11px',
+                    fontWeight: 700,
                     color: '#0052CC',
                     background: '#EFF6FF',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
                     border: '1px solid #BFDBFE',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '4px',
+                    maxWidth: '280px'
                   }}>
-                    {inspectProduct.sku}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inspectProduct.sku}>
+                      {inspectProduct.sku}
+                    </span>
                     <button
                       type="button"
                       onClick={() => {
@@ -3964,7 +3479,20 @@ export default function AdminProductsSection({
                     </span>
                   )}
                 </div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0F172A', lineHeight: '1.3' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    color: '#0F172A',
+                    lineHeight: '1.35',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}
+                  title={inspectProduct.name}
+                >
                   {inspectProduct.name}
                 </h3>
               </div>
@@ -4095,21 +3623,6 @@ export default function AdminProductsSection({
                         ) : (
                           <span style={{ fontSize: '11px', color: '#94A3B8' }}>No CAD uploaded</span>
                         )}
-                        {inspectProduct.imageUrl && inspectProduct.imageUrl.includes('frappe.cloud') && (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            background: '#ECFDF5',
-                            color: '#059669',
-                            fontSize: '11px',
-                            fontWeight: 600
-                          }}>
-                            <CheckCircle2 size={12} /> Frappe Cloud Synced
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -4123,7 +3636,7 @@ export default function AdminProductsSection({
                       <tbody>
                         <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '8px 14px', color: '#64748B', width: '40%' }}>Product SKU</td>
-                          <td style={{ padding: '8px 14px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{inspectProduct.sku}</td>
+                          <td style={{ padding: '8px 14px', fontWeight: 700, fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{inspectProduct.sku}</td>
                         </tr>
                         <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '8px 14px', color: '#64748B' }}>Sub-Group / Family</td>
@@ -4371,20 +3884,15 @@ export default function AdminProductsSection({
               </button>
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
+                <Link
+                  href={`/admin/products/${inspectProduct.id}/edit`}
                   className="btn-outline"
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                  onClick={() => {
-                    const prodToEdit = { ...inspectProduct };
-                    setInspectProduct(null);
-                    setEditProduct(prodToEdit);
-                    setEditModalTab('basic');
-                  }}
+                  style={{ padding: '6px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                  onClick={() => setInspectProduct(null)}
                 >
                   <Edit size={13} />
                   <span>Edit Parameters</span>
-                </button>
+                </Link>
                 <button
                   type="button"
                   className="btn-primary"

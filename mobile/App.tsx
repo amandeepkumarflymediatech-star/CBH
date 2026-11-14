@@ -39,7 +39,6 @@ import { AdminOrdersScreen } from './screens/admin/AdminOrdersScreen';
 import { AdminProductsScreen } from './screens/admin/AdminProductsScreen';
 import { AdminRfqsScreen } from './screens/admin/AdminRfqsScreen';
 import { AdminUsersScreen } from './screens/admin/AdminUsersScreen';
-import { AdminErpSyncScreen } from './screens/admin/AdminErpSyncScreen';
 import { AdminPaymentsScreen } from './screens/admin/AdminPaymentsScreen';
 import { AdminProfileScreen } from './screens/admin/AdminProfileScreen';
 import { AdminSurplusScreen } from './screens/admin/AdminSurplusScreen';
@@ -393,8 +392,6 @@ export default function App() {
           return { title: 'Commercial Quotes', subtitle: 'RFQ Margins & Approvals' };
         case 'users':
           return { title: 'B2B Client Ledger', subtitle: 'Credit Limits & KYC' };
-        case 'erp':
-          return { title: 'ERPNext Sync', subtitle: 'Bidirectional Pipeline' };
         case 'payments':
           return { title: 'Settlement Ledger', subtitle: 'PhonePe & Bank Wires' };
         case 'surplus':
@@ -522,8 +519,6 @@ export default function App() {
           return <AdminRfqsScreen />;
         case 'users':
           return <AdminUsersScreen />;
-        case 'erp':
-          return <AdminErpSyncScreen />;
         case 'payments':
           return <AdminPaymentsScreen />;
         case 'surplus':

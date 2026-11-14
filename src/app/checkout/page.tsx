@@ -131,7 +131,7 @@ export default function CheckoutPage() {
 
     if (paymentMethod === 'NEFT_RTGS') {
       setIsSubmitting(true);
-      showLoadingAlert('Generating Commercial Proforma', 'Dispatching order parameters into ERPNext...');
+      showLoadingAlert('Generating Commercial Proforma', 'Processing your order...');
       try {
         const orderRes = await fetch('/api/orders', {
           method: 'POST',
@@ -151,13 +151,12 @@ export default function CheckoutPage() {
             items: checkoutItems,
           }),
         });
-        const orderData = await orderRes.json();
-        const erpId = orderData.data?.erpnextSalesOrderId || '';
+        await orderRes.json();
 
         router.push(
           `/order-success?orderNumber=${orderId}&mode=NEFT&amount=${summary.netTotal}&company=${encodeURIComponent(
             formData.companyName
-          )}${erpId ? `&erpId=${encodeURIComponent(erpId)}` : ''}`
+          )}`
         );
       } catch (err: any) {
         setIsSubmitting(false);

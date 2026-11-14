@@ -1,10 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Phone, X, HelpCircle } from 'lucide-react';
 
 export default function FloatingWhatsAppWidget() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Hide WhatsApp customer support widget on internal admin panel
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <aside aria-label="Customer Support Assistant" className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-[999] flex flex-col items-end pointer-events-auto">

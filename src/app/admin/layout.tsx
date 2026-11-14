@@ -249,6 +249,8 @@ export default function AdminLayout({
   // Get Page Title from Route
   const getPageTitle = () => {
     if (pathname === '/admin') return 'Dashboard';
+    if (pathname === '/admin/products/new') return 'New Fastener';
+    if (pathname.includes('/edit') && pathname.startsWith('/admin/products')) return 'Edit Fastener';
     if (pathname.startsWith('/admin/products')) return 'Products';
     if (pathname.startsWith('/admin/orders')) return 'Orders & Dispatch';
     if (pathname.startsWith('/admin/rfqs')) return 'RFQs';
@@ -257,7 +259,6 @@ export default function AdminLayout({
     if (pathname.startsWith('/admin/surplus')) return 'Surplus Stock';
     if (pathname.startsWith('/admin/custom-requests')) return 'Custom Product Requests';
     if (pathname.startsWith('/admin/payments')) return 'Payment Gateways';
-    if (pathname.startsWith('/admin/erpnext')) return 'Marketplace Sync';
     if (pathname.startsWith('/admin/seo')) return 'SEO & Schemas';
     if (pathname.startsWith('/admin/profile')) return 'Operator Profile';
     if (pathname.startsWith('/admin/blogs')) return 'Metallurgy Blog';
@@ -504,20 +505,6 @@ export default function AdminLayout({
                 </div>
               )}
 
-              {/* Marketplace / ERPNext Sync */}
-              <Link
-                href="/admin/erpnext"
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
-                  isLinkActive('/admin/erpnext')
-                    ? 'bg-[#0F172A] text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-                title="Marketplace Sync"
-              >
-                <Database size={18} strokeWidth={1.9} />
-                {!isSidebarCollapsed && <span>Marketplace Sync</span>}
-              </Link>
-
               {/* Payment Gateways */}
               <Link
                 href="/admin/payments"
@@ -579,33 +566,17 @@ export default function AdminLayout({
         <header className={`border-b sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors ${
           isDarkMode ? 'bg-[#0F172A] border-[#1E293B] text-white' : 'bg-white border-[#EAEAEA] text-slate-800'
         }`}>
-          {/* Left: Mobile hamburger + Top-Left Back Button + Page Title */}
-          <div className="flex items-center gap-3">
+          {/* Left: Mobile Navigation Menu + Page Title */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
-              className="md:hidden p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
               title="Open Navigation"
               aria-label="Open Navigation"
             >
               <Menu size={20} />
             </button>
-
-            {pathname !== '/admin' && (
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className={`p-2 rounded-xl transition-all flex items-center justify-center border cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-                title="Go Back"
-                aria-label="Go Back"
-              >
-                <ArrowLeft size={18} />
-              </button>
-            )}
 
             <h1 className={`text-xl sm:text-2xl font-black tracking-tight ${
               isDarkMode ? 'text-white' : 'text-[#0F172A]'
@@ -614,9 +585,8 @@ export default function AdminLayout({
             </h1>
           </div>
 
-          {/* Right: Team Stack + Notifications + Search + User Profile */}
-          <div className="flex items-center gap-3 sm:gap-4">
-           
+          {/* Right: Actions + User Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-4">
 
             {/* Notification Bell with Badge (24) */}
             
@@ -781,14 +751,6 @@ export default function AdminLayout({
                   >
                     <FileCheck2 size={16} />
                     <span>RFQs</span>
-                  </Link>
-                  <Link
-                    href="/admin/erpnext"
-                    onClick={() => setIsMobileNavOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
-                  >
-                    <Database size={16} />
-                    <span>Marketplace Sync</span>
                   </Link>
                   <Link
                     href="/admin/payments"

@@ -96,7 +96,6 @@ export default function AdminCustomRequestsPage() {
   const [convertLeadTime, setConvertLeadTime] = useState('10');
   const [convertIsSurplus, setConvertIsSurplus] = useState(false);
   const [convertSurplusDiscount, setConvertSurplusDiscount] = useState('35');
-  const [convertSyncErp, setConvertSyncErp] = useState(true);
   const [convertAdminNotes, setConvertAdminNotes] = useState('');
 
   const showToast = (msg: string) => {
@@ -140,7 +139,6 @@ export default function AdminCustomRequestsPage() {
       setConvertPriceKg('185.00');
       setConvertStock(String(convertTarget.quantityRequired || 5000));
       setConvertIsSurplus(convertTarget.urgencyLevel === 'SURPLUS_IMMEDIATE');
-      setConvertSyncErp(true);
       setConvertAdminNotes(`Approved for customer ${convertTarget.customerName} (${convertTarget.requestNumber})`);
     }
   }, [convertTarget]);
@@ -235,7 +233,6 @@ export default function AdminCustomRequestsPage() {
         leadTimeDays: parseInt(convertLeadTime) || 10,
         isSurplus: convertIsSurplus,
         surplusDiscountPct: convertIsSurplus ? parseInt(convertSurplusDiscount) || 35 : 0,
-        syncToErpNext: convertSyncErp,
         adminNotes: convertAdminNotes,
       };
 
@@ -282,7 +279,7 @@ export default function AdminCustomRequestsPage() {
                 Custom Product &amp; Non-Listed Item Requests
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Customer inquiries for non-standard fasteners, custom dimensions, and clearance lots with 1-click catalog onboarding and ERPNext Item synchronization.
+                Customer inquiries for non-standard fasteners, custom dimensions, and clearance lots with 1-click catalog onboarding.
               </p>
             </div>
           </div>
@@ -509,7 +506,7 @@ export default function AdminCustomRequestsPage() {
                               type="button"
                               onClick={() => setConvertTarget(req)}
                               className="px-3 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                              title="Convert to live catalog product and ERPNext item"
+                              title="Convert to live catalog product"
                             >
                               <Plus size={12} />
                               <span>Onboard Product</span>
@@ -677,21 +674,6 @@ export default function AdminCustomRequestsPage() {
               {/* Toggles */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <span className="font-bold text-slate-800">Sync to ERPNext Master</span>
-                    <p className="text-[11px] text-slate-500">
-                      Creates Item Code and standard selling price in ERPNext.
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={convertSyncErp}
-                    onChange={(e) => setConvertSyncErp(e.target.checked)}
-                    className="w-4 h-4 text-[#0052CC] rounded"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer pt-2 border-t border-slate-200">
                   <div>
                     <span className="font-bold text-slate-800">Add to Factory Surplus Lots</span>
                     <p className="text-[11px] text-slate-500">

@@ -8,9 +8,16 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { MobileCard } from '../../components/MobileCard';
 import { getMobileStoredUser, DEMO_MOBILE_ADMIN, setMobileStoredUser } from '../../config/auth';
 import { MobileAuthUser } from '../../types';
+
+const GRAPHITE = '#0F172A';
+const STEEL = '#475569';
+const LIGHT_STEEL = '#94A3B8';
+const WHITE = '#FFFFFF';
+const BLUE = '#0052CC';
+const GREEN = '#16A34A';
+const RED = '#DC2626';
 
 interface AdminProfileScreenProps {
   onLogout: () => void;
@@ -27,18 +34,15 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
   const [roleTitle, setRoleTitle] = useState('Chief Operations Officer & Plant Master');
   const [email, setEmail] = useState(initialUser.email || 'admin@cbh.store');
   const [phone, setPhone] = useState(initialUser.phone || '+91 98880 21000');
-  const [stationKey, setStationKey] = useState('CBH-HQ-OP-901');
   const [plantLocation, setPlantLocation] = useState('Ludhiana Central Works • Factory Unit #1');
 
   // Passcode Reset State
   const [currentPasscode, setCurrentPasscode] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
-  const [confirmPasscode, setConfirmPasscode] = useState('');
 
   // Toggles
   const [twoFactorAuth, setTwoFactorAuth] = useState(true);
   const [rfqSmsAlerts, setRfqSmsAlerts] = useState(true);
-  const [discrepancyAlerts, setDiscrepancyAlerts] = useState(true);
 
   const [toastMsg, setToastMsg] = useState('');
 
@@ -48,15 +52,9 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
   };
 
   const handleSaveProfile = () => {
-    if (newPasscode) {
-      if (newPasscode !== confirmPasscode) {
-        Alert.alert('Passcode Mismatch', 'New passcode and confirmation do not match.');
-        return;
-      }
-      if (newPasscode.length < 6) {
-        Alert.alert('Security Requirement', 'Passcode must be at least 6 characters.');
-        return;
-      }
+    if (newPasscode && newPasscode.length < 6) {
+      Alert.alert('Security Requirement', 'Passcode must be at least 6 characters.');
+      return;
     }
 
     const updated: MobileAuthUser = {
@@ -68,24 +66,26 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
     setMobileStoredUser(updated);
     setCurrentPasscode('');
     setNewPasscode('');
-    setConfirmPasscode('');
-    showToast('Operator clearance credentials & station security protocols updated!');
+    showToast('Operator clearance credentials & profile updated!');
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Header Profile Badge */}
+    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Operator Header Profile Badge - Compact */}
       <View style={styles.headerCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>CBH</Text>
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.userName}>{fullName}</Text>
-          <Text style={styles.userRole}>{roleTitle}</Text>
-          <View style={styles.clearanceBadge}>
-            <Text style={styles.clearanceText}>CLEARANCE: LEVEL 4 PLANT MASTER</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.userName}>{fullName}</Text>
+            <View style={styles.clearanceBadge}>
+              <Text style={styles.clearanceText}>LEVEL 4</Text>
+            </View>
           </View>
+          <Text style={styles.userRole}>{roleTitle}</Text>
+          <Text style={styles.plantText}>{plantLocation}</Text>
         </View>
       </View>
 
@@ -96,34 +96,30 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
         </View>
       ) : null}
 
-      {/* Switch to Customer Storefront View */}
-      <TouchableOpacity onPress={onSwitchToCustomer} style={styles.switchBtn} activeOpacity={0.8}>
-        <Text style={styles.switchBtnText}>
-          Switch to Customer Storefront View →
-        </Text>
-      </TouchableOpacity>
+      {/* SECTION 1: OPERATOR DETAILS */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.cardHeading}>Personnel Information</Text>
 
-      {/* SECTION 1: OPERATOR DETAILS (All Inputs) */}
-      <MobileCard>
-        <Text style={styles.cardHeading}>Operator Personnel Details</Text>
+        <View style={styles.twoCols}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.fieldLabel}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              value={fullName}
+              onChangeText={setFullName}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.fieldLabel}>Role</Text>
+            <TextInput
+              style={styles.input}
+              value={roleTitle}
+              onChangeText={setRoleTitle}
+            />
+          </View>
+        </View>
 
-        <Text style={styles.fieldLabel}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder="Harpreet Singh"
-        />
-
-        <Text style={styles.fieldLabel}>Operational Role Title</Text>
-        <TextInput
-          style={styles.input}
-          value={roleTitle}
-          onChangeText={setRoleTitle}
-          placeholder="Operations Executive"
-        />
-
-        <View style={styles.formSplit}>
+        <View style={styles.twoCols}>
           <View style={{ flex: 1 }}>
             <Text style={styles.fieldLabel}>Corporate Email</Text>
             <TextInput
@@ -135,7 +131,7 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Phone Number</Text>
+            <Text style={styles.fieldLabel}>Phone</Text>
             <TextInput
               style={styles.input}
               value={phone}
@@ -144,39 +140,23 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
             />
           </View>
         </View>
+      </View>
 
-        <Text style={styles.fieldLabel}>Security Station Key Identifier</Text>
-        <TextInput
-          style={styles.input}
-          value={stationKey}
-          onChangeText={setStationKey}
-          placeholder="CBH-HQ-OP-901"
-          autoCapitalize="characters"
-        />
+      {/* SECTION 2: PASSCODE SECURITY */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.cardHeading}>Terminal Passcode</Text>
 
-        <Text style={styles.fieldLabel}>Industrial Plant Node Location</Text>
-        <TextInput
-          style={styles.input}
-          value={plantLocation}
-          onChangeText={setPlantLocation}
-          placeholder="Ludhiana Central Works"
-        />
-      </MobileCard>
-
-      {/* SECTION 2: PASSCODE SECURITY PROTOCOL */}
-      <MobileCard>
-        <Text style={styles.cardHeading}>Terminal Passcode &amp; Encryption Key</Text>
-
-        <Text style={styles.fieldLabel}>Current Security Passcode</Text>
-        <TextInput
-          style={styles.input}
-          value={currentPasscode}
-          onChangeText={setCurrentPasscode}
-          secureTextEntry
-          placeholder="Enter current passcode"
-        />
-
-        <View style={styles.formSplit}>
+        <View style={styles.twoCols}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.fieldLabel}>Current Passcode</Text>
+            <TextInput
+              style={styles.input}
+              value={currentPasscode}
+              onChangeText={setCurrentPasscode}
+              secureTextEntry
+              placeholder="••••••"
+            />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.fieldLabel}>New Passcode</Text>
             <TextInput
@@ -184,89 +164,52 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
               value={newPasscode}
               onChangeText={setNewPasscode}
               secureTextEntry
-              placeholder="Minimum 6 chars"
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Confirm Passcode</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPasscode}
-              onChangeText={setConfirmPasscode}
-              secureTextEntry
-              placeholder="Re-enter passcode"
+              placeholder="Min 6 chars"
             />
           </View>
         </View>
-      </MobileCard>
+      </View>
 
-      {/* SECTION 3: SYSTEM PERMISSIONS & NOTIFICATION TOGGLES */}
-      <MobileCard>
-        <Text style={styles.cardHeading}>Operational Protocols &amp; 2FA</Text>
+      {/* SECTION 3: SYSTEM PROTOCOLS */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.cardHeading}>Security &amp; Notifications</Text>
 
-        <View style={styles.switchRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.switchTitle}>Two-Factor Authentication (2FA)</Text>
-            <Text style={styles.switchDesc}>Enforce cryptographic handshake on sign in</Text>
-          </View>
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Two-Factor Authentication (2FA)</Text>
           <TouchableOpacity
             onPress={() => setTwoFactorAuth(!twoFactorAuth)}
-            style={[styles.toggleBtn, twoFactorAuth && styles.toggleBtnActive]}
+            style={[styles.togglePill, twoFactorAuth && styles.togglePillActive]}
           >
-            <Text style={styles.toggleText}>{twoFactorAuth ? 'ACTIVE' : 'OFF'}</Text>
+            <Text style={[styles.togglePillText, twoFactorAuth && styles.togglePillTextActive]}>
+              {twoFactorAuth ? 'ACTIVE' : 'OFF'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.switchRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.switchTitle}>Instant RFQ Quotation Alerts</Text>
-            <Text style={styles.switchDesc}>Push notifications when high-volume inquiries land</Text>
-          </View>
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Urgent RFQ SMS Alerts</Text>
           <TouchableOpacity
             onPress={() => setRfqSmsAlerts(!rfqSmsAlerts)}
-            style={[styles.toggleBtn, rfqSmsAlerts && styles.toggleBtnActive]}
+            style={[styles.togglePill, rfqSmsAlerts && styles.togglePillActive]}
           >
-            <Text style={styles.toggleText}>{rfqSmsAlerts ? 'ACTIVE' : 'OFF'}</Text>
+            <Text style={[styles.togglePillText, rfqSmsAlerts && styles.togglePillTextActive]}>
+              {rfqSmsAlerts ? 'ACTIVE' : 'OFF'}
+            </Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.switchRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.switchTitle}>Inventory Discrepancy Telemetry</Text>
-            <Text style={styles.switchDesc}>Real-time alert if ERPNext stock varies &gt; 5%</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => setDiscrepancyAlerts(!discrepancyAlerts)}
-            style={[styles.toggleBtn, discrepancyAlerts && styles.toggleBtnActive]}
-          >
-            <Text style={styles.toggleText}>{discrepancyAlerts ? 'ACTIVE' : 'OFF'}</Text>
-          </TouchableOpacity>
-        </View>
+      {/* ACTION BUTTONS */}
+      <TouchableOpacity onPress={handleSaveProfile} style={styles.saveBtn} activeOpacity={0.88}>
+        <Text style={styles.saveBtnText}>Save Profile Changes</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSaveProfile} style={styles.saveBtn} activeOpacity={0.8}>
-          <Text style={styles.saveBtnText}>Save Clearance Protocols</Text>
-        </TouchableOpacity>
-      </MobileCard>
+      <TouchableOpacity onPress={onSwitchToCustomer} style={styles.switchBtn} activeOpacity={0.85}>
+        <Text style={styles.switchBtnText}>Switch to Customer Storefront View →</Text>
+      </TouchableOpacity>
 
-      {/* SECTION 4: STATION SPECS & LOGOUT */}
-      <MobileCard>
-        <Text style={styles.cardHeading}>Terminal Enclave Hardware Specs</Text>
-        <View style={styles.specRow}>
-          <Text style={styles.specKey}>Hardware Station ID:</Text>
-          <Text style={styles.specVal}>{stationKey}</Text>
-        </View>
-        <View style={styles.specRow}>
-          <Text style={styles.specKey}>Data Center Node:</Text>
-          <Text style={styles.specVal}>LUDHIANA-CENTRAL-DC1</Text>
-        </View>
-        <View style={styles.specRow}>
-          <Text style={styles.specKey}>Security Cipher:</Text>
-          <Text style={[styles.specVal, { color: '#059669' }]}>TLS 1.3 / AES-256</Text>
-        </View>
-      </MobileCard>
-
-      <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.8}>
-        <Text style={styles.logoutBtnText}>End Operations Session &amp; Sign Out</Text>
+      <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.85}>
+        <Text style={styles.logoutBtnText}>Sign Out Operator Session</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -274,179 +217,183 @@ export const AdminProfileScreen: React.FC<AdminProfileScreenProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#F8FAFC',
-    paddingBottom: 40,
+    padding: 12,
+    paddingBottom: 28,
   },
   headerCard: {
-    backgroundColor: '#0F172A',
-    borderRadius: 16,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#0052CC',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: GRAPHITE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 22,
+    color: WHITE,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   userName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: GRAPHITE,
+  },
+  clearanceBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 1,
+    paddingHorizontal: 5,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  clearanceText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: BLUE,
   },
   userRole: {
     fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 2,
+    color: STEEL,
+    marginTop: 1,
   },
-  clearanceBadge: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
+  plantText: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
   },
-  clearanceText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#38BDF8',
-  },
-  toast: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 8,
-    padding: 10,
-  },
-  toastText: {
-    color: '#065F46',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  switchBtn: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+  sectionCard: {
+    backgroundColor: WHITE,
     borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  switchBtnText: {
-    color: '#0052CC',
-    fontSize: 12,
-    fontWeight: '800',
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   cardHeading: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#0F172A',
+    color: GRAPHITE,
     marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 4,
+  },
+  twoCols: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 6,
   },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#334155',
-    marginTop: 8,
-    marginBottom: 4,
+    color: STEEL,
+    marginBottom: 3,
   },
   input: {
+    height: 36,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 6,
+    paddingHorizontal: 8,
     fontSize: 12,
-    color: '#0F172A',
+    color: GRAPHITE,
   },
-  formSplit: {
+  toggleRow: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 8,
+    justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#F8FAFC',
   },
-  switchTitle: {
-    fontSize: 12,
+  toggleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  togglePill: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 5,
+    backgroundColor: '#F1F5F9',
+  },
+  togglePillActive: {
+    backgroundColor: '#DCFCE7',
+  },
+  togglePillText: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#1E293B',
+    color: LIGHT_STEEL,
   },
-  switchDesc: {
-    fontSize: 10,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  toggleBtn: {
-    backgroundColor: '#CBD5E1',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  toggleBtnActive: {
-    backgroundColor: '#10B981',
-  },
-  toggleText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '900',
+  togglePillTextActive: {
+    color: GREEN,
   },
   saveBtn: {
-    backgroundColor: '#0F172A',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: BLUE,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 14,
+    marginBottom: 8,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: WHITE,
     fontSize: 12,
     fontWeight: '800',
   },
-  specRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
+  switchBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 8,
   },
-  specKey: {
+  switchBtnText: {
+    color: BLUE,
     fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  specVal: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
   },
   logoutBtn: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#FECACA',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
   },
   logoutBtnText: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '800',
+    color: RED,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  toast: {
+    backgroundColor: GRAPHITE,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: WHITE,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

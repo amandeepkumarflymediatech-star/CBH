@@ -108,61 +108,70 @@ export default function CustomerSitesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-[#FF6B00]" />
-            <span>Infrastructure Project Delivery Sites</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Registered project consignee addresses for direct freight dispatches, transporter gate passes, and weighbridge destination tracking.
-          </p>
+    <div className="space-y-4">
+      {/* Sleek Single-Viewport Top Ops Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0 border border-orange-200">
+            <MapPin size={18} />
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-black text-[#0F172A] leading-tight flex items-center gap-2">
+              <span>Project Delivery Sites &amp; Yards</span>
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                {sites.length} {sites.length === 1 ? 'Site' : 'Sites'}
+              </span>
+            </h1>
+            <p className="text-[11px] text-slate-500 hidden sm:block">
+              Authorized unloading destinations for freight dispatches &amp; weighbridge tracking
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => setIsNewSiteModalOpen(true)}
-          className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer ml-auto"
         >
           <Plus size={14} />
-          <span>Add Project Delivery Site</span>
+          <span>Add Delivery Site</span>
         </button>
       </div>
 
       {/* Sites Grid */}
       {sites.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
-          <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#0F172A]">No Delivery Sites Registered</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            You currently have no project sites on record. Register your project fabricator godowns or weighbridge yards for pre-authorized dispatches.
+        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center shadow-xs">
+          <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+          <h3 className="text-xs font-bold text-[#0F172A]">No Delivery Sites Registered</h3>
+          <p className="text-[11px] text-slate-500 mt-0.5 max-w-sm mx-auto">
+            Register your project godowns or weighbridge yards for pre-authorized dispatches.
           </p>
           <button
             type="button"
             onClick={() => setIsNewSiteModalOpen(true)}
-            className="mt-4 px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+            className="mt-3 px-3 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors inline-flex items-center gap-1 cursor-pointer"
           >
-            <Plus size={14} />
-            <span>Register First Delivery Site</span>
+            <Plus size={13} />
+            <span>Register First Yard</span>
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {sites.map((site) => (
             <div
               key={site.id}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+              className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative"
             >
               <div>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0">
-                      <Building2 size={16} />
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0">
+                      <Building2 size={14} />
                     </div>
-                    <div>
-                      <h3 className="font-extrabold text-[#0F172A] text-sm leading-snug">{site.name}</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-[#0F172A] text-xs leading-snug truncate" title={site.name}>
+                        {site.name}
+                      </h3>
                       {site.isPrimary && (
                         <span className="text-[9px] font-extrabold text-[#5B4DF6] bg-[#EEF0FD] px-1.5 py-0.2 rounded uppercase">
                           Primary Depot
@@ -170,41 +179,47 @@ export default function CustomerSitesPage() {
                       )}
                     </div>
                   </div>
-                  {(site.activeDeliveries || 0) > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#0052CC] text-[10px] font-bold shrink-0">
-                      {site.activeDeliveries} Active Truck
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 text-[10px] shrink-0 font-medium">Idle</span>
-                  )}
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(site.activeDeliveries || 0) > 0 ? (
+                      <span className="px-1.5 py-0.5 rounded bg-blue-50 text-[#0052CC] text-[10px] font-bold">
+                        {site.activeDeliveries} Truck
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-[10px] font-medium">Idle</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSite(site.id)}
+                      className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded hover:bg-slate-100"
+                      title="Remove site"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
 
-                <p className="text-xs text-slate-600 mb-4 leading-relaxed">{site.address}</p>
+                <p className="text-[11px] text-slate-600 mb-2.5 line-clamp-2 leading-relaxed">
+                  {site.address}
+                </p>
 
-                <div className="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100 text-xs space-y-1.5">
-                  <div className="flex items-center gap-2 text-slate-700">
-                    <User size={13} className="text-slate-400" />
-                    <span className="font-semibold">{site.incharge || 'Site In-Charge'}</span>
+                <div className="bg-[#F8FAFC] px-2.5 py-2 rounded-lg border border-slate-100 text-[11px] space-y-1">
+                  <div className="flex items-center gap-1.5 text-slate-700">
+                    <User size={12} className="text-slate-400 shrink-0" />
+                    <span className="font-medium truncate">{site.incharge || 'Site In-Charge'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-700">
-                    <Phone size={13} className="text-slate-400" />
-                    <span className="font-mono">{site.phone || '+91 Contact on File'}</span>
+                  <div className="flex items-center gap-1.5 text-slate-700">
+                    <Phone size={12} className="text-slate-400 shrink-0" />
+                    <span className="font-mono text-[10px] truncate">{site.phone || '+91 Contact on File'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Pre-Authorized for LR Delivery
+              <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 size={11} className="text-emerald-500" /> Pre-Authorized
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteSite(site.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                  title="Remove site"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <span className="text-slate-400 font-mono">HSN Gate Pass</span>
               </div>
             </div>
           ))}
@@ -213,24 +228,24 @@ export default function CustomerSitesPage() {
 
       {/* Add Site Modal */}
       {isNewSiteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">
-                Add Project Consignee Location
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-300 max-w-md w-full p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <h3 className="font-black text-[#0F172A] text-sm sm:text-base leading-tight">
+                Add Project Delivery Yard
               </h3>
               <button
                 type="button"
                 onClick={() => setIsNewSiteModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleAddSite} className="py-4 space-y-3.5">
+            <form onSubmit={handleAddSite} className="py-3 space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                   Project / Yard Name *
                 </label>
                 <input
@@ -239,67 +254,67 @@ export default function CustomerSitesPage() {
                   placeholder="e.g. Solar Park Phase IV Depot, Bhadla"
                   value={newSite.name}
                   onChange={(e) => setNewSite({ ...newSite, name: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                   Full Dispatch Delivery Address *
                 </label>
                 <textarea
                   required
-                  rows={3}
+                  rows={2}
                   placeholder="Complete road address, plot number, nearest landmark, and pin code..."
                   value={newSite.address}
                   onChange={(e) => setNewSite({ ...newSite, address: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none resize-none"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none resize-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                    Site In-Charge / Gate Officer
+                  <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
+                    Site In-Charge
                   </label>
                   <input
                     type="text"
-                    placeholder="Contact person name"
+                    placeholder="Contact name"
                     value={newSite.incharge}
                     onChange={(e) => setNewSite({ ...newSite, incharge: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                    Gate Contact Phone Number
+                  <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
+                    Gate Contact Phone
                   </label>
                   <input
                     type="text"
                     placeholder="+91 98000 00000"
                     value={newSite.phone}
                     onChange={(e) => setNewSite({ ...newSite, phone: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none font-mono"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none font-mono"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsNewSiteModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                  <span>Save Delivery Yard</span>
+                  {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                  <span>Save Yard</span>
                 </button>
               </div>
             </form>

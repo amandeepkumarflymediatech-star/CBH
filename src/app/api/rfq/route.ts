@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { BulkQuotation } from '@/lib/types';
-import { pushRfqToErpNext, convertRfqToSalesOrder } from '@/lib/erpnext';
 import { query } from '@/lib/db';
 
 let quotesDb: BulkQuotation[] = [];
@@ -54,9 +53,7 @@ export async function GET(request: Request) {
         q.rfqNumber.toLowerCase().includes(search) ||
         q.customerName?.toLowerCase().includes(search) ||
         q.companyName?.toLowerCase().includes(search) ||
-        q.gstin?.toLowerCase().includes(search) ||
-        (q.erpnextQuoteId && q.erpnextQuoteId.toLowerCase().includes(search)) ||
-        (q.erpnextSalesOrderId && q.erpnextSalesOrderId.toLowerCase().includes(search))
+        q.gstin?.toLowerCase().includes(search)
     );
   }
 
@@ -108,34 +105,12 @@ export async function POST(request: Request) {
       items: body.items,
     };
 
-    // Push to ERPNext Quotation doctype
-    try {
-      const erpRes = await pushRfqToErpNext({
-        rfqNumber: newQuotation.rfqNumber,
-        customerName: newQuotation.customerName,
-        companyName: newQuotation.companyName,
-        email: newQuotation.email,
-        phone: newQuotation.phone,
-        gstin: newQuotation.gstin,
-        totalWeightKg: newQuotation.totalWeightKg,
-        grossAmount: newQuotation.grossAmount,
-        items: body.items,
-      });
-      if (erpRes.success && erpRes.erpnextQuoteId) {
-        newQuotation.erpnextQuoteId = erpRes.erpnextQuoteId;
-      }
-    } catch (e: any) {
-      console.warn('[RFQ API] ERPNext Quotation push background notice:', e.message);
-    }
-
     quotesDb.unshift(newQuotation);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Bulk RFQ ${newQuotation.rfqNumber} registered successfully.${
-          newQuotation.erpnextQuoteId ? ` Created ERPNext Quotation: ${newQuotation.erpnextQuoteId}` : ''
-        }`,
+        message: `Bulk RFQ ${newQuotation.rfqNumber} registered successfully.`,
         data: newQuotation,
       },
       { status: 201 }
@@ -164,47 +139,19 @@ export async function PUT(request: Request) {
     const discountPct = updates.discountPct !== undefined ? parseFloat(updates.discountPct) : current.discountPct;
     const netTotal = gross * (1 - discountPct / 100);
 
-    let erpnextSalesOrderId = current.erpnextSalesOrderId;
-
-    // If quotation is converted into a Purchase Order, auto-create ERPNext Sales Order & deduct stock
-    if (
-      (updates.status === 'CONVERTED_TO_PO' || updates.status === 'PO_ISSUED' || updates.status === 'APPROVED') &&
-      !erpnextSalesOrderId
-    ) {
-      try {
-        const erpSoRes = await convertRfqToSalesOrder({
-          rfqNumber: current.rfqNumber,
-          customerName: current.customerName || 'Procurement Executive',
-          companyName: current.companyName || 'Industrial Heavy Corp',
-          email: current.email,
-          phone: current.phone,
-          netTotal,
-          items: current.items,
-        });
-        if (erpSoRes.success && erpSoRes.erpnextSalesOrderId) {
-          erpnextSalesOrderId = erpSoRes.erpnextSalesOrderId;
-        }
-      } catch (err: any) {
-        console.warn('[RFQ API] Error converting quote to ERPNext Sales Order:', err.message);
-      }
-    }
-
     const updated: BulkQuotation = {
       ...current,
       ...updates,
       grossAmount: gross,
       discountPct: discountPct,
       netTotal: netTotal,
-      erpnextSalesOrderId,
     };
 
     quotesDb[index] = updated;
 
     return NextResponse.json({
       success: true,
-      message: `Quotation ${updated.rfqNumber} updated successfully.${
-        erpnextSalesOrderId ? ` ERPNext Sales Order Generated: ${erpnextSalesOrderId}` : ''
-      }`,
+      message: `Quotation ${updated.rfqNumber} updated successfully.`,
       data: updated,
     });
   } catch (error: any) {

@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   RefreshControl,
-  ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native';
@@ -17,41 +16,25 @@ import { OrderCardSkeleton } from '../../components/SkeletonLoader';
 import { mobileApi } from '../../config/api';
 import { MobileRfq } from '../../types';
 
-// Same palette as the other screens
-const GRAPHITE = '#1C2228';
-const STEEL = '#5E6A74';
-const MIST = '#EDEFF1';
-const HAIR = '#D6DBE0';
+const GRAPHITE = '#0F172A';
+const STEEL = '#475569';
+const LIGHT_STEEL = '#94A3B8';
 const WHITE = '#FFFFFF';
-const ORANGE = '#F26B1D';
-const GREEN = '#17803D';
-const RED = '#C62828';
+const BLUE = '#0052CC';
+const ORANGE = '#D97706';
+const GREEN = '#16A34A';
+const RED = '#DC2626';
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const statusLabel = (s: string) => {
   if (s === 'All') return 'All';
-  if (s === 'CONVERTED_TO_PO') return 'In ERP as PO';
+  if (s === 'CONVERTED_TO_PO') return 'PO Issued';
   const t = s.replace(/_/g, ' ').toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 
-// An RFQ moves through these stages; the tracker fills as it progresses
-const STAGES = ['Pending', 'In review', 'Quoted', 'Approved', 'In ERP'];
-const stageIndex = (status: string) => {
-  switch (status) {
-    case 'IN_REVIEW':
-      return 1;
-    case 'QUOTED':
-      return 2;
-    case 'APPROVED':
-      return 3;
-    case 'CONVERTED_TO_PO':
-      return 4;
-    default:
-      return 0;
-  }
-};
+const RFQ_STATUSES = ['All', 'PENDING', 'IN_REVIEW', 'QUOTED', 'APPROVED'];
 
 export const AdminRfqsScreen: React.FC = () => {
   const [rfqs, setRfqs] = useState<MobileRfq[]>([]);
@@ -103,47 +86,45 @@ export const AdminRfqsScreen: React.FC = () => {
     fetchRfqs();
   }, [selectedStatus, searchQuery]);
 
-  // UPDATE QUOTE
-  const handleOpenQuote = (rfq: MobileRfq) => {
+  // REVIEW QUOTE
+  const handleOpenReview = (rfq: MobileRfq) => {
     setActiveRfq(rfq);
-    setDiscountPct(rfq.discountPct || 18);
-    setQuoteStatus('QUOTED');
+    setDiscountPct(rfq.status === 'QUOTED' ? 22 : 18);
+    setQuoteStatus(rfq.status === 'PENDING' ? 'IN_REVIEW' : rfq.status);
     setIsQuoteModalOpen(true);
   };
 
-  const handleApproveQuote = async () => {
+  const handleSaveQuote = async () => {
     if (!activeRfq) return;
     setIsSubmitting(true);
     try {
-      const net = +(activeRfq.grossAmount * (1 - discountPct / 100)).toFixed(2);
-      await mobileApi.rfq.updateStatus({
+      const calculatedTotal = (activeRfq.estimatedValue || 45000) * (1 - discountPct / 100);
+
+      await mobileApi.rfq.update({
         id: activeRfq.id,
         status: quoteStatus,
         discountPct,
+        quotedAmount: Math.round(calculatedTotal),
       });
 
       setRfqs((prev) =>
         prev.map((r) =>
-          r.id === activeRfq.id ? { ...r, status: quoteStatus, discountPct, netTotal: net } : r
+          r.id === activeRfq.id
+            ? {
+                ...r,
+                status: quoteStatus,
+                quotedAmount: Math.round(calculatedTotal),
+              }
+            : r
         )
       );
 
       setIsQuoteModalOpen(false);
-      showToast(`${activeRfq.rfqNumber} is now ${statusLabel(quoteStatus).toLowerCase()}`);
+      showToast(`${activeRfq.rfqNumber} updated to ${statusLabel(quoteStatus)}`);
     } catch (err: any) {
       Alert.alert('Could not update quote', err.message || 'Try again.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleConvertToPo = async (rfq: MobileRfq) => {
-    try {
-      await mobileApi.rfq.convertToPo(rfq.id);
-      setRfqs((prev) => prev.map((r) => (r.id === rfq.id ? { ...r, status: 'CONVERTED_TO_PO' } : r)));
-      showToast(`${rfq.rfqNumber} pushed to ERPNext as a sales order`);
-    } catch (err: any) {
-      Alert.alert('Could not push to ERP', err.message || 'Try again.');
     }
   };
 
@@ -169,497 +150,502 @@ export const AdminRfqsScreen: React.FC = () => {
     }
   };
 
-  const statusFilters = ['All', 'PENDING', 'IN_REVIEW', 'QUOTED', 'APPROVED'];
-
-  const statusColor = (st: string) => {
-    switch (st) {
+  const rfqColor = (s: string) => {
+    switch (s) {
       case 'APPROVED':
       case 'CONVERTED_TO_PO':
         return GREEN;
       case 'QUOTED':
-        return ORANGE;
-      case 'REJECTED':
-        return RED;
-      default:
+        return BLUE;
+      case 'IN_REVIEW':
         return STEEL;
+      default:
+        return ORANGE;
     }
   };
 
-  const modalGross = activeRfq ? activeRfq.grossAmount || 0 : 0;
-  const modalNet = modalGross * (1 - discountPct / 100);
-
   return (
-    <ScrollView
-      style={{ backgroundColor: WHITE }}
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchRfqs(true)} colors={[ORANGE]} />
-      }
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.searchWrap}>
-        <MobileSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search by RFQ number, client or GSTIN"
-        />
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      {/* Top Header & Search Bar */}
+      <View style={styles.topHeader}>
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <MobileSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search RFQ # or Client..."
+            />
+          </View>
+        </View>
+
+        {/* Status Filter Horizontal Strip */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statusScroll}
+          style={styles.statusBar}
+        >
+          {RFQ_STATUSES.map((st) => {
+            const active = selectedStatus === st;
+            return (
+              <TouchableOpacity
+                key={st}
+                onPress={() => setSelectedStatus(st)}
+                style={[styles.statusPill, active && styles.statusPillActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.statusPillText, active && styles.statusPillTextActive]}>
+                  {statusLabel(st)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* Status tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
-        style={styles.tabs}
-      >
-        {statusFilters.map((st) => {
-          const active = selectedStatus === st;
-          return (
-            <TouchableOpacity
-              key={st}
-              onPress={() => setSelectedStatus(st)}
-              style={[styles.tab, active && styles.tabActive]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{statusLabel(st)}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
+      {/* Toast Feedback */}
       {toastMsg ? (
         <View style={styles.toast}>
-          <Text style={styles.toastText}>{toastMsg}</Text>
+          <Text style={styles.toastText}>✓ {toastMsg}</Text>
         </View>
       ) : null}
 
-      {/* Count */}
-      <View style={styles.controlBar}>
-        <Text style={styles.h2}>
-          {isLoading ? 'Quotes' : `${rfqs.length} ${rfqs.length === 1 ? 'quote' : 'quotes'}`}
-        </Text>
-        <Text style={styles.subCount}>Pricing approval queue</Text>
-      </View>
+      {/* High Density RFQ List */}
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => fetchRfqs(true)} colors={[BLUE]} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.countRow}>
+          <Text style={styles.countText}>{rfqs.length} Quotes on record</Text>
+        </View>
 
-      {/* List */}
-      {isLoading ? (
-        <View style={{ gap: 10 }}>
-          <OrderCardSkeleton />
-          <OrderCardSkeleton />
-        </View>
-      ) : rfqs.length === 0 ? (
-        <View style={styles.centerBlock}>
-          <Text style={styles.emptyTitle}>No RFQs found</Text>
-          <Text style={styles.emptySubtitle}>No buyer requests match this search or filter.</Text>
-          <TouchableOpacity
-            onPress={() => {
-              setSearchQuery('');
-              setSelectedStatus('All');
-            }}
-            style={styles.resetBtn}
-          >
-            <Text style={styles.resetBtnText}>Clear filters</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        rfqs.map((rfq) => {
-          const idx = stageIndex(rfq.status);
-          const rejected = rfq.status === 'REJECTED';
-          const color = statusColor(rfq.status);
-          const items = rfq.items || [];
-          const net = rfq.netTotal || (rfq.grossAmount || 0) * (1 - (rfq.discountPct || 18) / 100);
-          return (
-            <View key={rfq.id} style={styles.rfq}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
-                <View style={styles.statusRow}>
-                  <View style={[styles.dot, { backgroundColor: color }]} />
-                  <Text style={[styles.statusText, { color }]}>{statusLabel(rfq.status)}</Text>
+        {isLoading ? (
+          <View style={{ gap: 8 }}>
+            <OrderCardSkeleton />
+            <OrderCardSkeleton />
+          </View>
+        ) : rfqs.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTitle}>No matching RFQs</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setSelectedStatus('All');
+              }}
+              style={styles.resetBtn}
+            >
+              <Text style={styles.resetBtnText}>Clear Filters</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          rfqs.map((rfq) => (
+            <View key={rfq.id} style={styles.rfqCard}>
+              {/* Row 1: RFQ Code, Date, Status */}
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.rfqIdGroup}>
+                  <Text style={styles.rfqNumber}>{rfq.rfqNumber}</Text>
+                  <Text style={styles.rfqDate}>{rfq.date || rfq.createdAt?.split('T')[0]}</Text>
                 </View>
-              </View>
-              <Text style={styles.company}>{rfq.companyName || 'Industrial Buyer'}</Text>
-              <Text style={styles.meta}>
-                {rfq.customerName || 'Procurement Officer'}, {rfq.phone || '+91 98880 21000'}
-              </Text>
 
-              {/* Stage tracker */}
-              <View style={styles.tracker}>
-                {STAGES.map((s, i) => (
-                  <View
-                    key={s}
-                    style={[
-                      styles.seg,
-                      i <= idx && { backgroundColor: rejected ? RED : i === 2 && idx === 2 ? ORANGE : i === 4 ? GREEN : GRAPHITE },
-                    ]}
-                  />
-                ))}
-              </View>
-              <View style={styles.stageLabels}>
-                {STAGES.map((s, i) => (
-                  <Text key={s} style={[styles.stageLabel, i === idx && !rejected && styles.stageLabelOn]} numberOfLines={1}>
-                    {s}
+                <View style={[styles.badgePill, { backgroundColor: rfqColor(rfq.status) + '15' }]}>
+                  <Text style={[styles.badgePillText, { color: rfqColor(rfq.status) }]}>
+                    {statusLabel(rfq.status)}
                   </Text>
-                ))}
-              </View>
-
-              {/* Items */}
-              <View style={styles.items}>
-                {items.length > 0 ? (
-                  items.slice(0, 3).map((item, i) => (
-                    <View key={i} style={styles.itemRow}>
-                      <Text style={styles.itemName} numberOfLines={1}>
-                        {item.name || item.sku}
-                      </Text>
-                      <Text style={styles.itemQty}>
-                        {item.quantity} {rfq.globalUnit || 'KGS'}
-                      </Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.itemName}>Heavy structural fastener lot</Text>
-                )}
-                {items.length > 3 ? <Text style={styles.moreItems}>+ {items.length - 3} more</Text> : null}
-              </View>
-
-              {/* Money */}
-              <View style={styles.moneyRow}>
-                <View>
-                  <Text style={styles.moneyLabel}>List value</Text>
-                  <Text style={styles.moneyGross}>{inr(rfq.grossAmount || 0)}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.moneyLabel}>Discount</Text>
-                  <Text style={styles.moneyDiscount}>{rfq.discountPct || 18}% off</Text>
                 </View>
               </View>
-              <View style={styles.netRow}>
-                <Text style={styles.netLabel}>Quoted total</Text>
-                <Text style={styles.netVal}>{inr(net)}</Text>
+
+              {/* Row 2: Client & Estimated Value */}
+              <View style={styles.cardBodyRow}>
+                <Text style={styles.companyName} numberOfLines={1}>
+                  {rfq.companyName || rfq.customerName || 'Industrial Client'}
+                </Text>
+                <Text style={styles.estimatedVal}>
+                  {inr(rfq.quotedAmount || rfq.estimatedValue || 0)}
+                </Text>
               </View>
 
-              {/* Actions */}
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={() => handlePromptDelete(rfq)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deleteLink}>Delete</Text>
-                </TouchableOpacity>
-                <View style={styles.actionBtns}>
-                  <TouchableOpacity onPress={() => handleOpenQuote(rfq)} style={styles.reviewBtn} activeOpacity={0.85}>
-                    <Text style={styles.reviewBtnText}>Review and quote</Text>
-                  </TouchableOpacity>
-                  {rfq.status === 'APPROVED' ? (
-                    <TouchableOpacity onPress={() => handleConvertToPo(rfq)} style={styles.poBtn} activeOpacity={0.88}>
-                      <Text style={styles.poBtnText}>Push to ERP</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          );
-        })
-      )}
+              {/* Row 3: Spec Summary & Quick Action */}
+              <View style={styles.cardFooterRow}>
+                <Text style={styles.itemSummary} numberOfLines={1}>
+                  {rfq.items?.[0]?.name || `${rfq.items?.length || 1} Fastener SKU(s) requested`}
+                </Text>
 
-      {/* Review and quote modal */}
-      {activeRfq ? (
-        <MobileModal
-          isOpen={isQuoteModalOpen}
-          onClose={() => setIsQuoteModalOpen(false)}
-          title={`Review ${activeRfq.rfqNumber}`}
-        >
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalSubtitle}>
-              Set the volume discount and status for {activeRfq.companyName}.
-            </Text>
-
-            <Text style={styles.inputLabel}>Discount (%)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={String(discountPct)}
-              onChangeText={(val) => setDiscountPct(parseFloat(val) || 0)}
-            />
-
-            <Text style={styles.inputLabel}>Status</Text>
-            <View style={styles.chipRow}>
-              {(['QUOTED', 'APPROVED', 'REJECTED'] as const).map((st) => {
-                const active = quoteStatus === st;
-                return (
+                <View style={styles.actionGroup}>
                   <TouchableOpacity
-                    key={st}
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => setQuoteStatus(st)}
+                    onPress={() => handlePromptDelete(rfq)}
+                    style={styles.deleteBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleOpenReview(rfq)}
+                    style={styles.reviewBtn}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{statusLabel(st)}</Text>
+                    <Text style={styles.reviewBtnText}>Review &amp; Quote</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Live price breakdown */}
-            <View style={styles.breakdown}>
-              <View style={styles.kv}>
-                <Text style={styles.k}>List value</Text>
-                <Text style={styles.v}>{inr(modalGross)}</Text>
-              </View>
-              <View style={styles.kv}>
-                <Text style={styles.k}>Discount ({discountPct}%)</Text>
-                <Text style={[styles.v, { color: GREEN }]}>− {inr(modalGross - modalNet)}</Text>
-              </View>
-              <View style={[styles.kv, styles.kvTotal]}>
-                <Text style={styles.totalK}>Offered to client</Text>
-                <Text style={styles.totalV}>{inr(modalNet)}</Text>
+                </View>
               </View>
             </View>
+          ))
+        )}
+      </ScrollView>
 
-            <TouchableOpacity
-              onPress={handleApproveQuote}
-              style={[styles.saveBtn, isSubmitting && styles.disabled]}
-              disabled={isSubmitting}
-              activeOpacity={0.88}
-            >
-              {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Send quote</Text>}
-            </TouchableOpacity>
-          </ScrollView>
-        </MobileModal>
-      ) : null}
-
-      {/* Delete modal */}
-      {rfqToDelete ? (
-        <MobileModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-          title="Delete this RFQ?"
-        >
-          <View style={styles.modalScroll}>
-            <Text style={styles.deleteLead}>
-              {rfqToDelete.rfqNumber} will be permanently removed. This can’t be undone.
-            </Text>
-
-            <View style={styles.deleteTable}>
-              <View style={[styles.kv, { borderTopWidth: 0 }]}>
-                <Text style={styles.k}>Client</Text>
-                <Text style={styles.v}>{rfqToDelete.companyName}</Text>
-              </View>
-              <View style={styles.kv}>
-                <Text style={styles.k}>Status</Text>
-                <Text style={styles.v}>{statusLabel(rfqToDelete.status)}</Text>
-              </View>
-              <View style={styles.kv}>
-                <Text style={styles.k}>List value</Text>
-                <Text style={styles.v}>{inr(rfqToDelete.grossAmount || 0)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setIsDeleteModalOpen(false)} style={styles.cancelBtn} disabled={isSubmitting}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleConfirmDelete}
-                style={[styles.confirmDeleteBtn, isSubmitting && styles.disabled]}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <ActivityIndicator color={WHITE} size="small" /> : <Text style={styles.saveText}>Delete RFQ</Text>}
-              </TouchableOpacity>
-            </View>
+      {/* Review Quote Modal */}
+      <MobileModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
+        title={`Quote: ${activeRfq?.rfqNumber || 'RFQ'}`}
+      >
+        <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.inputLabel}>Quote Status</Text>
+          <View style={styles.stageGrid}>
+            {(['IN_REVIEW', 'QUOTED', 'APPROVED'] as MobileRfq['status'][]).map((st) => {
+              const active = quoteStatus === st;
+              return (
+                <TouchableOpacity
+                  key={st}
+                  onPress={() => setQuoteStatus(st)}
+                  style={[styles.stagePill, active && styles.stagePillActive]}
+                >
+                  <Text style={[styles.stagePillText, active && styles.stagePillTextActive]}>
+                    {statusLabel(st)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </MobileModal>
-      ) : null}
-    </ScrollView>
+
+          <Text style={styles.inputLabel}>Corporate Discount (% applied)</Text>
+          <TextInput
+            style={styles.input}
+            value={String(discountPct)}
+            onChangeText={(v) => setDiscountPct(parseInt(v) || 0)}
+            keyboardType="numeric"
+          />
+
+          <View style={styles.calcBox}>
+            <Text style={styles.calcLabel}>Estimated Final Quotation:</Text>
+            <Text style={styles.calcAmount}>
+              {inr(Math.round((activeRfq?.estimatedValue || 45000) * (1 - discountPct / 100)))}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSaveQuote}
+            disabled={isSubmitting}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Transmitting...' : 'Dispatch Quote'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </MobileModal>
+
+      {/* Delete Confirmation Modal */}
+      <MobileModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Quote Request"
+      >
+        <View style={{ paddingVertical: 8 }}>
+          <Text style={{ fontSize: 13, color: STEEL, marginBottom: 14 }}>
+            Delete RFQ <Text style={{ fontWeight: '800', color: GRAPHITE }}>{rfqToDelete?.rfqNumber}</Text>?
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setIsDeleteModalOpen(false)}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: STEEL }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirmDelete}
+              disabled={isSubmitting}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: RED, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: WHITE }}>
+                {isSubmitting ? 'Deleting...' : 'Delete'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </MobileModal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 40, backgroundColor: WHITE },
-
-  searchWrap: { paddingHorizontal: 16, paddingTop: 16 },
-
-  tabs: { marginTop: 8, borderBottomWidth: 1, borderBottomColor: HAIR, flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 20, gap: 22 },
-  tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
-  tabActive: { borderBottomColor: ORANGE },
-  tabText: { fontSize: 14, fontWeight: '600', color: STEEL },
-  tabTextActive: { color: GRAPHITE },
-
-  toast: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: GRAPHITE,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  toastText: { color: WHITE, fontSize: 14, fontWeight: '600' },
-
-  controlBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    marginTop: 12,
-    backgroundColor: MIST,
-    borderTopWidth: 1,
+  topHeader: {
+    backgroundColor: WHITE,
     borderBottomWidth: 1,
-    borderColor: HAIR,
-  },
-  h2: { fontSize: 16, fontWeight: '700', color: GRAPHITE },
-  subCount: { fontSize: 12, color: STEEL },
-
-  centerBlock: { paddingHorizontal: 32, paddingVertical: 48, alignItems: 'center', gap: 8 },
-  loadingText: { fontSize: 14, color: STEEL, marginTop: 6 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: GRAPHITE },
-  emptySubtitle: { fontSize: 14, color: STEEL, textAlign: 'center' },
-  resetBtn: {
-    marginTop: 8,
-    height: 44,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resetBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
-
-  // One RFQ: a hairline-separated block, not a card
-  rfq: { paddingHorizontal: 20, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: HAIR },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rfqNumber: { fontSize: 15, fontWeight: '700', color: GRAPHITE, fontFamily: MONO },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 13, fontWeight: '700' },
-  company: { fontSize: 15, fontWeight: '600', color: GRAPHITE, marginTop: 6 },
-  meta: { fontSize: 13, color: STEEL, marginTop: 2 },
-
-  tracker: { flexDirection: 'row', gap: 4, marginTop: 14 },
-  seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: MIST },
-  stageLabels: { flexDirection: 'row', gap: 4, marginTop: 6, marginBottom: 14 },
-  stageLabel: { flex: 1, fontSize: 11, color: STEEL },
-  stageLabelOn: { color: GRAPHITE, fontWeight: '700' },
-
-  items: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: MIST },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 3 },
-  itemName: { flex: 1, fontSize: 13, color: GRAPHITE },
-  itemQty: { fontSize: 13, color: STEEL, fontVariant: ['tabular-nums'] },
-  moreItems: { fontSize: 12, color: STEEL, marginTop: 4 },
-
-  moneyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: MIST,
-  },
-  moneyLabel: { fontSize: 12, color: STEEL },
-  moneyGross: { fontSize: 15, fontWeight: '600', color: GRAPHITE, marginTop: 2, fontVariant: ['tabular-nums'] },
-  moneyDiscount: { fontSize: 15, fontWeight: '700', color: ORANGE, marginTop: 2 },
-  netRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12 },
-  netLabel: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
-  netVal: { fontSize: 22, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
-
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
-  deleteLink: { fontSize: 14, fontWeight: '600', color: RED },
-  actionBtns: { flexDirection: 'row', gap: 8 },
-  reviewBtn: {
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reviewBtnText: { fontSize: 14, fontWeight: '700', color: GRAPHITE },
-  poBtn: {
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    backgroundColor: ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poBtnText: { fontSize: 14, fontWeight: '700', color: WHITE },
-
-  // Modals
-  modalScroll: { paddingVertical: 6 },
-  modalSubtitle: { fontSize: 14, color: STEEL, lineHeight: 20, marginBottom: 6 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: GRAPHITE, marginTop: 14, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: HAIR,
-    borderRadius: 8,
+    borderBottomColor: '#E2E8F0',
     paddingHorizontal: 12,
-    height: 46,
-    fontSize: 15,
-    color: GRAPHITE,
-    backgroundColor: WHITE,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: HAIR,
-    backgroundColor: WHITE,
-  },
-  chipActive: { backgroundColor: GRAPHITE, borderColor: GRAPHITE },
-  chipText: { fontSize: 13, fontWeight: '600', color: GRAPHITE },
-  chipTextActive: { color: WHITE },
-  breakdown: { marginTop: 20 },
-  kv: {
+  searchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingVertical: 11,
-    borderTopWidth: 1,
-    borderTopColor: MIST,
-  },
-  kvTotal: { borderTopColor: HAIR },
-  k: { fontSize: 14, color: STEEL },
-  v: { fontSize: 14, fontWeight: '600', color: GRAPHITE, flexShrink: 1, textAlign: 'right', marginLeft: 16, fontVariant: ['tabular-nums'] },
-  totalK: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
-  totalV: { fontSize: 22, fontWeight: '800', color: GRAPHITE, fontVariant: ['tabular-nums'] },
-  saveBtn: {
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: ORANGE,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
+    gap: 8,
+    marginBottom: 6,
+  },
+  statusBar: {
+    marginTop: 2,
+  },
+  statusScroll: {
+    gap: 6,
+    paddingBottom: 4,
+  },
+  statusPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statusPillActive: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  statusPillTextActive: {
+    color: WHITE,
+    fontWeight: '800',
+  },
+  countRow: {
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STEEL,
+  },
+  listContent: {
+    padding: 12,
+    paddingBottom: 24,
+  },
+  rfqCard: {
+    backgroundColor: WHITE,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  rfqIdGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rfqNumber: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: GRAPHITE,
+  },
+  rfqDate: {
+    fontSize: 10,
+    color: LIGHT_STEEL,
+    fontFamily: MONO,
+  },
+  badgePill: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  badgePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  cardBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  companyName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: GRAPHITE,
+    flex: 1,
+    paddingRight: 8,
+  },
+  estimatedVal: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: BLUE,
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 6,
+  },
+  itemSummary: {
+    fontSize: 10,
+    color: STEEL,
+    flex: 1,
+    paddingRight: 6,
+  },
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deleteBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  deleteBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: RED,
+  },
+  reviewBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  reviewBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: GRAPHITE,
+  },
+  toast: {
+    backgroundColor: GRAPHITE,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginHorizontal: 12,
+    marginTop: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: WHITE,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  emptyBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 13,
+    color: STEEL,
     marginBottom: 10,
   },
-  saveText: { color: WHITE, fontSize: 15, fontWeight: '700' },
-  disabled: { opacity: 0.6 },
-
-  // Delete
-  deleteLead: { fontSize: 15, color: GRAPHITE, lineHeight: 22 },
-  deleteTable: { marginTop: 12, marginBottom: 20 },
-  modalActions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: GRAPHITE,
-    alignItems: 'center',
-    justifyContent: 'center',
+  resetBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
-  cancelText: { fontSize: 15, fontWeight: '700', color: GRAPHITE },
-  confirmDeleteBtn: {
-    flex: 1,
-    height: 48,
+  resetBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BLUE,
+  },
+  modalScroll: {
+    paddingVertical: 6,
+  },
+  stageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  stagePill: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  stagePillActive: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  stagePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  stagePillTextActive: {
+    color: WHITE,
+    fontWeight: '800',
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STEEL,
+    marginBottom: 4,
+  },
+  input: {
+    height: 38,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    fontSize: 12,
+    color: GRAPHITE,
+    marginBottom: 8,
+  },
+  calcBox: {
+    backgroundColor: '#EFF6FF',
+    padding: 10,
     borderRadius: 8,
-    backgroundColor: RED,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  calcLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STEEL,
+  },
+  calcAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: MONO,
+    color: BLUE,
+  },
+  saveBtn: {
+    backgroundColor: BLUE,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: WHITE,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });
-
-export default AdminRfqsScreen;

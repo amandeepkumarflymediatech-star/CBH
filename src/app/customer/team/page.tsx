@@ -134,83 +134,92 @@ export default function CustomerTeamPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
-            <Users2 className="w-5 h-5 text-[#0052CC]" />
-            <span>Enterprise Procurement Team &amp; Permissions</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Authorize project engineers, quality inspectors, and accounts personnel to download MTCs, review billing ledgers, or authorize purchase orders.
-          </p>
+    <div className="space-y-4">
+      {/* Sleek Single-Viewport Top Ops Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-200">
+            <Users2 size={18} />
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-black text-[#0F172A] leading-tight flex items-center gap-2">
+              <span>Procurement Team &amp; Permissions</span>
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                {team.length} {team.length === 1 ? 'Officer' : 'Officers'}
+              </span>
+            </h1>
+            <p className="text-[11px] text-slate-500 hidden sm:block">
+              Authorize site engineers, QA inspectors, and accounts personnel with role-based portal access
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => setIsInviteModalOpen(true)}
-          className="px-4 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer ml-auto"
         >
           <Plus size={14} />
-          <span>Authorize Team Member</span>
+          <span>Authorize Member</span>
         </button>
       </div>
 
-      {/* Team Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* High-Density Team Table */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[650px]">
-            <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
+            <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
               <tr>
-                <th className="py-3 px-4">Authorized Member</th>
-                <th className="py-3 px-4">Corporate Role</th>
-                <th className="py-3 px-4">Permission Tier</th>
-                <th className="py-3 px-3 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-2.5 px-3">Authorized Member</th>
+                <th className="py-2.5 px-3">Corporate Role</th>
+                <th className="py-2.5 px-3">Permission Tier</th>
+                <th className="py-2.5 px-2.5 text-center">Status</th>
+                <th className="py-2.5 px-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {team.map((mem) => (
-                <tr key={mem.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <div className="font-extrabold text-[#0F172A] text-sm flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                <tr key={mem.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-2.5 px-3">
+                    <div className="font-extrabold text-[#0F172A] text-xs flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px] shrink-0">
                         {mem.name.charAt(0).toUpperCase()}
                       </div>
                       <span>{mem.name}</span>
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 ml-9">
-                      <Mail size={11} /> {mem.email}
+                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 ml-8">
+                      <Mail size={10} /> {mem.email}
                       {mem.phone && (
                         <>
-                          <span className="mx-1">•</span>
-                          <Phone size={11} /> {mem.phone}
+                          <span className="mx-0.5">•</span>
+                          <Phone size={10} /> {mem.phone}
                         </>
                       )}
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-700">{mem.role}</td>
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-[#0052CC] text-[11px] font-bold">
-                      <Lock size={11} /> {mem.access}
+                  <td className="py-2.5 px-3 font-semibold text-slate-700">{mem.role}</td>
+                  <td className="py-2.5 px-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-[#0052CC] text-[10px] font-bold">
+                      <Lock size={10} /> {mem.access}
                     </span>
                   </td>
-                  <td className="py-3.5 px-3 text-center">
+                  <td className="py-2.5 px-2.5 text-center">
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
                       {mem.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-right">
-                    {mem.id !== 'tm-primary' && (
+                  <td className="py-2.5 px-3 text-right">
+                    {mem.id !== 'tm-primary' ? (
                       <button
                         type="button"
                         onClick={() => handleRemove(mem.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded hover:bg-slate-100"
                         title="Revoke access"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-400">Primary Signatory</span>
                     )}
                   </td>
                 </tr>
@@ -222,24 +231,24 @@ export default function CustomerTeamPage() {
 
       {/* Invite Member Modal */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-fade-in">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl border border-slate-300 max-w-lg w-full p-4 sm:p-6 shadow-2xl max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-              <h3 className="font-extrabold text-[#0F172A] text-base leading-tight">
-                Authorize New Team Member
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-300 max-w-md w-full p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <h3 className="font-black text-[#0F172A] text-sm sm:text-base leading-tight">
+                Authorize Team Member
               </h3>
               <button
                 type="button"
                 onClick={() => setIsInviteModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleInvite} className="py-4 space-y-3.5">
+            <form onSubmit={handleInvite} className="py-3 space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                   Full Name *
                 </label>
                 <input
@@ -248,28 +257,28 @@ export default function CustomerTeamPage() {
                   placeholder="e.g. Vikram Mehta"
                   value={newMember.name}
                   onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                  <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                     Corporate Role *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. QA Inspection Lead"
+                    placeholder="e.g. QA Lead"
                     value={newMember.role}
                     onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                    Official Work Email *
+                  <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
+                    Official Email *
                   </label>
                   <input
                     type="email"
@@ -277,13 +286,13 @@ export default function CustomerTeamPage() {
                     placeholder="member@company.com"
                     value={newMember.email}
                     onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                   Phone / WhatsApp
                 </label>
                 <input
@@ -291,18 +300,18 @@ export default function CustomerTeamPage() {
                   placeholder="+91 98000 00000"
                   value={newMember.phone}
                   onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none font-mono"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
                   Permission Tier
                 </label>
                 <select
                   value={newMember.access}
                   onChange={(e) => setNewMember({ ...newMember, access: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0052CC] focus:outline-none bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:ring-[#0052CC] focus:outline-none bg-white"
                 >
                   <option value="Inspection & MTC Download">Inspection &amp; MTC Download Only</option>
                   <option value="BOM Upload & RFQ Drafting">BOM Upload &amp; RFQ Drafting</option>
@@ -311,20 +320,20 @@ export default function CustomerTeamPage() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsInviteModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-xl shadow transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                  {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                   <span>Authorize Officer</span>
                 </button>
               </div>

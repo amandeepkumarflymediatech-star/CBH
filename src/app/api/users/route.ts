@@ -4,8 +4,53 @@ import { query } from '@/lib/db';
 
 let usersDb: UserAccount[] = [];
 
+let availableUserColumns: Set<string> | null = null;
+
+async function ensureUsersSchema(): Promise<Set<string>> {
+  if (availableUserColumns && availableUserColumns.size > 0) {
+    return availableUserColumns;
+  }
+
+  try {
+    const cols = await query<any>('DESCRIBE users');
+    const existing = new Set<string>(
+      Array.isArray(cols) ? cols.map((c: any) => String(c.Field || c.field || '').toLowerCase()) : []
+    );
+
+    const colsToAdd: { name: string; type: string }[] = [
+      { name: 'delivery_sites', type: 'LONGTEXT NULL' },
+      { name: 'team_members', type: 'LONGTEXT NULL' },
+      { name: 'notification_preferences', type: 'LONGTEXT NULL' },
+      { name: 'designation', type: 'VARCHAR(255) NULL' },
+      { name: 'pan', type: 'VARCHAR(50) NULL' },
+      { name: 'tan', type: 'VARCHAR(50) NULL' },
+      { name: 'msme', type: 'VARCHAR(100) NULL' },
+      { name: 'avatar', type: 'LONGTEXT NULL' },
+    ];
+
+    for (const col of colsToAdd) {
+      if (existing.size > 0 && !existing.has(col.name.toLowerCase())) {
+        try {
+          await query(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+          existing.add(col.name.toLowerCase());
+          console.log(`[Users API] Added missing column to users table: ${col.name}`);
+        } catch (addErr: any) {
+          console.warn(`[Users API] Notice on column ${col.name}:`, addErr?.message || addErr);
+        }
+      }
+    }
+
+    availableUserColumns = existing;
+    return existing;
+  } catch (err) {
+    console.warn('[Users API] Schema check fallback:', err);
+    return new Set<string>();
+  }
+}
+
 async function getUsers(): Promise<UserAccount[]> {
   try {
+    await ensureUsersSchema();
     const rows = await query<any>(`
       SELECT u.*,
              (SELECT COUNT(*) FROM orders WHERE customer_id = u.id) as orders_count
@@ -179,55 +224,65 @@ export async function PUT(request: Request) {
     }
 
     const numId = Number(id);
+    const validCols = await ensureUsersSchema();
+
+    // Map fields to their corresponding MySQL columns
+    const fieldMapping: { col: string; val: any }[] = [
+      { col: 'full_name', val: updates.fullName ?? null },
+      { col: 'company_name', val: updates.companyName ?? null },
+      { col: 'email', val: updates.email ? updates.email.trim().toLowerCase() : null },
+      { col: 'phone', val: updates.phone ?? null },
+      { col: 'address', val: updates.address ?? null },
+      { col: 'gstin', val: updates.gstin ?? null },
+      { col: 'role', val: updates.role ? String(updates.role).toLowerCase() : null },
+      { col: 'tier', val: updates.tier ? String(updates.tier).toUpperCase() : null },
+      { col: 'tier_discount_pct', val: updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : null },
+      { col: 'credit_limit', val: updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : null },
+      { col: 'is_verified', val: updates.isVerified !== undefined ? (updates.isVerified ? 1 : 0) : null },
+      { col: 'delivery_sites', val: updates.deliverySites ? JSON.stringify(updates.deliverySites) : null },
+      { col: 'team_members', val: updates.teamMembers ? JSON.stringify(updates.teamMembers) : null },
+      { col: 'notification_preferences', val: updates.notificationPreferences ? JSON.stringify(updates.notificationPreferences) : null },
+      { col: 'designation', val: updates.designation ?? null },
+      { col: 'pan', val: updates.pan ?? null },
+      { col: 'tan', val: updates.tan ?? null },
+      { col: 'msme', val: updates.msme ?? null },
+      { col: 'avatar', val: updates.avatar ?? null },
+    ];
+
+    const clauses: string[] = [];
+    const values: any[] = [];
+
+    for (const f of fieldMapping) {
+      if (validCols.size === 0) {
+        // Fallback to core columns if schema could not be inspected
+        const coreCols = ['full_name', 'company_name', 'email', 'phone', 'address', 'gstin', 'role', 'tier', 'tier_discount_pct', 'credit_limit', 'is_verified'];
+        if (coreCols.includes(f.col)) {
+          clauses.push(`${f.col} = COALESCE(?, ${f.col})`);
+          values.push(f.val);
+        }
+      } else if (validCols.has(f.col.toLowerCase())) {
+        clauses.push(`${f.col} = COALESCE(?, ${f.col})`);
+        values.push(f.val);
+      }
+    }
+
+    if (validCols.size === 0 || validCols.has('updated_at')) {
+      clauses.push('updated_at = NOW()');
+    }
 
     // 1. Update in MySQL
-    try {
-      await query(
-        `UPDATE users SET
-          full_name = COALESCE(?, full_name),
-          company_name = COALESCE(?, company_name),
-          email = COALESCE(?, email),
-          phone = COALESCE(?, phone),
-          address = COALESCE(?, address),
-          gstin = COALESCE(?, gstin),
-          role = COALESCE(?, role),
-          tier = COALESCE(?, tier),
-          tier_discount_pct = COALESCE(?, tier_discount_pct),
-          credit_limit = COALESCE(?, credit_limit),
-          is_verified = COALESCE(?, is_verified),
-          delivery_sites = COALESCE(?, delivery_sites),
-          team_members = COALESCE(?, team_members),
-          notification_preferences = COALESCE(?, notification_preferences),
-          designation = COALESCE(?, designation),
-          pan = COALESCE(?, pan),
-          tan = COALESCE(?, tan),
-          msme = COALESCE(?, msme),
-          updated_at = NOW()
-        WHERE id = ?`,
-        [
-          updates.fullName ?? null,
-          updates.companyName ?? null,
-          updates.email ? updates.email.trim().toLowerCase() : null,
-          updates.phone ?? null,
-          updates.address ?? null,
-          updates.gstin ?? null,
-          updates.role ? String(updates.role).toLowerCase() : null,
-          updates.tier ? String(updates.tier).toUpperCase() : null,
-          updates.tierDiscountPct !== undefined ? parseFloat(updates.tierDiscountPct) : null,
-          updates.creditLimit !== undefined ? parseFloat(updates.creditLimit) : null,
-          updates.isVerified !== undefined ? (updates.isVerified ? 1 : 0) : null,
-          updates.deliverySites ? JSON.stringify(updates.deliverySites) : null,
-          updates.teamMembers ? JSON.stringify(updates.teamMembers) : null,
-          updates.notificationPreferences ? JSON.stringify(updates.notificationPreferences) : null,
-          updates.designation ?? null,
-          updates.pan ?? null,
-          updates.tan ?? null,
-          updates.msme ?? null,
-          numId,
-        ]
-      );
-    } catch (dbErr) {
-      console.warn('[Users API] MySQL update error:', dbErr);
+    if (clauses.length > 0) {
+      try {
+        values.push(numId);
+        await query(
+          `UPDATE users SET
+            ${clauses.join(',\n            ')}
+          WHERE id = ?`,
+          values
+        );
+      } catch (dbErr) {
+        console.warn('[Users API] MySQL update error:', dbErr);
+      }
     }
 
     // 2. Also sync in memory fallback if present
