@@ -166,31 +166,11 @@ export default function MainHeader({
                   onBlur={() => {
                     if (!searchQuery) setIsSearchExpanded(false);
                   }}
-                  placeholder="Search Bolts, Nuts, Screws (e.g. M12 Bolt, DIN 933)..."
+                  placeholder="Search Bolts, Nuts"
                   className="header-search-field"
                 />
               </div>
             </form>
-
-            {/* Dual Unit Global Switcher (PCS / KGS) */}
-            <div className="unit-switcher hide-mobile">
-              <button
-                type="button"
-                className={unit === 'PCS' ? 'active' : ''}
-                onClick={() => onUnitToggle('PCS')}
-                title="Switch procurement unit to Pieces"
-              >
-                PCS
-              </button>
-              <button
-                type="button"
-                className={unit === 'KGS' ? 'active' : ''}
-                onClick={() => onUnitToggle('KGS')}
-                title="Switch procurement unit to Kilograms"
-              >
-                KGS
-              </button>
-            </div>
 
             {/* Cart Drawer Trigger */}
             <button
@@ -574,27 +554,6 @@ export default function MainHeader({
                   <button type="submit" style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', padding: '0 4px' }}>Go</button>
                 </div>
               </form>
-
-              {/* Unit Switcher */}
-              <div className="drawer-unit-bar">
-                <span className="unit-caption">Procurement Unit:</span>
-                <div className="unit-switcher">
-                  <button
-                    type="button"
-                    className={unit === 'PCS' ? 'active' : ''}
-                    onClick={() => onUnitToggle('PCS')}
-                  >
-                    PCS
-                  </button>
-                  <button
-                    type="button"
-                    className={unit === 'KGS' ? 'active' : ''}
-                    onClick={() => onUnitToggle('KGS')}
-                  >
-                    KGS
-                  </button>
-                </div>
-              </div>
 
               {/* WhatsApp Quick Order & Helpline Bar in Mobile Drawer */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>

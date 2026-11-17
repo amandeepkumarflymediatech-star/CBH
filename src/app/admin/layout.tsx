@@ -25,7 +25,6 @@ import {
   CreditCard,
   Bell,
   Search,
-  ChevronDown,
   Moon,
   Sun,
   SlidersHorizontal,
@@ -33,7 +32,9 @@ import {
   Sparkles,
   ExternalLink,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Award,
+  MessageSquare
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
 import { GlobalUnit } from '@/lib/types';
@@ -54,7 +55,6 @@ export default function AdminLayout({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isOrdersExpanded, setIsOrdersExpanded] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
@@ -69,6 +69,7 @@ export default function AdminLayout({
     surplusCount: 6,
     blogsCount: 5,
     customRequestsCount: 0,
+    testimonialsCount: 6,
   });
 
   useEffect(() => {
@@ -171,12 +172,13 @@ export default function AdminLayout({
 
   const fetchTelemetry = async () => {
     try {
-      const [prodRes, rfqRes, ordRes, usersRes, customRes] = await Promise.allSettled([
+      const [prodRes, rfqRes, ordRes, usersRes, customRes, testRes] = await Promise.allSettled([
         fetch('/api/products?limit=1').then((r) => r.json()),
         fetch('/api/rfq').then((r) => r.json()),
         fetch('/api/orders').then((r) => r.json()),
         fetch('/api/users').then((r) => r.json()),
         fetch('/api/custom-product-requests?status=PENDING').then((r) => r.json()),
+        fetch('/api/testimonials?all=true').then((r) => r.json()),
       ]);
 
       setTelemetry((prev) => ({
@@ -189,6 +191,10 @@ export default function AdminLayout({
         ordersCount: ordRes.status === 'fulfilled' && ordRes.value?.data ? ordRes.value.data.length : prev.ordersCount,
         usersCount: usersRes.status === 'fulfilled' && usersRes.value?.data ? usersRes.value.data.length : prev.usersCount,
         customRequestsCount: customRes.status === 'fulfilled' && customRes.value?.count !== undefined ? customRes.value.count : prev.customRequestsCount,
+        testimonialsCount:
+          testRes.status === 'fulfilled' && testRes.value
+            ? (testRes.value.count ?? (Array.isArray(testRes.value.data) ? testRes.value.data.length : prev.testimonialsCount))
+            : prev.testimonialsCount,
       }));
     } catch {
       // ignore background telemetry errors
@@ -255,6 +261,7 @@ export default function AdminLayout({
     if (pathname.startsWith('/admin/orders')) return 'Orders & Dispatch';
     if (pathname.startsWith('/admin/rfqs')) return 'RFQs';
     if (pathname.startsWith('/admin/users')) return 'Customers';
+    if (pathname.startsWith('/admin/testimonials')) return 'Testimonials & Reviews';
     if (pathname.startsWith('/admin/categories')) return 'Categories';
     if (pathname.startsWith('/admin/surplus')) return 'Surplus Stock';
     if (pathname.startsWith('/admin/custom-requests')) return 'Custom Product Requests';
@@ -378,46 +385,32 @@ export default function AdminLayout({
                 )}
               </Link>
 
-              {/* 3. Orders with sub-tree */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setIsOrdersExpanded(!isOrdersExpanded)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    isLinkActive('/admin/orders')
-                      ? 'bg-slate-100 text-[#0F172A]'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                  title="Orders"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Truck size={18} strokeWidth={1.9} />
-                    {!isSidebarCollapsed && <span>Orders</span>}
-                  </div>
-                  {!isSidebarCollapsed && (
-                    <ChevronDown
-                      size={14}
-                      className={`text-slate-400 transition-transform ${isOrdersExpanded ? 'rotate-180' : ''}`}
-                    />
-                  )}
-                </button>
-
-                {!isSidebarCollapsed && isOrdersExpanded && (
-                  <div className="mt-1 ml-6 pl-3 border-l border-slate-200 space-y-1 py-1">
-                    <Link
-                      href="/admin/orders"
-                      className={`block px-2.5 py-1.5 rounded-lg text-xs font-medium no-underline transition-colors ${
-                        pathname === '/admin/orders'
-                          ? 'text-[#5B4DF6] font-bold bg-[#EEF0FD]/60'
-                          : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                       Orders
-                    </Link>
-                   
-                  </div>
+              {/* 3. Orders */}
+              <Link
+                href="/admin/orders"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/orders')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Orders"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Truck size={18} strokeWidth={isLinkActive('/admin/orders') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>Orders</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      isLinkActive('/admin/orders')
+                        ? 'bg-slate-800 text-slate-200'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {telemetry.ordersCount}
+                  </span>
                 )}
-              </div>
+              </Link>
 
               {/* 4. Sales / Pricing */}
               <Link
@@ -492,6 +485,27 @@ export default function AdminLayout({
                 {!isSidebarCollapsed && telemetry.rfqsCount > 0 && (
                   <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
                     {telemetry.rfqsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 7. Testimonials */}
+              <Link
+                href="/admin/testimonials"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/testimonials')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Testimonials"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Award size={18} strokeWidth={1.9} />
+                  {!isSidebarCollapsed && <span>Testimonials</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.testimonialsCount}
                   </span>
                 )}
               </Link>
@@ -751,6 +765,14 @@ export default function AdminLayout({
                   >
                     <FileCheck2 size={16} />
                     <span>RFQs</span>
+                  </Link>
+                  <Link
+                    href="/admin/testimonials"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Award size={16} />
+                    <span>Testimonials</span>
                   </Link>
                   <Link
                     href="/admin/payments"

@@ -69,8 +69,11 @@ export default function HeroSection() {
             </div>
 
             {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
-              <Link href="/products" className="btn-primary" style={{ padding: '12px 22px', fontSize: '14px' }}>
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 mt-4 w-full">
+              <Link
+                href="/products"
+                className="btn-primary w-full sm:w-auto justify-center text-center px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all no-underline"
+              >
                 <span>Browse Products (नट-बोल्ट देखें)</span>
                 <ArrowRight size={16} />
               </Link>
@@ -78,24 +81,15 @@ export default function HeroSection() {
                 href="https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20want%20to%20buy%20nuts%20and%20bolts.%20Please%20share%20wholesale%20rates."
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#25D366',
-                  color: '#FFFFFF',
-                  padding: '12px 20px',
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
-                }}
+                className="w-full sm:w-auto justify-center text-center px-4 sm:px-5 py-3 text-xs sm:text-sm font-extrabold inline-flex items-center gap-2 rounded-md text-white bg-[#25D366] hover:bg-[#20bd5a] transition-all no-underline shadow-md shadow-[#25D366]/20"
               >
                 <MessageCircle size={17} />
                 <span>WhatsApp Order (व्हाट्सएप करें)</span>
               </a>
-              <Link href="/bulk-order" className="btn-dark" style={{ padding: '12px 20px', fontSize: '14px' }}>
+              <Link
+                href="/bulk-order"
+                className="btn-dark w-full sm:w-auto justify-center text-center px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all no-underline"
+              >
                 <span>Bulk RFQ (थोक भाव)</span>
               </Link>
             </div>
@@ -104,11 +98,10 @@ export default function HeroSection() {
           {/* Right Technical Blueprint Card -> Click to Enter 3D Virtual Store */}
           <Link
             href="/virtual-store"
-            className="blueprint-card blueprint-card-interactive"
+            className="hidden lg:block blueprint-card blueprint-card-interactive"
             style={{
               textDecoration: 'none',
               color: 'inherit',
-              display: 'block',
               cursor: 'pointer',
               position: 'relative'
             }}

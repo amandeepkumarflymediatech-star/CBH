@@ -65,12 +65,16 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
   const [editingCategory, setEditingCategory] = useState<CatalogCategory | null>(null);
   const [catForm, setCatForm] = useState({
     name: '',
+    nameHi: '',
     slug: '',
     tagline: '',
     description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80',
+    tag: 'READY STOCK',
+    tagColor: '#0052CC',
+    link: '',
+    imageUrl: '/assets/bolt_zinc.jpg',
     bannerUrl: '',
-    featured: false,
+    featured: true,
   });
 
   // Subcategory Modal State
@@ -148,12 +152,16 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
   const openAddCategoryModal = () => {
     setCatForm({
       name: '',
+      nameHi: '',
       slug: '',
       tagline: '',
       description: '',
-      imageUrl: IMAGE_PRESETS[0].url,
+      tag: 'READY STOCK',
+      tagColor: '#0052CC',
+      link: '',
+      imageUrl: '/assets/bolt_zinc.jpg',
       bannerUrl: '',
-      featured: false,
+      featured: true,
     });
     setEditingCategory(null);
     setIsAddingCategory(true);
@@ -162,10 +170,14 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
   const openEditCategoryModal = (cat: CatalogCategory) => {
     setCatForm({
       name: cat.name,
+      nameHi: cat.nameHi || '',
       slug: cat.slug,
       tagline: cat.tagline || '',
       description: cat.description || '',
-      imageUrl: cat.imageUrl || IMAGE_PRESETS[0].url,
+      tag: cat.tag || 'READY STOCK',
+      tagColor: cat.tagColor || '#0052CC',
+      link: cat.link || '',
+      imageUrl: cat.imageUrl || '/assets/bolt_zinc.jpg',
       bannerUrl: cat.bannerUrl || '',
       featured: Boolean(cat.featured),
     });
@@ -192,8 +204,12 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
             id: editingCategory.id,
             slug: editingCategory.slug,
             name: catForm.name.trim(),
+            nameHi: catForm.nameHi.trim(),
             tagline: catForm.tagline.trim(),
             description: catForm.description.trim(),
+            tag: catForm.tag.trim(),
+            tagColor: catForm.tagColor.trim(),
+            link: catForm.link.trim(),
             imageUrl: catForm.imageUrl.trim(),
             bannerUrl: catForm.bannerUrl.trim(),
             featured: catForm.featured,
@@ -214,9 +230,13 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: catForm.name.trim(),
+            nameHi: catForm.nameHi.trim(),
             slug: finalSlug,
             tagline: catForm.tagline.trim(),
             description: catForm.description.trim(),
+            tag: catForm.tag.trim(),
+            tagColor: catForm.tagColor.trim(),
+            link: catForm.link.trim(),
             imageUrl: catForm.imageUrl.trim(),
             bannerUrl: catForm.bannerUrl.trim(),
             featured: catForm.featured,
@@ -1127,12 +1147,27 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                         slug: !editingCategory ? generateSlug(name) : prev.slug,
                       }));
                     }}
-                    placeholder="e.g. Steel fixings"
+                    placeholder="e.g. Hex Bolts & Screws"
                     className="w-full px-3 py-2 border rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0052CC] outline-none"
                     required
                   />
                 </div>
 
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Hindi Subtitle (हिंदी नाम)
+                  </label>
+                  <input
+                    type="text"
+                    value={catForm.nameHi}
+                    onChange={(e) => setCatForm((prev) => ({ ...prev, nameHi: e.target.value }))}
+                    placeholder="e.g. हेक्स बोल्ट"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
                     URL Slug <span className="text-red-500">*</span>
@@ -1141,7 +1176,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                     type="text"
                     value={catForm.slug}
                     onChange={(e) => setCatForm((prev) => ({ ...prev, slug: generateSlug(e.target.value) }))}
-                    placeholder="e.g. steel-fixings"
+                    placeholder="e.g. hex-bolts"
                     className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
                     disabled={!!editingCategory}
                     required
@@ -1149,6 +1184,55 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                   {editingCategory && (
                     <span className="text-[10px] text-slate-400 mt-0.5 block">Slug cannot be modified once created</span>
                   )}
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Custom Storefront Link
+                  </label>
+                  <input
+                    type="text"
+                    value={catForm.link}
+                    onChange={(e) => setCatForm((prev) => ({ ...prev, link: e.target.value }))}
+                    placeholder="e.g. /products?category=Hex%20Screws"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Badge Tag (e.g. MOST POPULAR)
+                  </label>
+                  <input
+                    type="text"
+                    value={catForm.tag}
+                    onChange={(e) => setCatForm((prev) => ({ ...prev, tag: e.target.value }))}
+                    placeholder="e.g. MOST POPULAR, READY STOCK"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Badge Color (Hex)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={catForm.tagColor || '#0052CC'}
+                      onChange={(e) => setCatForm((prev) => ({ ...prev, tagColor: e.target.value }))}
+                      className="w-8 h-8 rounded border cursor-pointer p-0.5"
+                    />
+                    <input
+                      type="text"
+                      value={catForm.tagColor}
+                      onChange={(e) => setCatForm((prev) => ({ ...prev, tagColor: e.target.value }))}
+                      placeholder="#0052CC"
+                      className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 

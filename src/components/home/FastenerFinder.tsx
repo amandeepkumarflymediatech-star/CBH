@@ -517,7 +517,7 @@ export default function FastenerFinder({
         </form>
 
         {/* Trust Badges Strip Below Finder */}
-        <div
+        {/* <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
@@ -546,7 +546,7 @@ export default function FastenerFinder({
             <Percent size={16} color="#D97706" />
             <span>25% Slabs on ₹1,00,000+</span>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

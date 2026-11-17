@@ -8,10 +8,14 @@ export interface CatalogCategory {
   id: string;
   slug: string;
   name: string;
+  nameHi?: string;
   tagline: string;
   description: string;
+  tag?: string;
+  tagColor?: string;
   imageUrl: string;
   bannerUrl?: string;
+  link?: string;
   subcategoriesCount?: number;
   productsCount?: number;
   featured?: boolean;

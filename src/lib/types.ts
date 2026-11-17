@@ -427,6 +427,25 @@ export interface BlogPost {
 
 export type CustomRequestStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'ADDED_TO_CATALOG' | 'REJECTED';
 
+export interface Testimonial {
+  id: string | number;
+  name: string;
+  role: string;
+  company: string;
+  location?: string;
+  avatar?: string;
+  rating: number; // 1 to 5
+  feedback: string;
+  verifiedPurchase?: string;
+  badge?: string; // e.g. "OEM Tier-1", "Metro Infra", "Direct Mill"
+  category?: string; // e.g. "Heavy Engineering", "Automotive", "Infrastructure", "Solar & PEB", "Stainless Steel"
+  featured?: boolean;
+  status: 'ACTIVE' | 'HIDDEN';
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CustomProductRequest {
   id: number;
   requestNumber: string;

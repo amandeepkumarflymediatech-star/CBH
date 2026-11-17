@@ -212,14 +212,14 @@ export default function HomePage() {
         totalProductsCount={allProducts.length}
       />
 
-      {/* SECTION 2: Bulk Order & Rapid RFQ Interactive Widget */}
-      <RapidRFQWidget />
-
-      {/* SECTION 3: High-Density Technical Catalog Matrix */}
+      {/* SECTION 2: High-Density Technical Catalog Matrix (Popular Fasteners In Stock) */}
       <CatalogMatrix
         products={products}
         onAddToCart={handleAddToCart}
       />
+
+      {/* SECTION 3: Bulk Order & Rapid RFQ Interactive Widget */}
+      <RapidRFQWidget />
 
       {/* SECTION 4: Surplus Stock Marketplace Banner */}
       <SurplusSection />
