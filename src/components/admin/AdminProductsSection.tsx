@@ -59,6 +59,7 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isCustomUrlOpen, setIsCustomUrlOpen] = useState(false);
+  const [withWatermark, setWithWatermark] = useState(true);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +80,9 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
       setUploadError(null);
       const formData = new FormData();
       formData.append('file', file);
+      if (withWatermark) {
+        formData.append('watermark', 'true');
+      }
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -133,10 +137,10 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
 
       {/* Upload & Preview Row */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Current Image Preview */}
+        {/* Current Image Preview with Right-Bottom Watermark Overlay */}
         <div style={{
-          width: '74px',
-          height: '74px',
+          width: '78px',
+          height: '78px',
           borderRadius: '10px',
           border: '1.5px solid var(--color-border)',
           background: '#F8FAFC',
@@ -160,6 +164,29 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
           ) : (
             <ImageIcon size={26} color="#94A3B8" />
           )}
+
+          {/* Watermark overlay on right-bottom side of UI preview */}
+          {withWatermark && currentUrl && (
+            <div
+              title="CBH Watermark applied on right-bottom"
+              style={{
+                position: 'absolute',
+                bottom: '3px',
+                right: '3px',
+                width: '26px',
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.45))',
+                zIndex: 2,
+              }}
+            >
+              <img
+                src="/assets/cbh-watermark.png"
+                alt="CBH Watermark"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+            </div>
+          )}
+
           {isUploading && (
             <div style={{
               position: 'absolute',
@@ -167,7 +194,8 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
               background: 'rgba(255,255,255,0.85)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              zIndex: 3
             }}>
               <Loader2 size={22} className="animate-spin" color="#0052CC" />
             </div>
@@ -207,6 +235,56 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
           <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#64748B' }}>
             PNG, JPG, WEBP, or SVG (Up to 10MB)
           </p>
+        </div>
+      </div>
+
+      {/* Watermark Option Checkbox / Banner */}
+      <div style={{
+        marginTop: '8px',
+        padding: '7px 12px',
+        background: withWatermark ? '#EFF6FF' : '#F8FAFC',
+        border: `1px solid ${withWatermark ? '#BFDBFE' : '#E2E8F0'}`,
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '8px'
+      }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          margin: 0,
+          fontSize: '12px',
+          fontWeight: 700,
+          color: withWatermark ? '#1E40AF' : '#475569'
+        }}>
+          <input
+            type="checkbox"
+            checked={withWatermark}
+            onChange={(e) => setWithWatermark(e.target.checked)}
+            style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#0052CC' }}
+          />
+          <span>Apply CBH Watermark on Right-Bottom Side</span>
+        </label>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <img
+            src="/assets/cbh-watermark.png"
+            alt="Watermark preview"
+            style={{ height: '16px', width: 'auto', objectFit: 'contain' }}
+          />
+          <span style={{
+            fontSize: '10px',
+            fontWeight: 800,
+            color: withWatermark ? '#2563EB' : '#94A3B8',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            {withWatermark ? 'Watermark Active' : 'No Watermark'}
+          </span>
         </div>
       </div>
 
@@ -392,6 +470,16 @@ export default function AdminProductsSection({
   const [previewFilter, setPreviewFilter] = useState('');
   const bulkFileInputRef = React.useRef<HTMLInputElement | null>(null);
   const previewAbortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Bulk Watermark & Bulk Images State
+  const [bulkWatermark, setBulkWatermark] = useState<boolean>(true);
+  const [bulkUploadTab, setBulkUploadTab] = useState<'excel' | 'images'>('excel');
+  const [bulkImagePreviews, setBulkImagePreviews] = useState<Array<{ id: string; name: string; size: number; previewUrl: string; file: File }>>([]);
+  const [bulkImageResults, setBulkImageResults] = useState<Array<{ id: string; name: string; url: string; success: boolean; error?: string }>>([]);
+  const [isBulkUploadingImages, setIsBulkUploadingImages] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [copiedUrlIndex, setCopiedUrlIndex] = useState<number | null>(null);
+  const bulkMultipleImagesInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Background Bulk Upload Job State & Tracking
   const [activeJob, setActiveJob] = useState<{
@@ -910,6 +998,7 @@ export default function AdminProductsSection({
       formData.append('sheetName', selectedSheet);
       formData.append('upsertMode', upsertMode);
       formData.append('defaultImage', defaultImagePreset);
+      formData.append('applyWatermark', bulkWatermark ? 'true' : 'false');
 
       const res = await fetch('/api/products/bulk-upload', {
         method: 'POST',
@@ -940,6 +1029,126 @@ export default function AdminProductsSection({
     } finally {
       setIsBulkImporting(false);
     }
+  };
+
+  // Bulk Multiple Images Upload with Watermark Handlers
+  const handleBulkImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newPreviews = Array.from(files).map((file) => ({
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: file.name,
+      size: file.size,
+      previewUrl: URL.createObjectURL(file),
+      file,
+    }));
+    setBulkImagePreviews((prev) => [...prev, ...newPreviews]);
+    if (bulkMultipleImagesInputRef.current) {
+      bulkMultipleImagesInputRef.current.value = '';
+    }
+  };
+
+  const handleBulkImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      showToast('Please drop valid image files (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+    const newPreviews = imageFiles.map((file) => ({
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: file.name,
+      size: file.size,
+      previewUrl: URL.createObjectURL(file),
+      file,
+    }));
+    setBulkImagePreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const handleRemovePreviewImage = (id: string) => {
+    setBulkImagePreviews((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item && item.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
+  const handleClearAllPreviewImages = () => {
+    bulkImagePreviews.forEach((p) => {
+      if (p.previewUrl.startsWith('blob:')) URL.revokeObjectURL(p.previewUrl);
+    });
+    setBulkImagePreviews([]);
+    setBulkImageResults([]);
+  };
+
+  const handleExecuteBulkImagesUpload = async () => {
+    if (bulkImagePreviews.length === 0) return;
+    setIsBulkUploadingImages(true);
+    setBulkUploadProgress({ current: 0, total: bulkImagePreviews.length });
+    const results: Array<{ id: string; name: string; url: string; success: boolean; error?: string }> = [];
+
+    for (let i = 0; i < bulkImagePreviews.length; i++) {
+      const item = bulkImagePreviews[i];
+      try {
+        const formData = new FormData();
+        formData.append('file', item.file);
+        if (bulkWatermark) {
+          formData.append('watermark', 'true');
+        }
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.url) {
+          results.push({
+            id: item.id,
+            name: item.name,
+            url: data.url,
+            success: true,
+          });
+        } else {
+          results.push({
+            id: item.id,
+            name: item.name,
+            url: '',
+            success: false,
+            error: data.error || 'Upload failed',
+          });
+        }
+      } catch (err: any) {
+        results.push({
+          id: item.id,
+          name: item.name,
+          url: '',
+          success: false,
+          error: err.message || 'Upload error',
+        });
+      }
+      setBulkUploadProgress({ current: i + 1, total: bulkImagePreviews.length });
+    }
+
+    setBulkImageResults(results);
+    setIsBulkUploadingImages(false);
+    showToast(`Uploaded ${results.filter((r) => r.success).length} of ${bulkImagePreviews.length} images with watermark stamped!`);
+  };
+
+  const handleCopyUrl = (url: string, index: number) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrlIndex(index);
+    setTimeout(() => setCopiedUrlIndex(null), 2000);
+    showToast('Image URL copied to clipboard');
+  };
+
+  const handleCopyAllUrls = () => {
+    const successfulUrls = bulkImageResults.filter((r) => r.success && r.url).map((r) => r.url).join('\n');
+    if (!successfulUrls) return;
+    navigator.clipboard.writeText(successfulUrls);
+    showToast(`Copied ${bulkImageResults.filter((r) => r.success).length} image URLs to clipboard`);
   };
 
   const submitAddForm = async (e: React.FormEvent) => {
@@ -1156,6 +1365,7 @@ export default function AdminProductsSection({
               <button
                 type="button"
                 onClick={() => {
+                  setBulkUploadTab('excel');
                   setIsBulkUploadOpen(true);
                   if (!bulkFile) handleResetBulkUpload();
                 }}
@@ -1165,6 +1375,21 @@ export default function AdminProductsSection({
                 <FileSpreadsheet size={13} className="text-emerald-600" />
                 <span className="hidden sm:inline">Upload Excel</span>
                 <span className="sm:hidden">Excel</span>
+              </button>
+
+              {/* Watermark Bulk Images */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkUploadTab('images');
+                  setIsBulkUploadOpen(true);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-xs font-bold hover:bg-blue-100 transition-colors shadow-xs"
+                title="Upload bulk product photos with CBH watermark"
+              >
+                <ImageIcon size={13} className="text-blue-600" />
+                <span className="hidden sm:inline">Watermark Images</span>
+                <span className="sm:hidden">Watermark</span>
               </button>
 
               {/* Add Fastener */}
@@ -3967,40 +4192,42 @@ export default function AdminProductsSection({
                     flexShrink: 0,
                   }}
                 >
-                  <FileSpreadsheet size={24} />
+                  {bulkUploadTab === 'excel' ? <FileSpreadsheet size={24} /> : <ImageIcon size={24} />}
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
-                    Bulk Fasteners Import via Excel
+                    Bulk Products & Media Watermark Studio
                   </h3>
                   <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
-                    Upload Excel (.xlsx, .xls) or .csv workbooks to import fastener SKUs, specs, weights, and live rates.
+                    Upload Excel spreadsheets or batch process product photos with official CBH watermark stamped on right-bottom.
                   </p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  className="btn-outline"
-                  style={{
-                    padding: '8px 14px',
-                    fontSize: '12px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#FFFFFF',
-                  }}
-                  title="Download standard template with sample rows and column instructions"
-                >
-                  <Download size={14} color="#0052CC" />
-                  <span style={{ fontWeight: 600 }}>Download Template (.xlsx)</span>
-                </button>
+                {bulkUploadTab === 'excel' && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="btn-outline"
+                    style={{
+                      padding: '8px 14px',
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#FFFFFF',
+                    }}
+                    title="Download standard template with sample rows and column instructions"
+                  >
+                    <Download size={14} color="#0052CC" />
+                    <span style={{ fontWeight: 600 }}>Download Template (.xlsx)</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
-                  disabled={isBulkImporting}
+                  disabled={isBulkImporting || isBulkUploadingImages}
                   onClick={() => setIsBulkUploadOpen(false)}
                   style={{
                     background: '#FFFFFF',
@@ -4011,7 +4238,7 @@ export default function AdminProductsSection({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: isBulkImporting ? 'not-allowed' : 'pointer',
+                    cursor: isBulkImporting || isBulkUploadingImages ? 'not-allowed' : 'pointer',
                     color: '#64748B',
                   }}
                 >
@@ -4020,9 +4247,81 @@ export default function AdminProductsSection({
               </div>
             </div>
 
+            {/* Tab Navigation */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                padding: '0 24px',
+                background: '#F8FAFC',
+                borderBottom: '1px solid #E2E8F0',
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setBulkUploadTab('excel')}
+                style={{
+                  padding: '12px 18px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: 'none',
+                  borderBottom: bulkUploadTab === 'excel' ? '2.5px solid #0052CC' : '2.5px solid transparent',
+                  color: bulkUploadTab === 'excel' ? '#0052CC' : '#64748B',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <FileSpreadsheet size={16} />
+                <span>Excel Spreadsheet Import</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBulkUploadTab('images')}
+                style={{
+                  padding: '12px 18px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: 'none',
+                  borderBottom: bulkUploadTab === 'images' ? '2.5px solid #0052CC' : '2.5px solid transparent',
+                  color: bulkUploadTab === 'images' ? '#0052CC' : '#64748B',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ImageIcon size={16} />
+                <span>Bulk Images with Watermark</span>
+                {bulkImagePreviews.length > 0 && (
+                  <span
+                    style={{
+                      background: '#0052CC',
+                      color: '#FFFFFF',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: '999px',
+                    }}
+                  >
+                    {bulkImagePreviews.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
             {/* Modal Body */}
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* STATE 1: ACTIVE BACKGROUND IMPORT IN PROGRESS */}
+              {bulkUploadTab === 'excel' ? (
+                <>
+                  {/* STATE 1: ACTIVE BACKGROUND IMPORT IN PROGRESS */}
               {activeJob && ['pending', 'parsing', 'syncing'].includes(activeJob.status) ? (
                 <div
                   style={{
@@ -4404,7 +4703,7 @@ export default function AdminProductsSection({
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
                         gap: '16px',
                         background: '#FFFFFF',
                         border: '1px solid #E2E8F0',
@@ -4455,7 +4754,7 @@ export default function AdminProductsSection({
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
-                          Select a specific category sheet or import all sheets at once.
+                          Select category sheet or import all sheets.
                         </span>
                       </div>
 
@@ -4478,19 +4777,19 @@ export default function AdminProductsSection({
                             fontWeight: 600,
                           }}
                         >
-                          <option value="merge">Merge & Upsert (Update existing SKUs, create new) - Recommended</option>
-                          <option value="append">Append Only (Add new SKUs, skip existing)</option>
-                          <option value="replace">Replace Catalog (Overwrite entire inventory)</option>
+                          <option value="merge">Merge & Upsert (Recommended)</option>
+                          <option value="append">Append Only (Skip existing)</option>
+                          <option value="replace">Replace Catalog (Overwrite)</option>
                         </select>
                         <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
-                          Ensures duplicate SKUs update existing records with the latest pricing and specs.
+                          Ensures duplicate SKUs update existing records.
                         </span>
                       </div>
 
                       {/* Fallback Image Preset */}
                       <div>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                          Default Image (If row lacks photo)
+                          Default Image Preset
                         </label>
                         <select
                           value={defaultImagePreset}
@@ -4513,8 +4812,63 @@ export default function AdminProductsSection({
                           ))}
                         </select>
                         <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
-                          Assigned automatically when an item row has no photo URL.
+                          Assigned when item row has no photo URL.
                         </span>
+                      </div>
+
+                      {/* Apply Watermark on Right-Bottom */}
+                      <div
+                        onClick={() => !isBulkImporting && setBulkWatermark(!bulkWatermark)}
+                        style={{
+                          background: bulkWatermark ? '#F0FDF4' : '#F8FAFC',
+                          border: bulkWatermark ? '1.5px solid #86EFAC' : '1px solid #CBD5E1',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          cursor: isBulkImporting ? 'default' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <label style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Layers size={13} color={bulkWatermark ? '#16A34A' : '#64748B'} />
+                              <span>Apply CBH Watermark</span>
+                            </label>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: bulkWatermark ? '#DCFCE7' : '#E2E8F0',
+                                color: bulkWatermark ? '#15803D' : '#64748B',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              {bulkWatermark ? 'Right-Bottom' : 'Off'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: '#64748B', display: 'block', lineHeight: 1.3 }}>
+                            Auto-stamp CBH logo on the <strong>right-bottom corner</strong> of imported Drive product photos.
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                          <input
+                            type="checkbox"
+                            id="bulkWatermarkExcel"
+                            checked={bulkWatermark}
+                            onChange={(e) => setBulkWatermark(e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            disabled={isBulkImporting}
+                            style={{ width: '15px', height: '15px', accentColor: '#16A34A', cursor: 'pointer' }}
+                          />
+                          <label htmlFor="bulkWatermarkExcel" style={{ fontSize: '11px', fontWeight: 600, color: '#0F172A', cursor: 'pointer' }}>
+                            Watermark on Right-Bottom
+                          </label>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -4687,10 +5041,584 @@ export default function AdminProductsSection({
                   ) : null}
                 </>
               )}
+            </>
+          ) : (
+            /* TAB 2: BULK IMAGES WITH WATERMARK STUDIO */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Top Watermark Control Banner */}
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%)',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '16px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', maxWidth: '620px' }}>
+                      <div
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '10px',
+                          background: '#059669',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <ImageIcon size={22} />
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#064E3B' }}>
+                          Bulk Product Photos Watermark Studio
+                        </h4>
+                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#047857', lineHeight: 1.4 }}>
+                          Upload multiple product photos in one go. The CBH Fasteners brand logo is composited on the <strong>bottom-right side</strong> of each photo and saved to your store storage.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Watermark toggle card */}
+                    <div
+                      onClick={() => setBulkWatermark(!bulkWatermark)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        background: '#FFFFFF',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        border: bulkWatermark ? '1.5px solid #10B981' : '1px solid #CBD5E1',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '42px',
+                          height: '28px',
+                          background: '#F1F5F9',
+                          borderRadius: '4px',
+                          border: '1px solid #CBD5E1',
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          justifyContent: 'flex-end',
+                          padding: '2px',
+                        }}
+                      >
+                        {bulkWatermark ? (
+                          <img
+                            src="/assets/cbh-watermark.png"
+                            alt="Watermark preview"
+                            style={{ height: '14px', width: 'auto', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: '7px', color: '#94A3B8', fontWeight: 700 }}>NONE</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#0F172A',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            margin: 0,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={bulkWatermark}
+                            onChange={(e) => setBulkWatermark(e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
+                          />
+                          <span>Apply CBH Watermark on Right-Bottom</span>
+                        </label>
+                        <span style={{ fontSize: '10px', color: bulkWatermark ? '#059669' : '#64748B', fontWeight: 700 }}>
+                          {bulkWatermark ? '✓ Watermark Active (Right-Bottom Corner)' : 'Watermark Disabled'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hidden Multi-file input */}
+                  <input
+                    ref={bulkMultipleImagesInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleBulkImageSelect}
+                    style={{ display: 'none' }}
+                  />
+
+                  {/* Dropzone for Bulk Images */}
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleBulkImageDrop}
+                    onClick={() => bulkMultipleImagesInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed #94A3B8',
+                      borderRadius: '14px',
+                      padding: '36px 20px',
+                      background: '#F8FAFC',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: '#EFF6FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#0052CC',
+                        margin: '0 auto 12px',
+                      }}
+                    >
+                      <UploadCloud size={26} />
+                    </div>
+                    <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 700, color: '#0F172A' }}>
+                      Drag & drop multiple product photos here, or click to browse
+                    </h4>
+                    <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#64748B' }}>
+                      Select multiple images (PNG, JPG, JPEG, WEBP up to 10MB each).
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        bulkMultipleImagesInputRef.current?.click();
+                      }}
+                      style={{ padding: '8px 20px', fontSize: '13px' }}
+                    >
+                      Select Images
+                    </button>
+                  </div>
+
+                  {/* Upload Progress Bar */}
+                  {isBulkUploadingImages && (
+                    <div
+                      style={{
+                        background: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        borderRadius: '10px',
+                        padding: '14px 18px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#1E40AF', marginBottom: '8px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Loader2 size={14} className="animate-spin" />
+                          Processing & Stamping Watermark on Right-Bottom Side...
+                        </span>
+                        <span>
+                          {bulkUploadProgress.current} / {bulkUploadProgress.total} Files
+                        </span>
+                      </div>
+                      <div style={{ background: '#DBEAFE', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: `${Math.round((bulkUploadProgress.current / Math.max(1, bulkUploadProgress.total)) * 100)}%`,
+                            height: '100%',
+                            background: '#0052CC',
+                            transition: 'width 0.2s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected Previews Grid */}
+                  {bulkImagePreviews.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
+                            Selected Photos ({bulkImagePreviews.length})
+                          </span>
+                          <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                            Total {(bulkImagePreviews.reduce((acc, p) => acc + p.size, 0) / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                          <span style={{ fontSize: '11px', background: bulkWatermark ? '#DCFCE7' : '#F1F5F9', color: bulkWatermark ? '#15803D' : '#64748B', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                            {bulkWatermark ? 'Watermark: Right-Bottom' : 'Original (No Watermark)'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => bulkMultipleImagesInputRef.current?.click()}
+                            disabled={isBulkUploadingImages}
+                            style={{ padding: '6px 12px', fontSize: '12px', background: '#FFFFFF' }}
+                          >
+                            <Plus size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                            Add More
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={handleClearAllPreviewImages}
+                            disabled={isBulkUploadingImages}
+                            style={{ padding: '6px 12px', fontSize: '12px', color: '#DC2626', borderColor: '#FCA5A5', background: '#FFFFFF' }}
+                          >
+                            <Trash2 size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Grid of Preview Cards with Live Right-Bottom Watermark Overlay */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                          gap: '12px',
+                          maxHeight: '360px',
+                          overflowY: 'auto',
+                          padding: '4px',
+                        }}
+                      >
+                        {bulkImagePreviews.map((img) => (
+                          <div
+                            key={img.id}
+                            style={{
+                              border: '1px solid #E2E8F0',
+                              borderRadius: '10px',
+                              background: '#FFFFFF',
+                              padding: '8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              position: 'relative',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            }}
+                          >
+                            {/* Thumbnail Box */}
+                            <div
+                              style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '130px',
+                                borderRadius: '8px',
+                                background: '#F8FAFC',
+                                overflow: 'hidden',
+                                border: '1px solid #F1F5F9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <img
+                                src={img.previewUrl}
+                                alt={img.name}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  padding: '6px',
+                                }}
+                              />
+
+                              {/* LIVE WATERMARK OVERLAY ON RIGHT-BOTTOM SIDE */}
+                              {bulkWatermark && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '6px',
+                                    right: '6px',
+                                    background: 'rgba(255, 255, 255, 0.94)',
+                                    borderRadius: '4px',
+                                    padding: '2px 5px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.22)',
+                                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  <img
+                                    src="/assets/cbh-watermark.png"
+                                    alt="CBH Watermark"
+                                    style={{ height: '14px', width: 'auto', objectFit: 'contain' }}
+                                  />
+                                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#0052CC', letterSpacing: '0.4px' }}>
+                                    CBH
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Remove X Button */}
+                              {!isBulkUploadingImages && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePreviewImage(img.id)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '5px',
+                                    right: '5px',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(255, 255, 255, 0.9)',
+                                    border: '1px solid #CBD5E1',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: '#64748B',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                  }}
+                                  title="Remove image"
+                                >
+                                  <X size={13} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Metadata */}
+                            <div style={{ marginTop: '8px' }}>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  color: '#0F172A',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={img.name}
+                              >
+                                {img.name}
+                              </p>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                                <span style={{ fontSize: '10px', color: '#64748B' }}>
+                                  {(img.size / 1024).toFixed(0)} KB
+                                </span>
+                                <span style={{ fontSize: '10px', color: bulkWatermark ? '#059669' : '#94A3B8', fontWeight: 600 }}>
+                                  {bulkWatermark ? 'Watermarked' : 'Original'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Uploaded Results Section */}
+                  {bulkImageResults.length > 0 && (
+                    <div
+                      style={{
+                        background: '#F0FDF4',
+                        border: '1.5px solid #86EFAC',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <CheckCircle2 size={18} color="#059669" />
+                          <span style={{ fontSize: '14px', fontWeight: 800, color: '#064E3B' }}>
+                            Uploaded & Watermarked ({bulkImageResults.filter((r) => r.success).length} Ready)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={handleCopyAllUrls}
+                          style={{ padding: '6px 14px', fontSize: '12px', background: '#059669', borderColor: '#059669' }}
+                        >
+                          <Copy size={13} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                          Copy All URLs for Excel
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          border: '1px solid #BBF7D0',
+                          borderRadius: '8px',
+                          background: '#FFFFFF',
+                        }}
+                      >
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                          <tbody>
+                            {bulkImageResults.map((res, idx) => (
+                              <tr key={res.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                <td style={{ padding: '8px 12px', width: '40px' }}>
+                                  {res.url ? (
+                                    <div style={{ position: 'relative', width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #CBD5E1' }}>
+                                      <img src={res.url} alt={res.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                    </div>
+                                  ) : (
+                                    <AlertTriangle size={18} color="#DC2626" />
+                                  )}
+                                </td>
+                                <td style={{ padding: '8px 12px', fontWeight: 600, color: '#0F172A', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {res.name}
+                                </td>
+                                <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', color: '#0052CC', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {res.url || res.error || 'Failed'}
+                                </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  {res.success && res.url ? (
+                                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                                      <a
+                                        href={res.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-outline"
+                                        style={{ padding: '4px 8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                      >
+                                        <ExternalLink size={11} />
+                                        View
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyUrl(res.url, idx)}
+                                        className="btn-outline"
+                                        style={{
+                                          padding: '4px 8px',
+                                          fontSize: '11px',
+                                          background: copiedUrlIndex === idx ? '#ECFDF5' : '#FFFFFF',
+                                          borderColor: copiedUrlIndex === idx ? '#10B981' : '#CBD5E1',
+                                          color: copiedUrlIndex === idx ? '#059669' : '#0F172A',
+                                        }}
+                                      >
+                                        {copiedUrlIndex === idx ? (
+                                          <>
+                                            <Check size={11} /> Copied!
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Copy size={11} /> Copy
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '11px', color: '#DC2626', fontWeight: 600 }}>Failed</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Footer */}
-            {!bulkSuccessResult && !(activeJob && (activeJob.status === 'completed' || ['pending', 'parsing', 'syncing'].includes(activeJob.status))) && (
+            {bulkUploadTab === 'excel' ? (
+              !bulkSuccessResult && !(activeJob && (activeJob.status === 'completed' || ['pending', 'parsing', 'syncing'].includes(activeJob.status))) && (
+                <div
+                  style={{
+                    padding: '16px 24px',
+                    borderTop: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                  }}
+                >
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0052CC',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <Download size={13} />
+                      <span>Download CBH Fasteners Excel Template (.xlsx)</span>
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => setIsBulkUploadOpen(false)}
+                      disabled={isBulkImporting}
+                      style={{ padding: '8px 16px', fontSize: '13px' }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleExecuteBulkImport}
+                      disabled={!bulkFile || isBulkImporting}
+                      style={{
+                        padding: '8px 24px',
+                        fontSize: '13px',
+                        background: '#059669',
+                        borderColor: '#059669',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      {isBulkImporting ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span>Starting Background Import...</span>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud size={16} />
+                          <span>
+                            {bulkPreviewStats?.validCount
+                              ? `Import ${bulkPreviewStats.validCount.toLocaleString()} Products Now`
+                              : 'Import Products Now (Background)'}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Footer for Bulk Images Tab */
               <div
                 style={{
                   padding: '16px 24px',
@@ -4704,26 +5632,13 @@ export default function AdminProductsSection({
                   gap: '12px',
                 }}
               >
-                <div>
-                  <button
-                    type="button"
-                    onClick={handleDownloadTemplate}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0052CC',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      textDecoration: 'underline',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Download size={13} />
-                    <span>Download CBH Fasteners Excel Template (.xlsx)</span>
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="/assets/cbh-watermark.png" alt="CBH" style={{ height: '18px', width: 'auto' }} />
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>
+                    {bulkWatermark
+                      ? 'Watermark will be burned permanently onto the bottom-right corner.'
+                      : 'Uploading original images without watermark.'}
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -4731,17 +5646,17 @@ export default function AdminProductsSection({
                     type="button"
                     className="btn-outline"
                     onClick={() => setIsBulkUploadOpen(false)}
-                    disabled={isBulkImporting}
+                    disabled={isBulkUploadingImages}
                     style={{ padding: '8px 16px', fontSize: '13px' }}
                   >
-                    Cancel
+                    Close
                   </button>
 
                   <button
                     type="button"
                     className="btn-primary"
-                    onClick={handleExecuteBulkImport}
-                    disabled={!bulkFile || isBulkImporting}
+                    onClick={handleExecuteBulkImagesUpload}
+                    disabled={bulkImagePreviews.length === 0 || isBulkUploadingImages}
                     style={{
                       padding: '8px 24px',
                       fontSize: '13px',
@@ -4752,18 +5667,18 @@ export default function AdminProductsSection({
                       gap: '8px',
                     }}
                   >
-                    {isBulkImporting ? (
+                    {isBulkUploadingImages ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
-                        <span>Starting Background Import...</span>
+                        <span>Uploading ({bulkUploadProgress.current}/{bulkUploadProgress.total})...</span>
                       </>
                     ) : (
                       <>
                         <UploadCloud size={16} />
                         <span>
-                          {bulkPreviewStats?.validCount
-                            ? `Import ${bulkPreviewStats.validCount.toLocaleString()} Products Now`
-                            : 'Import Products Now (Background)'}
+                          {bulkImagePreviews.length > 0
+                            ? `Upload & Stamp ${bulkImagePreviews.length} Images`
+                            : 'Upload & Stamp Images'}
                         </span>
                       </>
                     )}

@@ -102,7 +102,7 @@ export function resolveProductImageUrl(
 /**
  * Downloads a Google Drive image and saves it to public/assets/products/<id>.png
  */
-export function downloadDriveImageToFile(id: string): Promise<string> {
+export function downloadDriveImageToFile(id: string, applyWatermark: boolean = false): Promise<string> {
   return new Promise((resolve) => {
     const destDir = path.resolve(process.cwd(), 'public', 'assets', 'products');
     if (!fs.existsSync(destDir)) {
@@ -116,6 +116,27 @@ export function downloadDriveImageToFile(id: string): Promise<string> {
 
     const downloadUrl = `https://lh3.googleusercontent.com/d/${id}=w800`;
     const file = fs.createWriteStream(dest);
+
+    const postProcessFile = async () => {
+      try {
+        const stats = fs.statSync(dest);
+        if (stats.size > 500) {
+          if (applyWatermark) {
+            try {
+              const { compositeWatermark } = await import('./watermark');
+              const buf = fs.readFileSync(dest);
+              const watermarked = await compositeWatermark(buf);
+              fs.writeFileSync(dest, watermarked);
+            } catch (wmErr) {
+              console.warn('[downloadDriveImageToFile] Watermark composite warning:', wmErr);
+            }
+          }
+          return resolve(`/assets/products/${id}.png`);
+        }
+        fs.unlinkSync(dest);
+      } catch {}
+      resolve(downloadUrl);
+    };
 
     const req = https.get(downloadUrl, (res) => {
       // Follow redirect if 301/302
@@ -134,9 +155,7 @@ export function downloadDriveImageToFile(id: string): Promise<string> {
           }
           r2.pipe(redirectFile);
           redirectFile.on('finish', () => {
-            redirectFile.close(() => {
-              resolve(`/assets/products/${id}.png`);
-            });
+            redirectFile.close(postProcessFile);
           });
         }).on('error', () => {
           redirectFile.close();
@@ -154,16 +173,7 @@ export function downloadDriveImageToFile(id: string): Promise<string> {
 
       res.pipe(file);
       file.on('finish', () => {
-        file.close(() => {
-          try {
-            const stats = fs.statSync(dest);
-            if (stats.size > 500) {
-              return resolve(`/assets/products/${id}.png`);
-            }
-            fs.unlinkSync(dest);
-          } catch {}
-          resolve(downloadUrl);
-        });
+        file.close(postProcessFile);
       });
     });
 
@@ -188,7 +198,8 @@ export function downloadDriveImageToFile(id: string): Promise<string> {
  */
 export async function autoSaveUploadedImages(
   items: { gdriveImageUrl?: string; imageUrl?: string }[],
-  onImageSaved?: (driveId: string, localUrl: string) => Promise<void>
+  onImageSaved?: (driveId: string, localUrl: string) => Promise<void>,
+  applyWatermark: boolean = false
 ): Promise<Map<string, string>> {
   const resultMap = new Map<string, string>();
   const uniqueIds = new Set<string>();
@@ -208,7 +219,7 @@ export async function autoSaveUploadedImages(
   const executing: Promise<any>[] = [];
   for (const id of idList) {
     const p = (async () => {
-      const savedPath = await downloadDriveImageToFile(id);
+      const savedPath = await downloadDriveImageToFile(id, applyWatermark);
       resultMap.set(id, savedPath);
       if (savedPath.startsWith('/assets/') && onImageSaved) {
         try {

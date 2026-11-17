@@ -10,6 +10,7 @@ export interface BackgroundImportOptions {
   sheetName?: string;
   defaultImage: string;
   upsertMode: 'merge' | 'append' | 'replace';
+  applyWatermark?: boolean;
 }
 
 /**
@@ -149,16 +150,20 @@ export async function executeBackgroundImport(
     }
 
     // 5. Automatically resolve and cache Google Drive images in background
-    autoSaveUploadedImages(parseResult.products, async (driveId, localPath) => {
-      try {
-        await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ?', [
-          localPath,
-          `%${driveId}%`,
-        ]);
-      } catch (e) {
-        console.warn('[executeBackgroundImport] Image save DB update warning:', e);
-      }
-    }).catch((imgErr) => {
+    autoSaveUploadedImages(
+      parseResult.products,
+      async (driveId, localPath) => {
+        try {
+          await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ?', [
+            localPath,
+            `%${driveId}%`,
+          ]);
+        } catch (e) {
+          console.warn('[executeBackgroundImport] Image save DB update warning:', e);
+        }
+      },
+      Boolean(options.applyWatermark)
+    ).catch((imgErr) => {
       console.warn('[executeBackgroundImport] Image save background error:', imgErr);
     });
 

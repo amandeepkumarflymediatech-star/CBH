@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { compositeWatermark } from '@/lib/watermark';
 
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || '';
+    const { searchParams } = new URL(request.url);
+    let applyWatermark = searchParams.get('watermark') === 'true' || searchParams.get('applyWatermark') === 'true';
 
     let buffer: Buffer;
     let originalName = 'product-image';
@@ -19,6 +22,10 @@ export async function POST(request: NextRequest) {
           { success: false, error: 'No image file uploaded' },
           { status: 400 }
         );
+      }
+
+      if (formData.get('watermark') === 'true' || formData.get('applyWatermark') === 'true') {
+        applyWatermark = true;
       }
 
       originalName = file.name;
@@ -36,6 +43,10 @@ export async function POST(request: NextRequest) {
           { success: false, error: 'No image data provided' },
           { status: 400 }
         );
+      }
+
+      if (body.watermark === true || body.applyWatermark === true) {
+        applyWatermark = true;
       }
 
       // Handle data:image/png;base64,...
@@ -61,6 +72,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Apply watermark on right-bottom side if requested
+    if (applyWatermark) {
+      try {
+        buffer = await compositeWatermark(buffer);
+      } catch (wmError) {
+        console.warn('Failed to apply watermark to uploaded image:', wmError);
+      }
+    }
+
     // Sanitize filename
     const cleanStem = path
       .basename(originalName, path.extname(originalName))
@@ -81,6 +101,7 @@ export async function POST(request: NextRequest) {
       url: publicUrl,
       filename: uniqueFileName,
       sizeBytes: buffer.length,
+      watermarked: applyWatermark,
     });
   } catch (error: any) {
     console.error('Image upload failed:', error);

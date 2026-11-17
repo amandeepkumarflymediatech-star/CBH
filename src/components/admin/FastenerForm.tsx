@@ -113,6 +113,7 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
   // Image Upload state
   const [isUploading, setIsUploading] = useState(false);
   const [isCustomUrlOpen, setIsCustomUrlOpen] = useState(false);
+  const [withWatermark, setWithWatermark] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load product if editing
@@ -223,6 +224,9 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
       setIsUploading(true);
       const formData = new FormData();
       formData.append('file', file);
+      if (withWatermark) {
+        formData.append('watermark', 'true');
+      }
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -231,7 +235,7 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
       const data = await res.json();
       if (data.success && data.url) {
         setForm((prev) => ({ ...prev, imageUrl: data.url }));
-        showNotification('Fastener image uploaded successfully!');
+        showNotification(withWatermark ? 'Fastener image uploaded with CBH Watermark!' : 'Fastener image uploaded successfully!');
       } else {
         showNotification(data.error || 'Upload failed', 'error');
       }
@@ -1309,7 +1313,7 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
               <label className="block font-bold text-slate-800 text-xs">Product Photo Thumbnail</label>
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-24 h-24 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                <div className="w-24 h-24 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 relative overflow-hidden shadow-xs">
                   <Image
                     src={form.imageUrl || '/assets/bolt_zinc.jpg'}
                     alt="Fastener preview"
@@ -1323,6 +1327,20 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
                       } catch {}
                     }}
                   />
+
+                  {/* Watermark overlay on right-bottom side of UI preview */}
+                  {withWatermark && form.imageUrl && (
+                    <div
+                      title="CBH Watermark applied on right-bottom"
+                      className="absolute bottom-1 right-1 max-w-[28px] pointer-events-none drop-shadow-sm z-10"
+                    >
+                      <img
+                        src="/assets/cbh-watermark.png"
+                        alt="CBH Watermark"
+                        className="w-full h-auto block"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 flex-1 w-full">
@@ -1350,10 +1368,33 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
                     <button
                       type="button"
                       onClick={() => setIsCustomUrlOpen(!isCustomUrlOpen)}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50"
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
                     >
                       {isCustomUrlOpen ? 'Hide URL input' : 'Enter Custom Image URL'}
                     </button>
+                  </div>
+
+                  {/* Watermark Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/70 border border-blue-200">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900">
+                      <input
+                        type="checkbox"
+                        checked={withWatermark}
+                        onChange={(e) => setWithWatermark(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                      />
+                      <span>Apply CBH Watermark on Right-Bottom Side</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src="/assets/cbh-watermark.png"
+                        alt="Watermark preview"
+                        className="h-4 w-auto object-contain"
+                      />
+                      <span className="text-[10px] font-black uppercase text-blue-700 tracking-wider">
+                        {withWatermark ? 'Active' : 'Off'}
+                      </span>
+                    </div>
                   </div>
 
                   {isCustomUrlOpen && (

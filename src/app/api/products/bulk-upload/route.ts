@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
         | 'replace';
       const defaultImage =
         (formData.get('defaultImage') as string) || '/assets/bolt_zinc.jpg';
+      const applyWatermark =
+        formData.get('applyWatermark') === 'true' || formData.get('watermark') === 'true';
 
       if (!file) {
         return NextResponse.json(
@@ -171,6 +173,7 @@ export async function POST(request: NextRequest) {
         sheetName: sheetName === 'all' ? undefined : sheetName,
         defaultImage,
         upsertMode,
+        applyWatermark,
       }).catch((workerErr) => {
         console.error('[bulk-upload] Background worker unhandled error:', workerErr);
       });
