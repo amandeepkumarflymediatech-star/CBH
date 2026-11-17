@@ -1,25 +1,30 @@
 import fs from 'fs';
 import path from 'path';
-import https from 'https';
 
 /**
- * Extracts Google Drive file ID from all common Google Drive URL formats
+ * Extracts Google Drive file ID from all common Google Drive URL formats,
+ * including /file/d/<ID>/view, open?id=<ID>, uc?id=<ID>, thumbnail?id=<ID>, and raw IDs.
  */
 export function extractGoogleDriveId(url?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
-  
-  // Format 1: /file/d/<FILE_ID>/view...
+
+  // Format 1: /file/d/<FILE_ID> (e.g. https://drive.google.com/file/d/16k1G5yKicr5ULuxmcyA5FnBmayB1P9X0/view)
   const m1 = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
   if (m1) return m1[1];
 
-  // Format 2: ?id=<FILE_ID> or &id=<FILE_ID>
+  // Format 2: ?id=<FILE_ID> or &id=<FILE_ID> (e.g. drive.google.com/open?id=..., uc?id=...)
   const m2 = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
   if (m2) return m2[1];
 
-  // Format 3: lh3.googleusercontent.com/d/<FILE_ID>
-  const m3 = trimmed.match(/googleusercontent\.com\/d\/([a-zA-Z0-9_-]{20,})/);
+  // Format 3: googleusercontent.com/d/<FILE_ID> or drive.google.com/thumbnail?id=<FILE_ID>
+  const m3 = trimmed.match(/(?:googleusercontent\.com\/d\/|drive\.google\.com\/.*[?&]id=)([a-zA-Z0-9_-]{20,})/);
   if (m3) return m3[1];
+
+  // Format 4: Raw 25-45 character alphanumeric Drive ID directly (no protocol/domain)
+  if (/^[a-zA-Z0-9_-]{25,45}$/.test(trimmed)) {
+    return trimmed;
+  }
 
   return null;
 }
@@ -44,9 +49,88 @@ export function getCategoryPlaceholder(category: string = '', name: string = '')
   return '/assets/bolt_zinc.jpg';
 }
 
+// In-memory cache for Google Drive IDs that failed to avoid continuous network thrashing
+const failedDriveIdsCache = new Map<string, number>();
+
 /**
- * Converts any raw URL (including Google Drive HTML view links) into a directly renderable image URL.
- * NEVER returns a Google Drive /file/d/.../view HTML page URL to the browser.
+ * Resiliently fetches an image buffer from Google Drive using multiple fallback endpoints.
+ * Validates actual image magic bytes (PNG, JPEG, WebP, GIF) to ensure error pages are never saved.
+ */
+export async function fetchGoogleDriveImageBuffer(
+  driveId: string
+): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const cleanId = driveId.trim();
+  if (!cleanId) return null;
+
+  // If known to be inaccessible in the last 5 minutes, avoid hammering network
+  const failedAt = failedDriveIdsCache.get(cleanId);
+  if (failedAt && Date.now() - failedAt < 300000) {
+    return null;
+  }
+
+  const endpoints = [
+    `https://lh3.googleusercontent.com/d/${cleanId}=w1600`,
+    `https://lh3.googleusercontent.com/d/${cleanId}`,
+    `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`,
+    `https://drive.google.com/uc?export=download&id=${cleanId}`,
+    `https://docs.google.com/uc?export=download&id=${cleanId}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        },
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        const arrayBuf = await res.arrayBuffer();
+        const buf = Buffer.from(arrayBuf);
+
+        // Verify buffer is actually an image and not an HTML error or permission page
+        const isImageContentType = ct.startsWith('image/');
+        const hasImageMagicBytes =
+          (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) || // PNG
+          (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) || // JPEG
+          (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46) || // WebP (RIFF)
+          (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46); // GIF
+
+        if (buf.length > 500 && (isImageContentType || hasImageMagicBytes)) {
+          let determinedType = isImageContentType ? ct : 'image/jpeg';
+          if (hasImageMagicBytes) {
+            if (buf[0] === 0x89) determinedType = 'image/png';
+            else if (buf[0] === 0xFF) determinedType = 'image/jpeg';
+            else if (buf[0] === 0x52) determinedType = 'image/webp';
+          }
+          // Remove from failed cache if previously failed
+          failedDriveIdsCache.delete(cleanId);
+          return { buffer: buf, contentType: determinedType };
+        }
+      }
+    } catch {
+      // Continue to next endpoint fallback
+    }
+  }
+
+  failedDriveIdsCache.set(cleanId, Date.now());
+  return null;
+}
+
+/**
+ * Converts any raw URL (including Google Drive links) into a directly renderable image URL.
+ * Automatically ensures Google Drive links route through the transparent center watermark pipeline.
  */
 export function resolveProductImageUrl(
   url?: string | null,
@@ -70,7 +154,7 @@ export function resolveProductImageUrl(
 
     const driveMatch = trimmed.match(/\/assets\/products\/([a-zA-Z0-9_-]{20,})\.[a-zA-Z0-9]+/);
     if (driveMatch) {
-      return `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w800`;
+      return `/api/watermark?src=${encodeURIComponent(`https://lh3.googleusercontent.com/d/${driveMatch[1]}`)}`;
     }
 
     return getCategoryPlaceholder(category, name);
@@ -87,8 +171,8 @@ export function resolveProductImageUrl(
       }
     } catch {}
 
-    // Otherwise use direct Google Usercontent Edge CDN image URL
-    return `https://lh3.googleusercontent.com/d/${driveId}=w800`;
+    // Route through dynamic watermark endpoint with transparent center watermark
+    return `/api/watermark?src=${encodeURIComponent(`https://lh3.googleusercontent.com/d/${driveId}`)}`;
   }
 
   // If it's an external HTTP/HTTPS image
@@ -100,106 +184,85 @@ export function resolveProductImageUrl(
 }
 
 /**
- * Downloads a Google Drive image and saves it to public/assets/products/<id>.png
+ * Returns a dynamically watermarked URL for any product photo (local or remote).
+ * If the image is not already stamped, routes through the /api/watermark server endpoint.
  */
-export function downloadDriveImageToFile(id: string, applyWatermark: boolean = false): Promise<string> {
-  return new Promise((resolve) => {
-    const destDir = path.resolve(process.cwd(), 'public', 'assets', 'products');
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
+export function getWatermarkedProductImageUrl(
+  url?: string | null,
+  category: string = '',
+  name: string = ''
+): string {
+  const resolved = resolveProductImageUrl(url, category, name);
+  if (!resolved) return '/assets/bolt_zinc.jpg';
 
-    const dest = path.join(destDir, `${id}.png`);
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 500) {
-      return resolve(`/assets/products/${id}.png`);
-    }
+  // Already watermarked locally or dynamically
+  if (resolved.includes('fastener-') || resolved.startsWith('/api/watermark')) {
+    return resolved;
+  }
+  // bolt_zinc and anchor_bolt are stamped directly on disk
+  if (resolved === '/assets/bolt_zinc.jpg' || resolved === '/assets/anchor_bolt.jpg') {
+    return resolved;
+  }
 
-    const downloadUrl = `https://lh3.googleusercontent.com/d/${id}=w800`;
-    const file = fs.createWriteStream(dest);
+  // Dynamic remote or external images route through watermark service
+  return `/api/watermark?src=${encodeURIComponent(resolved)}`;
+}
 
-    const postProcessFile = async () => {
-      try {
-        const stats = fs.statSync(dest);
-        if (stats.size > 500) {
-          if (applyWatermark) {
-            try {
-              const { compositeWatermark } = await import('./watermark');
-              const buf = fs.readFileSync(dest);
-              const watermarked = await compositeWatermark(buf);
-              fs.writeFileSync(dest, watermarked);
-            } catch (wmErr) {
-              console.warn('[downloadDriveImageToFile] Watermark composite warning:', wmErr);
-            }
-          }
-          return resolve(`/assets/products/${id}.png`);
-        }
-        fs.unlinkSync(dest);
-      } catch {}
-      resolve(downloadUrl);
-    };
+/**
+ * Downloads a Google Drive image, applies the transparent center watermark,
+ * and saves it to public/assets/products/<id>.png.
+ */
+export async function downloadDriveImageToFile(
+  id: string,
+  applyWatermark: boolean = true
+): Promise<string> {
+  const destDir = path.resolve(process.cwd(), 'public', 'assets', 'products');
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
 
-    const req = https.get(downloadUrl, (res) => {
-      // Follow redirect if 301/302
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        const redirectUrl = res.headers.location;
-        file.close();
-        try { fs.unlinkSync(dest); } catch {}
-        if (!redirectUrl) return resolve(downloadUrl);
+  const dest = path.join(destDir, `${id}.png`);
+  if (fs.existsSync(dest) && fs.statSync(dest).size > 1000) {
+    return `/assets/products/${id}.png`;
+  }
 
-        const redirectFile = fs.createWriteStream(dest);
-        https.get(redirectUrl, (r2) => {
-          if (r2.statusCode !== 200) {
-            redirectFile.close();
-            try { fs.unlinkSync(dest); } catch {}
-            return resolve(downloadUrl);
-          }
-          r2.pipe(redirectFile);
-          redirectFile.on('finish', () => {
-            redirectFile.close(postProcessFile);
-          });
-        }).on('error', () => {
-          redirectFile.close();
-          try { fs.unlinkSync(dest); } catch {}
-          resolve(downloadUrl);
-        });
-        return;
-      }
+  const fetched = await fetchGoogleDriveImageBuffer(id);
+  if (!fetched) {
+    return '/assets/bolt_zinc.jpg';
+  }
 
-      if (res.statusCode !== 200) {
-        file.close();
-        try { fs.unlinkSync(dest); } catch {}
-        return resolve(downloadUrl);
-      }
+  let finalBuffer = fetched.buffer;
 
-      res.pipe(file);
-      file.on('finish', () => {
-        file.close(postProcessFile);
+  if (applyWatermark) {
+    try {
+      const { compositeWatermark } = await import('./watermark');
+      finalBuffer = await compositeWatermark(finalBuffer, {
+        opacity: 0.22,
+        position: 'center',
+        scale: 0.46,
       });
-    });
+    } catch (wmErr) {
+      console.warn('[downloadDriveImageToFile] Watermark composite warning:', wmErr);
+    }
+  }
 
-    req.on('error', () => {
-      file.close();
-      try { fs.unlinkSync(dest); } catch {}
-      resolve(downloadUrl);
-    });
-
-    req.setTimeout(12000, () => {
-      req.destroy();
-      file.close();
-      try { fs.unlinkSync(dest); } catch {}
-      resolve(downloadUrl);
-    });
-  });
+  try {
+    fs.writeFileSync(dest, finalBuffer);
+    return `/assets/products/${id}.png`;
+  } catch (writeErr) {
+    console.error('[downloadDriveImageToFile] Failed saving file to disk:', writeErr);
+    return `/api/watermark?src=${encodeURIComponent(`https://lh3.googleusercontent.com/d/${id}`)}`;
+  }
 }
 
 /**
  * Automatically downloads and saves images for a batch of products in the background.
- * Updates MySQL when each image is saved so database always reflects local files.
+ * Applies transparent center watermark and updates MySQL and memory cache.
  */
 export async function autoSaveUploadedImages(
   items: { gdriveImageUrl?: string; imageUrl?: string }[],
   onImageSaved?: (driveId: string, localUrl: string) => Promise<void>,
-  applyWatermark: boolean = false
+  applyWatermark: boolean = true
 ): Promise<Map<string, string>> {
   const resultMap = new Map<string, string>();
   const uniqueIds = new Set<string>();
@@ -233,14 +296,9 @@ export async function autoSaveUploadedImages(
     executing.push(p);
     if (executing.length >= concurrency) {
       await Promise.race(executing);
-      // Clean finished
-      for (let i = executing.length - 1; i >= 0; i--) {
-        // Simple filter check
-      }
     }
   }
 
   await Promise.all(executing);
   return resultMap;
 }
-

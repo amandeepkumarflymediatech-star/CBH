@@ -59,6 +59,7 @@ function mapRowToProduct(r: any): Product {
 
 // In-Memory Cache for Distinct Catalog Filter Options
 let filterOptionsCache: {
+  categories: string[];
   standards: string[];
   grades: string[];
   finishes: string[];
@@ -67,6 +68,7 @@ let filterOptionsCache: {
 } | null = null;
 
 async function getCachedFilterOptions(): Promise<{
+  categories: string[];
   standards: string[];
   grades: string[];
   finishes: string[];
@@ -78,13 +80,15 @@ async function getCachedFilterOptions(): Promise<{
   }
 
   try {
-    const [stdRows, grdRows, finRows, diaRows] = await Promise.all([
+    const [catRows, stdRows, grdRows, finRows, diaRows] = await Promise.all([
+      query<any>('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" ORDER BY category ASC LIMIT 50'),
       query<any>('SELECT DISTINCT standard FROM products WHERE standard IS NOT NULL AND standard != "" ORDER BY standard ASC LIMIT 100'),
       query<any>('SELECT DISTINCT grade FROM products WHERE grade IS NOT NULL AND grade != "" ORDER BY grade ASC LIMIT 50'),
       query<any>('SELECT DISTINCT finish FROM products WHERE finish IS NOT NULL AND finish != "" ORDER BY finish ASC LIMIT 50'),
       query<any>('SELECT DISTINCT diameter FROM products WHERE diameter IS NOT NULL AND diameter != "" ORDER BY diameter ASC LIMIT 100'),
     ]);
 
+    const categories = (catRows || []).map((r) => String(r.category)).filter(Boolean).sort();
     const standards = (stdRows || []).map((r) => String(r.standard)).filter(Boolean).sort();
     const grades = (grdRows || []).map((r) => String(r.grade)).filter(Boolean).sort();
     const finishes = (finRows || []).map((r) => String(r.finish)).filter(Boolean).sort();
@@ -96,16 +100,22 @@ async function getCachedFilterOptions(): Promise<{
       return numA - numB;
     });
 
-    filterOptionsCache = { standards, grades, finishes, diameters, timestamp: now };
+    filterOptionsCache = { categories, standards, grades, finishes, diameters, timestamp: now };
     return filterOptionsCache;
   } catch {
-    // Fallback if MySQL query fails
-    return {
-      standards: ['DIN 933', 'DIN 931', 'DIN 912', 'DIN 934', 'DIN 6921', 'ISO 4014', 'ISO 4017'],
-      grades: ['4.6', '5.8', '8.8', '10.9', '12.9', 'SS 304', 'SS 316', 'B7'],
-      finishes: ['Black Passivated (BP)', 'Clear Zinc', 'Hot Dip Galvanized (HDG)', 'Self Natural', 'Yellow Zinc (YZP)'],
-      diameters: ['M6', 'M8', 'M10', 'M12', 'M14', 'M16', 'M18', 'M20', 'M24', 'M30'],
-    };
+    // Dynamic fallback to in-memory products DB (never hardcode dummy data)
+    const db = getProductsDb();
+    const categories = Array.from(new Set(db.map((p) => p.category).filter(Boolean))).sort();
+    const standards = Array.from(new Set(db.map((p) => p.standard).filter(Boolean))).sort();
+    const grades = Array.from(new Set(db.map((p) => p.grade).filter(Boolean))).sort();
+    const finishes = Array.from(new Set(db.map((p) => p.finish).filter(Boolean))).sort();
+    const diameters = Array.from(new Set(db.map((p) => p.diameter).filter(Boolean))).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    return { categories, standards, grades, finishes, diameters };
   }
 }
 

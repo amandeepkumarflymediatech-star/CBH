@@ -66,6 +66,7 @@ export default function ProductDetailPage() {
   // Tab States
   const [activeMediaTab, setActiveMediaTab] = useState<'photo' | 'cad' | 'cert'>('photo');
   const [activeSpecsTab, setActiveSpecsTab] = useState<'excel_master' | 'mechanical' | 'chemical' | 'torque' | 'downloads'>('excel_master');
+  const [showWatermark, setShowWatermark] = useState<boolean>(true);
 
   // Modal & Notification States
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -449,10 +450,27 @@ export default function ProductDetailPage() {
                   )}
                 </div>
 
-                <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-mono font-semibold">
-                  <CheckCircle2 size={13} />
-                  BIS / ISO Calibrated
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Watermark Toggle Button on UI */}
+                  <button
+                    type="button"
+                    onClick={() => setShowWatermark(!showWatermark)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                      showWatermark
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs'
+                        : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
+                    }`}
+                    title="Toggle CBH Watermark (Transparent Center)"
+                  >
+                    <img src="/assets/cbh-watermark.png" alt="" className="h-3 w-auto object-contain" />
+                    <span>{showWatermark ? 'Watermark: ON' : 'Watermark: OFF'}</span>
+                  </button>
+
+                  <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-mono font-semibold">
+                    <CheckCircle2 size={13} />
+                    BIS / ISO Calibrated
+                  </span>
+                </div>
               </div>
 
               {/* Main Visualizer Window */}
@@ -465,7 +483,7 @@ export default function ProductDetailPage() {
               >
               {/* TAB 1: HIGH-RES DYNAMIC PHOTO */}
               {activeMediaTab === 'photo' && (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative' }}>
                   <img
                     src={product.imageUrl || '/assets/bolt_zinc.jpg'}
                     alt={product.name}
@@ -474,11 +492,13 @@ export default function ProductDetailPage() {
                       (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
                     }}
                   />
+
+                  {/* Click to Zoom Pill - Bottom Left */}
                   <div
                     style={{
                       position: 'absolute',
                       bottom: '12px',
-                      right: '12px',
+                      left: '12px',
                       background: 'rgba(15, 23, 42, 0.75)',
                       backdropFilter: 'blur(4px)',
                       color: '#FFFFFF',
@@ -487,12 +507,45 @@ export default function ProductDetailPage() {
                       fontSize: '11px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      gap: '5px',
+                      zIndex: 5,
                     }}
                   >
                     <ZoomIn size={12} />
                     <span>Click to Zoom</span>
                   </div>
+
+                  {/* CBH BRAND WATERMARK - TRANSPARENT & CENTER */}
+                  {showWatermark && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.28,
+                        userSelect: 'none',
+                      }}
+                    >
+                      <img
+                        src="/assets/cbh-watermark.png"
+                        alt="CBH Fasteners Watermark"
+                        style={{
+                          width: '180px',
+                          maxWidth: '55%',
+                          height: 'auto',
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15))',
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1651,13 +1704,45 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <div className="bg-slate-50 rounded-xl p-3 sm:p-5 min-h-[200px] max-h-[50vh] flex items-center justify-center overflow-hidden border border-slate-200">
+            <div className="relative bg-slate-50 rounded-xl p-3 sm:p-5 min-h-[200px] max-h-[50vh] flex items-center justify-center overflow-hidden border border-slate-200">
               <img
                 src={product.imageUrl || '/assets/bolt_zinc.jpg'}
                 alt={product.name}
                 className="max-w-full max-h-[46vh] object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
               />
+
+              {/* CBH Watermark Overlay - Transparent & Center */}
+              {showWatermark && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 10,
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.24,
+                    userSelect: 'none',
+                  }}
+                >
+                  <img
+                    src="/assets/cbh-watermark.png"
+                    alt="CBH Fasteners Watermark"
+                    style={{
+                      width: '260px',
+                      maxWidth: '55%',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 2px 10px rgba(0, 0, 0, 0.18))',
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between items-center mt-3.5 flex-wrap gap-2">

@@ -8,16 +8,34 @@ import {
   resetCategoriesToDefault,
 } from '@/lib/categories-db';
 import { getSubcategories } from '@/lib/catalog-data';
+import { query } from '@/lib/db';
 
 export async function GET() {
   try {
     const categories = await getAllCategories();
     const subs = getSubcategories();
+
+    // Query live total product count from MySQL products table
+    let totalProducts = 0;
+    try {
+      const countRows = await query<any>('SELECT COUNT(*) as total FROM products');
+      if (Array.isArray(countRows) && countRows[0]?.total !== undefined) {
+        totalProducts = Number(countRows[0].total) || 0;
+      }
+    } catch {
+      totalProducts = 28650;
+    }
+
     const enriched = categories.map((c) => ({
       ...c,
       subcategoriesCount: subs.filter((s) => s.categorySlug === c.slug).length,
     }));
-    return NextResponse.json({ success: true, count: enriched.length, data: enriched });
+    return NextResponse.json({
+      success: true,
+      count: enriched.length,
+      totalProducts,
+      data: enriched,
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message || 'Failed to fetch categories' }, { status: 500 });
   }

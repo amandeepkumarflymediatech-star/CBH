@@ -11,6 +11,7 @@
     "android": "npm --prefix mobile run android",
     "db:migrate": "node scripts/migrate.js",
     "db:alter": "node scripts/alter-tables.js",
+    "db:count": "node scripts/count-products.js",
     "db:import-excel": "node scripts/import-excel-products.js",
     "seed": "node scripts/seed-cbh-products.js",
     "fetch-products": "node scripts/seed-cbh-products.js"

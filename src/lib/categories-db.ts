@@ -83,27 +83,72 @@ export function saveCategoriesToFile(cats: CatalogCategory[]) {
 export async function getAllCategories(): Promise<CatalogCategory[]> {
   await ensureTableSchema();
 
+  // Fetch product counts per category from MySQL to show live dynamic counts
+  const categoryCounts: Record<string, number> = {};
+  let surplusProductsCount = 0;
+  try {
+    const [countRows, surplusRows] = await Promise.all([
+      query<any>('SELECT category, COUNT(*) as cnt FROM products GROUP BY category'),
+      query<any>('SELECT COUNT(*) as cnt FROM products WHERE is_surplus = 1'),
+    ]);
+    if (Array.isArray(countRows)) {
+      for (const row of countRows) {
+        if (row.category) {
+          categoryCounts[row.category.toUpperCase().trim()] = Number(row.cnt) || 0;
+        }
+      }
+    }
+    if (Array.isArray(surplusRows) && surplusRows[0]?.cnt) {
+      surplusProductsCount = Number(surplusRows[0].cnt) || 0;
+    }
+  } catch {
+    // ignore query errors
+  }
+
+  const resolveProductCount = (name: string, link: string) => {
+    if (link && link.toLowerCase().includes('surplus=true')) {
+      return surplusProductsCount;
+    }
+    const match = link?.match(/category=([^&]+)/i);
+    const catQuery = match ? decodeURIComponent(match[1]).toUpperCase().trim() : '';
+    if (catQuery && categoryCounts[catQuery]) {
+      return categoryCounts[catQuery];
+    }
+    const nameUpper = name.toUpperCase().trim();
+    if (categoryCounts[nameUpper]) {
+      return categoryCounts[nameUpper];
+    }
+    for (const [k, v] of Object.entries(categoryCounts)) {
+      if (nameUpper.includes(k) || k.includes(nameUpper)) return v;
+    }
+    return 0;
+  };
+
   try {
     const rows = await query<any>(
       'SELECT * FROM catalog_categories ORDER BY sort_order ASC, name ASC'
     );
 
     if (rows && rows.length > 0) {
-      const mapped: CatalogCategory[] = rows.map((r) => ({
-        id: r.id,
-        slug: r.slug,
-        name: r.name,
-        nameHi: r.name_hi || '',
-        tagline: r.tagline || '',
-        description: r.description || '',
-        tag: r.tag || '',
-        tagColor: r.tag_color || '#0052CC',
-        imageUrl: r.image_url || '/assets/bolt_zinc.jpg',
-        bannerUrl: r.banner_url || '',
-        link: r.link || `/products?category=${encodeURIComponent(r.name)}`,
-        featured: Boolean(r.is_featured),
-        sortOrder: Number(r.sort_order) || 0,
-      }));
+      const mapped: CatalogCategory[] = rows.map((r) => {
+        const link = r.link || `/products?category=${encodeURIComponent(r.name)}`;
+        return {
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          nameHi: r.name_hi || '',
+          tagline: r.tagline || '',
+          description: r.description || '',
+          tag: r.tag || '',
+          tagColor: r.tag_color || '#0052CC',
+          imageUrl: r.image_url || '/assets/bolt_zinc.jpg',
+          bannerUrl: r.banner_url || '',
+          link,
+          featured: Boolean(r.is_featured),
+          sortOrder: Number(r.sort_order) || 0,
+          productsCount: resolveProductCount(r.name, link),
+        };
+      });
 
       categoriesCache = mapped;
       saveCategoriesToFile(mapped);
@@ -117,7 +162,12 @@ export async function getAllCategories(): Promise<CatalogCategory[]> {
     categoriesCache = loadFromFileOrInitial();
   }
 
-  return categoriesCache.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  return categoriesCache
+    .map((c) => ({
+      ...c,
+      productsCount: c.productsCount || resolveProductCount(c.name, c.link || ''),
+    }))
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 }
 
 /**
@@ -225,37 +275,39 @@ export async function updateCategory(idOrSlug: string, updates: Partial<CatalogC
     sortOrder: updates.sortOrder !== undefined ? Number(updates.sortOrder) : existing.sortOrder,
   };
 
-  // Try updating in MySQL
+  // Try updating in MySQL with resilient INSERT ... ON DUPLICATE KEY UPDATE
   try {
     await query(
-      `UPDATE catalog_categories SET
-        name = ?,
-        name_hi = ?,
-        tagline = ?,
-        description = ?,
-        tag = ?,
-        tag_color = ?,
-        image_url = ?,
-        banner_url = ?,
-        link = ?,
-        is_featured = ?,
-        sort_order = ?,
-        updated_at = NOW()
-      WHERE id = ? OR slug = ?`,
+      `INSERT INTO catalog_categories
+      (id, slug, name, name_hi, tagline, description, tag, tag_color, image_url, banner_url, link, is_featured, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        name_hi = VALUES(name_hi),
+        tagline = VALUES(tagline),
+        description = VALUES(description),
+        tag = VALUES(tag),
+        tag_color = VALUES(tag_color),
+        image_url = VALUES(image_url),
+        banner_url = VALUES(banner_url),
+        link = VALUES(link),
+        is_featured = VALUES(is_featured),
+        sort_order = VALUES(sort_order),
+        updated_at = NOW()`,
       [
+        updatedItem.id,
+        updatedItem.slug,
         updatedItem.name,
         updatedItem.nameHi || '',
-        updatedItem.tagline,
-        updatedItem.description,
+        updatedItem.tagline || '',
+        updatedItem.description || '',
         updatedItem.tag || '',
         updatedItem.tagColor || '',
-        updatedItem.imageUrl,
+        updatedItem.imageUrl || '',
         updatedItem.bannerUrl || '',
         updatedItem.link || '',
         updatedItem.featured ? 1 : 0,
-        updatedItem.sortOrder,
-        existing.id,
-        existing.slug,
+        updatedItem.sortOrder || 0,
       ]
     );
   } catch (err) {

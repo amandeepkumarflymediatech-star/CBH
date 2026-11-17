@@ -658,7 +658,7 @@ export default function CustomProductRequestModal({
                     <span>
                       {sourceContext === 'SURPLUS_VENDOR'
                         ? 'Submit Surplus Lot for Verification'
-                        : 'Submit Request to Admin'}
+                        : 'Submit Request'}
                     </span>
                     <ChevronRight size={14} />
                   </>

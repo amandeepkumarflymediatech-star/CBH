@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle2, Percent, ArrowRight, Box, Sparkles, MessageCircle } from 'lucide-react';
+import { CheckCircle2, Percent, ArrowRight, MessageCircle } from 'lucide-react';
+import VirtualStoreHeroCard from '@/components/home/VirtualStoreHeroCard';
 
 export default function HeroSection() {
   return (
@@ -95,135 +96,10 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right Technical Blueprint Card -> Click to Enter 3D Virtual Store */}
-          <Link
-            href="/virtual-store"
-            className="hidden lg:block blueprint-card blueprint-card-interactive"
-            style={{
-              textDecoration: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              position: 'relative'
-            }}
-          >
-            <div className="blueprint-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="badge badge-din" style={{ background: 'var(--color-primary)', color: '#FFFFFF' }}>
-                  <Box size={12} style={{ display: 'inline', marginRight: '4px' }} />
-                  3D VIRTUAL STORE
-                </span>
-                <span style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span className="hero-pulse-dot" style={{ background: 'var(--color-accent)', width: '7px', height: '7px' }} />
-                  LIVE DIGITAL TWIN
-                </span>
-              </div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-primary)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                CLICK TO ENTER <ArrowRight size={13} />
-              </span>
-            </div>
-
-            <div className="blueprint-img-wrap" style={{ position: 'relative', overflow: 'hidden' }}>
-              <Image
-                src="/assets/hero.jpg"
-                alt="CBH 3D Virtual Fastener Depot"
-                fill
-                style={{ objectFit: 'cover' }}
-                priority
-              />
-
-              {/* High-Tech 3D Portal Floating Badge */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 107, 0, 0.5)',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: '#FFFFFF',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  fontFamily: 'var(--font-mono)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                }}
-              >
-                <Sparkles size={13} color="#FF6B00" />
-                <span>60 FPS GSAP 3D</span>
-              </div>
-
-              {/* Bottom Interactive Hover Banner */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '12px',
-                  left: '12px',
-                  right: '12px',
-                  background: 'linear-gradient(135deg, rgba(0, 82, 204, 0.95) 0%, rgba(7, 71, 166, 0.95) 100%)',
-                  backdropFilter: 'blur(10px)',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  color: '#FFFFFF',
-                  boxShadow: '0 6px 20px rgba(0, 82, 204, 0.4)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Box size={16} color="#FF6B00" />
-                  <div>
-                    <span style={{ fontSize: '12px', fontWeight: 900, display: 'block', letterSpacing: '0.02em' }}>
-                      40,000 SQ.FT MEGA-DEPOT
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#93C5FD', fontFamily: 'var(--font-mono)' }}>
-                      Interactive Pallet Racks & 3D Bolt Inspector
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    background: '#FF6B00',
-                    color: '#FFFFFF',
-                    padding: '5px 10px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span>EXPLORE</span>
-                  <ArrowRight size={12} />
-                </div>
-              </div>
-            </div>
-
-            <div className="blueprint-specs-table">
-              <div>
-                <span>ZONE ARCHITECTURE</span>
-                <strong>4 Interactive Bays</strong>
-              </div>
-              <div>
-                <span>3D PRODUCT INSPECTOR</span>
-                <strong>FAZ II Plus Bolt Anchor</strong>
-              </div>
-              <div>
-                <span>GSAP ASSEMBLY</span>
-                <strong>Exploded View Toggle</strong>
-              </div>
-              <div>
-                <span>LIVE STOCK SYNC</span>
-                <strong style={{ color: 'var(--color-accent)' }}>Direct Cart RFQ</strong>
-              </div>
-            </div>
-          </Link>
+          {/* Right Technical Virtual Store Card */}
+          <div className="w-full">
+            <VirtualStoreHeroCard />
+          </div>
         </div>
       </div>
     </section>

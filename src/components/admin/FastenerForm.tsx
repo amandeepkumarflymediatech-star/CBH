@@ -1328,16 +1328,16 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
                     }}
                   />
 
-                  {/* Watermark overlay on right-bottom side of UI preview */}
+                  {/* Watermark overlay - transparent & center */}
                   {withWatermark && form.imageUrl && (
                     <div
-                      title="CBH Watermark applied on right-bottom"
-                      className="absolute bottom-1 right-1 max-w-[28px] pointer-events-none drop-shadow-sm z-10"
+                      title="CBH Watermark applied transparent & center"
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-10"
                     >
                       <img
                         src="/assets/cbh-watermark.png"
                         alt="CBH Watermark"
-                        className="w-full h-auto block"
+                        className="w-16 max-w-[60%] h-auto block"
                       />
                     </div>
                   )}
@@ -1383,7 +1383,7 @@ export default function FastenerForm({ mode, productId }: FastenerFormProps) {
                         onChange={(e) => setWithWatermark(e.target.checked)}
                         className="w-4 h-4 rounded text-blue-600 cursor-pointer"
                       />
-                      <span>Apply CBH Watermark on Right-Bottom Side</span>
+                      <span>Apply Transparent Center CBH Watermark</span>
                     </label>
                     <div className="flex items-center gap-1.5">
                       <img

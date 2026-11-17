@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Boxes,
+  Layers,
+  Box,
   Truck,
   Users,
   TrendingUp,
@@ -385,6 +387,48 @@ export default function AdminLayout({
                 )}
               </Link>
 
+              {/* 2.1 Fastener Categories ("Choose Fasteners by Type" Home Page) */}
+              <Link
+                href="/admin/categories"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/categories')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Fastener Categories (Home Page 'Choose Fasteners by Type' cards)"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Layers size={18} strokeWidth={isLinkActive('/admin/categories') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>Categories</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-50 text-[#0052CC] border border-blue-200">
+                    Home
+                  </span>
+                )}
+              </Link>
+
+              {/* 2.2 3D Virtual Depot Manager */}
+              <Link
+                href="/admin/virtual-store"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/virtual-store')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="3D Virtual Depot & Zones Manager"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Box size={18} strokeWidth={isLinkActive('/admin/virtual-store') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>3D Virtual Depot</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-orange-50 text-[#FF6B00] border border-orange-200">
+                    3D
+                  </span>
+                )}
+              </Link>
+
               {/* 3. Orders */}
               <Link
                 href="/admin/orders"
@@ -725,6 +769,22 @@ export default function AdminLayout({
                   >
                     <Boxes size={16} />
                     <span>Products</span>
+                  </Link>
+                  <Link
+                    href="/admin/categories"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Layers size={16} />
+                    <span>Categories (Home Section)</span>
+                  </Link>
+                  <Link
+                    href="/admin/virtual-store"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Box size={16} />
+                    <span>3D Virtual Depot</span>
                   </Link>
                   <Link
                     href="/admin/orders"

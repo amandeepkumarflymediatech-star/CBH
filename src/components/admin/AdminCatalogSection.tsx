@@ -29,7 +29,9 @@ import {
   Image as ImageIcon,
   Check,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  Sparkles
 } from 'lucide-react';
 
 // Preset industrial fast-pick images
@@ -63,6 +65,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
   // Category Modal State
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CatalogCategory | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [catForm, setCatForm] = useState({
     name: '',
     nameHi: '',
@@ -75,6 +78,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
     imageUrl: '/assets/bolt_zinc.jpg',
     bannerUrl: '',
     featured: true,
+    sortOrder: 1,
   });
 
   // Subcategory Modal State
@@ -162,6 +166,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
       imageUrl: '/assets/bolt_zinc.jpg',
       bannerUrl: '',
       featured: true,
+      sortOrder: categories.length + 1,
     });
     setEditingCategory(null);
     setIsAddingCategory(true);
@@ -180,9 +185,64 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
       imageUrl: cat.imageUrl || '/assets/bolt_zinc.jpg',
       bannerUrl: cat.bannerUrl || '',
       featured: Boolean(cat.featured),
+      sortOrder: cat.sortOrder || 1,
     });
     setEditingCategory(cat);
     setIsAddingCategory(false);
+  };
+
+  const handleToggleFeatured = async (cat: CatalogCategory) => {
+    const nextFeatured = !cat.featured;
+    setCategories((prev) =>
+      prev.map((c) => (c.id === cat.id ? { ...c, featured: nextFeatured } : c))
+    );
+    try {
+      const res = await fetch('/api/catalog/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: cat.id,
+          slug: cat.slug,
+          featured: nextFeatured,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        notify(`"${cat.name}" is now ${nextFeatured ? 'featured on Home Page' : 'hidden from Home Page'}.`);
+      } else {
+        notify(data.error || 'Failed to update category.');
+        loadData();
+      }
+    } catch (err: any) {
+      notify('Error updating category: ' + err.message);
+      loadData();
+    }
+  };
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingImage(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        setCatForm((prev) => ({ ...prev, imageUrl: data.url }));
+        notify('Category image uploaded successfully!');
+      } else {
+        notify(data.error || 'Failed to upload image.');
+      }
+    } catch (err: any) {
+      notify('Error uploading image: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
@@ -213,6 +273,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
             imageUrl: catForm.imageUrl.trim(),
             bannerUrl: catForm.bannerUrl.trim(),
             featured: catForm.featured,
+            sortOrder: Number(catForm.sortOrder) || 1,
           }),
         });
         const data = await res.json();
@@ -240,6 +301,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
             imageUrl: catForm.imageUrl.trim(),
             bannerUrl: catForm.bannerUrl.trim(),
             featured: catForm.featured,
+            sortOrder: Number(catForm.sortOrder) || 1,
           }),
         });
         const data = await res.json();
@@ -657,10 +719,11 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
             <table className="w-full text-left text-xs">
               <thead className="bg-[#F8FAFC] text-slate-600 uppercase text-[11px] font-bold border-b border-[#D8DFE7]">
                 <tr>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Tagline &amp; Description</th>
-                  <th className="py-3 px-3 text-center">Subcategories</th>
-                  <th className="py-3 px-3 text-center">Featured</th>
+                  <th className="py-3 px-4">Fastener Category</th>
+                  <th className="py-3 px-3">Tag &amp; Badge</th>
+                  <th className="py-3 px-3 text-center">Catalog SKUs</th>
+                  <th className="py-3 px-3 text-center">Home Page ("By Type")</th>
+                  <th className="py-3 px-3 text-center">Sort Order</th>
                   <th className="py-3 px-4 text-center">Storefront</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -685,57 +748,73 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                     <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative">
                             {c.imageUrl ? (
                               <Image
                                 src={c.imageUrl}
                                 alt={c.name}
                                 fill
-                                sizes="40px"
+                                sizes="48px"
                                 className="object-cover"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                <Folder className="w-4 h-4" />
+                                <Folder className="w-5 h-5" />
                               </div>
                             )}
                           </div>
                           <div>
-                            <div className="font-extrabold text-[#0F172A] text-sm">{c.name}</div>
-                            <div className="font-mono text-[11px] text-[#0052CC]">/products/{c.slug}</div>
+                            <div className="font-extrabold text-[#0F172A] text-sm flex items-center gap-1.5 flex-wrap">
+                              <span>{c.name}</span>
+                              {c.nameHi && (
+                                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                  {c.nameHi}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[11px] text-[#0052CC] truncate max-w-xs">
+                              {c.link || `/products?category=${encodeURIComponent(c.name)}`}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 max-w-sm">
-                        <div className="font-medium text-slate-700 line-clamp-1">{c.tagline || '—'}</div>
-                        <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{c.description || '—'}</div>
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span
+                            className="text-[10px] font-extrabold px-2 py-0.5 rounded text-white tracking-wide truncate max-w-[130px]"
+                            style={{ backgroundColor: c.tagColor || '#0052CC' }}
+                          >
+                            {c.tag || 'READY STOCK'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 line-clamp-1">{c.tagline || c.description || '—'}</div>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md text-xs">
+                          {c.productsCount && c.productsCount > 0 ? `${c.productsCount.toLocaleString()} SKUs` : 'Available'}
+                        </span>
                       </td>
                       <td className="py-3.5 px-3 text-center">
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedParentCategoryFilter(c.slug);
-                            setActiveCatalogTab('subcategories');
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-[#0052CC] font-bold text-xs transition-colors"
-                          title="View subcategories in this category"
+                          onClick={() => handleToggleFeatured(c)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                            c.featured
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-2xs'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                          }`}
+                          title="Click to toggle display on Home Page 'Choose Fasteners by Type'"
                         >
-                          <span>{c.subcategoriesCount ?? 0}</span>
-                          <span className="text-[10px] uppercase font-semibold">Subcats</span>
+                          <span className={`w-2 h-2 rounded-full ${c.featured ? 'bg-emerald-600 animate-pulse' : 'bg-slate-400'}`} />
+                          <span>{c.featured ? 'On Home' : 'Hidden'}</span>
                         </button>
                       </td>
-                      <td className="py-3.5 px-3 text-center">
-                        {c.featured ? (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
-                            Featured
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px] font-semibold">No</span>
-                        )}
+                      <td className="py-3.5 px-3 text-center font-mono font-extrabold text-slate-700">
+                        #{c.sortOrder || 1}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <Link
-                          href={`/products/${c.slug}`}
+                          href={c.link || `/products?category=${encodeURIComponent(c.name)}`}
                           target="_blank"
                           className="inline-flex items-center gap-1 text-[#0052CC] hover:underline font-bold"
                         >
@@ -746,16 +825,8 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                         <div className="inline-flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => openAddSubcategoryModal(c.slug)}
-                            className="p-1.5 text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Add subcategory to this category"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => openEditCategoryModal(c)}
-                            className="p-1.5 text-slate-500 hover:text-[#0052CC] hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-600 hover:text-[#0052CC] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Edit category"
                           >
                             <Edit className="w-4 h-4" />
@@ -763,7 +834,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                           <button
                             type="button"
                             onClick={() => handleDeleteCategory(c.slug, c.name)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete category"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1188,22 +1259,44 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                    Custom Storefront Link
+                    Storefront Target Link
                   </label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setCatForm((prev) => ({ ...prev, link: e.target.value }));
+                      }
+                    }}
+                    className="w-full mb-1.5 px-3 py-1.5 border rounded-xl text-xs bg-slate-50 font-semibold focus:ring-2 focus:ring-[#0052CC] outline-none cursor-pointer"
+                  >
+                    <option value="">-- Quick Link Presets (Real Products) --</option>
+                    <option value="/products?category=HEX%20BOLTS">Hex Bolts (/products?category=HEX BOLTS)</option>
+                    <option value="/products?category=HEX%20SCREWS">Hex Screws (/products?category=HEX SCREWS)</option>
+                    <option value="/products?category=SOCKET%20HEAD">Socket Allen (/products?category=SOCKET HEAD)</option>
+                    <option value="/products?category=HSFG%20BOLTS">HSFG Structural (/products?category=HSFG BOLTS)</option>
+                    <option value="/products?category=CARRIAGE%20BOLTS">Carriage Bolts (/products?category=CARRIAGE BOLTS)</option>
+                    <option value="/products?category=HEX%20FLANGE%20BOLTS">Flange Bolts (/products?category=HEX FLANGE BOLTS)</option>
+                    <option value="/products?category=THREADED%20RODS">Threaded Rods (/products?category=THREADED RODS)</option>
+                    <option value="/products?surplus=true">Surplus Clearance (-60% Off)</option>
+                    <option value="/products?category=NUTS">Hex Nuts (/products?category=NUTS)</option>
+                    <option value="/products?category=WASHERS">Washers (/products?category=WASHERS)</option>
+                    <option value="/products?category=ROOFING%20BOLTS">Roofing Bolts (/products?category=ROOFING BOLTS)</option>
+                    <option value="/products?category=ANTI%20THEFT%20BOLTS">Anti Theft Bolts (/products?category=ANTI THEFT BOLTS)</option>
+                  </select>
                   <input
                     type="text"
                     value={catForm.link}
                     onChange={(e) => setCatForm((prev) => ({ ...prev, link: e.target.value }))}
-                    placeholder="e.g. /products?category=Hex%20Screws"
+                    placeholder="e.g. /products?category=HEX%20BOLTS"
                     className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                    Badge Tag (e.g. MOST POPULAR)
+                    Badge Tag (e.g. READY STOCK)
                   </label>
                   <input
                     type="text"
@@ -1234,6 +1327,21 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
+                    Sort Order (क्रम)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={catForm.sortOrder || 1}
+                    onChange={(e) => setCatForm((prev) => ({ ...prev, sortOrder: Number(e.target.value) || 1 }))}
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#0052CC] outline-none"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">1 = first card on Home</span>
+                </div>
               </div>
 
               <div>
@@ -1242,7 +1350,7 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                   type="text"
                   value={catForm.tagline}
                   onChange={(e) => setCatForm((prev) => ({ ...prev, tagline: e.target.value }))}
-                  placeholder="e.g. High load capacity mechanical anchors for heavy duty construction"
+                  placeholder="e.g. High-tensile Grade 8.8, 10.9 & SS full & half thread bolts"
                   className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#0052CC] outline-none"
                 />
               </div>
@@ -1253,28 +1361,70 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                   value={catForm.description}
                   onChange={(e) => setCatForm((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Technical overview of this category..."
-                  rows={3}
+                  rows={2}
                   className="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#0052CC] outline-none"
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Image URL</label>
-                <input
-                  type="url"
-                  value={catForm.imageUrl}
-                  onChange={(e) => setCatForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none"
-                />
+              {/* Photo Upload & Preview */}
+              <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
+                <label className="text-[11px] font-bold text-slate-700 uppercase block mb-2">
+                  Category Photo (तस्वीर)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-2.5">
+                  <div className="w-16 h-16 rounded-xl border border-slate-300 bg-white shrink-0 relative overflow-hidden flex items-center justify-center shadow-xs">
+                    {catForm.imageUrl ? (
+                      <Image
+                        src={catForm.imageUrl}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 w-full space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-sm">
+                        <Upload size={13} />
+                        <span>{isUploadingImage ? 'Uploading Image...' : 'Upload Image from PC'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageFileUpload}
+                          disabled={isUploadingImage}
+                        />
+                      </label>
+                      <span className="text-[11px] text-slate-500">or enter image path / URL below</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={catForm.imageUrl}
+                      onChange={(e) => setCatForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                      placeholder="/assets/bolt_zinc.jpg or https://..."
+                      className="w-full px-3 py-2 border rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#0052CC] outline-none bg-white"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Presets:</span>
-                  {IMAGE_PRESETS.map((p) => (
+                  {[
+                    { label: 'Hex Bolt', url: '/assets/bolt_zinc.jpg' },
+                    { label: 'Zinc Bolt', url: '/assets/bolt_din933_zinc_1792746574604.jpg' },
+                    { label: 'Grub / Socket', url: '/assets/images/grub-screw-real.png' },
+                    { label: 'Bridge / Rods', url: '/assets/global_infra_bridge.jpg' },
+                    { label: 'Inspection / HSFG', url: '/assets/quality_cert_inspection.jpg' },
+                    { label: 'Optical / Surplus', url: '/assets/quality_optical_sorting.jpg' },
+                    { label: 'Solar / Cladding', url: '/assets/global_solar_wind.jpg' },
+                  ].map((p) => (
                     <button
                       key={p.label}
                       type="button"
                       onClick={() => setCatForm((prev) => ({ ...prev, imageUrl: p.url }))}
-                      className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-semibold transition-colors"
+                      className="px-2 py-0.5 rounded bg-white hover:bg-slate-200 text-slate-700 text-[10px] font-semibold transition-colors border border-slate-200"
                     >
                       {p.label}
                     </button>
@@ -1282,16 +1432,16 @@ export default function AdminCatalogSection({ initialSubTab = 'categories' }: Ad
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-2 bg-blue-50/70 p-3 rounded-xl border border-blue-200/80">
                 <input
                   type="checkbox"
                   id="cat-featured"
                   checked={catForm.featured}
                   onChange={(e) => setCatForm((prev) => ({ ...prev, featured: e.target.checked }))}
-                  className="w-4 h-4 rounded text-[#0052CC] border-slate-300 focus:ring-[#0052CC]"
+                  className="w-4 h-4 rounded text-[#0052CC] border-slate-300 focus:ring-[#0052CC] cursor-pointer"
                 />
-                <label htmlFor="cat-featured" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                  Feature this category on storefront navigation and landing page
+                <label htmlFor="cat-featured" className="text-xs font-bold text-blue-950 cursor-pointer">
+                  Feature this category in &ldquo;Choose Fasteners by Type&rdquo; section on Home Page
                 </label>
               </div>
 

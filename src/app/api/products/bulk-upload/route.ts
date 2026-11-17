@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       const defaultImage =
         (formData.get('defaultImage') as string) || '/assets/bolt_zinc.jpg';
       const applyWatermark =
-        formData.get('applyWatermark') === 'true' || formData.get('watermark') === 'true';
+        formData.get('applyWatermark') !== 'false' && formData.get('watermark') !== 'false';
 
       if (!file) {
         return NextResponse.json(

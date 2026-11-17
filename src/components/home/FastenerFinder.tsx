@@ -1,17 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   SlidersHorizontal,
   Search,
-  CheckCircle2,
-  Scale,
-  Truck,
-  Percent,
   RotateCcw,
-  Sparkles,
   X,
-  Filter,
   Layers,
   Hexagon,
   Component,
@@ -20,7 +14,9 @@ import {
   Anchor,
   Ruler,
   LucideIcon,
+  Sparkles,
 } from 'lucide-react';
+import { Product } from '@/lib/types';
 
 export interface FastenerFilters {
   tab: string;
@@ -34,10 +30,22 @@ export interface FastenerFilters {
   search?: string;
 }
 
+interface FilterOptionsData {
+  categories?: string[];
+  subGroups?: string[];
+  standards?: string[];
+  grades?: string[];
+  diameters?: string[];
+  lengths?: number[];
+  finishes?: string[];
+}
+
 interface FastenerFinderProps {
   onFilterChange: (filters: FastenerFilters) => void;
   productsCount?: number;
   totalProductsCount?: number;
+  allProducts?: Product[];
+  filterOptions?: FilterOptionsData | null;
 }
 
 interface TabOption {
@@ -49,20 +57,12 @@ interface TabOption {
   defaultCategory?: string;
 }
 
-const FINDER_TABS: TabOption[] = [
-  { id: 'all', label: 'All Fasteners', sub: '2,00,000+ SKUs', icon: Layers },
-  { id: 'hex-screws', label: 'Hex Screws', sub: 'DIN 933 Full Thread', icon: Hexagon, defaultStandard: 'din933', defaultCategory: 'hex-screws' },
-  { id: 'hex-bolts', label: 'Hex Bolts', sub: 'DIN 931 Half Thread', icon: Component, defaultStandard: 'din931', defaultCategory: 'hex-bolts' },
-  { id: 'socket-cap', label: 'Socket Allen', sub: 'DIN 912 Grade 12.9', icon: Wrench, defaultStandard: 'din912', defaultCategory: 'socket-cap' },
-  { id: 'nuts', label: 'Nuts & Washers', sub: 'DIN 934 / DIN 125', icon: CircleDot, defaultStandard: 'din934', defaultCategory: 'nuts' },
-  { id: 'anchors', label: 'Anchors & Fixings', sub: 'Concrete Expansion', icon: Anchor, defaultStandard: 'eta', defaultCategory: 'anchors' },
-  { id: 'threaded-rods', label: 'Threaded Rods', sub: 'ASTM A193 B7 / Studs', icon: Ruler, defaultStandard: 'astma193', defaultCategory: 'threaded-rods' },
-];
-
 export default function FastenerFinder({
   onFilterChange,
-  productsCount = 9,
-  totalProductsCount = 9,
+  productsCount = 0,
+  totalProductsCount = 0,
+  allProducts = [],
+  filterOptions = null,
 }: FastenerFinderProps) {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [category, setCategory] = useState<string>('all');
@@ -73,7 +73,221 @@ export default function FastenerFinder({
   const [finish, setFinish] = useState<string>('all');
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
 
-  // Trigger parent filter change whenever any filter state changes
+  // Fallback internal fetch for filter options if not supplied by parent
+  const [internalFilterOptions, setInternalFilterOptions] = useState<FilterOptionsData | null>(null);
+
+  useEffect(() => {
+    if (!filterOptions && allProducts.length === 0) {
+      fetch('/api/products?limit=1')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.filterOptions) {
+            setInternalFilterOptions(data.filterOptions);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [filterOptions, allProducts.length]);
+
+  const activeOptions = filterOptions || internalFilterOptions;
+
+  // 1. DYNAMIC CATEGORIES & COUNTS
+  const dynamicCategories = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<string, number>();
+      allProducts.forEach((p) => {
+        if (p.category) {
+          counts.set(p.category, (counts.get(p.category) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }));
+    }
+    if (activeOptions?.categories && activeOptions.categories.length > 0) {
+      return activeOptions.categories.map((c) => ({ name: c, count: 0 }));
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // 2. DYNAMIC STANDARDS
+  const dynamicStandards = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<string, number>();
+      allProducts.forEach((p) => {
+        if (p.standard) {
+          counts.set(p.standard, (counts.get(p.standard) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }));
+    }
+    if (activeOptions?.standards && activeOptions.standards.length > 0) {
+      return activeOptions.standards.map((s) => ({ name: s, count: 0 }));
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // 3. DYNAMIC GRADES
+  const dynamicGrades = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<string, number>();
+      allProducts.forEach((p) => {
+        if (p.grade) {
+          counts.set(p.grade, (counts.get(p.grade) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }));
+    }
+    if (activeOptions?.grades && activeOptions.grades.length > 0) {
+      return activeOptions.grades.map((g) => ({ name: g, count: 0 }));
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // 4. DYNAMIC DIAMETERS (Naturally sorted: M6, M8, M10, M12...)
+  const dynamicDiameters = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<string, number>();
+      allProducts.forEach((p) => {
+        if (p.diameter) {
+          counts.set(p.diameter, (counts.get(p.diameter) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => {
+          const numA = parseFloat(a[0].replace(/[^0-9.]/g, '')) || 0;
+          const numB = parseFloat(b[0].replace(/[^0-9.]/g, '')) || 0;
+          return numA - numB;
+        })
+        .map(([name, count]) => ({ name, count }));
+    }
+    if (activeOptions?.diameters && activeOptions.diameters.length > 0) {
+      return activeOptions.diameters
+        .map((d) => ({ name: d, count: 0 }))
+        .sort((a, b) => {
+          const numA = parseFloat(a.name.replace(/[^0-9.]/g, '')) || 0;
+          const numB = parseFloat(b.name.replace(/[^0-9.]/g, '')) || 0;
+          return numA - numB;
+        });
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // 5. DYNAMIC LENGTHS (Numerically sorted)
+  const dynamicLengths = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<number, number>();
+      allProducts.forEach((p) => {
+        const len = Number(p.lengthMm);
+        if (len && len > 0) {
+          counts.set(len, (counts.get(len) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([val, count]) => ({ val, count }));
+    }
+    if (activeOptions?.lengths && activeOptions.lengths.length > 0) {
+      return activeOptions.lengths
+        .filter((n) => !isNaN(n) && n > 0)
+        .sort((a, b) => a - b)
+        .map((val) => ({ val, count: 0 }));
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // 6. DYNAMIC FINISHES
+  const dynamicFinishes = useMemo(() => {
+    if (allProducts && allProducts.length > 0) {
+      const counts = new Map<string, number>();
+      allProducts.forEach((p) => {
+        if (p.finish) {
+          counts.set(p.finish, (counts.get(p.finish) || 0) + 1);
+        }
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }));
+    }
+    if (activeOptions?.finishes && activeOptions.finishes.length > 0) {
+      return activeOptions.finishes.map((f) => ({ name: f, count: 0 }));
+    }
+    return [];
+  }, [allProducts, activeOptions]);
+
+  // DYNAMIC TABS BASED ON ACTUAL DATABASE CATEGORIES
+  const dynamicTabs = useMemo(() => {
+    const tabs: TabOption[] = [
+      {
+        id: 'all',
+        label: 'All Fasteners',
+        sub: totalProductsCount > 0 ? `${totalProductsCount.toLocaleString()} SKUs` : 'Empty Catalog',
+        icon: Layers,
+      },
+    ];
+
+    const getIconForCategory = (name: string): LucideIcon => {
+      const lower = name.toLowerCase();
+      if (lower.includes('screw')) return Hexagon;
+      if (lower.includes('bolt')) return Component;
+      if (lower.includes('socket') || lower.includes('allen')) return Wrench;
+      if (lower.includes('nut') || lower.includes('washer')) return CircleDot;
+      if (lower.includes('anchor')) return Anchor;
+      if (lower.includes('rod') || lower.includes('stud')) return Ruler;
+      return Layers;
+    };
+
+    dynamicCategories.forEach((cat) => {
+      tabs.push({
+        id: cat.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        label: cat.name,
+        sub: cat.count > 0 ? `${cat.count.toLocaleString()} Products` : 'Available',
+        icon: getIconForCategory(cat.name),
+        defaultCategory: cat.name,
+      });
+    });
+
+    return tabs;
+  }, [dynamicCategories, totalProductsCount]);
+
+  // DYNAMIC QUICK CHIPS FROM REAL ATTRIBUTES IN INVENTORY
+  const dynamicQuickChips = useMemo(() => {
+    if (totalProductsCount === 0) return [];
+    const chips: Array<{ type: 'diameter' | 'grade' | 'finish' | 'inStock'; value: string; label: string }> = [];
+
+    // Top diameter
+    if (dynamicDiameters.length > 0) {
+      const topDia = dynamicDiameters[0].name;
+      chips.push({ type: 'diameter', value: topDia, label: `${topDia.toUpperCase()} Diameter` });
+    }
+
+    // Top grades (up to 2)
+    dynamicGrades.slice(0, 2).forEach((g) => {
+      const gName = g.name.toUpperCase().startsWith('GRADE') ? g.name : `Grade ${g.name}`;
+      chips.push({ type: 'grade', value: g.name, label: gName });
+    });
+
+    // Top coating/finish
+    if (dynamicFinishes.length > 0) {
+      chips.push({ type: 'finish', value: dynamicFinishes[0].name, label: dynamicFinishes[0].name });
+    }
+
+    // In-Stock Only Chip
+    const inStockCount = allProducts.filter((p) => p.isInStock && p.stockPcs > 0).length;
+    chips.push({
+      type: 'inStock',
+      value: 'true',
+      label: inStockCount > 0 ? `⚡ In-Stock Only (${inStockCount})` : '⚡ In-Stock Only',
+    });
+
+    return chips;
+  }, [totalProductsCount, dynamicDiameters, dynamicGrades, dynamicFinishes, allProducts]);
+
+  // Trigger parent filter change
   const applyFilters = (overrides?: Partial<FastenerFilters>) => {
     const currentFilters: FastenerFilters = {
       tab: overrides?.tab ?? activeTab,
@@ -91,16 +305,8 @@ export default function FastenerFinder({
   // Handle Tab Switch
   const handleTabClick = (tab: TabOption) => {
     setActiveTab(tab.id);
-
-    let nextCategory = 'all';
-    let nextStandard = 'all';
-
-    if (tab.defaultCategory) {
-      nextCategory = tab.defaultCategory;
-    }
-    if (tab.defaultStandard) {
-      nextStandard = tab.defaultStandard;
-    }
+    const nextCategory = tab.defaultCategory || (tab.id === 'all' ? 'all' : tab.label);
+    const nextStandard = tab.defaultStandard || 'all';
 
     setCategory(nextCategory);
     setStandard(nextStandard);
@@ -156,7 +362,6 @@ export default function FastenerFinder({
     });
   };
 
-  // Form submit -> scroll to catalog
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     applyFilters();
@@ -189,15 +394,15 @@ export default function FastenerFinder({
           <div className="finder-telemetry-badge">
             <span className="pulse-dot" />
             <span>
-              <strong>{productsCount}</strong> SKUs Active in Catalog{' '}
-              <span style={{ color: '#8898AA', fontWeight: 400 }}>({totalProductsCount} Live)</span>
+              <strong>{productsCount.toLocaleString()}</strong> SKUs Active in Catalog{' '}
+              <span style={{ color: '#8898AA', fontWeight: 400 }}>({totalProductsCount.toLocaleString()} Live)</span>
             </span>
           </div>
         </div>
 
-        {/* Dynamic Interactive Category Tabs */}
+        {/* Dynamic Category Tabs */}
         <div className="flex items-center gap-2.5 overflow-x-auto pb-3 mb-4 border-b border-slate-200/80 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {FINDER_TABS.map((tab) => {
+          {dynamicTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const IconComp = tab.icon;
             return (
@@ -244,52 +449,30 @@ export default function FastenerFinder({
           })}
         </div>
 
-        {/* Quick Spec Pills */}
-        <div className="finder-quick-row">
-          <span className="finder-quick-label">Quick Filters:</span>
-          <button
-            type="button"
-            className={`finder-chip ${diameter === 'm10' ? 'active' : ''}`}
-            onClick={() => handleQuickChip('diameter', 'm10')}
-          >
-            M10 Diameter
-          </button>
-          <button
-            type="button"
-            className={`finder-chip ${grade === '5.8' ? 'active' : ''}`}
-            onClick={() => handleQuickChip('grade', '5.8')}
-          >
-            Grade 5.8
-          </button>
-          <button
-            type="button"
-            className={`finder-chip ${grade === '8.8' ? 'active' : ''}`}
-            onClick={() => handleQuickChip('grade', '8.8')}
-          >
-            Grade 8.8 High-Tensile
-          </button>
-          <button
-            type="button"
-            className={`finder-chip ${finish === 'bp' ? 'active' : ''}`}
-            onClick={() => handleQuickChip('finish', 'bp')}
-          >
-            Black Passivated (BP)
-          </button>
-          <button
-            type="button"
-            className={`finder-chip ${finish === 'blkzp' ? 'active' : ''}`}
-            onClick={() => handleQuickChip('finish', 'blkzp')}
-          >
-            Black Zinc (Blkzp)
-          </button>
-          <button
-            type="button"
-            className={`finder-chip ${inStockOnly ? 'active' : ''}`}
-            onClick={() => handleQuickChip('inStock', 'true')}
-          >
-            ⚡ In-Stock Only
-          </button>
-        </div>
+        {/* Dynamic Quick Spec Chips */}
+        {dynamicQuickChips.length > 0 && (
+          <div className="finder-quick-row">
+            <span className="finder-quick-label">Quick Filters:</span>
+            {dynamicQuickChips.map((chip, idx) => {
+              let isActive = false;
+              if (chip.type === 'diameter') isActive = diameter === chip.value;
+              else if (chip.type === 'grade') isActive = grade === chip.value;
+              else if (chip.type === 'finish') isActive = finish === chip.value;
+              else if (chip.type === 'inStock') isActive = inStockOnly;
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`finder-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => handleQuickChip(chip.type, chip.value)}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Active Filters Summary Strip */}
         {hasActiveFilters && (
@@ -300,8 +483,8 @@ export default function FastenerFinder({
               </span>
               {activeTab !== 'all' && (
                 <span className="finder-active-tag">
-                  Tab: {FINDER_TABS.find((t) => t.id === activeTab)?.label}
-                  <button type="button" onClick={() => handleTabClick(FINDER_TABS[0])}>
+                  Tab: {dynamicTabs.find((t) => t.id === activeTab)?.label || activeTab}
+                  <button type="button" onClick={() => handleTabClick(dynamicTabs[0])}>
                     <X size={12} />
                   </button>
                 </span>
@@ -309,15 +492,27 @@ export default function FastenerFinder({
               {category !== 'all' && (
                 <span className="finder-active-tag">
                   Category: {category}
-                  <button type="button" onClick={() => { setCategory('all'); applyFilters({ category: 'all' }); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategory('all');
+                      applyFilters({ category: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
               )}
               {standard !== 'all' && (
                 <span className="finder-active-tag">
-                  Standard: {standard.toUpperCase()}
-                  <button type="button" onClick={() => { setStandard('all'); applyFilters({ standard: 'all' }); }}>
+                  Standard: {standard}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStandard('all');
+                      applyFilters({ standard: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
@@ -325,7 +520,13 @@ export default function FastenerFinder({
               {grade !== 'all' && (
                 <span className="finder-active-tag">
                   Grade: {grade}
-                  <button type="button" onClick={() => { setGrade('all'); applyFilters({ grade: 'all' }); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGrade('all');
+                      applyFilters({ grade: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
@@ -333,7 +534,13 @@ export default function FastenerFinder({
               {diameter !== 'all' && (
                 <span className="finder-active-tag">
                   Diameter: {diameter.toUpperCase()}
-                  <button type="button" onClick={() => { setDiameter('all'); applyFilters({ diameter: 'all' }); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiameter('all');
+                      applyFilters({ diameter: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
@@ -341,15 +548,27 @@ export default function FastenerFinder({
               {length !== 'all' && (
                 <span className="finder-active-tag">
                   Length: {length}mm
-                  <button type="button" onClick={() => { setLength('all'); applyFilters({ length: 'all' }); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLength('all');
+                      applyFilters({ length: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
               )}
               {finish !== 'all' && (
                 <span className="finder-active-tag">
-                  Finish: {finish.toUpperCase()}
-                  <button type="button" onClick={() => { setFinish('all'); applyFilters({ finish: 'all' }); }}>
+                  Finish: {finish}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinish('all');
+                      applyFilters({ finish: 'all' });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
@@ -357,7 +576,13 @@ export default function FastenerFinder({
               {inStockOnly && (
                 <span className="finder-active-tag">
                   In-Stock Only
-                  <button type="button" onClick={() => { setInStockOnly(false); applyFilters({ inStockOnly: false }); }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInStockOnly(false);
+                      applyFilters({ inStockOnly: false });
+                    }}
+                  >
                     <X size={12} />
                   </button>
                 </span>
@@ -371,9 +596,9 @@ export default function FastenerFinder({
           </div>
         )}
 
-        {/* 6-Field Parametric Filter Grid */}
+        {/* 6-Field Fully Dynamic Parametric Filter Grid */}
         <form onSubmit={handleSubmit} className="finder-grid">
-          {/* Category */}
+          {/* 1. Category */}
           <div className="finder-field">
             <label>Category</label>
             <select
@@ -385,17 +610,18 @@ export default function FastenerFinder({
                 applyFilters({ category: val });
               }}
             >
-              <option value="all">All Categories</option>
-              <option value="hex-screws">Hex Screws</option>
-              <option value="hex-bolts">Heavy Hex Bolts</option>
-              <option value="socket-cap">Socket Cap Screws</option>
-              <option value="anchors">Anchors & Fixings</option>
-              <option value="threaded-rods">Threaded Rods</option>
-              <option value="nuts">Industrial Hex Nuts</option>
+              <option value="all">
+                {dynamicCategories.length > 0 ? `All Categories (${dynamicCategories.length})` : 'All Categories'}
+              </option>
+              {dynamicCategories.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name} {c.count > 0 ? `(${c.count})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Standard */}
+          {/* 2. Standard */}
           <div className="finder-field">
             <label>Standard</label>
             <select
@@ -407,17 +633,18 @@ export default function FastenerFinder({
                 applyFilters({ standard: val });
               }}
             >
-              <option value="all">All Standards</option>
-              <option value="din933">DIN 933 (Full Thread)</option>
-              <option value="din931">DIN 931 (Half Thread)</option>
-              <option value="din912">DIN 912 (Socket Head)</option>
-              <option value="din934">DIN 934 (Hex Nut)</option>
-              <option value="astma193">ASTM A193 B7</option>
-              <option value="eta">ETA Option 7 (Anchor)</option>
+              <option value="all">
+                {dynamicStandards.length > 0 ? `All Standards (${dynamicStandards.length})` : 'All Standards'}
+              </option>
+              {dynamicStandards.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name} {s.count > 0 ? `(${s.count})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Grade */}
+          {/* 3. Grade */}
           <div className="finder-field">
             <label>Grade</label>
             <select
@@ -429,16 +656,21 @@ export default function FastenerFinder({
                 applyFilters({ grade: val });
               }}
             >
-              <option value="all">All Grades</option>
-              <option value="5.8">Grade 5.8 (Mild)</option>
-              <option value="8.8">Grade 8.8 (High-Tensile)</option>
-              <option value="10.9">Grade 10.9 (Structural)</option>
-              <option value="ss304">SS 304 / A2-70</option>
-              <option value="ss316">SS 316 / A4-80</option>
+              <option value="all">
+                {dynamicGrades.length > 0 ? `All Grades (${dynamicGrades.length})` : 'All Grades'}
+              </option>
+              {dynamicGrades.map((g) => {
+                const label = g.name.toUpperCase().startsWith('GRADE') ? g.name : `Grade ${g.name}`;
+                return (
+                  <option key={g.name} value={g.name}>
+                    {label} {g.count > 0 ? `(${g.count})` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
-          {/* Diameter */}
+          {/* 4. Diameter */}
           <div className="finder-field">
             <label>Diameter (d)</label>
             <select
@@ -450,19 +682,18 @@ export default function FastenerFinder({
                 applyFilters({ diameter: val });
               }}
             >
-              <option value="all">All Diameters</option>
-              <option value="m6">M6</option>
-              <option value="m8">M8</option>
-              <option value="m10">M10 (p=1.5)</option>
-              <option value="m12">M12 (p=1.75)</option>
-              <option value="m16">M16 (p=2.0)</option>
-              <option value="m20">M20</option>
-              <option value="m24">M24</option>
-              <option value="m36">M36</option>
+              <option value="all">
+                {dynamicDiameters.length > 0 ? `All Diameters (${dynamicDiameters.length})` : 'All Diameters'}
+              </option>
+              {dynamicDiameters.map((d) => (
+                <option key={d.name} value={d.name}>
+                  {d.name.toUpperCase()} {d.count > 0 ? `(${d.count})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Length */}
+          {/* 5. Length */}
           <div className="finder-field">
             <label>Length (L)</label>
             <select
@@ -474,21 +705,18 @@ export default function FastenerFinder({
                 applyFilters({ length: val });
               }}
             >
-              <option value="all">All Lengths</option>
-              <option value="12">12 mm</option>
-              <option value="50">50 mm</option>
-              <option value="100">100 mm</option>
-              <option value="110">110 mm</option>
-              <option value="116">116 mm</option>
-              <option value="120">120 mm</option>
-              <option value="125">125 mm</option>
-              <option value="130">130 mm</option>
-              <option value="140">140 mm</option>
-              <option value="150">150 mm</option>
+              <option value="all">
+                {dynamicLengths.length > 0 ? `All Lengths (${dynamicLengths.length})` : 'All Lengths'}
+              </option>
+              {dynamicLengths.map((l) => (
+                <option key={l.val} value={String(l.val)}>
+                  {l.val} mm {l.count > 0 ? `(${l.count})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Finish */}
+          {/* 6. Coating / Finish */}
           <div className="finder-field">
             <label>Coating / Finish</label>
             <select
@@ -500,53 +728,23 @@ export default function FastenerFinder({
                 applyFilters({ finish: val });
               }}
             >
-              <option value="all">All Coatings</option>
-              <option value="blkzp">Black Zinc Phosphated</option>
-              <option value="bp">Black Passivated</option>
-              <option value="hdg">Hot Dip Galvanized</option>
-              <option value="clear">Clear Zinc Cr3+</option>
-              <option value="passivated">Clean Passivated</option>
+              <option value="all">
+                {dynamicFinishes.length > 0 ? `All Coatings (${dynamicFinishes.length})` : 'All Coatings'}
+              </option>
+              {dynamicFinishes.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name} {f.count > 0 ? `(${f.count})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
           {/* Filter Action */}
           <button type="submit" className="finder-submit-btn" title="View matching products in catalog">
-            <span>Filter  </span>
+            <span>Filter</span>
             <Search size={16} />
           </button>
         </form>
-
-        {/* Trust Badges Strip Below Finder */}
-        {/* <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '12px',
-            marginTop: '16px',
-            paddingTop: '14px',
-            borderTop: '1px solid var(--color-surface-subtle)',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: 'var(--color-dark-800)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <CheckCircle2 size={16} color="#059669" />
-            <span>BIS Certified Lab Tested</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Scale size={16} color="var(--color-primary)" />
-            <span>Dual Unit: PCS & KGS Live</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Truck size={16} color="#059669" />
-            <span>Pan-India 24-48hr Dispatch</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Percent size={16} color="#D97706" />
-            <span>25% Slabs on ₹1,00,000+</span>
-          </div>
-        </div> */}
       </div>
     </div>
   );

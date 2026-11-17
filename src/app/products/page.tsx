@@ -168,13 +168,13 @@ function FastenerCard({
 
   return (
     <div
-      className={`bg-white rounded-xl border ${
+      className={`bg-white rounded-2xl border ${
         p.isSurplus
           ? 'border-amber-300 ring-1 ring-amber-200'
           : relatedBadge
           ? 'border-blue-200 shadow-xs'
-          : 'border-slate-200'
-      } p-3.5 sm:p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 relative h-full`}
+          : 'border-slate-200/90'
+      } p-4 sm:p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 relative h-full`}
     >
       <div className="flex flex-col flex-1">
         {/* Top Badges */}
@@ -225,6 +225,17 @@ function FastenerCard({
                 } catch {}
               }}
             />
+            {/* Watermark overlay - transparent & center */}
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+              style={{ opacity: 0.22 }}
+            >
+              <img
+                src="/assets/cbh-watermark.png"
+                alt="CBH Watermark"
+                className="w-20 sm:w-24 max-w-[55%] h-auto object-contain pointer-events-none"
+              />
+            </div>
           </div>
         </Link>
 
@@ -392,11 +403,13 @@ function ProductsPageInner() {
     { product: Product; reason: string; tone: 'blue' | 'amber' | 'emerald' | 'purple' }[]
   >([]);
   const [filterOptions, setFilterOptions] = useState<{
+    categories?: string[];
     standards: string[];
     grades: string[];
     finishes: string[];
     diameters: string[];
   }>({
+    categories: [],
     standards: [],
     grades: [],
     finishes: [],
@@ -414,7 +427,7 @@ function ProductsPageInner() {
   const [selectedDiameter, setSelectedDiameter] = useState('all');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'stock_desc'>('featured');
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   // Show all related products toggle when search has direct matches
   const [showAllRelated, setShowAllRelated] = useState(false);
@@ -664,7 +677,7 @@ function ProductsPageInner() {
     setInStockOnly(false);
     setSortBy('featured');
     setCurrentPage(1);
-    setIsMobileFilterOpen(false);
+    setIsFilterDrawerOpen(false);
   };
 
   const activeFilterCount =
@@ -678,28 +691,25 @@ function ProductsPageInner() {
 
   const hasActiveFilters = activeFilterCount > 0;
 
-  // Quick specification chips for rapid 1-tap filtering
-  const QUICK_DIAMETERS = ['M6', 'M8', 'M10', 'M12', 'M16', 'M20'];
-  const QUICK_GRADES = [
-    { id: '8.8', label: '8.8', hint: 'High-Tensile' },
-    { id: '10.9', label: '10.9', hint: 'Structural' },
-    { id: '12.9', label: '12.9', hint: 'High Alloy' },
-    { id: 'SS 304', label: 'SS 304', hint: 'A2 Stainless' },
-    { id: 'SS 316', label: 'SS 316', hint: 'A4 Marine' },
-    { id: '5.8', label: '5.8', hint: 'Mild Steel' },
-  ];
-  const QUICK_STANDARDS = [
-    { id: 'DIN 933', label: 'DIN 933', hint: 'Full Thread' },
-    { id: 'DIN 931', label: 'DIN 931', hint: 'Half Thread' },
-    { id: 'DIN 912', label: 'DIN 912', hint: 'Socket Allen' },
-    { id: 'DIN 934', label: 'DIN 934', hint: 'Hex Nut' },
-  ];
-  const QUICK_FINISHES = [
-    { id: 'SELF', label: 'Self Natural' },
-    { id: 'HDG', label: 'Hot Dip Galv (HDG)' },
-    { id: 'BP', label: 'Black (BP)' },
-    { id: 'WZP', label: 'White Zinc' },
-  ];
+  // Dynamic specification options from database
+  const dynamicDiameters = filterOptions.diameters || [];
+  const dynamicGrades = filterOptions.grades || [];
+  const dynamicStandards = filterOptions.standards || [];
+  const dynamicFinishes = filterOptions.finishes || [];
+  const dynamicCategories = filterOptions.categories || [];
+
+  const quickDiameters = dynamicDiameters.slice(0, 6);
+  const quickGrades = dynamicGrades.slice(0, 6);
+  const quickStandards = dynamicStandards.slice(0, 6);
+  const quickFinishes = dynamicFinishes.slice(0, 6);
+  const quickCategories = dynamicCategories.slice(0, 4);
+
+  const hasFilterSpecifications =
+    dynamicCategories.length > 0 ||
+    dynamicDiameters.length > 0 ||
+    dynamicGrades.length > 0 ||
+    dynamicStandards.length > 0 ||
+    dynamicFinishes.length > 0;
 
   // Render Filter Form Content
   const renderFilterControls = () => (
@@ -722,6 +732,20 @@ function ProductsPageInner() {
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
+            {selectedCategory !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                <Layers size={11} className="text-blue-600" />
+                {selectedCategory === 'surplus' ? 'Surplus Deals' : selectedCategory}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
+                  title="Remove category filter"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            )}
             {selectedDiameter !== 'all' && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
                 <Ruler size={11} className="text-blue-600" />
@@ -729,7 +753,7 @@ function ProductsPageInner() {
                 <button
                   type="button"
                   onClick={() => setSelectedDiameter('all')}
-                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded"
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
                   title="Remove diameter filter"
                 >
                   <X size={11} />
@@ -743,7 +767,7 @@ function ProductsPageInner() {
                 <button
                   type="button"
                   onClick={() => setSelectedStandard('all')}
-                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded"
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
                   title="Remove standard filter"
                 >
                   <X size={11} />
@@ -757,7 +781,7 @@ function ProductsPageInner() {
                 <button
                   type="button"
                   onClick={() => setSelectedGrade('all')}
-                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded"
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
                   title="Remove grade filter"
                 >
                   <X size={11} />
@@ -771,7 +795,7 @@ function ProductsPageInner() {
                 <button
                   type="button"
                   onClick={() => setSelectedFinish('all')}
-                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded"
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
                   title="Remove finish filter"
                 >
                   <X size={11} />
@@ -785,7 +809,7 @@ function ProductsPageInner() {
                 <button
                   type="button"
                   onClick={() => setInStockOnly(false)}
-                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded"
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
                   title="Remove in-stock filter"
                 >
                   <X size={11} />
@@ -850,268 +874,329 @@ function ProductsPageInner() {
         </div>
       </div>
 
-      {/* 1. Metric Diameter */}
-      <div className="space-y-2 pt-1">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
-            <Ruler size={13} className="text-blue-600" />
-            <span>Metric Diameter (Size)</span>
-          </label>
-          {selectedDiameter !== 'all' && (
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-              {selectedDiameter}
-            </span>
-          )}
+      {!hasFilterSpecifications && !isLoading ? (
+        <div className="text-center py-6 px-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+          <SlidersHorizontal className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-xs font-bold text-slate-600">No filter specifications available</p>
+          <p className="text-[10px] text-slate-400 mt-1">Filters will appear dynamically as products are added to the database.</p>
         </div>
+      ) : (
+        <>
+          {/* Category Filter */}
+          {dynamicCategories.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <Layers size={13} className="text-blue-600" />
+                  <span>Category</span>
+                </label>
+                {selectedCategory !== 'all' && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {selectedCategory}
+                  </span>
+                )}
+              </div>
 
-        {/* Quick Diameter Chips */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-          {QUICK_DIAMETERS.map((d) => {
-            const isSelected = selectedDiameter.toUpperCase() === d.toUpperCase();
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setSelectedDiameter(isSelected ? 'all' : d)}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
-                  isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
-                }`}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* All Diameters Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedDiameter}
-            onChange={(e) => setSelectedDiameter(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
-          >
-            <option value="all">
-              All Metric Diameters ({filterOptions.diameters.length} Sizes)
-            </option>
-            {filterOptions.diameters.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-        </div>
-      </div>
-
-      {/* 2. Property Class / Grade */}
-      <div className="space-y-2 pt-2 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
-            <ShieldCheck size={13} className="text-blue-600" />
-            <span>Grade & Tensile Strength</span>
-          </label>
-          {selectedGrade !== 'all' && (
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-              {selectedGrade}
-            </span>
-          )}
-        </div>
-
-        {/* Quick Grade Chips */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {QUICK_GRADES.map((g) => {
-            const isSelected = selectedGrade.toLowerCase().includes(g.id.toLowerCase());
-            return (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedGrade('all');
-                  } else {
-                    const matched = filterOptions.grades.find((dbG) =>
-                      dbG.toLowerCase().includes(g.id.toLowerCase())
+              {/* Quick Category Chips */}
+              {quickCategories.length > 0 && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {quickCategories.map((c) => {
+                    const isSelected = selectedCategory.toLowerCase() === c.toLowerCase();
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSelectedCategory(isSelected ? 'all' : c)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
+                        }`}
+                        title={c}
+                      >
+                        {c}
+                      </button>
                     );
-                    setSelectedGrade(matched || g.id);
-                  }
-                }}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
-                  isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
-                }`}
-                title={g.hint}
-              >
-                {g.label}
-              </button>
-            );
-          })}
-        </div>
+                  })}
+                </div>
+              )}
 
-        {/* All Grades Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
-          >
-            <option value="all">
-              All Property Classes ({filterOptions.grades.length} Grades)
-            </option>
-            {filterOptions.grades.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-        </div>
-      </div>
-
-      {/* 3. Fastener Standard */}
-      <div className="space-y-2 pt-2 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
-            <Tag size={13} className="text-blue-600" />
-            <span>Standard (DIN / ISO)</span>
-          </label>
-          {selectedStandard !== 'all' && (
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-              {selectedStandard}
-            </span>
+              {/* All Categories Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
+                >
+                  <option value="all">
+                    All Categories ({dynamicCategories.length} Categories)
+                  </option>
+                  {dynamicCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
           )}
-        </div>
 
-        {/* Quick Standard Chips */}
-        <div className="grid grid-cols-2 gap-1.5">
-          {QUICK_STANDARDS.map((s) => {
-            const isSelected = selectedStandard.toLowerCase().includes(s.id.toLowerCase().replace('din ', ''));
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedStandard('all');
-                  } else {
-                    const matched = filterOptions.standards.find((dbS) =>
-                      dbS.toLowerCase().includes(s.id.toLowerCase())
+          {/* 1. Metric Diameter */}
+          {dynamicDiameters.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <Ruler size={13} className="text-blue-600" />
+                  <span>Metric Diameter (Size)</span>
+                </label>
+                {selectedDiameter !== 'all' && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {selectedDiameter}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Diameter Chips */}
+              {quickDiameters.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                  {quickDiameters.map((d) => {
+                    const isSelected = selectedDiameter.toUpperCase() === d.toUpperCase();
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSelectedDiameter(isSelected ? 'all' : d)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
+                        }`}
+                      >
+                        {d}
+                      </button>
                     );
-                    setSelectedStandard(matched || s.id);
-                  }
-                }}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between border cursor-pointer ${
-                  isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
-                }`}
-              >
-                <span>{s.label}</span>
-                <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
-                  {s.hint}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  })}
+                </div>
+              )}
 
-        {/* All Standards Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedStandard}
-            onChange={(e) => setSelectedStandard(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
-          >
-            <option value="all">
-              All Standards ({filterOptions.standards.length} Standards)
-            </option>
-            {filterOptions.standards.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-        </div>
-      </div>
-
-      {/* 4. Surface Coating / Finish */}
-      <div className="space-y-2 pt-2 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
-            <Sparkles size={13} className="text-blue-600" />
-            <span>Surface Coating / Finish</span>
-          </label>
-          {selectedFinish !== 'all' && (
-            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-              {selectedFinish}
-            </span>
+              {/* All Diameters Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedDiameter}
+                  onChange={(e) => setSelectedDiameter(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
+                >
+                  <option value="all">
+                    All Metric Diameters ({dynamicDiameters.length} Sizes)
+                  </option>
+                  {dynamicDiameters.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
           )}
-        </div>
 
-        {/* Quick Finish Chips */}
-        <div className="grid grid-cols-2 gap-1.5">
-          {QUICK_FINISHES.map((f) => {
-            const isSelected = selectedFinish.toLowerCase().includes(f.id.toLowerCase());
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedFinish('all');
-                  } else {
-                    const matched = filterOptions.finishes.find((dbF) =>
-                      dbF.toLowerCase().includes(f.id.toLowerCase())
+          {/* 2. Property Class / Grade */}
+          {dynamicGrades.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <ShieldCheck size={13} className="text-blue-600" />
+                  <span>Grade & Tensile Strength</span>
+                </label>
+                {selectedGrade !== 'all' && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {selectedGrade}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Grade Chips */}
+              {quickGrades.length > 0 && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {quickGrades.map((g) => {
+                    const isSelected = selectedGrade.toLowerCase() === g.toLowerCase();
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setSelectedGrade(isSelected ? 'all' : g)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
+                        }`}
+                        title={g}
+                      >
+                        {g}
+                      </button>
                     );
-                    setSelectedFinish(matched || f.id);
-                  }
-                }}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
-                  isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
-                }`}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+                  })}
+                </div>
+              )}
 
-        {/* All Finishes Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedFinish}
-            onChange={(e) => setSelectedFinish(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
-          >
-            <option value="all">
-              All Coatings ({filterOptions.finishes.length} Finishes)
-            </option>
-            {filterOptions.finishes.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-        </div>
-      </div>
+              {/* All Grades Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
+                >
+                  <option value="all">
+                    All Property Classes ({dynamicGrades.length} Grades)
+                  </option>
+                  {dynamicGrades.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 3. Fastener Standard */}
+          {dynamicStandards.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <Tag size={13} className="text-blue-600" />
+                  <span>Standard (DIN / ISO / IS)</span>
+                </label>
+                {selectedStandard !== 'all' && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {selectedStandard}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Standard Chips */}
+              {quickStandards.length > 0 && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {quickStandards.map((s) => {
+                    const isSelected = selectedStandard.toLowerCase() === s.toLowerCase();
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedStandard(isSelected ? 'all' : s)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
+                        }`}
+                        title={s}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* All Standards Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedStandard}
+                  onChange={(e) => setSelectedStandard(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
+                >
+                  <option value="all">
+                    All Standards ({dynamicStandards.length} Standards)
+                  </option>
+                  {dynamicStandards.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 4. Surface Coating / Finish */}
+          {dynamicFinishes.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-blue-600" />
+                  <span>Surface Coating / Finish</span>
+                </label>
+                {selectedFinish !== 'all' && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {selectedFinish}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Finish Chips */}
+              {quickFinishes.length > 0 && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {quickFinishes.map((f) => {
+                    const isSelected = selectedFinish.toLowerCase() === f.toLowerCase();
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setSelectedFinish(isSelected ? 'all' : f)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
+                        }`}
+                        title={f}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* All Finishes Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedFinish}
+                  onChange={(e) => setSelectedFinish(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
+                >
+                  <option value="all">
+                    All Coatings ({dynamicFinishes.length} Finishes)
+                  </option>
+                  {dynamicFinishes.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 
@@ -1243,62 +1328,35 @@ function ProductsPageInner() {
             <button
               type="button"
               onClick={() => setSelectedCategory('all')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
+              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
                 selectedCategory === 'all'
                   ? 'bg-blue-700 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              All Fasteners ({totalCount > 0 ? totalCount.toLocaleString() : 'All'})
+              All Fasteners ({totalCount.toLocaleString()})
             </button>
+            {dynamicCategories.map((cat) => {
+              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(isSelected ? 'all' : cat)}
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
             <button
               type="button"
-              onClick={() => setSelectedCategory('din933')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
-                selectedCategory === 'din933'
-                  ? 'bg-blue-700 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Hex Screws (DIN 933)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('din931')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
-                selectedCategory === 'din931'
-                  ? 'bg-blue-700 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Hex Bolts (DIN 931)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('din912')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
-                selectedCategory === 'din912'
-                  ? 'bg-blue-700 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Socket Caps (DIN 912)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('nuts')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
-                selectedCategory === 'nuts'
-                  ? 'bg-blue-700 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Nuts (DIN 934)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('surplus')}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 ${
+              onClick={() => setSelectedCategory(selectedCategory === 'surplus' ? 'all' : 'surplus')}
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
                 selectedCategory === 'surplus'
                   ? 'bg-[#FF6B00] text-white shadow-sm'
                   : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
@@ -1309,20 +1367,32 @@ function ProductsPageInner() {
             </button>
           </div>
 
-          {/* Right Action Cluster: Sort Dropdown & Mobile Filter Trigger */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Mobile Filter Drawer Trigger */}
+          {/* Right Action Cluster: Sort Dropdown & Redesigned Filter Specs Button */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Redesigned Filter Specs Button (Desktop & Mobile) */}
             <button
               type="button"
-              onClick={() => setIsMobileFilterOpen(true)}
-              className="lg:hidden inline-flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
-              title="Open filters"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className={`group inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-black transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0 border ${
+                hasActiveFilters
+                  ? 'bg-gradient-to-r from-[#0052CC] to-[#0A192F] text-white border-blue-400 ring-2 ring-[#FF6B00]/40'
+                  : 'bg-[#0A192F] hover:bg-[#132A4A] text-white border-[#0A192F]'
+              }`}
+              title="Open Fastener Technical Specifications Filter (Diameter, Grade, Standard, Finish)"
             >
-              <SlidersHorizontal size={14} />
-              <span>Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="bg-[#FF6B00] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+              <span className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
+                hasActiveFilters ? 'bg-white/20 text-[#FF6B00]' : 'bg-white/10 text-[#FF6B00]'
+              }`}>
+                <SlidersHorizontal size={13} className="stroke-[2.5]" />
+              </span>
+              <span className="tracking-tight">Filter Specs</span>
+              {hasActiveFilters ? (
+                <span className="bg-[#FF6B00] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-4.5 text-center shadow-xs">
                   {activeFilterCount}
+                </span>
+              ) : (
+                <span className="hidden lg:inline-flex items-center text-[10px] font-bold text-slate-300 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/10">
+                  Specs
                 </span>
               )}
             </button>
@@ -1333,7 +1403,7 @@ function ProductsPageInner() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer"
               >
                 <option value="featured">Featured Fasteners</option>
                 <option value="price_asc">Price: Low to High</option>
@@ -1346,23 +1416,23 @@ function ProductsPageInner() {
       </div>
 
       {/* ============================================================== */}
-      {/* MOBILE FILTER MODAL / DRAWER                                   */}
+      {/* SLIDE-OVER FILTER SPECIFICATIONS DRAWER (Desktop & Mobile)     */}
       {/* ============================================================== */}
-      {isMobileFilterOpen && (
-        <div className="fixed inset-0 z-[2000] lg:hidden flex">
+      {isFilterDrawerOpen && (
+        <div className="fixed inset-0 z-[2000] flex">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileFilterOpen(false)}
+            onClick={() => setIsFilterDrawerOpen(false)}
           />
 
           {/* Slide-in Sheet */}
-          <div className="relative ml-auto w-full max-w-xs sm:max-w-sm bg-white h-full shadow-2xl z-10 flex flex-col justify-between overflow-y-auto">
-            <div className="p-5">
+          <div className="relative ml-auto w-full max-w-sm sm:max-w-md bg-white h-full shadow-2xl z-10 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="p-5 sm:p-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shadow-xs">
-                    <SlidersHorizontal size={16} />
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shadow-xs">
+                    <SlidersHorizontal size={18} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -1378,8 +1448,9 @@ function ProductsPageInner() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsMobileFilterOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 cursor-pointer"
+                  onClick={() => setIsFilterDrawerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors"
+                  title="Close filters"
                 >
                   <X size={16} />
                 </button>
@@ -1407,20 +1478,20 @@ function ProductsPageInner() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center gap-2.5 sticky bottom-0">
               <button
                 type="button"
                 onClick={resetFilters}
-                className="flex-1 py-2.5 px-3 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100"
+                className="flex-1 py-2.5 px-3 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Reset
+                Reset All
               </button>
               <button
                 type="button"
-                onClick={() => setIsMobileFilterOpen(false)}
-                className="flex-1 py-2.5 px-3 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 shadow-sm"
+                onClick={() => setIsFilterDrawerOpen(false)}
+                className="flex-[2] py-2.5 px-4 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
               >
-                View ({totalCount}) Results
+                View ({totalCount.toLocaleString()}) Results
               </button>
             </div>
           </div>
@@ -1428,72 +1499,10 @@ function ProductsPageInner() {
       )}
 
       {/* ============================================================== */}
-      {/* MAIN CATALOG BODY (SIDEBAR + GRID)                             */}
+      {/* MAIN CATALOG BODY (FULL-WIDTH EXPANDED PRODUCT CARDS)          */}
       {/* ============================================================== */}
-      <div className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1 flex gap-6 lg:gap-8">
-        
-        {/* ============================================================== */}
-        {/* DESKTOP SIDEBAR FILTERS (Hidden on Mobile/Tablet)               */}
-        {/* ============================================================== */}
-        <aside className="hidden lg:flex flex-col w-80 shrink-0 gap-4 sticky top-20 self-start">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
-            <div className="flex justify-between items-center pb-3.5 mb-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shadow-xs">
-                  <SlidersHorizontal size={16} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-slate-900 tracking-tight">Filter Specifications</h3>
-                    {hasActiveFilters && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-blue-600 text-white">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-500 font-semibold">Fastener technical parameters</p>
-                </div>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold transition-colors cursor-pointer"
-                  title="Clear all filters"
-                >
-                  <RotateCcw size={11} />
-                  <span>Reset</span>
-                </button>
-              )}
-            </div>
-
-            {renderFilterControls()}
-          </div>
-
-          {/* Quick Technical Custom RFQ Callout */}
-          <div className="bg-slate-900 text-white rounded-xl p-5 text-xs shadow-sm">
-            <div className="flex items-center gap-2 mb-2 text-[#FF6B00] font-extrabold">
-              <Sparkles size={15} />
-              <span>CUSTOM SPECIFICATIONS?</span>
-            </div>
-            <p className="text-slate-300 leading-relaxed mb-3">
-              We forge and machine custom fastener lengths, special thread pitches, and exotic alloy grades (Inconel, Monel, Duplex).
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsCustomRequestOpen(true)}
-              className="inline-flex items-center gap-1.5 text-sky-400 font-bold hover:text-sky-300 transition-colors"
-            >
-              <span>Submit Custom Spec Request</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-        </aside>
-
-        {/* ============================================================== */}
-        {/* PRODUCT GRID CONTAINER                                          */}
-        {/* ============================================================== */}
-        <main className="flex-1 min-w-0 flex flex-col gap-5">
+      <div className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1">
+        <main className="w-full flex flex-col gap-5">
           
           {/* Status strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-slate-500 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-sm">
@@ -1509,40 +1518,143 @@ function ProductsPageInner() {
                 </span>
               ) : (
                 <span>
-                  Showing <strong className="text-slate-900">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, totalCount)}</strong> of <strong className="text-slate-900">{totalCount}</strong> matching fasteners
+                  Showing <strong className="text-slate-900">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-900">{Math.min(currentPage * itemsPerPage, totalCount)}</strong> of <strong className="text-slate-900">{totalCount.toLocaleString()}</strong> matching fasteners
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Redesigned Filter Specs Button */}
+              <button
+                type="button"
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className={`group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer border ${
+                  hasActiveFilters
+                    ? 'bg-[#0052CC] hover:bg-[#0747A6] text-white border-blue-600 ring-2 ring-[#FF6B00]/40'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300 hover:border-slate-400'
+                }`}
+                title="Filter by Metric Diameter, Material Grade, Standard, Finish, and Category"
+              >
+                <span className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
+                  hasActiveFilters
+                    ? 'bg-white/20 text-[#FF6B00]'
+                    : 'bg-orange-50 text-[#FF6B00] border border-orange-200/70'
+                }`}>
+                  <SlidersHorizontal size={13} className="stroke-[2.5]" />
+                </span>
+                <span className="tracking-tight">Filter Specs</span>
+                {hasActiveFilters ? (
+                  <span className="bg-[#FF6B00] text-white text-[10px] font-black px-2 py-0.5 rounded-full min-w-5 text-center shadow-xs">
+                    {activeFilterCount} Active
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    All Specs
+                  </span>
+                )}
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsCustomRequestOpen(true)}
-                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0052CC] font-bold text-xs rounded-lg transition-colors border border-blue-200 flex items-center gap-1"
+                className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-lg transition-colors border border-slate-200 flex items-center gap-1 cursor-pointer"
                 title="Can't find your required fastener? Request custom dimensions."
               >
                 <Plus size={13} />
-                <span>Request Custom Spec</span>
+                <span className="hidden sm:inline">Request Custom Spec</span>
+                <span className="sm:hidden">Custom</span>
               </button>
 
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="text-red-600 font-semibold hover:underline flex items-center gap-1 text-xs"
+                  className="text-red-600 font-semibold hover:underline flex items-center gap-1 text-xs cursor-pointer ml-1"
                 >
-                  <span>Clear filters</span>
+                  <span>Clear all</span>
                   <span>&times;</span>
                 </button>
               )}
             </div>
           </div>
 
+          {/* Active Filter Badges Strip on Main Page */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 bg-blue-50/70 border border-blue-200/80 rounded-xl px-4 py-2.5">
+              <span className="text-xs font-black text-blue-900 flex items-center gap-1.5 mr-1">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                Applied:
+              </span>
+              {selectedCategory !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <Layers size={12} className="text-blue-600" />
+                  Category: {selectedCategory === 'surplus' ? 'Surplus Deals' : selectedCategory}
+                  <button type="button" onClick={() => setSelectedCategory('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove category">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedDiameter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <Ruler size={12} className="text-blue-600" />
+                  Size: {selectedDiameter}
+                  <button type="button" onClick={() => setSelectedDiameter('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove size">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedStandard !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <Tag size={12} className="text-blue-600" />
+                  Standard: {selectedStandard}
+                  <button type="button" onClick={() => setSelectedStandard('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove standard">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedGrade !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <ShieldCheck size={12} className="text-blue-600" />
+                  Grade: {selectedGrade}
+                  <button type="button" onClick={() => setSelectedGrade('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove grade">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedFinish !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <Sparkles size={12} className="text-blue-600" />
+                  Finish: {selectedFinish}
+                  <button type="button" onClick={() => setSelectedFinish('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove finish">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {inStockOnly && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold shadow-xs">
+                  <Zap size={12} className="text-emerald-600" />
+                  In Stock Only
+                  <button type="button" onClick={() => setInStockOnly(false)} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove in-stock filter">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="ml-auto text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw size={11} />
+                Reset All
+              </button>
+            </div>
+          )}
+
           {/* ============================================================== */}
           {/* CASE 1: ZERO DIRECT MATCHES -> HELPFUL RELATED RECOMMENDATIONS  */}
           {/* ============================================================== */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div key={i} className="bg-white rounded-xl p-4 border border-slate-200 h-80 animate-pulse" />
               ))}
@@ -1613,7 +1725,7 @@ function ProductsPageInner() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                     {relatedProducts.map(({ product: p, reason, tone }) => (
                       <FastenerCard
                         key={`zero-rel-${p.id}`}
@@ -1637,7 +1749,7 @@ function ProductsPageInner() {
             /* ============================================================== */
             <div className="space-y-8">
               {/* Direct Matches Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                 {products.map((p) => (
                   <FastenerCard
                     key={p.id}
@@ -1775,7 +1887,7 @@ function ProductsPageInner() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                     {(showAllRelated ? relatedProducts : relatedProducts.slice(0, 8)).map(
                       ({ product: p, reason, tone }) => (
                         <FastenerCard

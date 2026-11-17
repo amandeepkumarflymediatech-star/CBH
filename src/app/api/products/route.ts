@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Product } from '@/lib/types';
 import { getProductsDb, setProductsDb, resetProductsToDefault } from '@/lib/products-db';
 import { query } from '@/lib/db';
-import { resolveProductImageUrl } from '@/lib/product-image-resolver';
+import { resolveProductImageUrl, getWatermarkedProductImageUrl } from '@/lib/product-image-resolver';
 
 function mapRowToProduct(r: any): Product {
   return {
@@ -49,7 +49,7 @@ function mapRowToProduct(r: any): Product {
     masterCtnWeightKg: parseFloat(r.master_ctn_weight_kg) || 20.0,
     brand: r.brand || 'CBH',
     hsnCode: r.hsn_code || '73181500',
-    imageUrl: resolveProductImageUrl(r.image_url || r.gdrive_image_url, r.category, r.name),
+    imageUrl: getWatermarkedProductImageUrl(r.image_url || r.gdrive_image_url, r.category, r.name),
     drawingUrl: r.drawing_url || '',
     gdriveImageUrl: r.gdrive_image_url || '',
     descriptionHtml: r.description_html || '',
@@ -59,9 +59,13 @@ function mapRowToProduct(r: any): Product {
 
 // Fast In-Memory Cache for Telemetry and Filter Options
 let filterOptionsCache: {
+  categories?: string[];
   subGroups: string[];
   standards: string[];
   grades: string[];
+  diameters?: string[];
+  lengths?: number[];
+  finishes?: string[];
   timestamp: number;
 } | null = null;
 
@@ -84,27 +88,60 @@ function invalidateProductsCache() {
 
 async function getCachedFilterOptions() {
   const now = Date.now();
-  if (filterOptionsCache && now - filterOptionsCache.timestamp < 60000) {
+  if (filterOptionsCache && now - filterOptionsCache.timestamp < 30000) {
     return filterOptionsCache;
   }
   try {
-    const [sgRows, stdRows, grdRows] = await Promise.all([
+    const [catRows, sgRows, stdRows, grdRows, diaRows, lenRows, finRows] = await Promise.all([
+      query<any>('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" ORDER BY category ASC LIMIT 50'),
       query<any>('SELECT DISTINCT sub_group FROM products WHERE sub_group IS NOT NULL AND sub_group != "" ORDER BY sub_group ASC LIMIT 50'),
       query<any>('SELECT DISTINCT standard FROM products WHERE standard IS NOT NULL AND standard != "" ORDER BY standard ASC LIMIT 100'),
       query<any>('SELECT DISTINCT grade FROM products WHERE grade IS NOT NULL AND grade != "" ORDER BY grade ASC LIMIT 50'),
+      query<any>('SELECT DISTINCT diameter FROM products WHERE diameter IS NOT NULL AND diameter != "" ORDER BY diameter ASC LIMIT 50'),
+      query<any>('SELECT DISTINCT length_mm FROM products WHERE length_mm IS NOT NULL AND length_mm > 0 ORDER BY length_mm ASC LIMIT 100'),
+      query<any>('SELECT DISTINCT finish FROM products WHERE finish IS NOT NULL AND finish != "" ORDER BY finish ASC LIMIT 50'),
     ]);
-    const subGroups = (sgRows || []).map((r) => r.sub_group).filter(Boolean);
-    const standards = (stdRows || []).map((r) => r.standard).filter(Boolean);
-    const grades = (grdRows || []).map((r) => r.grade).filter(Boolean);
-    filterOptionsCache = { subGroups, standards, grades, timestamp: now };
-    return filterOptionsCache;
-  } catch {
-    return {
-      subGroups: ['BOLTS', 'SCREWS', 'NUTS', 'WASHERS', 'STUDS', 'ANCHORS'],
-      standards: ['DIN 933', 'DIN 931', 'DIN 6921', 'DIN 912', 'ISO 4014', 'ISO 4017'],
-      grades: ['4.6', '8.8', '10.9', '12.9', 'SS 304', 'SS 316', 'B7'],
+
+    const categories = (catRows || []).map((r: any) => r.category).filter(Boolean);
+    const subGroups = (sgRows || []).map((r: any) => r.sub_group).filter(Boolean);
+    const standards = (stdRows || []).map((r: any) => r.standard).filter(Boolean);
+    const grades = (grdRows || []).map((r: any) => r.grade).filter(Boolean);
+    const diameters = (diaRows || []).map((r: any) => r.diameter).filter(Boolean);
+    const lengths = (lenRows || []).map((r: any) => Number(r.length_mm)).filter(Boolean);
+    const finishes = (finRows || []).map((r: any) => r.finish).filter(Boolean);
+
+    filterOptionsCache = {
+      categories,
+      subGroups,
+      standards,
+      grades,
+      diameters,
+      lengths,
+      finishes,
       timestamp: now,
     };
+    return filterOptionsCache;
+  } catch {
+    const db = getProductsDb();
+    const categories = Array.from(new Set(db.map((p) => p.category).filter(Boolean))).sort();
+    const subGroups = Array.from(new Set(db.map((p) => p.subGroup).filter(Boolean))).sort();
+    const standards = Array.from(new Set(db.map((p) => p.standard).filter(Boolean))).sort();
+    const grades = Array.from(new Set(db.map((p) => p.grade).filter(Boolean))).sort();
+    const diameters = Array.from(new Set(db.map((p) => p.diameter).filter(Boolean))).sort();
+    const lengths = Array.from(new Set(db.map((p) => p.lengthMm).filter(Boolean))).map(Number).sort((a, b) => a - b);
+    const finishes = Array.from(new Set(db.map((p) => p.finish).filter(Boolean))).sort();
+
+    filterOptionsCache = {
+      categories,
+      subGroups,
+      standards,
+      grades,
+      diameters,
+      lengths,
+      finishes,
+      timestamp: now,
+    };
+    return filterOptionsCache;
   }
 }
 

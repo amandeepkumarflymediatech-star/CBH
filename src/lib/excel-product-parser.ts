@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Product } from './types';
-import { resolveProductImageUrl } from './product-image-resolver';
+import { resolveProductImageUrl, extractGoogleDriveId } from './product-image-resolver';
 
 export interface SheetSummary {
   name: string;
@@ -433,11 +433,44 @@ export function parseRowToProduct(
   const leadTimeRaw = getRowValue(row, headerMap, ['leadtime', 'leadtimedays']);
   const leadTimeDays = leadTimeRaw ? parseInt(String(leadTimeRaw)) || (prodDays + packDays) : prodDays + packDays;
 
-  // 13. Media & Attachments
-  const gdriveImageUrl = String(getRowValue(row, headerMap, ['image', 'gdriveimage', 'photourl'], 73) || '').trim();
-  const drawingUrl = String(getRowValue(row, headerMap, ['drawing', 'drawingurl', 'cad', 'caddrawing'], 74) || '').trim();
+  // 13. Media & Attachments (with automatic Google Drive link extraction)
+  let gdriveImageUrl = String(getRowValue(row, headerMap, [
+    'googledrive', 'googledrivelink', 'gdrive', 'gdriveimage', 'gdriveurl',
+    'drivelink', 'driveurl', 'drive', 'googlelink', 'drivelinkurl',
+    'image', 'imageurl', 'photourl', 'photo', 'img', 'productimage', 'photolink', 'imagelink', 'picture'
+  ], 73) || '').trim();
 
-  const explicitImage = String(getRowValue(row, headerMap, ['imageurl', 'photo', 'img']) || '').trim();
+  const drawingUrl = String(getRowValue(row, headerMap, ['drawing', 'drawingurl', 'cad', 'caddrawing', 'technicaldrawing'], 74) || '').trim();
+
+  let explicitImage = String(getRowValue(row, headerMap, [
+    'imageurl', 'image', 'photo', 'photourl', 'img', 'productimage', 'photolink', 'imagelink', 'picture',
+    'googledrive', 'googledrivelink', 'gdrive', 'gdriveimage', 'gdriveurl', 'drivelink', 'driveurl', 'drive'
+  ]) || '').trim();
+
+  // If no image found yet from standard columns, scan ALL row cells for any Google Drive link or image URL
+  if (!gdriveImageUrl && !explicitImage) {
+    for (let c = 0; c < row.length; c++) {
+      const cellVal = String(row[c] || '').trim();
+      if (cellVal && (extractGoogleDriveId(cellVal) || cellVal.includes('drive.google.com') || cellVal.match(/\.(jpe?g|png|webp|avif)/i))) {
+        if (extractGoogleDriveId(cellVal)) {
+          gdriveImageUrl = cellVal;
+          explicitImage = cellVal;
+          break;
+        } else if (cellVal.startsWith('http')) {
+          explicitImage = cellVal;
+          break;
+        }
+      }
+    }
+  }
+
+  // If a Drive ID is found in either explicitImage or gdriveImageUrl, harmonize them
+  const detectedDriveId = extractGoogleDriveId(explicitImage) || extractGoogleDriveId(gdriveImageUrl);
+  if (detectedDriveId) {
+    if (!gdriveImageUrl) gdriveImageUrl = explicitImage || `https://drive.google.com/file/d/${detectedDriveId}/view`;
+    if (!explicitImage) explicitImage = gdriveImageUrl;
+  }
+
   const rawImage = explicitImage || gdriveImageUrl;
   const imageUrl = resolveProductImageUrl(rawImage, category, name);
 

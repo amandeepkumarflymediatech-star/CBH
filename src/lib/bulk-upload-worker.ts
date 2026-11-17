@@ -149,20 +149,37 @@ export async function executeBackgroundImport(
       console.warn('[executeBackgroundImport] MySQL sync completed with some warnings');
     }
 
-    // 5. Automatically resolve and cache Google Drive images in background
+    // 5. Automatically resolve and cache Google Drive images in background with transparent center watermark
     autoSaveUploadedImages(
       parseResult.products,
       async (driveId, localPath) => {
         try {
-          await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ?', [
+          await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ? OR image_url LIKE ?', [
             localPath,
             `%${driveId}%`,
+            `%${driveId}%`,
           ]);
+
+          // Also synchronize in-memory / JSON products cache
+          const current = getProductsDb();
+          let cacheUpdated = false;
+          current.forEach((prod) => {
+            if (
+              (prod.gdriveImageUrl && prod.gdriveImageUrl.includes(driveId)) ||
+              (prod.imageUrl && prod.imageUrl.includes(driveId))
+            ) {
+              prod.imageUrl = localPath;
+              cacheUpdated = true;
+            }
+          });
+          if (cacheUpdated) {
+            setProductsDb(current);
+          }
         } catch (e) {
           console.warn('[executeBackgroundImport] Image save DB update warning:', e);
         }
       },
-      Boolean(options.applyWatermark)
+      options.applyWatermark !== false
     ).catch((imgErr) => {
       console.warn('[executeBackgroundImport] Image save background error:', imgErr);
     });

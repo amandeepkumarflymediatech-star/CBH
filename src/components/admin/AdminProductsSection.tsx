@@ -137,7 +137,7 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
 
       {/* Upload & Preview Row */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Current Image Preview with Right-Bottom Watermark Overlay */}
+        {/* Current Image Preview with Transparent Center Watermark Overlay */}
         <div style={{
           width: '78px',
           height: '78px',
@@ -165,17 +165,18 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
             <ImageIcon size={26} color="#94A3B8" />
           )}
 
-          {/* Watermark overlay on right-bottom side of UI preview */}
+          {/* Watermark overlay - transparent & centered */}
           {withWatermark && currentUrl && (
             <div
-              title="CBH Watermark applied on right-bottom"
+              title="Transparent center CBH Watermark applied"
               style={{
                 position: 'absolute',
-                bottom: '3px',
-                right: '3px',
-                width: '26px',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '46%',
                 pointerEvents: 'none',
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.45))',
+                opacity: 0.32,
                 zIndex: 2,
               }}
             >
@@ -267,7 +268,7 @@ function FastenerImageUploader({ currentUrl, onUrlChange, label = 'Fastener Prod
             onChange={(e) => setWithWatermark(e.target.checked)}
             style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#0052CC' }}
           />
-          <span>Apply CBH Watermark on Right-Bottom Side</span>
+          <span>Apply Transparent Center CBH Watermark</span>
         </label>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1698,7 +1699,7 @@ export default function AdminProductsSection({
                       {/* Top Media & Floating Badges */}
                       <div className="relative mb-2.5">
                         <div
-                          className="h-32 bg-slate-50/80 rounded-lg border border-slate-100 flex items-center justify-center p-2 cursor-pointer hover:border-blue-300 transition-colors"
+                          className="relative h-32 bg-slate-50/80 rounded-lg border border-slate-100 flex items-center justify-center p-2 cursor-pointer hover:border-blue-300 transition-colors overflow-hidden"
                           onClick={() => setPreviewProduct(p)}
                           title="Click to preview photo"
                         >
@@ -1710,6 +1711,17 @@ export default function AdminProductsSection({
                               try { (e.target as any).src = '/assets/bolt_zinc.jpg'; } catch {}
                             }}
                           />
+                          {/* Centered Transparent Watermark Overlay */}
+                          <div
+                            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+                            style={{ opacity: 0.22 }}
+                          >
+                            <img
+                              src="/assets/cbh-watermark.png"
+                              alt="CBH"
+                              className="w-20 max-w-[55%] h-auto object-contain pointer-events-none"
+                            />
+                          </div>
                         </div>
 
                         {/* Top-Left Floating Checkbox */}
@@ -3539,6 +3551,28 @@ export default function AdminProductsSection({
                   (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
                 }}
               />
+              {/* Centered Transparent Watermark Overlay */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '180px',
+                  maxWidth: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0.22,
+                  pointerEvents: 'none',
+                }}
+              >
+                <img
+                  src="/assets/cbh-watermark.png"
+                  alt="CBH Watermark"
+                  style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                />
+              </div>
             </div>
 
             {/* Live Image Source Indicator */}
@@ -4199,7 +4233,7 @@ export default function AdminProductsSection({
                     Bulk Products & Media Watermark Studio
                   </h3>
                   <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
-                    Upload Excel spreadsheets or batch process product photos with official CBH watermark stamped on right-bottom.
+                    Upload Excel spreadsheets or batch process product photos with official CBH watermark stamped semi-transparently in the center.
                   </p>
                 </div>
               </div>
@@ -4816,7 +4850,7 @@ export default function AdminProductsSection({
                         </span>
                       </div>
 
-                      {/* Apply Watermark on Right-Bottom */}
+                      {/* Apply Watermark in Center */}
                       <div
                         onClick={() => !isBulkImporting && setBulkWatermark(!bulkWatermark)}
                         style={{
@@ -4848,11 +4882,11 @@ export default function AdminProductsSection({
                                 textTransform: 'uppercase',
                               }}
                             >
-                              {bulkWatermark ? 'Right-Bottom' : 'Off'}
+                              {bulkWatermark ? 'Center' : 'Off'}
                             </span>
                           </div>
                           <span style={{ fontSize: '11px', color: '#64748B', display: 'block', lineHeight: 1.3 }}>
-                            Auto-stamp CBH logo on the <strong>right-bottom corner</strong> of imported Drive product photos.
+                            Auto-stamp semi-transparent CBH logo in the <strong>center</strong> of imported Drive product photos.
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
@@ -4866,7 +4900,7 @@ export default function AdminProductsSection({
                             style={{ width: '15px', height: '15px', accentColor: '#16A34A', cursor: 'pointer' }}
                           />
                           <label htmlFor="bulkWatermarkExcel" style={{ fontSize: '11px', fontWeight: 600, color: '#0F172A', cursor: 'pointer' }}>
-                            Watermark on Right-Bottom
+                            Watermark in Center (Transparent)
                           </label>
                         </div>
                       </div>
@@ -4949,6 +4983,7 @@ export default function AdminProductsSection({
                           <thead>
                             <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #CBD5E1', position: 'sticky', top: 0, zIndex: 1 }}>
                               <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Status</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Photo (Center WM)</th>
                               <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>SKU Code</th>
                               <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Item Name</th>
                               <th style={{ padding: '8px 12px', fontWeight: 700, color: '#475569' }}>Standard</th>
@@ -5008,6 +5043,54 @@ export default function AdminProductsSection({
                                         New SKU
                                       </span>
                                     )}
+                                  </td>
+                                  <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>
+                                    <div
+                                      style={{
+                                        position: 'relative',
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #CBD5E1',
+                                        background: '#F8FAFC',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                      }}
+                                      title={p.gdriveImageUrl ? `Google Drive Photo: ${p.gdriveImageUrl}` : 'Product Image'}
+                                    >
+                                      <img
+                                        src={p.imageUrl || '/assets/bolt_zinc.jpg'}
+                                        alt={p.sku}
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2px' }}
+                                        onError={(e) => {
+                                          try { (e.target as any).src = '/assets/bolt_zinc.jpg'; } catch {}
+                                        }}
+                                      />
+                                      {bulkWatermark && (
+                                        <div
+                                          style={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            left: '50%',
+                                            transform: 'translate(-50%, -50%)',
+                                            width: '60%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity: 0.35,
+                                            pointerEvents: 'none',
+                                          }}
+                                        >
+                                          <img
+                                            src="/assets/cbh-watermark.png"
+                                            alt="CBH"
+                                            style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
                                   <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC', whiteSpace: 'nowrap' }}>
                                     {p.sku}
@@ -5080,7 +5163,7 @@ export default function AdminProductsSection({
                           Bulk Product Photos Watermark Studio
                         </h4>
                         <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#047857', lineHeight: 1.4 }}>
-                          Upload multiple product photos in one go. The CBH Fasteners brand logo is composited on the <strong>bottom-right side</strong> of each photo and saved to your store storage.
+                          Upload multiple product photos in one go. The CBH Fasteners brand logo is composited <strong>semi-transparently in the center</strong> of each photo and saved to your store storage.
                         </p>
                       </div>
                     </div>
@@ -5110,8 +5193,8 @@ export default function AdminProductsSection({
                           borderRadius: '4px',
                           border: '1px solid #CBD5E1',
                           display: 'flex',
-                          alignItems: 'flex-end',
-                          justifyContent: 'flex-end',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           padding: '2px',
                         }}
                       >
@@ -5119,7 +5202,7 @@ export default function AdminProductsSection({
                           <img
                             src="/assets/cbh-watermark.png"
                             alt="Watermark preview"
-                            style={{ height: '14px', width: 'auto', objectFit: 'contain' }}
+                            style={{ height: '14px', width: 'auto', objectFit: 'contain', opacity: 0.6 }}
                           />
                         ) : (
                           <span style={{ fontSize: '7px', color: '#94A3B8', fontWeight: 700 }}>NONE</span>
@@ -5145,10 +5228,10 @@ export default function AdminProductsSection({
                             onClick={(e) => e.stopPropagation()}
                             style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
                           />
-                          <span>Apply CBH Watermark on Right-Bottom</span>
+                          <span>Apply Transparent Center CBH Watermark</span>
                         </label>
                         <span style={{ fontSize: '10px', color: bulkWatermark ? '#059669' : '#64748B', fontWeight: 700 }}>
-                          {bulkWatermark ? '✓ Watermark Active (Right-Bottom Corner)' : 'Watermark Disabled'}
+                          {bulkWatermark ? '✓ Watermark Active (Semi-Transparent Center)' : 'Watermark Disabled'}
                         </span>
                       </div>
                     </div>
@@ -5226,7 +5309,7 @@ export default function AdminProductsSection({
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#1E40AF', marginBottom: '8px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Loader2 size={14} className="animate-spin" />
-                          Processing & Stamping Watermark on Right-Bottom Side...
+                          Processing & Stamping Transparent Center Watermark...
                         </span>
                         <span>
                           {bulkUploadProgress.current} / {bulkUploadProgress.total} Files
@@ -5257,7 +5340,7 @@ export default function AdminProductsSection({
                             Total {(bulkImagePreviews.reduce((acc, p) => acc + p.size, 0) / 1024 / 1024).toFixed(2)} MB
                           </span>
                           <span style={{ fontSize: '11px', background: bulkWatermark ? '#DCFCE7' : '#F1F5F9', color: bulkWatermark ? '#15803D' : '#64748B', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
-                            {bulkWatermark ? 'Watermark: Right-Bottom' : 'Original (No Watermark)'}
+                            {bulkWatermark ? 'Watermark: Center (Transparent)' : 'Original (No Watermark)'}
                           </span>
                         </div>
 
@@ -5285,7 +5368,7 @@ export default function AdminProductsSection({
                         </div>
                       </div>
 
-                      {/* Grid of Preview Cards with Live Right-Bottom Watermark Overlay */}
+                      {/* Grid of Preview Cards with Live Transparent Center Watermark Overlay */}
                       <div
                         style={{
                           display: 'grid',
@@ -5336,32 +5419,27 @@ export default function AdminProductsSection({
                                 }}
                               />
 
-                              {/* LIVE WATERMARK OVERLAY ON RIGHT-BOTTOM SIDE */}
+                              {/* LIVE WATERMARK OVERLAY IN CENTER */}
                               {bulkWatermark && (
                                 <div
                                   style={{
                                     position: 'absolute',
-                                    bottom: '6px',
-                                    right: '6px',
-                                    background: 'rgba(255, 255, 255, 0.94)',
-                                    borderRadius: '4px',
-                                    padding: '2px 5px',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '56%',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px',
-                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.22)',
-                                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                                    justifyContent: 'center',
+                                    opacity: 0.32,
                                     pointerEvents: 'none',
                                   }}
                                 >
                                   <img
                                     src="/assets/cbh-watermark.png"
                                     alt="CBH Watermark"
-                                    style={{ height: '14px', width: 'auto', objectFit: 'contain' }}
+                                    style={{ width: '100%', height: 'auto', objectFit: 'contain' }}
                                   />
-                                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#0052CC', letterSpacing: '0.4px' }}>
-                                    CBH
-                                  </span>
                                 </div>
                               )}
 
@@ -5633,10 +5711,10 @@ export default function AdminProductsSection({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <img src="/assets/cbh-watermark.png" alt="CBH" style={{ height: '18px', width: 'auto' }} />
+                  <img src="/assets/cbh-watermark.png" alt="CBH" style={{ height: '18px', width: 'auto', opacity: 0.6 }} />
                   <span style={{ fontSize: '12px', color: '#64748B' }}>
                     {bulkWatermark
-                      ? 'Watermark will be burned permanently onto the bottom-right corner.'
+                      ? 'Watermark will be burned semi-transparently in the center of the image.'
                       : 'Uploading original images without watermark.'}
                   </span>
                 </div>

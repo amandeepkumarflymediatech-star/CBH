@@ -25,13 +25,16 @@ export async function syncProductsToMySQL(
     for (let i = 0; i < products.length; i += chunkSize) {
       const chunk = products.slice(i, i + chunkSize);
       const rows = chunk.map((p) => {
-        const weight = Number.isFinite(Number(p.weightPerPcKg)) && Number(p.weightPerPcKg) > 0 ? Number(p.weightPerPcKg) : 0.06;
-        const pricePc = Number.isFinite(Number(p.pricePerPiece)) && Number(p.pricePerPiece) > 0 ? Number(p.pricePerPiece) : 5.0;
-        const origPricePc = Number.isFinite(Number(p.originalPricePerPiece)) && Number(p.originalPricePerPiece) > 0 ? Number(p.originalPricePerPiece) : pricePc;
-        const priceKg = Number.isFinite(Number(p.pricePerKg)) && Number(p.pricePerKg) > 0 ? Number(p.pricePerKg) : 90.0;
-        const origPriceKg = Number.isFinite(Number(p.originalPricePerKg)) && Number(p.originalPricePerKg) > 0 ? Number(p.originalPricePerKg) : priceKg;
+        const weight = Math.min(Math.max(0.0001, Number.isFinite(Number(p.weightPerPcKg)) && Number(p.weightPerPcKg) > 0 ? Number(p.weightPerPcKg) : 0.06), 999999.9999);
+        const weight1000 = Math.min(Number((weight * 1000).toFixed(3)) || 60, 99999999.9999);
+        const pricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerPiece)) && Number(p.pricePerPiece) > 0 ? Number(p.pricePerPiece) : 5.0), 99999999.99);
+        const origPricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerPiece)) && Number(p.originalPricePerPiece) > 0 ? Number(p.originalPricePerPiece) : pricePc), 99999999.99);
+        const priceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerKg)) && Number(p.pricePerKg) > 0 ? Number(p.pricePerKg) : 90.0), 99999999.99);
+        const origPriceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerKg)) && Number(p.originalPricePerKg) > 0 ? Number(p.originalPricePerKg) : priceKg), 99999999.99);
+        const price100 = Math.min(Math.max(0, Number((pricePc * 100).toFixed(2)) || 0), 999999999999.99);
+        const price1000 = Math.min(Math.max(0, Number((pricePc * 1000).toFixed(2)) || 0), 999999999999.99);
         const stockPcs = Math.min(Math.max(0, Math.round(Number(p.stockPcs) || 0)), 2000000000);
-        const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 99999999.99);
+        const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 999999999999.99);
 
         return [
           (p.sku || `SKU-${Date.now()}-${Math.random().toString(36).substring(7)}`).slice(0, 255),
@@ -53,13 +56,13 @@ export async function syncProductsToMySQL(
           Number(p.pitchMm) || 1.5,
           p.sizeFormatted || `${p.diameter || 'M10'}x${p.lengthMm || 100}`,
           weight,
-          Number((weight * 1000).toFixed(3)),
+          weight1000,
           pricePc,
           origPricePc,
           priceKg,
           origPriceKg,
-          Number((pricePc * 100).toFixed(2)),
-          Number((pricePc * 1000).toFixed(2)),
+          price100,
+          price1000,
           p.pcsPerBox || '',
           Number(p.smallBoxWeightKg) || 2.5,
           p.pcsPerMasterCtn || '',

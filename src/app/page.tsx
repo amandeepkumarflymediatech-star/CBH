@@ -21,16 +21,20 @@ export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filterOptions, setFilterOptions] = useState<any>(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   // Fetch live products dynamically from database
   useEffect(() => {
-    fetch('/api/products')
+    fetch('/api/products?limit=0')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setAllProducts(data.data);
           setProducts(data.data);
+        }
+        if (data.filterOptions) {
+          setFilterOptions(data.filterOptions);
         }
       })
       .catch((err) => console.log('Could not fetch dynamic products:', err))
@@ -61,18 +65,14 @@ export default function HomePage() {
     if (filters.tab && filters.tab !== 'all') {
       if (filters.tab === 'surplus') {
         filtered = filtered.filter((p) => p.isSurplus);
-      } else if (filters.tab === 'hex-screws') {
-        filtered = filtered.filter((p) => p.standard === 'DIN 933' || p.category === 'Hex Screws');
-      } else if (filters.tab === 'hex-bolts') {
-        filtered = filtered.filter((p) => p.standard === 'DIN 931' || p.name.toLowerCase().includes('bolt'));
-      } else if (filters.tab === 'socket-cap') {
-        filtered = filtered.filter((p) => p.standard === 'DIN 912' || p.name.toLowerCase().includes('socket'));
-      } else if (filters.tab === 'nuts') {
-        filtered = filtered.filter((p) => p.standard === 'DIN 934' || p.name.toLowerCase().includes('nut'));
-      } else if (filters.tab === 'anchors') {
-        filtered = filtered.filter((p) => p.category === 'Anchors' || p.standard.includes('ETA') || p.name.toLowerCase().includes('anchor'));
-      } else if (filters.tab === 'threaded-rods') {
-        filtered = filtered.filter((p) => p.standard.includes('A193') || p.name.toLowerCase().includes('rod'));
+      } else {
+        const tabClean = filters.tab.toLowerCase().replace(/[^a-z0-9]/g, '');
+        filtered = filtered.filter((p) => {
+          const pCat = (p.category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const pStd = (p.standard || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const pName = (p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          return pCat.includes(tabClean) || pStd.includes(tabClean) || pName.includes(tabClean);
+        });
       }
     }
 
@@ -90,23 +90,25 @@ export default function HomePage() {
 
     // Grade filter
     if (filters.grade && filters.grade !== 'all') {
-      const gradeQuery = filters.grade.toLowerCase();
-      filtered = filtered.filter((p) => (p.grade || '').toLowerCase().includes(gradeQuery));
+      const gradeQuery = filters.grade.toLowerCase().replace(/^grade\s*/i, '').trim();
+      filtered = filtered.filter((p) => (p.grade || '').toLowerCase().replace(/^grade\s*/i, '').trim().includes(gradeQuery));
     }
 
     // Diameter filter
     if (filters.diameter && filters.diameter !== 'all') {
-      filtered = filtered.filter((p) => (p.diameter || '').toLowerCase() === filters.diameter.toLowerCase());
+      const diaClean = filters.diameter.toLowerCase().replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((p) => (p.diameter || '').toLowerCase().replace(/[^a-z0-9]/g, '') === diaClean);
     }
 
     // Length filter
     if (filters.length && filters.length !== 'all') {
-      filtered = filtered.filter((p) => p.lengthMm === parseInt(filters.length));
+      filtered = filtered.filter((p) => String(p.lengthMm) === String(filters.length));
     }
 
     // Finish filter
     if (filters.finish && filters.finish !== 'all') {
-      filtered = filtered.filter((p) => (p.finish || '').toLowerCase().includes(filters.finish.toLowerCase()));
+      const finQuery = filters.finish.toLowerCase().replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((p) => (p.finish || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(finQuery));
     }
 
     // In Stock Only filter
@@ -210,6 +212,8 @@ export default function HomePage() {
         onFilterChange={handleFilterChange}
         productsCount={products.length}
         totalProductsCount={allProducts.length}
+        allProducts={allProducts}
+        filterOptions={filterOptions}
       />
 
       {/* SECTION 2: High-Density Technical Catalog Matrix (Popular Fasteners In Stock) */}

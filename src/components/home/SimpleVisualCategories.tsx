@@ -9,22 +9,29 @@ import { INITIAL_CATEGORIES } from '@/lib/catalog-data';
 
 export default function SimpleVisualCategories() {
   const [categories, setCategories] = useState<CatalogCategory[]>(
-    INITIAL_CATEGORIES.filter((c) => c.featured !== false).slice(0, 8)
+    INITIAL_CATEGORIES.filter((c) => c.featured !== false)
   );
+  const [totalProducts, setTotalProducts] = useState<number>(28650);
 
-  // Fetch dynamic categories from the API / Database
+  // Fetch dynamic categories and live product counts from MySQL API
   useEffect(() => {
     let isMounted = true;
     fetch('/api/catalog/categories')
       .then((res) => res.json())
       .then((data) => {
-        if (isMounted && data.success && Array.isArray(data.data) && data.data.length > 0) {
-          // Priority to featured categories, sorted by sortOrder
-          const featured = data.data.filter((c: CatalogCategory) => c.featured !== false);
-          const sorted = (featured.length > 0 ? featured : data.data)
-            .sort((a: CatalogCategory, b: CatalogCategory) => (a.sortOrder || 0) - (b.sortOrder || 0))
-            .slice(0, 8);
-          setCategories(sorted);
+        if (isMounted && data.success && Array.isArray(data.data)) {
+          if (data.totalProducts) {
+            setTotalProducts(data.totalProducts);
+          }
+          if (data.data.length === 0) {
+            setCategories([]);
+          } else {
+            // Display featured categories configured in the Admin Panel, ordered by sortOrder
+            const featured = data.data.filter((c: CatalogCategory) => c.featured !== false);
+            const sorted = (featured.length > 0 ? featured : data.data)
+              .sort((a: CatalogCategory, b: CatalogCategory) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            setCategories(sorted);
+          }
         }
       })
       .catch((err) => {
@@ -35,6 +42,10 @@ export default function SimpleVisualCategories() {
       isMounted = false;
     };
   }, []);
+
+  if (categories.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-12 bg-white border-b border-slate-200" id="visual-categories">
@@ -57,14 +68,16 @@ export default function SimpleVisualCategories() {
 
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 self-start md:self-auto text-sm font-bold text-[#0052CC] hover:text-[#003E99] transition-colors"
+            className="inline-flex items-center gap-2 self-start md:self-auto text-sm font-bold text-[#0052CC] hover:text-[#003E99] transition-colors group"
           >
-            <span>View Full 2,00,000+ SKU Catalog</span>
-            <ArrowRight size={16} />
+            <span>
+              View Full {totalProducts > 0 ? `${totalProducts.toLocaleString()}+` : ''} SKU Catalog
+            </span>
+            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
 
-        {/* 8-Card Visual Responsive Grid */}
+        {/* Visual Responsive Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5">
           {categories.map((cat) => {
             const cardLink = cat.link || `/products?category=${encodeURIComponent(cat.name)}`;
@@ -123,7 +136,11 @@ export default function SimpleVisualCategories() {
                     <CheckCircle2 size={13} className="text-emerald-600" />
                     <span>Ready Stock</span>
                   </span>
-                  <span className="font-mono text-slate-500 font-bold">Kg / Pcs</span>
+                  <span className="font-mono text-slate-500 font-bold text-[11px]">
+                    {cat.productsCount && cat.productsCount > 0
+                      ? `${cat.productsCount.toLocaleString()}+ SKUs`
+                      : 'Kg / Pcs'}
+                  </span>
                 </div>
               </Link>
             );

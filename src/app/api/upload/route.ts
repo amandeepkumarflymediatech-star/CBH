@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Apply watermark on right-bottom side if requested
+    // Apply transparent center watermark if requested
     if (applyWatermark) {
       try {
         buffer = await compositeWatermark(buffer);

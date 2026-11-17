@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import {
@@ -16,1384 +17,1547 @@ import {
   ShieldCheck,
   Truck,
   Flame,
-  Maximize2,
   ChevronRight,
+  ChevronLeft,
   Eye,
   Sliders,
   ZoomIn,
   ZoomOut,
   Info,
   Building2,
-  FileSpreadsheet
+  Search,
+  Sun,
+  Moon,
+  Compass,
+  PackageCheck,
+  Plus,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Check,
+  Boxes,
+  Cpu
 } from 'lucide-react';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { RfqLineItem } from '@/lib/types';
 import { getStoredCart, setStoredCart } from '@/lib/cart';
-import { clampQty } from '@/lib/rfq-calculator';
+import {
+  VirtualStoreZone,
+  DEFAULT_ZONES,
+  CadBoltModel,
+  CAD_BOLT_MODELS
+} from '@/lib/virtual-store-types';
 
-// Zone Definitions
-interface Zone {
-  id: string;
+interface BayProduct {
+  id: number;
+  sku: string;
   name: string;
-  subtitle: string;
   category: string;
-  camPos: [number, number, number];
-  camLook: [number, number, number];
-  hotspotPos: [number, number, number];
-  featuredProduct: {
-    sku: string;
-    name: string;
-    standard: string;
-    grade: string;
-    price: number;
-    weightKg: number;
-    stock: string;
-    leadTime: string;
-    details: string;
-    approvals: string[];
-  };
+  subCategory?: string;
+  standard: string;
+  grade: string;
+  finish: string;
+  diameter: string;
+  lengthMm: number;
+  pricePerPiece: number;
+  pricePerKg: number;
+  weightPerPcKg: number;
+  stockPcs: number;
+  isInStock: boolean;
+  isSurplus: boolean;
+  imageUrl: string;
 }
-
-const ZONES: Zone[] = [
-  {
-    id: 'heavy-anchors',
-    name: 'Zone 1: Heavy Anchors Bay',
-    subtitle: 'High-Performance Structural Fixings & Seismic Anchor Studs',
-    category: 'Steel Fixings & Anchors',
-    camPos: [14, 11, 14],
-    camLook: [6, 2, 6],
-    hotspotPos: [6, 2.5, 6],
-    featuredProduct: {
-      sku: 'CBH-FAZ2-M12-100',
-      name: 'FAZ II Plus High-Performance Bolt Anchor M12x100',
-      standard: 'ETA Option 1 / C1 & C2 Seismic',
-      grade: 'High-Grade Zinc Plated (5μm)',
-      price: 148.5,
-      weightKg: 0.125,
-      stock: '14,200 pcs in stock (Bhiwandi Depot)',
-      leadTime: 'Same-day dispatch',
-      details: 'Calibrated expansion clip engineered for maximum tensile load in cracked & non-cracked concrete. Variable embedment depth hef = 40-70mm.',
-      approvals: ['ETA-19/0520', 'Seismic C1/C2', 'Fire R120', 'ICC-ES']
-    }
-  },
-  {
-    id: 'high-tensile',
-    name: 'Zone 2: High-Tensile Fasteners',
-    subtitle: 'Automated High-Bay Pallet Racks // Grade 8.8 & 10.9',
-    category: 'Hex Screws & Bolts',
-    camPos: [-14, 12, 12],
-    camLook: [-6, 3, 4],
-    hotspotPos: [-6, 3, 4],
-    featuredProduct: {
-      sku: 'CBH-DIN933-M16-80-109',
-      name: 'Hexagon Head Screws Full Thread M16x80 Grade 10.9',
-      standard: 'DIN 933 / ISO 4017',
-      grade: 'Alloy Steel Grade 10.9 Black Oxide',
-      price: 36.8,
-      weightKg: 0.155,
-      stock: '48,000 pcs in stock (Aisle 4-B)',
-      leadTime: 'Dispatch in 24 Hours',
-      details: 'High-tensile proof-load tested alloy steel screws for structural steel frameworks, pressure piping, and heavy machinery bolting.',
-      approvals: ['ISO 4017', 'EN 10204 3.1 MTC', 'BIS Certified']
-    }
-  },
-  {
-    id: 'qa-lab',
-    name: 'Zone 3: Metallurgy & Testing Lab',
-    subtitle: 'Calibrated Tensile Rig, Hardness Tester & MTC 3.1 Verification',
-    category: 'Quality Assurance',
-    camPos: [-12, 10, -12],
-    camLook: [-4, 2, -4],
-    hotspotPos: [-4, 2, -4],
-    featuredProduct: {
-      sku: 'CBH-MTC-CERT-LAB',
-      name: '100% Batch Proof Load & Salt-Spray Verified Lots',
-      standard: 'ISO 9001:2015 / NABL Accredited',
-      grade: 'Full Traceability Heat Code Stamped',
-      price: 0,
-      weightKg: 0,
-      stock: 'Continuous QA Testing in Progress',
-      leadTime: 'Digital MTC with every invoice',
-      details: 'Every batch undergoes Vickers hardness testing (HV), ultrasonic crack detection, and 720-hour salt spray corrosion test.',
-      approvals: ['NABL Accredited', 'MTC Type 3.1', 'ISO 9001:2015']
-    }
-  },
-  {
-    id: 'dispatch-bay',
-    name: 'Zone 4: Express Dispatch & Fleet',
-    subtitle: 'Automated Loading Bays // PAN-India Express Freight',
-    category: 'Logistics & Surplus Depot',
-    camPos: [15, 12, -14],
-    camLook: [6, 2, -6],
-    hotspotPos: [6, 2, -6],
-    featuredProduct: {
-      sku: 'CBH-LOT-SURPLUS-88',
-      name: 'Factory Surplus Lot: M12 Hex Nuts DIN 934 Grade 8',
-      standard: 'DIN 934 / ISO 4032',
-      grade: 'Grade 8 Hot-Dip Galvanized',
-      price: 3.45,
-      weightKg: 0.017,
-      stock: '25,000 pcs Master Pallet Lot',
-      leadTime: 'Immediate Dispatch from Dock 2',
-      details: 'Surplus OEM manufacturing lot offered at 28% clearance discount. Complete with original test certificates.',
-      approvals: ['Immediate 24h Truckload', 'Clearance Rate ₹3.45/pc', 'ISO 4032']
-    }
-  }
-];
 
 export default function VirtualStorePage() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [activeZone, setActiveZone] = useState<Zone | null>(null);
-  const [isOverview, setIsOverview] = useState(true);
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [isExploded, setIsExploded] = useState(false);
-  const [quantity, setQuantity] = useState(500);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+
+  // View Mode: 'depot' (3D Warehouse) vs 'inspector' (3D Fastener Assembly)
+  const [viewMode, setViewMode] = useState<'depot' | 'inspector'>('depot');
+
+  // Fastener CAD Inspector state (7 bolt types)
+  const [selectedCadId, setSelectedCadId] = useState<string>('hex-bolt');
+  const [explodedDist, setExplodedDist] = useState(0);
+  const [selectedPartId, setSelectedPartId] = useState<string>('bolt');
+
+  // Zones & Active Bay
+  const [zones, setZones] = useState<VirtualStoreZone[]>(DEFAULT_ZONES);
+  const [activeZone, setActiveZone] = useState<VirtualStoreZone>(DEFAULT_ZONES[0]);
+
+  // Lighting & Orbit state
   const [isNightMode, setIsNightMode] = useState(false);
+  const [isAutoRotate, setIsAutoRotate] = useState(false);
+
+  // Shelf Products state
+  const [products, setProducts] = useState<BayProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStandard, setSelectedStandard] = useState('ALL');
+  const [selectedDiameter, setSelectedDiameter] = useState('ALL');
+  const [availableStandards, setAvailableStandards] = useState<string[]>([]);
+  const [availableDiameters, setAvailableDiameters] = useState<string[]>([]);
+  const [totalProducts, setTotalProducts] = useState(16167);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isShelfOpen, setIsShelfOpen] = useState(true);
+
+  // RFQ Cart State
   const [cartItems, setCartItems] = useState<RfqLineItem[]>([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [addedSku, setAddedSku] = useState<string | null>(null);
 
-  // Sync cart items with localStorage and listen for updates
-  useEffect(() => {
-    const saved = getStoredCart();
-    if (saved && saved.length > 0) {
-      setCartItems(saved);
-      setCartCount(saved.length);
-    } else {
-      setCartItems([]);
-      setCartCount(0);
-    }
-
-    const handleCartChange = (e: any) => {
-      if (e.detail?.items) {
-        setCartItems(e.detail.items);
-        setCartCount(e.detail.items.length);
-      }
-    };
-    window.addEventListener('cbh_cart_change', handleCartChange);
-    return () => window.removeEventListener('cbh_cart_change', handleCartChange);
-  }, []);
-
-  // Three.js Scene References
+  // Three.js internal references
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const controlsTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 2, 0));
-  const explodedPartsRef = useRef<{
-    nut: THREE.Mesh | null;
-    washer: THREE.Mesh | null;
-    clip: THREE.Mesh | null;
-    stud: THREE.Mesh | null;
-    group: THREE.Group | null;
-  }>({ nut: null, washer: null, clip: null, stud: null, group: null });
+  const controlsTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
+  const reqIdRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const previousMousePosRef = useRef({ x: 0, y: 0 });
 
-  // Initialize Three.js 3D Virtual Depot
+  // 3D Assembly mesh parts
+  const assemblyPartsRef = useRef<{ [key: string]: THREE.Mesh }>({});
+
+  // Lighting refs for dynamic day/night mode
+  const hemiLightRef = useRef<THREE.HemisphereLight | null>(null);
+  const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+
+  // Sync Cart on mount
   useEffect(() => {
-    if (!mountRef.current) return;
+    const stored = getStoredCart();
+    setCartItems(stored);
+    setCartCount(stored.length);
+  }, []);
+
+  // Fetch Zones from server API
+  useEffect(() => {
+    async function loadZones() {
+      try {
+        const res = await fetch('/api/virtual-store');
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setZones(json.data);
+          setActiveZone(json.data[0]);
+        }
+      } catch (err) {
+        console.warn('Failed to load virtual store zones, using defaults:', err);
+      }
+    }
+    loadZones();
+  }, []);
+
+  // Check URL query parameters (e.g. ?mode=inspector&bolt=hsfg-bolt&bay=bay-hsfg)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'inspector') {
+      setViewMode('inspector');
+    } else if (mode === 'depot') {
+      setViewMode('depot');
+    }
+    const bolt = params.get('bolt');
+    if (bolt) {
+      setSelectedCadId(bolt);
+    }
+    const bay = params.get('bay');
+    if (bay && zones.length > 0) {
+      const match = zones.find((z) => z.id === bay || z.category.toLowerCase().includes(bay.toLowerCase()));
+      if (match) setActiveZone(match);
+    }
+  }, [zones]);
+
+  // Fetch Bay Products whenever activeZone, search, page, or filters change
+  const fetchBayProducts = useCallback(async () => {
+    if (!activeZone) return;
+    setProductsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        category: activeZone.category || '',
+        page: String(currentPage),
+        limit: '16',
+      });
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (selectedStandard !== 'ALL') params.append('standard', selectedStandard);
+      if (selectedDiameter !== 'ALL') params.append('diameter', selectedDiameter);
+
+      const res = await fetch(`/api/virtual-store/zone-products?${params.toString()}`);
+      const data = await res.json();
+      if (data.success) {
+        setProducts(data.data || []);
+        setTotalProducts(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+        if (data.availableStandards && data.availableStandards.length > 0) {
+          setAvailableStandards(data.availableStandards);
+        }
+        if (data.availableDiameters && data.availableDiameters.length > 0) {
+          setAvailableDiameters(data.availableDiameters);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching bay products:', err);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [activeZone, currentPage, searchQuery, selectedStandard, selectedDiameter]);
+
+  useEffect(() => {
+    fetchBayProducts();
+  }, [fetchBayProducts]);
+
+  // Reset page and filters when zone changes
+  const handleSelectZone = (zone: VirtualStoreZone) => {
+    setActiveZone(zone);
+    setCurrentPage(1);
+    setSearchQuery('');
+    setSelectedStandard('ALL');
+    setSelectedDiameter('ALL');
+
+    if (viewMode === 'depot' && cameraRef.current) {
+      // Smooth camera glide to the aisle
+      gsap.to(cameraRef.current.position, {
+        x: zone.camPos[0],
+        y: zone.camPos[1],
+        z: zone.camPos[2],
+        duration: 1.2,
+        ease: 'power3.inOut'
+      });
+      gsap.to(controlsTargetRef.current, {
+        x: zone.camLook[0],
+        y: zone.camLook[1],
+        z: zone.camLook[2],
+        duration: 1.2,
+        ease: 'power3.inOut',
+        onUpdate: () => {
+          if (cameraRef.current) {
+            cameraRef.current.lookAt(controlsTargetRef.current);
+          }
+        }
+      });
+    }
+  };
+
+  // Add product to RFQ cart
+  const handleAddToCart = (product: BayProduct, qty = 100) => {
+    const lineItem: RfqLineItem = {
+      id: `virtual-${product.sku}-${Date.now()}`,
+      productId: Number(product.id) || 101,
+      sku: product.sku,
+      name: product.name,
+      standard: product.standard || 'DIN 933',
+      unit: 'PCS',
+      quantity: qty,
+      weightPerPcKg: product.weightPerPcKg || 0.05,
+      totalWeightKg: qty * (product.weightPerPcKg || 0.05),
+      unitRate: product.pricePerPiece || 10,
+      rowTotal: qty * (product.pricePerPiece || 10),
+      imageUrl: product.imageUrl || ''
+    };
+
+    const currentCart = getStoredCart();
+    const updated = [...currentCart, lineItem];
+    setStoredCart(updated);
+    setCartItems(updated);
+    setCartCount(updated.length);
+
+    setAddedSku(product.sku);
+    setTimeout(() => setAddedSku(null), 2500);
+  };
+
+  // -------------------------------------------------------------
+  // THREE.JS SETUP & LIFECYCLE
+  // -------------------------------------------------------------
+  useEffect(() => {
     const container = mountRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    if (!container) return;
 
     // 1. Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(isNightMode ? 0x080c16 : 0xf4f7fb);
-    scene.fog = new THREE.FogExp2(isNightMode ? 0x080c16 : 0xf4f7fb, 0.015);
     sceneRef.current = scene;
 
-    // 2. Camera (Isometric Perspective)
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    camera.position.set(38, 28, 38);
+    const bgLight = new THREE.Color(0xf8fafc);
+    const bgDark = new THREE.Color(0x0a1120);
+    scene.background = isNightMode ? bgDark : bgLight;
+    scene.fog = new THREE.FogExp2(isNightMode ? 0x0a1120 : 0xf8fafc, 0.015);
+
+    // 2. Camera
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      500
+    );
+    camera.position.set(0, 22, 28);
     camera.lookAt(0, 2, 0);
+    controlsTargetRef.current = new THREE.Vector3(0, 2, 0);
     cameraRef.current = camera;
 
     // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setSize(width, height);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    container.innerHTML = '';
-    container.appendChild(renderer.domElement);
+    renderer.toneMappingExposure = 1.05;
     rendererRef.current = renderer;
 
-    // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, isNightMode ? 0.8 : 1.4);
-    scene.add(ambientLight);
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    container.appendChild(renderer.domElement);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, isNightMode ? 1.0 : 2.2);
-    dirLight.position.set(30, 45, 25);
+    // 4. Lighting
+    const hemiLight = new THREE.HemisphereLight(
+      isNightMode ? 0x1e293b : 0xffffff,
+      isNightMode ? 0x090d16 : 0xe2e8f0,
+      isNightMode ? 0.7 : 1.4
+    );
+    hemiLight.position.set(0, 50, 0);
+    scene.add(hemiLight);
+    hemiLightRef.current = hemiLight;
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, isNightMode ? 1.0 : 2.4);
+    dirLight.position.set(25, 40, 20);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 150;
-    const d = 35;
+    dirLight.shadow.camera.far = 120;
+    const d = 30;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
     scene.add(dirLight);
+    dirLightRef.current = dirLight;
 
-    // Blue & Orange Accent Spotlights
-    const blueSpot = new THREE.SpotLight(0x0052cc, 5.0, 50, Math.PI / 4, 0.4);
-    blueSpot.position.set(0, 20, 0);
-    scene.add(blueSpot);
+    // Subtle blue accent light in center aisle
+    const centerSpot = new THREE.SpotLight(0x0052cc, 4, 40, Math.PI / 4, 0.4);
+    centerSpot.position.set(0, 18, 0);
+    scene.add(centerSpot);
 
-    const orangeAccentSpot = new THREE.PointLight(0xff6b00, 3.0, 30);
-    orangeAccentSpot.position.set(6, 4, -6);
-    scene.add(orangeAccentSpot);
-
-    // 5. Materials
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: isNightMode ? 0x0f172a : 0xe2e8f0,
-      roughness: 0.65,
-      metalness: 0.15
-    });
-    const roadMat = new THREE.MeshStandardMaterial({
-      color: isNightMode ? 0x070b14 : 0xcbd5e1,
-      roughness: 0.8
-    });
-    const steelMat = new THREE.MeshStandardMaterial({
-      color: 0x0052cc, // Brand Blue
-      roughness: 0.4,
-      metalness: 0.7
-    });
-    const orangeMat = new THREE.MeshStandardMaterial({
-      color: 0xff6b00, // Brand Orange
-      roughness: 0.3,
-      metalness: 0.4
-    });
-    const galvanizedMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      roughness: 0.3,
-      metalness: 0.85
-    });
-    const whiteWallMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.5
-    });
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x60a5fa,
-      transparent: true,
-      opacity: 0.35,
-      roughness: 0.1,
-      transmission: 0.8,
-      thickness: 0.5
-    });
-
-    // 6. Architectural Elements: Floor & Roads
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    // Grid markings
-    const grid = new THREE.GridHelper(80, 40, isNightMode ? 0x1e293b : 0xcbd5e1, isNightMode ? 0x0f172a : 0xe2e8f0);
-    grid.position.y = 0.02;
-    scene.add(grid);
-
-    // Perimeter Yellow/Orange Safety Border
-    const safetyLine = new THREE.Mesh(
-      new THREE.RingGeometry(24, 24.3, 64),
-      new THREE.MeshBasicMaterial({ color: 0xff6b00, side: THREE.DoubleSide })
-    );
-    safetyLine.rotation.x = -Math.PI / 2;
-    safetyLine.position.y = 0.03;
-    scene.add(safetyLine);
-
-    // 7. Warehouse Building & High-Bay Racking Structure
+    // -------------------------------------------------------------
+    // BUILD SCENE ACCORDING TO VIEW MODE
+    // -------------------------------------------------------------
     const depotGroup = new THREE.Group();
-    scene.add(depotGroup);
+    const inspectorGroup = new THREE.Group();
 
-    // Main Warehouse Building Shell (Cutaway / Isometric View)
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(36, 12, 1), whiteWallMat);
-    backWall.position.set(0, 6, -18);
-    backWall.castShadow = true;
-    backWall.receiveShadow = true;
-    depotGroup.add(backWall);
+    if (viewMode === 'depot') {
+      scene.add(depotGroup);
 
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 36), whiteWallMat);
-    leftWall.position.set(-18, 6, 0);
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    depotGroup.add(leftWall);
+      // Floor - Clean polished warehouse slab
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: isNightMode ? 0x0f172a : 0xf1f5f9,
+        roughness: 0.4,
+        metalness: 0.1
+      });
+      floorMatRef.current = floorMat;
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      depotGroup.add(floor);
 
-    // Steel Pillars
-    for (let x = -15; x <= 15; x += 10) {
-      for (let z = -15; z <= 15; z += 10) {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.6, 12, 0.6), steelMat);
-        pillar.position.set(x, 6, z);
-        pillar.castShadow = true;
-        depotGroup.add(pillar);
+      // Grid Lines
+      const grid = new THREE.GridHelper(90, 45, isNightMode ? 0x1e293b : 0xcbd5e1, isNightMode ? 0x0f172a : 0xe2e8f0);
+      grid.position.y = 0.01;
+      depotGroup.add(grid);
+
+      // Yellow Center Forklift Lane Lines
+      const laneLineMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+      const leftLine = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 50), laneLineMat);
+      leftLine.rotation.x = -Math.PI / 2;
+      leftLine.position.set(-2.5, 0.02, 0);
+      depotGroup.add(leftLine);
+
+      const rightLine = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 50), laneLineMat);
+      rightLine.rotation.x = -Math.PI / 2;
+      rightLine.position.set(2.5, 0.02, 0);
+      depotGroup.add(rightLine);
+
+      // Racking Materials
+      const blueRackMat = new THREE.MeshStandardMaterial({ color: 0x0052cc, metalness: 0.6, roughness: 0.3 });
+      const orangeBeamMat = new THREE.MeshStandardMaterial({ color: 0xff6b00, metalness: 0.5, roughness: 0.35 });
+      const palletMat = new THREE.MeshStandardMaterial({ color: 0xc49a45, roughness: 0.8 });
+      const boxMatA = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+      const boxMatB = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 });
+      const metalBoxMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+
+      // Build Racking Bays (8 Bays: 4 on Left, 4 on Right)
+      const bayPositions = [
+        { id: 'bay-hex-screws', x: -8, z: -18, label: 'BAY 01', color: 0x0052cc },
+        { id: 'bay-hex-bolts', x: -8, z: -6, label: 'BAY 02', color: 0x2563eb },
+        { id: 'bay-hsfg', x: -8, z: 6, label: 'BAY 03', color: 0xd97706 },
+        { id: 'bay-socket-head', x: -8, z: 18, label: 'BAY 04', color: 0x059669 },
+        { id: 'bay-flange', x: 8, z: -18, label: 'BAY 05', color: 0xea580c },
+        { id: 'bay-carriage', x: 8, z: -6, label: 'BAY 06', color: 0x7c3aed },
+        { id: 'bay-threaded-rods', x: 8, z: 6, label: 'BAY 07', color: 0x0891b2 },
+        { id: 'bay-qa-lab', x: 8, z: 18, label: 'BAY 08', color: 0x10b981 },
+      ];
+
+      bayPositions.forEach((bay) => {
+        const rackGroup = new THREE.Group();
+        rackGroup.position.set(bay.x, 0, bay.z);
+        rackGroup.userData = { zoneId: bay.id };
+
+        // 4 Vertical Uprights
+        const uprightGeo = new THREE.BoxGeometry(0.25, 9, 0.25);
+        const offsets = [
+          [-3, 4.5, -1.2],
+          [3, 4.5, -1.2],
+          [-3, 4.5, 1.2],
+          [3, 4.5, 1.2],
+        ];
+        offsets.forEach(([ux, uy, uz]) => {
+          const up = new THREE.Mesh(uprightGeo, blueRackMat);
+          up.position.set(ux, uy, uz);
+          up.castShadow = true;
+          rackGroup.add(up);
+        });
+
+        // 3 Horizontal Load Beams per side
+        [2.5, 5.5, 8.5].forEach((levelY) => {
+          const beamFront = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.25, 0.15), orangeBeamMat);
+          beamFront.position.set(0, levelY, 1.2);
+          beamFront.castShadow = true;
+          rackGroup.add(beamFront);
+
+          const beamBack = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.25, 0.15), orangeBeamMat);
+          beamBack.position.set(0, levelY, -1.2);
+          beamBack.castShadow = true;
+          rackGroup.add(beamBack);
+
+          // Pallets & Fastener Crates on each level
+          [-1.8, 0, 1.8].forEach((px) => {
+            const pallet = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 2.2), palletMat);
+            pallet.position.set(px, levelY + 0.1, 0);
+            pallet.castShadow = true;
+            pallet.receiveShadow = true;
+            rackGroup.add(pallet);
+
+            // Fastener Master Cartons / Steel Wire Bins
+            const crateMat = Math.random() > 0.5 ? boxMatA : Math.random() > 0.3 ? boxMatB : metalBoxMat;
+            const crate = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1.8), crateMat);
+            crate.position.set(px, levelY + 0.75, 0);
+            crate.castShadow = true;
+            crate.receiveShadow = true;
+            rackGroup.add(crate);
+          });
+        });
+
+        // Floor Bay Marker Box
+        const markerMat = new THREE.MeshBasicMaterial({ color: bay.color });
+        const markerPill = new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 1), markerMat);
+        markerPill.position.set(0, 0.03, bay.x < 0 ? 2.2 : -2.2);
+        rackGroup.add(markerPill);
+
+        // Vertical glowing Beacon above the bay
+        const beaconGeo = new THREE.CylinderGeometry(0.04, 0.04, 3, 16);
+        const beaconMat = new THREE.MeshBasicMaterial({ color: bay.color, transparent: true, opacity: 0.7 });
+        const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+        beacon.position.set(0, 10.5, 0);
+        rackGroup.add(beacon);
+
+        const beaconRing = new THREE.Mesh(
+          new THREE.RingGeometry(0.3, 0.5, 32),
+          new THREE.MeshBasicMaterial({ color: bay.color, side: THREE.DoubleSide })
+        );
+        beaconRing.rotation.x = -Math.PI / 2;
+        beaconRing.position.set(0, 12, 0);
+        rackGroup.add(beaconRing);
+
+        depotGroup.add(rackGroup);
+      });
+
+      // Animated Forklift in aisle
+      const forkliftGroup = new THREE.Group();
+      forkliftGroup.position.set(0, 0, 4);
+
+      const forkBody = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 1.4, 3.2),
+        new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3 })
+      );
+      forkBody.position.y = 0.9;
+      forkBody.castShadow = true;
+      forkliftGroup.add(forkBody);
+
+      const mast = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 3.8, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 })
+      );
+      mast.position.set(0, 2.1, 1.7);
+      mast.castShadow = true;
+      forkliftGroup.add(mast);
+
+      depotGroup.add(forkliftGroup);
+
+    } else {
+      // -------------------------------------------------------------
+      // 3D FASTENER ASSEMBLY INSPECTOR MODE (7 BOLT MODELS)
+      // -------------------------------------------------------------
+      scene.add(inspectorGroup);
+      camera.position.set(0, 2, 7);
+      camera.lookAt(0, 0, 0);
+      controlsTargetRef.current = new THREE.Vector3(0, 0, 0);
+
+      // Studio Pedestal
+      const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.5, 2.8, 0.3, 48),
+        new THREE.MeshStandardMaterial({ color: isNightMode ? 0x0f172a : 0xe2e8f0, roughness: 0.3, metalness: 0.2 })
+      );
+      pedestal.position.y = -2;
+      pedestal.receiveShadow = true;
+      inspectorGroup.add(pedestal);
+
+      // Materials for mechanical parts
+      const steelMat = new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        metalness: 0.9,
+        roughness: 0.2
+      });
+      const yellowZincMat = new THREE.MeshStandardMaterial({
+        color: 0xeab308,
+        metalness: 0.85,
+        roughness: 0.25
+      });
+      const blackOxideMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.8,
+        roughness: 0.35
+      });
+
+      assemblyPartsRef.current = {};
+
+      if (selectedCadId === 'hex-bolt') {
+        // Hex Head
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), steelMat);
+        head.position.y = 1.6;
+        head.castShadow = true;
+        inspectorGroup.add(head);
+
+        // Shank
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 32), steelMat);
+        shank.position.y = -0.1;
+        shank.castShadow = true;
+        inspectorGroup.add(shank);
+
+        // Washer
+        const washer = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 40), yellowZincMat);
+        washer.position.y = -1.2;
+        washer.castShadow = true;
+        inspectorGroup.add(washer);
+
+        // Nut
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), steelMat);
+        nut.position.y = -1.6;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { bolt: head, washer, nut };
+      } else if (selectedCadId === 'hsfg-bolt') {
+        // Heavy Hex Head
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.65, 6), blackOxideMat);
+        head.position.y = 1.6;
+        head.castShadow = true;
+        inspectorGroup.add(head);
+
+        // Heavy Shank
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 3.2, 32), blackOxideMat);
+        shank.position.y = -0.1;
+        shank.castShadow = true;
+        inspectorGroup.add(shank);
+
+        // Hardened Structural Washer
+        const washer = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.12, 40), blackOxideMat);
+        washer.position.y = -1.2;
+        washer.castShadow = true;
+        inspectorGroup.add(washer);
+
+        // Heavy Nut
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 6), blackOxideMat);
+        nut.position.y = -1.7;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { bolt: head, washer, nut };
+      } else if (selectedCadId === 'wedge-anchor') {
+        const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 4, 32), steelMat);
+        stud.castShadow = true;
+        inspectorGroup.add(stud);
+
+        const clip = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.8, 32, 1, true), yellowZincMat);
+        clip.position.y = -1.2;
+        clip.castShadow = true;
+        inspectorGroup.add(clip);
+
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.7, 32), steelMat);
+        cone.position.y = -1.9;
+        cone.rotation.x = Math.PI;
+        cone.castShadow = true;
+        inspectorGroup.add(cone);
+
+        const washer = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 40), yellowZincMat);
+        washer.position.y = 1.2;
+        washer.castShadow = true;
+        inspectorGroup.add(washer);
+
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), steelMat);
+        nut.position.y = 1.6;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { stud, clip, cone, washer, nut };
+      } else if (selectedCadId === 'socket-head') {
+        // Cylindrical Head
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.75, 32), blackOxideMat);
+        head.position.y = 1.4;
+        head.castShadow = true;
+        inspectorGroup.add(head);
+
+        // Hex Socket Recess
+        const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.35, 6), steelMat);
+        socket.position.y = 1.65;
+        inspectorGroup.add(socket);
+
+        // Shank
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 32), blackOxideMat);
+        shank.position.y = -0.2;
+        shank.castShadow = true;
+        inspectorGroup.add(shank);
+
+        // Spring Lock Washer
+        const washer = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 16, 32), steelMat);
+        washer.rotation.x = Math.PI / 2;
+        washer.position.y = -1.2;
+        washer.castShadow = true;
+        inspectorGroup.add(washer);
+
+        // Nut
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), blackOxideMat);
+        nut.position.y = -1.6;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { bolt: head, washer, nut };
+      } else if (selectedCadId === 'flange-bolt') {
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 6), yellowZincMat);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        inspectorGroup.add(head);
+
+        const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.1, 40), yellowZincMat);
+        flange.position.y = 1.25;
+        flange.castShadow = true;
+        inspectorGroup.add(flange);
+
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 32), yellowZincMat);
+        shank.position.y = -0.2;
+        shank.castShadow = true;
+        inspectorGroup.add(shank);
+
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 6), yellowZincMat);
+        nut.position.y = -1.6;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { bolt: head, nut };
+      } else if (selectedCadId === 'carriage-bolt') {
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), steelMat);
+        head.position.y = 1.35;
+        head.castShadow = true;
+        inspectorGroup.add(head);
+
+        const sqNeck = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.55), steelMat);
+        sqNeck.position.y = 1.2;
+        sqNeck.castShadow = true;
+        inspectorGroup.add(sqNeck);
+
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 3.2, 32), steelMat);
+        shank.position.y = -0.2;
+        shank.castShadow = true;
+        inspectorGroup.add(shank);
+
+        const washer = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.08, 40), steelMat);
+        washer.position.y = -1.2;
+        washer.castShadow = true;
+        inspectorGroup.add(washer);
+
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.45, 6), steelMat);
+        nut.position.y = -1.6;
+        nut.castShadow = true;
+        inspectorGroup.add(nut);
+
+        assemblyPartsRef.current = { bolt: head, washer, nut };
+      } else if (selectedCadId === 'threaded-rod') {
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 4.6, 32), steelMat);
+        rod.castShadow = true;
+        inspectorGroup.add(rod);
+
+        const nutTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), steelMat);
+        nutTop.position.y = 1.5;
+        nutTop.castShadow = true;
+        inspectorGroup.add(nutTop);
+
+        const washerTop = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 40), steelMat);
+        washerTop.position.y = 1.1;
+        washerTop.castShadow = true;
+        inspectorGroup.add(washerTop);
+
+        const washerBot = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 40), steelMat);
+        washerBot.position.y = -1.1;
+        washerBot.castShadow = true;
+        inspectorGroup.add(washerBot);
+
+        const nutBot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), steelMat);
+        nutBot.position.y = -1.5;
+        nutBot.castShadow = true;
+        inspectorGroup.add(nutBot);
+
+        assemblyPartsRef.current = { bolt: rod, nut: nutTop, washer: washerTop, washer2: washerBot, nut2: nutBot };
       }
     }
 
-    // High-Bay Pallet Racks Helper Function
-    const createPalletRack = (posX: number, posZ: number, rotationY = 0) => {
-      const rackGroup = new THREE.Group();
-      rackGroup.position.set(posX, 0, posZ);
-      rackGroup.rotation.y = rotationY;
-
-      // Vertical Uprights (Blue Steel)
-      for (let x = -4; x <= 4; x += 2) {
-        for (let z = -0.8; z <= 0.8; z += 1.6) {
-          const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 8, 0.15), steelMat);
-          post.position.set(x, 4, z);
-          post.castShadow = true;
-          rackGroup.add(post);
-        }
-      }
-
-      // Horizontal Beams (Orange Steel)
-      for (let y = 1.5; y <= 7.5; y += 2) {
-        const beamF = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.15, 0.1), orangeMat);
-        beamF.position.set(0, y, 0.8);
-        beamF.castShadow = true;
-        rackGroup.add(beamF);
-
-        const beamB = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.15, 0.1), orangeMat);
-        beamB.position.set(0, y, -0.8);
-        beamB.castShadow = true;
-        rackGroup.add(beamB);
-
-        // Pallet Boxes on Shelves
-        for (let bx = -3; bx <= 3; bx += 1.5) {
-          const boxMat = Math.random() > 0.4 ? galvanizedMat : Math.random() > 0.5 ? steelMat : orangeMat;
-          const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 1.3), boxMat);
-          box.position.set(bx, y + 0.45, 0);
-          box.castShadow = true;
-          rackGroup.add(box);
-        }
-      }
-
-      return rackGroup;
-    };
-
-    // Add High-Bay Racks for Zone 1 & Zone 2
-    const rack1 = createPalletRack(6, 6, 0);
-    const rack2 = createPalletRack(-6, 6, 0);
-    const rack3 = createPalletRack(-6, -6, Math.PI / 2);
-    depotGroup.add(rack1);
-    depotGroup.add(rack2);
-    depotGroup.add(rack3);
-
-    // 8. Logistics Loading Dock & CBH Delivery Trucks
-    const dockBay = new THREE.Mesh(new THREE.BoxGeometry(16, 2, 8), floorMat);
-    dockBay.position.set(6, 1, -12);
-    dockBay.castShadow = true;
-    depotGroup.add(dockBay);
-
-    // Truck Generator
-    const createTruck = (x: number, z: number, angle = 0) => {
-      const truck = new THREE.Group();
-      truck.position.set(x, 1, z);
-      truck.rotation.y = angle;
-
-      // Cabin (White)
-      const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.5, 2), whiteWallMat);
-      cabin.position.set(0, 1.25, 3.5);
-      cabin.castShadow = true;
-      truck.add(cabin);
-
-      // Windshield
-      const windshield = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 0.2), glassMat);
-      windshield.position.set(0, 1.7, 4.52);
-      truck.add(windshield);
-
-      // Trailer Body (Blue Brand)
-      const trailer = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 6.5), steelMat);
-      trailer.position.set(0, 1.6, -1);
-      trailer.castShadow = true;
-      truck.add(trailer);
-
-      // Orange Branding Accent Stripe
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.42, 0.4, 6.5), orangeMat);
-      stripe.position.set(0, 1.6, -1);
-      truck.add(stripe);
-
-      // Wheels
-      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
-      for (const wz of [-3, -1.5, 3]) {
-        for (const wx of [-1.2, 1.2]) {
-          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 16), wheelMat);
-          wheel.rotation.z = Math.PI / 2;
-          wheel.position.set(wx, 0.45, wz);
-          wheel.castShadow = true;
-          truck.add(wheel);
-        }
-      }
-
-      return truck;
-    };
-
-    const truck1 = createTruck(6, -14, Math.PI);
-    const truck2 = createTruck(12, -14, Math.PI);
-    depotGroup.add(truck1);
-    depotGroup.add(truck2);
-
-    // Animated Forklift
-    const forklift = new THREE.Group();
-    forklift.position.set(0, 0, 0);
-    const forkBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.8), orangeMat);
-    forkBody.position.y = 0.8;
-    forkBody.castShadow = true;
-    forklift.add(forkBody);
-
-    const forkMast = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.4, 0.1), steelMat);
-    forkMast.position.set(0, 1.4, 1.0);
-    forklift.add(forkMast);
-
-    const forkPallet = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 1.0), galvanizedMat);
-    forkPallet.position.set(0, 0.8, 1.4);
-    forkPallet.castShadow = true;
-    forklift.add(forkPallet);
-    depotGroup.add(forklift);
-
-    // 9. Interactive 3D Product Model: FAZ II Plus Bolt Anchor
-    const boltGroup = new THREE.Group();
-    boltGroup.position.set(6, 2.2, 6);
-    boltGroup.scale.set(0.6, 0.6, 0.6);
-    scene.add(boltGroup);
-
-    // Threaded Stud
-    const studGeom = new THREE.CylinderGeometry(0.3, 0.3, 6, 32);
-    const studMesh = new THREE.Mesh(studGeom, galvanizedMat);
-    studMesh.castShadow = true;
-    studMesh.rotation.x = Math.PI / 2;
-    boltGroup.add(studMesh);
-
-    // Expansion Clip
-    const clipGeom = new THREE.CylinderGeometry(0.38, 0.38, 1.2, 32, 1, true);
-    const clipMesh = new THREE.Mesh(clipGeom, new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      metalness: 0.95,
-      roughness: 0.15,
-      side: THREE.DoubleSide
-    }));
-    clipMesh.rotation.x = Math.PI / 2;
-    clipMesh.position.z = 1.8;
-    boltGroup.add(clipMesh);
-
-    // DIN 125 Washer
-    const washerGeom = new THREE.CylinderGeometry(0.7, 0.7, 0.1, 32);
-    const washerMesh = new THREE.Mesh(washerGeom, galvanizedMat);
-    washerMesh.rotation.x = Math.PI / 2;
-    washerMesh.position.z = -1.8;
-    boltGroup.add(washerMesh);
-
-    // DIN 934 Hex Nut
-    const nutGeom = new THREE.CylinderGeometry(0.6, 0.6, 0.5, 6);
-    const nutMesh = new THREE.Mesh(nutGeom, galvanizedMat);
-    nutMesh.rotation.x = Math.PI / 2;
-    nutMesh.position.z = -2.2;
-    boltGroup.add(nutMesh);
-
-    explodedPartsRef.current = {
-      nut: nutMesh,
-      washer: washerMesh,
-      clip: clipMesh,
-      stud: studMesh,
-      group: boltGroup
-    };
-
-    // 10. Interactive Ground Hotspot Markers with Pulsing Radar Rings
-    const hotspotMarkers: THREE.Mesh[] = [];
-    ZONES.forEach((zone) => {
-      const ringGeom = new THREE.RingGeometry(1.2, 1.5, 32);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: 0xff6b00,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.8
-      });
-      const ring = new THREE.Mesh(ringGeom, ringMat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(zone.hotspotPos[0], 0.05, zone.hotspotPos[2]);
-      scene.add(ring);
-      hotspotMarkers.push(ring);
-    });
-
-    // 11. Mouse Drag / Orbit Interaction
-    let isDragging = false;
-    let prevMouseX = 0;
-    let prevMouseY = 0;
+    // -------------------------------------------------------------
+    // MOUSE & TOUCH ORBIT CONTROLS + RAYCASTER
+    // -------------------------------------------------------------
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let downPos = { x: 0, y: 0 };
 
     const onMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
+      isDraggingRef.current = true;
+      previousMousePosRef.current = { x: e.clientX, y: e.clientY };
+      downPos = { x: e.clientX, y: e.clientY };
+    };
+
+    const onCanvasClick = (e: MouseEvent) => {
+      const distMoved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+      if (distMoved > 6 || !cameraRef.current || viewMode !== 'depot') return;
+
+      const rect = container.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, cameraRef.current);
+      const intersects = raycaster.intersectObjects(depotGroup.children, true);
+      if (intersects.length > 0) {
+        let obj: THREE.Object3D | null = intersects[0].object;
+        while (obj && !obj.userData?.zoneId && obj.parent) {
+          obj = obj.parent;
+        }
+        if (obj?.userData?.zoneId) {
+          const matched = zones.find((z) => z.id === obj?.userData?.zoneId);
+          if (matched) {
+            handleSelectZone(matched);
+          }
+        }
+      }
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !cameraRef.current) return;
-      const deltaX = e.clientX - prevMouseX;
-      const deltaY = e.clientY - prevMouseY;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
+      if (!isDraggingRef.current || !cameraRef.current) return;
+      const deltaX = e.clientX - previousMousePosRef.current.x;
+      const deltaY = e.clientY - previousMousePosRef.current.y;
+      previousMousePosRef.current = { x: e.clientX, y: e.clientY };
 
-      // Rotate camera around controls target
       const cam = cameraRef.current;
-      const offset = cam.position.clone().sub(controlsTargetRef.current);
-      const radius = offset.length();
+      const target = controlsTargetRef.current;
+      const offset = new THREE.Vector3().subVectors(cam.position, target);
+
+      // Spherical orbit
       let theta = Math.atan2(offset.x, offset.z);
-      let phi = Math.acos(Math.max(0.1, Math.min(1.5, offset.y / radius)));
+      let phi = Math.atan2(Math.sqrt(offset.x * offset.x + offset.z * offset.z), offset.y);
 
-      theta -= deltaX * 0.005;
-      phi = Math.max(0.2, Math.min(Math.PI / 2 - 0.05, phi - deltaY * 0.005));
+      theta -= deltaX * 0.006;
+      phi -= deltaY * 0.006;
+      phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, phi));
 
-      cam.position.x = controlsTargetRef.current.x + radius * Math.sin(phi) * Math.sin(theta);
-      cam.position.y = controlsTargetRef.current.y + radius * Math.cos(phi);
-      cam.position.z = controlsTargetRef.current.z + radius * Math.sin(phi) * Math.cos(theta);
-      cam.lookAt(controlsTargetRef.current);
+      const radius = offset.length();
+      cam.position.x = target.x + radius * Math.sin(phi) * Math.sin(theta);
+      cam.position.y = target.y + radius * Math.cos(phi);
+      cam.position.z = target.z + radius * Math.sin(phi) * Math.cos(theta);
+      cam.lookAt(target);
     };
 
     const onMouseUp = () => {
-      isDragging = false;
+      isDraggingRef.current = false;
     };
 
     const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
       if (!cameraRef.current) return;
       const cam = cameraRef.current;
-      const zoomFactor = e.deltaY * 0.02;
-      const dir = cam.position.clone().sub(controlsTargetRef.current).normalize();
-      const currentDist = cam.position.distanceTo(controlsTargetRef.current);
-      const newDist = Math.max(6, Math.min(75, currentDist + zoomFactor));
-      cam.position.copy(controlsTargetRef.current).add(dir.multiplyScalar(newDist));
-      cam.lookAt(controlsTargetRef.current);
+      const target = controlsTargetRef.current;
+      const dir = new THREE.Vector3().subVectors(cam.position, target);
+      const dist = dir.length();
+      const newDist = Math.max(3, Math.min(80, dist + e.deltaY * 0.02));
+      dir.normalize().multiplyScalar(newDist);
+      cam.position.copy(target).add(dir);
     };
 
+    const handleResize = () => {
+      if (!container || !rendererRef.current || !cameraRef.current) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+      cameraRef.current.aspect = w / h;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(w, h);
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
+
     container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('click', onCanvasClick);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-    container.addEventListener('wheel', onWheel, { passive: true });
+    container.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('resize', handleResize);
 
-    // 12. Animation Loop
-    let animationFrameId: number;
+    // -------------------------------------------------------------
+    // ANIMATION LOOP (60 FPS)
+    // -------------------------------------------------------------
     let clock = new THREE.Clock();
-
     const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
+      reqIdRef.current = requestAnimationFrame(animate);
+      const delta = clock.getDelta();
 
-      // Slow idle rotation of warehouse when in overview
-      if (isOverview && !isDragging) {
-        depotGroup.rotation.y = Math.sin(elapsedTime * 0.08) * 0.05;
-      }
-
-      // Forklift gentle patrol animation
-      forklift.position.x = Math.sin(elapsedTime * 0.6) * 4;
-      forklift.position.z = Math.cos(elapsedTime * 0.4) * 3;
-      forklift.rotation.y = Math.atan2(Math.cos(elapsedTime * 0.6) * 4, -Math.sin(elapsedTime * 0.4) * 3);
-
-      // Pulse hotspot rings
-      hotspotMarkers.forEach((marker, idx) => {
-        const s = 1 + Math.sin(elapsedTime * 3 + idx) * 0.15;
-        marker.scale.set(s, s, s);
-      });
-
-      // Bolt slow rotation if inspector active
-      if (boltGroup) {
-        boltGroup.rotation.y = elapsedTime * 0.4;
+      if (isAutoRotate && cameraRef.current) {
+        const cam = cameraRef.current;
+        const target = controlsTargetRef.current;
+        const offset = new THREE.Vector3().subVectors(cam.position, target);
+        let theta = Math.atan2(offset.x, offset.z);
+        const radius = offset.length();
+        const y = offset.y;
+        theta += delta * 0.25;
+        cam.position.x = target.x + radius * Math.sin(theta);
+        cam.position.z = target.z + radius * Math.cos(theta);
+        cam.position.y = target.y + y;
+        cam.lookAt(target);
       }
 
       renderer.render(scene, camera);
     };
     animate();
 
-    // 13. Window Resize Handler
-    const handleResize = () => {
-      if (!container || !camera || !renderer) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
-
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (reqIdRef.current) cancelAnimationFrame(reqIdRef.current);
+      resizeObserver.disconnect();
       container.removeEventListener('mousedown', onMouseDown);
+      container.removeEventListener('click', onCanvasClick);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       container.removeEventListener('wheel', onWheel);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
     };
-  }, [isNightMode, isOverview]);
+  }, [viewMode, isNightMode, selectedCadId]);
 
-  // GSAP Camera Navigation to Zones
-  const navigateToZone = (zone: Zone) => {
-    if (!cameraRef.current) return;
-    setActiveZone(zone);
-    setIsOverview(false);
-    setIsInspectorOpen(false);
+  // Handle Exploded Assembly slider change in Inspector mode
+  useEffect(() => {
+    if (viewMode !== 'inspector') return;
+    const parts = assemblyPartsRef.current;
+    if (!parts) return;
 
-    const cam = cameraRef.current;
-    gsap.to(cam.position, {
-      x: zone.camPos[0],
-      y: zone.camPos[1],
-      z: zone.camPos[2],
-      duration: 1.8,
-      ease: 'power3.inOut'
-    });
+    const factor = explodedDist;
 
-    gsap.to(controlsTargetRef.current, {
-      x: zone.camLook[0],
-      y: zone.camLook[1],
-      z: zone.camLook[2],
-      duration: 1.8,
-      ease: 'power3.inOut',
-      onUpdate: () => {
-        cam.lookAt(controlsTargetRef.current);
-      }
-    });
-  };
-
-  // Reset to Isometric 360 Overview
-  const resetToOverview = () => {
-    if (!cameraRef.current) return;
-    setActiveZone(null);
-    setIsOverview(true);
-    setIsInspectorOpen(false);
-
-    const cam = cameraRef.current;
-    gsap.to(cam.position, {
-      x: 38,
-      y: 28,
-      z: 38,
-      duration: 2.0,
-      ease: 'power3.inOut'
-    });
-
-    gsap.to(controlsTargetRef.current, {
-      x: 0,
-      y: 2,
-      z: 0,
-      duration: 2.0,
-      ease: 'power3.inOut',
-      onUpdate: () => {
-        cam.lookAt(controlsTargetRef.current);
-      }
-    });
-  };
-
-  // Focus on 3D Bolt Anchor Inspector
-  const open3DInspector = () => {
-    if (!cameraRef.current) return;
-    setIsInspectorOpen(true);
-    setIsOverview(false);
-
-    const cam = cameraRef.current;
-    gsap.to(cam.position, {
-      x: 9,
-      y: 3.5,
-      z: 9,
-      duration: 1.6,
-      ease: 'power3.inOut'
-    });
-
-    gsap.to(controlsTargetRef.current, {
-      x: 6,
-      y: 2.2,
-      z: 6,
-      duration: 1.6,
-      ease: 'power3.inOut',
-      onUpdate: () => {
-        cam.lookAt(controlsTargetRef.current);
-      }
-    });
-  };
-
-  // GSAP Exploded Assembly Animation
-  const toggleExplodedAssembly = () => {
-    const parts = explodedPartsRef.current;
-    if (!parts.nut || !parts.washer || !parts.clip) return;
-
-    const nextState = !isExploded;
-    setIsExploded(nextState);
-
-    if (nextState) {
-      // Explode outwards along stud axis
-      gsap.to(parts.nut.position, { z: -4.5, duration: 1.2, ease: 'back.out(1.5)' });
-      gsap.to(parts.washer.position, { z: -3.4, duration: 1.2, ease: 'back.out(1.5)' });
-      gsap.to(parts.clip.position, { z: 3.2, duration: 1.2, ease: 'back.out(1.5)' });
+    if (selectedCadId === 'wedge-anchor') {
+      if (parts.cone) gsap.to(parts.cone.position, { y: -1.9 - factor * 1.5, duration: 0.3 });
+      if (parts.clip) gsap.to(parts.clip.position, { y: -1.2 - factor * 0.8, duration: 0.3 });
+      if (parts.washer) gsap.to(parts.washer.position, { y: 1.2 + factor * 1.0, duration: 0.3 });
+      if (parts.nut) gsap.to(parts.nut.position, { y: 1.6 + factor * 2.0, duration: 0.3 });
+    } else if (selectedCadId === 'threaded-rod') {
+      if (parts.washer) gsap.to(parts.washer.position, { y: 1.1 + factor * 0.8, duration: 0.3 });
+      if (parts.nut) gsap.to(parts.nut.position, { y: 1.5 + factor * 1.8, duration: 0.3 });
+      if (parts.washer2) gsap.to(parts.washer2.position, { y: -1.1 - factor * 0.8, duration: 0.3 });
+      if (parts.nut2) gsap.to(parts.nut2.position, { y: -1.5 - factor * 1.8, duration: 0.3 });
     } else {
-      // Collapse back to assembled position
-      gsap.to(parts.nut.position, { z: -2.2, duration: 1.0, ease: 'power2.inOut' });
-      gsap.to(parts.washer.position, { z: -1.8, duration: 1.0, ease: 'power2.inOut' });
-      gsap.to(parts.clip.position, { z: 1.8, duration: 1.0, ease: 'power2.inOut' });
+      // standard bolt + washer + nut (hex-bolt, hsfg-bolt, socket-head, flange-bolt, carriage-bolt)
+      if (parts.washer) gsap.to(parts.washer.position, { y: -1.2 - factor * 1.0, duration: 0.3 });
+      if (parts.nut) gsap.to(parts.nut.position, { y: -1.6 - factor * 1.8, duration: 0.3 });
     }
-  };
+  }, [explodedDist, viewMode, selectedCadId]);
 
-  // Add Product to Cart Drawer
-  const handleAddToCart = (product: Zone['featuredProduct']) => {
-    const newLineItem: RfqLineItem = {
-      id: Date.now(),
-      productId: 101,
-      sku: product.sku,
-      name: product.name,
-      standard: product.standard,
-      unit: 'PCS',
-      unitRate: product.price,
-      quantity: quantity,
-      weightPerPcKg: product.weightKg,
-      totalWeightKg: quantity * product.weightKg,
-      rowTotal: quantity * product.price
-    };
-
-    setCartItems((prev) => {
-      const updated = [newLineItem, ...prev];
-      setStoredCart(updated);
-      return updated;
+  // Zoom buttons helper
+  const handleZoom = (direction: 'in' | 'out') => {
+    if (!cameraRef.current) return;
+    const cam = cameraRef.current;
+    const target = controlsTargetRef.current;
+    const dir = new THREE.Vector3().subVectors(cam.position, target);
+    const dist = dir.length();
+    const factor = direction === 'in' ? 0.8 : 1.25;
+    const newDist = Math.max(3, Math.min(80, dist * factor));
+    dir.normalize().multiplyScalar(newDist);
+    gsap.to(cam.position, {
+      x: target.x + dir.x,
+      y: target.y + dir.y,
+      z: target.z + dir.z,
+      duration: 0.6,
+      ease: 'power2.out',
+      onUpdate: () => cam.lookAt(target)
     });
-    setCartCount((c) => c + 1);
-    setIsCartOpen(true);
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: '100%', height: '100vh', overflow: 'hidden', background: '#0a0f1d' }}>
-      {/* 3D WebGL Canvas Mount */}
-      <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'grab' }} />
-
-      {/* Top Floating Command Navigation Bar */}
-      <header
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'linear-gradient(180deg, rgba(10, 15, 29, 0.9) 0%, rgba(10, 15, 29, 0) 100%)',
-          zIndex: 40,
-          pointerEvents: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', pointerEvents: 'auto' }}>
-          <Link
-            href="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              textDecoration: 'none',
-              background: 'rgba(255, 255, 255, 0.95)',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
-            }}
-          >
-            <span style={{ fontFamily: 'var(--font-headline)', fontWeight: 900, fontSize: '18px', color: '#0052CC' }}>
-              CBH
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: '#FF6B00', background: 'rgba(255, 107, 0, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-              3D VIRTUAL DEPOT
-            </span>
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none flex flex-col">
+      {/* ------------------------------------------------------------- */}
+      {/* 1. TOP GLOBAL CONTROL HEADER */}
+      {/* ------------------------------------------------------------- */}
+      <header className="relative z-30 h-14 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 flex items-center justify-between shadow-lg flex-shrink-0">
+        {/* Left: Brand & Live Inventory Badge */}
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2.5 text-white no-underline">
+            <img src="/assets/cbh-logo-icon.png" alt="CBH Fasteners" className="w-8 h-8 object-contain" />
+            <div>
+              <span className="font-black text-sm tracking-tight text-white block leading-tight">
+                CBH 3D Virtual Depot
+              </span>
+              <span className="text-[10px] text-blue-400 font-mono block">
+                Digital Twin • Bhiwandi Logistics Hub
+              </span>
+            </div>
           </Link>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              color: '#F8FAFC',
-              fontSize: '12px',
-              fontFamily: 'var(--font-mono)'
-            }}
-          >
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-            <span>40,000 SQ.FT DIGITAL TWIN // 60 FPS GSAP ORBIT</span>
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>54,392 Fasteners Live in Stock</span>
           </div>
         </div>
 
-        {/* Right Top Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'auto' }}>
+        {/* Center: Dual Mode Switcher */}
+        <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-white/15">
           <button
-            onClick={() => setIsNightMode(!isNightMode)}
-            style={{
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#F8FAFC',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            type="button"
+            onClick={() => setViewMode('depot')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'depot'
+                ? 'bg-[#0052CC] text-white shadow-md'
+                : 'text-slate-300 hover:text-white'
+            }`}
           >
-            <Eye size={14} color="#FF6B00" />
-            <span>{isNightMode ? 'Day Mode' : 'Night Depot'}</span>
+            <Boxes size={14} />
+            <span>3D Depot Walkthrough</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('inspector')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'inspector'
+                ? 'bg-[#0052CC] text-white shadow-md'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <Cpu size={14} />
+            <span>Fastener CAD Inspector</span>
+          </button>
+        </div>
+
+        {/* Right Toolbar Actions */}
+        <div className="flex items-center gap-2">
+          {/* Day / Night Studio Lighting */}
+          <button
+            type="button"
+            onClick={() => setIsNightMode(!isNightMode)}
+            className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-white/10 text-xs transition-colors cursor-pointer"
+            title="Toggle Daylight / Dark Depot"
+          >
+            {isNightMode ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-blue-400" />}
           </button>
 
+          {/* Auto Rotate Spin */}
           <button
-            onClick={() => setIsCartOpen(true)}
-            style={{
-              background: '#0052CC',
-              color: '#FFFFFF',
-              border: 'none',
-              padding: '8px 18px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 16px rgba(0, 82, 204, 0.4)'
-            }}
+            type="button"
+            onClick={() => setIsAutoRotate(!isAutoRotate)}
+            className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${
+              isAutoRotate
+                ? 'bg-blue-600/30 text-blue-300 border-blue-400/50'
+                : 'bg-slate-800/90 text-slate-300 border-white/10 hover:bg-slate-700'
+            }`}
+            title="360° Auto-Orbit"
           >
-            <ShoppingBag size={16} />
+            <RotateCw size={15} className={isAutoRotate ? 'animate-spin' : ''} />
+          </button>
+
+          {/* RFQ Cart Live Button */}
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-extrabold shadow-md flex items-center gap-2 cursor-pointer transition-all border border-blue-400/40"
+          >
+            <ShoppingBag size={14} />
             <span>RFQ Cart ({cartCount})</span>
-            <span style={{ background: '#FF6B00', padding: '2px 6px', borderRadius: '10px', fontSize: '10px' }}>
+            <span className="bg-[#FF6B00] text-white px-1.5 py-0.5 rounded-full text-[10px] font-black hidden sm:inline-block">
               LIVE
             </span>
           </button>
 
+          {/* Exit Link */}
           <Link
             href="/"
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              color: '#FFFFFF',
-              textDecoration: 'none',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center cursor-pointer border border-white/10"
+            title="Exit 3D Depot"
           >
-            <span>Exit 3D</span>
-            <X size={14} />
+            <X size={15} />
           </Link>
         </div>
       </header>
 
-      {/* Floating Instructions & Orbit Tooltip */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '76px',
-          left: '24px',
-          background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          padding: '8px 14px',
-          borderRadius: '8px',
-          color: '#94A3B8',
-          fontSize: '11px',
-          fontFamily: 'var(--font-mono)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 30
-        }}
-      >
-        <span>🖱️ Drag to rotate 3D camera</span>
-        <span>•</span>
-        <span>🔍 Scroll to zoom in/out</span>
-        <span>•</span>
-        <span>📍 Click any zone to fly in</span>
-      </div>
+      {/* ------------------------------------------------------------- */}
+      {/* 2. MAIN VIEWPORT (FULL-WIDTH 3D CANVAS + SLIDE-OVER FASTENER SHELF) */}
+      {/* ------------------------------------------------------------- */}
+      <div className="relative flex-1 w-full h-[calc(100vh-56px)] overflow-hidden bg-slate-100">
+        {/* Full-Screen 3D WebGL Canvas */}
+        <div ref={mountRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing bg-slate-100 z-0" />
 
-      {/* Center 3D Inspector HUD Trigger (FAZ II Plus Bolt Anchor) */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '76px',
-          right: '24px',
-          zIndex: 30
-        }}
-      >
-        <button
-          onClick={open3DInspector}
-          style={{
-            background: 'linear-gradient(135deg, #0052CC 0%, #0747A6 100%)',
-            color: '#FFFFFF',
-            border: '1px solid rgba(255, 255, 255, 0.25)',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 6px 20px rgba(0, 82, 204, 0.4)'
-          }}
-        >
-          <Sparkles size={16} color="#FF6B00" />
-          <span>Inspect FAZ II Plus Anchor in 3D</span>
-          <ChevronRight size={14} />
-        </button>
-      </div>
-
-      {/* Active Zone Detail Flyout Card (Emons-Style Glassmorphism HUD) */}
-      {activeZone && !isInspectorOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100px',
-            left: '24px',
-            maxWidth: '440px',
-            width: 'calc(100% - 48px)',
-            background: 'rgba(255, 255, 255, 0.96)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            padding: '24px',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 82, 204, 0.15)',
-            zIndex: 40,
-            animation: 'fadeInUp 0.3s ease-out'
-          }}
-        >
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  color: '#FF6B00',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  fontFamily: 'var(--font-mono)'
-                }}
-              >
-                {activeZone.category}
-              </span>
-              <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>
-                {activeZone.name}
-              </h3>
-            </div>
-            <button
-              onClick={() => setActiveZone(null)}
-              style={{
-                background: 'rgba(0,0,0,0.05)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '28px',
-                height: '28px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <X size={16} color="#475569" />
-            </button>
-          </div>
-
-          <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, marginBottom: '16px' }}>
-            {activeZone.subtitle}
-          </p>
-
-          {/* Featured Product Box */}
-          <div
-            style={{
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '16px'
-            }}
+        {/* Floating Camera Controls (Zoom In, Zoom Out) - Clean White Glassmorphism */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-1 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-md">
+          <button
+            type="button"
+            onClick={() => handleZoom('in')}
+            className="p-2 text-slate-700 hover:text-[#0052CC] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            title="Zoom In"
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#0052CC' }}>
-                {activeZone.featuredProduct.sku}
-              </span>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: 'rgba(5, 150, 105, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                {activeZone.featuredProduct.stock}
-              </span>
-            </div>
+            <ZoomIn size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleZoom('out')}
+            className="p-2 text-slate-700 hover:text-[#0052CC] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            title="Zoom Out"
+          >
+            <ZoomOut size={16} />
+          </button>
+        </div>
 
-            <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginBottom: '4px' }}>
-              {activeZone.featuredProduct.name}
-            </h4>
-
-            <p style={{ fontSize: '11px', color: '#64748B', marginBottom: '10px' }}>
-              {activeZone.featuredProduct.details}
-            </p>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-              {activeZone.featuredProduct.approvals.map((app, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    color: '#0052CC',
-                    background: 'rgba(0, 82, 204, 0.08)',
-                    border: '1px solid rgba(0, 82, 204, 0.2)',
-                    padding: '2px 8px',
-                    borderRadius: '4px'
-                  }}
-                >
-                  {app}
-                </span>
-              ))}
-            </div>
-
-            {/* Price & Quantity Row */}
-            {activeZone.featuredProduct.price > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid #E2E8F0' }}>
-                <div>
-                  <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block' }}>ESTIMATED UNIT RATE</span>
-                  <span style={{ fontSize: '18px', fontWeight: 900, color: '#0052CC' }}>
-                    ₹{activeZone.featuredProduct.price.toFixed(2)}
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#64748B' }}> / pc</span>
+          {/* Inspector Mode: Assembly Controls Overlay - Clean High-Contrast White */}
+          {viewMode === 'inspector' && (() => {
+            const activeCad = CAD_BOLT_MODELS.find((m) => m.id === selectedCadId) || CAD_BOLT_MODELS[0];
+            return (
+              <div className="absolute top-4 right-4 z-20 w-96 max-w-[calc(100vw-32px)] bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xl text-slate-900 transition-all max-h-[calc(100vh-140px)] overflow-y-auto">
+                {/* Header with Icon, Name, and Standard Badge */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-2xl sm:text-3xl p-1 bg-slate-100 rounded-xl border border-slate-200 flex-shrink-0">
+                      {activeCad.icon}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-[#0052CC] border border-blue-200 uppercase">
+                          {activeCad.standard}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                          {activeCad.grade}
+                        </span>
+                      </div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug mt-1">
+                        {activeCad.name}
+                      </h3>
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>QTY:</label>
+                {/* Exploded View Slider Controls */}
+                <div className="mb-4 bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <Layers size={14} className="text-[#0052CC]" />
+                      <span>Exploded View Animation:</span>
+                    </span>
+                    <span className="font-mono text-[#0052CC] font-extrabold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                      {Math.round(explodedDist * 100)}%
+                    </span>
+                  </div>
                   <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(100, parseInt(e.target.value) || 100))}
-                    step={100}
-                    style={{
-                      width: '75px',
-                      padding: '6px 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textAlign: 'center'
-                    }}
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={explodedDist}
+                    onChange={(e) => setExplodedDist(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0052CC]"
                   />
+                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200/60">
+                    <button
+                      type="button"
+                      onClick={() => setExplodedDist(0)}
+                      className={`text-[10px] font-extrabold px-2 py-1 rounded transition-colors cursor-pointer ${
+                        explodedDist === 0 ? 'bg-[#0052CC] text-white' : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Assembled (0%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExplodedDist(0.5)}
+                      className={`text-[10px] font-extrabold px-2 py-1 rounded transition-colors cursor-pointer ${
+                        explodedDist > 0.4 && explodedDist < 0.6 ? 'bg-[#0052CC] text-white' : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      50% Exploded
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExplodedDist(1)}
+                      className={`text-[10px] font-extrabold px-2 py-1 rounded transition-colors cursor-pointer ${
+                        explodedDist === 1 ? 'bg-[#0052CC] text-white' : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Fully Exploded (100%)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Component Breakdown Selector */}
+                <div className="mb-4">
+                  <span className="block text-[11px] font-mono font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Components Breakdown ({activeCad.parts.length} Parts):
+                  </span>
+                  <div className="space-y-1.5">
+                    {activeCad.parts.map((part) => {
+                      const isPartSelected = selectedPartId === part.id;
+                      return (
+                        <button
+                          key={part.id}
+                          type="button"
+                          onClick={() => setSelectedPartId(part.id)}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer ${
+                            isPartSelected
+                              ? 'bg-[#0052CC] text-white font-extrabold shadow-sm'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200/80 font-medium'
+                          }`}
+                        >
+                          <span className="truncate pr-2">{part.name}</span>
+                          <span
+                            className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                              isPartSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {part.spec}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Engineering Specifications Box */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-1.5 mb-4">
+                  <div>
+                    <span className="font-bold text-slate-700">Available Diameters: </span>
+                    <span className="text-slate-900 font-mono">{activeCad.diameters}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700">Engineering Use: </span>
+                    <span className="text-slate-600 leading-relaxed">{activeCad.applications}</span>
+                  </div>
+                </div>
+
+                {/* Direct Action: Jump to Depot Catalog for this bolt */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetZone = zones.find((z) => z.id === activeCad.zoneId) || zones[0];
+                    setViewMode('depot');
+                    handleSelectZone(targetZone);
+                    setIsShelfOpen(true);
+                  }}
+                  className="w-full py-2.5 px-4 bg-[#0052CC] hover:bg-[#0747A6] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01]"
+                >
+                  <Search size={14} />
+                  <span>Find in Depot Catalog ({activeCad.category})</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            );
+          })()}
+
+        {/* Floating Trigger to Open Fastener Shelf when Closed (Depot Mode) */}
+        {viewMode === 'depot' && !isShelfOpen && (
+          <button
+            type="button"
+            onClick={() => setIsShelfOpen(true)}
+            className="absolute top-4 right-4 z-20 px-4 py-2.5 bg-[#0052CC] hover:bg-[#0747A6] text-white rounded-xl shadow-xl flex items-center gap-2 font-extrabold text-xs cursor-pointer border-2 border-white transition-all hover:scale-105"
+          >
+            <ShoppingBag size={15} />
+            <span>Browse {activeZone.name.split(':')[0]} Fasteners</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-[#FF6B00] text-white text-[10px] font-black">
+              {totalProducts.toLocaleString()}
+            </span>
+            <ChevronLeft size={16} />
+          </button>
+        )}
+
+        {/* Bottom Dock: Dual-Mode Quick Selector (Clean High-Contrast White) */}
+        <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-center pointer-events-none">
+          <nav className="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur-xl border border-slate-200/90 px-3 py-2 rounded-2xl shadow-xl max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {viewMode === 'depot' ? (
+              zones.map((zone) => {
+                const isSelected = activeZone.id === zone.id;
+                return (
+                  <button
+                    key={zone.id}
+                    type="button"
+                    onClick={() => handleSelectZone(zone)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#0052CC] text-white shadow-md ring-2 ring-blue-300'
+                        : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/90 shadow-xs hover:text-[#0052CC]'
+                    }`}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: zone.color || '#0052CC' }}
+                    />
+                    <div className="text-left">
+                      <span className={`block text-[11px] font-extrabold leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                        {zone.name.split(':')[0]}
+                      </span>
+                      <span
+                        className={`block text-[9px] font-mono ${
+                          isSelected ? 'text-blue-100 font-semibold' : 'text-slate-600 font-bold'
+                        }`}
+                      >
+                        {zone.skuCount > 0 ? `${zone.skuCount.toLocaleString()} SKUs` : zone.category}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              CAD_BOLT_MODELS.map((bolt) => {
+                const isSelected = selectedCadId === bolt.id;
+                return (
+                  <button
+                    key={bolt.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCadId(bolt.id);
+                      setSelectedPartId(bolt.parts[0]?.id || 'bolt');
+                      setExplodedDist(0);
+                    }}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#0052CC] text-white shadow-md ring-2 ring-blue-300'
+                        : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/90 shadow-xs hover:text-[#0052CC]'
+                    }`}
+                  >
+                    <span className="text-base flex-shrink-0">{bolt.icon}</span>
+                    <div className="text-left">
+                      <span className={`block text-[11px] font-extrabold leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                        {bolt.shortName}
+                      </span>
+                      <span
+                        className={`block text-[9px] font-mono ${
+                          isSelected ? 'text-blue-100 font-semibold' : 'text-slate-600 font-bold'
+                        }`}
+                      >
+                        {bolt.standard.split('/')[0]}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </nav>
+        </div>
+
+        {/* ------------------------------------------------------------- */}
+        {/* 3. RIGHT SIDE: HIGH-CAPACITY FASTENER CATALOG SHELF (SLIDE-OVER DRAWER) */}
+        {/* ------------------------------------------------------------- */}
+        <div
+          className={`absolute top-0 right-0 z-30 h-full w-[440px] max-w-[95vw] bg-white border-l border-slate-200 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+            isShelfOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
+            {/* Shelf Header */}
+            <div className="p-4 border-b border-slate-200 bg-white flex-shrink-0 shadow-xs">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#0052CC] border border-blue-200 text-[11px] font-mono font-bold">
+                    {activeZone.aisleCode || 'AISLE 1'}
+                  </span>
+                  <span className="text-[11px] font-black uppercase text-[#FF6B00] font-mono tracking-wider">
+                    {activeZone.category}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    {totalProducts.toLocaleString()} SKUs
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsShelfOpen(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Close Shelf"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {activeZone.featuredProduct.price > 0 ? (
-              <button
-                onClick={() => handleAddToCart(activeZone.featuredProduct)}
-                style={{
-                  flex: 1,
-                  background: '#0052CC',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 14px rgba(0, 82, 204, 0.35)'
-                }}
-              >
-                <ShoppingBag size={16} />
-                <span>Add to RFQ Cart</span>
-              </button>
-            ) : (
-              <Link
-                href="/contact"
-                style={{
-                  flex: 1,
-                  background: '#0052CC',
-                  color: '#FFFFFF',
-                  textDecoration: 'none',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <FileSpreadsheet size={16} />
-                <span>Request Sample Batch Report</span>
-              </Link>
-            )}
+                <h2 className="text-base font-extrabold text-slate-900 leading-tight mb-0.5">
+                  {activeZone.name}
+                </h2>
+                <p className="text-xs text-slate-600 line-clamp-1">
+                  {activeZone.subtitle}
+                </p>
 
-            <button
-              onClick={open3DInspector}
-              style={{
-                background: 'rgba(255, 107, 0, 0.1)',
-                border: '1px solid #FF6B00',
-                color: '#FF6B00',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <Box size={15} />
-              <span>3D Model</span>
-            </button>
+                {/* Live Search Bar */}
+                <div className="relative mt-3">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder={`Search in ${activeZone.name.split(':')[0]} (e.g. M12, 10.9, Zinc)...`}
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-[#0052CC] focus:bg-white rounded-xl pl-9 pr-8 py-2 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all shadow-xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Standards & Diameter Filter Chips */}
+                <div className="mt-2.5 space-y-1.5">
+                  {/* Standards Row */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <span className="text-[10px] font-bold text-slate-600 uppercase flex-shrink-0">STD:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStandard('ALL');
+                        setCurrentPage(1);
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap cursor-pointer transition-colors ${
+                        selectedStandard === 'ALL'
+                          ? 'bg-[#0052CC] text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {availableStandards.slice(0, 5).map((std) => (
+                      <button
+                        key={std}
+                        type="button"
+                        onClick={() => {
+                          setSelectedStandard(std);
+                          setCurrentPage(1);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap cursor-pointer transition-colors ${
+                          selectedStandard === std
+                            ? 'bg-[#0052CC] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
+                      >
+                        {std}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Diameters Row */}
+                  {availableDiameters.length > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase flex-shrink-0">DIA:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDiameter('ALL');
+                          setCurrentPage(1);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap cursor-pointer transition-colors ${
+                          selectedDiameter === 'ALL'
+                            ? 'bg-[#0052CC] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
+                      >
+                        All
+                      </button>
+                      {availableDiameters.slice(0, 8).map((dia) => (
+                        <button
+                          key={dia}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDiameter(dia);
+                            setCurrentPage(1);
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap cursor-pointer transition-colors ${
+                            selectedDiameter === dia
+                              ? 'bg-[#0052CC] text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                          }`}
+                        >
+                          {dia}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Fastener Products List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]">
+                {productsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+                    <RotateCw size={26} className="animate-spin text-[#0052CC] mb-2" />
+                    <span className="text-xs font-semibold text-slate-600">Loading depot inventory...</span>
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-center py-16 px-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
+                    <Boxes size={32} className="mx-auto text-slate-400 mb-2" />
+                    <p className="text-sm font-bold text-slate-900">No fasteners found</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      No matching items for the current filter in this bay.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedStandard('ALL');
+                        setSelectedDiameter('ALL');
+                      }}
+                      className="mt-3 px-3.5 py-1.5 bg-[#0052CC] text-white rounded-lg text-xs font-bold hover:bg-[#0747A6] cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                ) : (
+                  products.map((product) => (
+                    <div
+                      key={product.id}
+                      className="bg-white border border-slate-200/90 hover:border-[#0052CC] hover:shadow-md rounded-xl p-3.5 transition-all flex gap-3 group"
+                    >
+                      {/* Product Thumbnail */}
+                      <div className="relative w-20 h-20 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center p-1.5">
+                        <img
+                          src={product.imageUrl || '/assets/bolt_zinc.jpg'}
+                          alt={product.name}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                          }}
+                        />
+                      </div>
+
+                      {/* Product Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-mono text-xs font-bold text-[#0052CC] truncate">
+                            {product.sku}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 flex-shrink-0">
+                            {product.standard}
+                          </span>
+                        </div>
+
+                        <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug mb-1.5" title={product.name}>
+                          {product.name}
+                        </h4>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-600 mb-2 flex-wrap">
+                          <span className="font-semibold text-slate-700">Grade {product.grade}</span>
+                          <span>•</span>
+                          <span>{product.finish}</span>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
+                            {product.stockPcs > 0 ? `${product.stockPcs.toLocaleString()} pcs in stock` : 'In Stock'}
+                          </span>
+                        </div>
+
+                        {/* Rate & 1-Click RFQ Add */}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                          <div>
+                            <span className="text-sm font-black text-slate-900">
+                              ₹{product.pricePerPiece.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-semibold"> / pc</span>
+                            <span className="block text-[10px] text-slate-500 font-mono">
+                              (₹{product.pricePerKg.toFixed(1)}/kg)
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(product)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                              addedSku === product.sku
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-[#0052CC] hover:bg-[#0747A6] text-white shadow-xs'
+                            }`}
+                          >
+                            {addedSku === product.sku ? (
+                              <>
+                                <Check size={13} />
+                                <span>Added</span>
+                              </>
+                            ) : (
+                              <>
+                                <Plus size={13} />
+                                <span>Add to RFQ</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Shelf Footer: Pagination & Full Category Page Link */}
+              <div className="p-3 border-t border-slate-200 bg-white flex items-center justify-between text-xs flex-shrink-0 shadow-xs">
+                <div className="flex items-center gap-1 text-slate-600 font-bold">
+                  <span>Page {currentPage} of {totalPages}</span>
+                  <span className="text-slate-400 font-normal">({totalProducts.toLocaleString()} items)</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1 || productsLoading}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages || productsLoading}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 cursor-pointer"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+
+                  <Link
+                    href={`/products?category=${encodeURIComponent(activeZone.category)}`}
+                    target="_blank"
+                    className="ml-2 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0052CC] border border-blue-200 text-[11px] font-bold flex items-center gap-1 no-underline transition-colors"
+                  >
+                    <span>Full Grid</span>
+                    <ExternalLink size={11} />
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Exploded 3D Fastener Inspector Modal Flyout */}
-      {isInspectorOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100px',
-            right: '24px',
-            maxWidth: '460px',
-            width: 'calc(100% - 48px)',
-            background: 'rgba(15, 23, 42, 0.95)',
-            backdropFilter: 'blur(16px)',
-            borderRadius: '16px',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            padding: '24px',
-            color: '#FFFFFF',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 82, 204, 0.4)',
-            zIndex: 40
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, background: '#FF6B00', padding: '2px 8px', borderRadius: '4px' }}>
-                ETA OPTION 1
-              </span>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#60A5FA' }}>
-                CALIBRATED 3D FASTENER
-              </span>
-            </div>
-
-            <button
-              onClick={() => setIsInspectorOpen(false)}
-              style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <h3 style={{ fontSize: '18px', fontWeight: 900, marginBottom: '6px', color: '#FFFFFF' }}>
-            FAZ II Plus Bolt Anchor M12x100
-          </h3>
-
-          <p style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5, marginBottom: '16px' }}>
-            Engineered for cracked concrete and high seismic demand (C1 & C2). Dynamic expansion clip ensures maximum pull-out resistance.
-          </p>
-
-          {/* GSAP Exploded Assembly Interactive Button */}
-          <div style={{ marginBottom: '16px' }}>
-            <button
-              onClick={toggleExplodedAssembly}
-              style={{
-                width: '100%',
-                background: isExploded
-                  ? 'linear-gradient(135deg, #FF6B00 0%, #E55C00 100%)'
-                  : 'linear-gradient(135deg, #0052CC 0%, #0747A6 100%)',
-                color: '#FFFFFF',
-                border: 'none',
-                padding: '14px',
-                borderRadius: '10px',
-                fontSize: '13px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: isExploded ? '0 4px 16px rgba(255, 107, 0, 0.4)' : '0 4px 16px rgba(0, 82, 204, 0.4)',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <Layers size={18} />
-              <span>{isExploded ? 'COLLAPSE 3D ASSEMBLY' : 'EXPLODE 3D ASSEMBLY (GSAP)'}</span>
-            </button>
-          </div>
-
-          {/* Exploded Parts Legend */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              background: 'rgba(255, 255, 255, 0.05)',
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '16px'
-            }}
-          >
-            <div>
-              <span style={{ color: '#94A3B8', display: 'block' }}>1. EXPANSION CLIP:</span>
-              <strong style={{ color: '#FF6B00' }}>Stainless Spring Steel</strong>
-            </div>
-            <div>
-              <span style={{ color: '#94A3B8', display: 'block' }}>2. THREADED STUD:</span>
-              <strong style={{ color: '#60A5FA' }}>Zinc-Plated (5μm)</strong>
-            </div>
-            <div>
-              <span style={{ color: '#94A3B8', display: 'block' }}>3. WASHER DIN 125:</span>
-              <strong style={{ color: '#FFFFFF' }}>Outer Dia 24mm</strong>
-            </div>
-            <div>
-              <span style={{ color: '#94A3B8', display: 'block' }}>4. HEX NUT DIN 934:</span>
-              <strong style={{ color: '#FFFFFF' }}>SW 19 / Tinst 60Nm</strong>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Link
-              href="/products/steel-fixings/bolt-anchor/bolt-anchor-faz-ii-plus"
-              style={{
-                flex: 1,
-                background: '#FFFFFF',
-                color: '#0F172A',
-                textDecoration: 'none',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <span>View Technical Matrix</span>
-              <ArrowRight size={14} />
-            </Link>
-
-            <button
-              onClick={() => handleAddToCart(ZONES[0].featuredProduct)}
-              style={{
-                background: '#0052CC',
-                color: '#FFFFFF',
-                border: 'none',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <ShoppingBag size={14} />
-              <span>Add (500 pcs)</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Zone Quick Navigation Bar (Like the bottom category bar in Emons video) */}
-      <nav
-        style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(15, 23, 42, 0.88)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          padding: '8px 12px',
-          borderRadius: '50px',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-          zIndex: 40,
-          maxWidth: '92vw',
-          overflowX: 'auto'
-        }}
-      >
-        <button
-          onClick={resetToOverview}
-          style={{
-            background: isOverview ? '#0052CC' : 'transparent',
-            color: '#FFFFFF',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: '30px',
-            fontSize: '12px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <RotateCw size={13} />
-          <span>Overview (360°)</span>
-        </button>
-
-        {ZONES.map((zone) => {
-          const isActive = activeZone?.id === zone.id && !isInspectorOpen;
-          return (
-            <button
-              key={zone.id}
-              onClick={() => navigateToZone(zone)}
-              style={{
-                background: isActive ? '#FF6B00' : 'rgba(255, 255, 255, 0.06)',
-                color: isActive ? '#FFFFFF' : '#CBD5E1',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: '30px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span>{zone.name.split(':')[0]}</span>
-            </button>
-          );
-        })}
-
-        <button
-          onClick={open3DInspector}
-          style={{
-            background: isInspectorOpen ? '#FF6B00' : 'rgba(255, 107, 0, 0.15)',
-            color: '#FF6B00',
-            border: '1px solid rgba(255, 107, 0, 0.3)',
-            padding: '8px 16px',
-            borderRadius: '30px',
-            fontSize: '12px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Box size={13} />
-          <span>3D Bolt Anchor</span>
-        </button>
-      </nav>
-
-      {/* Cart Drawer Component */}
+      {/* ------------------------------------------------------------- */}
+      {/* 4. RFQ CART DRAWER */}
+      {/* ------------------------------------------------------------- */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -1402,13 +1566,12 @@ export default function VirtualStorePage() {
           setCartItems((prev) => {
             const updated = prev.map((item) => {
               if (item.id === id) {
-                const nextQty = clampQty(qty, item.unit);
-                const totalWeight = item.unit === 'PCS' ? nextQty * (item.weightPerPcKg || 0.05) : nextQty;
+                const q = Math.max(1, qty);
                 return {
                   ...item,
-                  quantity: nextQty,
-                  totalWeightKg: totalWeight,
-                  rowTotal: nextQty * item.unitRate
+                  quantity: q,
+                  totalWeightKg: q * (item.weightPerPcKg || 0.05),
+                  rowTotal: q * (item.unitRate || 10)
                 };
               }
               return item;

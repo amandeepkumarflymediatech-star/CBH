@@ -74,7 +74,7 @@ export function compressImageToDataUrl(
 }
 
 /**
- * Applies the CBH watermark on the right-bottom corner of an image client-side.
+ * Applies the CBH watermark semi-transparently in the center of an image client-side.
  * Returns processed Blob, DataURL, and File for instant preview and upload.
  */
 export function applyWatermarkClientSide(
@@ -118,18 +118,20 @@ export function applyWatermarkClientSide(
             // Draw base image
             ctx.drawImage(baseImg, 0, 0);
 
-            // Watermark size: ~28% of base width, clamped between 80px and 360px
+            // Transparent & Centered watermark: ~46% of base width
             const wmWidth = Math.min(
-              Math.round(canvas.width * 0.28),
-              Math.max(80, Math.min(360, Math.round(canvas.width * 0.32)))
+              Math.round(canvas.width * 0.46),
+              Math.max(120, Math.min(540, Math.round(canvas.width * 0.50)))
             );
             const wmHeight = Math.round((wmWidth * wmImg.height) / wmImg.width);
-            const padding = Math.min(30, Math.max(10, Math.round(canvas.width * 0.025)));
-            const x = Math.max(0, canvas.width - wmWidth - padding);
-            const y = Math.max(0, canvas.height - wmHeight - padding);
+            const x = Math.max(0, Math.round((canvas.width - wmWidth) / 2));
+            const y = Math.max(0, Math.round((canvas.height - wmHeight) / 2));
 
-            // Draw watermark on right-bottom side
+            // Draw watermark semi-transparent in the center
+            ctx.save();
+            ctx.globalAlpha = 0.22;
             ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
+            ctx.restore();
 
             canvas.toBlob((blob) => {
               if (!blob) return reject(new Error('Canvas blob export failed'));

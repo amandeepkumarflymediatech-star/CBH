@@ -344,6 +344,17 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
                             } catch {}
                           }}
                         />
+                        {/* Watermark overlay - transparent & center */}
+                        <div
+                          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+                          style={{ opacity: 0.22 }}
+                        >
+                          <img
+                            src="/assets/cbh-watermark.png"
+                            alt="CBH Watermark"
+                            className="w-20 sm:w-24 max-w-[55%] h-auto object-contain pointer-events-none"
+                          />
+                        </div>
                       </div>
                     </Link>
 
@@ -512,7 +523,7 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
             href="/products"
             className="inline-flex items-center gap-2.5 bg-blue-700 hover:bg-blue-800 text-white py-3.5 px-8 rounded-xl text-sm sm:text-base font-extrabold shadow-md hover:shadow-lg transition-all no-underline"
           >
-            <span>View All Fasteners ({products.length > 0 ? products.length : '57+'} Products)</span>
+            <span>View All Fasteners{products.length > 0 ? ` (${products.length.toLocaleString()} Products)` : ''}</span>
             <ArrowRight size={18} />
           </Link>
           <span className="text-xs text-slate-500 mt-2.5">
