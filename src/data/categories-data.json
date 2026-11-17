@@ -13,7 +13,7 @@
     "link": "/products?category=HEX%20BOLTS",
     "featured": true,
     "sortOrder": 1,
-    "productsCount": 11516
+    "productsCount": 0
   },
   {
     "id": "cat-hex-screws",
@@ -29,7 +29,7 @@
     "link": "/products?category=HEX%20SCREWS",
     "featured": true,
     "sortOrder": 2,
-    "productsCount": 16167
+    "productsCount": 0
   },
   {
     "id": "cat-socket-head",
@@ -45,7 +45,7 @@
     "link": "/products?category=SOCKET%20HEAD",
     "featured": true,
     "sortOrder": 3,
-    "productsCount": 4486
+    "productsCount": 0
   },
   {
     "id": "cat-hsfg-bolts",
@@ -61,7 +61,7 @@
     "link": "/products?category=HSFG%20BOLTS",
     "featured": true,
     "sortOrder": 4,
-    "productsCount": 10605
+    "productsCount": 0
   },
   {
     "id": "cat-carriage-bolts",
@@ -77,7 +77,7 @@
     "link": "/products?category=CARRIAGE%20BOLTS",
     "featured": true,
     "sortOrder": 5,
-    "productsCount": 5057
+    "productsCount": 0
   },
   {
     "id": "cat-hex-flange",
@@ -93,7 +93,7 @@
     "link": "/products?category=HEX%20FLANGE%20BOLTS",
     "featured": true,
     "sortOrder": 6,
-    "productsCount": 3684
+    "productsCount": 0
   },
   {
     "id": "cat-threaded-rods",
@@ -109,7 +109,7 @@
     "link": "/products?category=THREADED%20RODS",
     "featured": true,
     "sortOrder": 7,
-    "productsCount": 2469
+    "productsCount": 0
   },
   {
     "id": "cat-surplus-deals",
@@ -141,7 +141,7 @@
     "link": "/products?category=NUTS",
     "featured": false,
     "sortOrder": 9,
-    "productsCount": 5
+    "productsCount": 0
   },
   {
     "id": "cat-washers",
@@ -157,7 +157,7 @@
     "link": "/products?category=WASHERS",
     "featured": false,
     "sortOrder": 10,
-    "productsCount": 6
+    "productsCount": 0
   },
   {
     "id": "cat-roofing-bolts",
@@ -173,7 +173,7 @@
     "link": "/products?category=ROOFING%20BOLTS",
     "featured": false,
     "sortOrder": 11,
-    "productsCount": 106
+    "productsCount": 0
   },
   {
     "id": "cat-anti-theft",
@@ -189,6 +189,6 @@
     "link": "/products?category=ANTI%20THEFT%20BOLTS",
     "featured": false,
     "sortOrder": 12,
-    "productsCount": 108
+    "productsCount": 0
   }
 ]

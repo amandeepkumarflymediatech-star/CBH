@@ -225,17 +225,6 @@ function FastenerCard({
                 } catch {}
               }}
             />
-            {/* Watermark overlay - transparent & center */}
-            <div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
-              style={{ opacity: 0.22 }}
-            >
-              <img
-                src="/assets/cbh-watermark.png"
-                alt="CBH Watermark"
-                className="w-20 sm:w-24 max-w-[55%] h-auto object-contain pointer-events-none"
-              />
-            </div>
           </div>
         </Link>
 

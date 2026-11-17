@@ -107,7 +107,7 @@ export default function ProductDetailPage() {
             return;
           }
         }
-        
+
         // Fallback search
         return fetch(`/api/products?search=${encodeURIComponent(rawId)}&limit=5`)
           .then((r) => r.json())
@@ -425,13 +425,13 @@ export default function ProductDetailPage() {
       {/* Main PDP Core Section */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 pb-28 sm:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          
+
           {/* ================================================================ */}
           {/* LEFT COLUMN: Technical Viewport & CAD Drawing Visualizer        */}
           {/* ================================================================ */}
           <div className="lg:col-span-5 lg:sticky lg:top-24">
             <div className="pdp-gallery-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
-              
+
               {/* Badges Strip */}
               <div className="flex justify-between items-center flex-wrap gap-2 mb-3 sm:mb-3.5">
                 <div className="flex gap-1.5 flex-wrap items-center">
@@ -455,11 +455,10 @@ export default function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowWatermark(!showWatermark)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
-                      showWatermark
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs'
-                        : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${showWatermark
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs'
+                      : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
+                      }`}
                     title="Toggle CBH Watermark (Transparent Center)"
                   >
                     <img src="/assets/cbh-watermark.png" alt="" className="h-3 w-auto object-contain" />
@@ -481,321 +480,319 @@ export default function ProductDetailPage() {
                   if (activeMediaTab === 'photo') setIsLightboxOpen(true);
                 }}
               >
-              {/* TAB 1: HIGH-RES DYNAMIC PHOTO */}
-              {activeMediaTab === 'photo' && (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative' }}>
-                  <img
-                    src={product.imageUrl || '/assets/bolt_zinc.jpg'}
-                    alt={product.name}
-                    style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', transition: 'transform 0.3s ease' }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
-                    }}
-                  />
+                {/* TAB 1: HIGH-RES DYNAMIC PHOTO */}
+                {activeMediaTab === 'photo' && (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative' }}>
+                    <img
+                      src={product.imageUrl || '/assets/bolt_zinc.jpg'}
+                      alt={product.name}
+                      style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', transition: 'transform 0.3s ease' }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg';
+                      }}
+                    />
 
-                  {/* Click to Zoom Pill - Bottom Left */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: '12px',
-                      left: '12px',
-                      background: 'rgba(15, 23, 42, 0.75)',
-                      backdropFilter: 'blur(4px)',
-                      color: '#FFFFFF',
-                      borderRadius: '6px',
-                      padding: '4px 10px',
-                      fontSize: '11px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      zIndex: 5,
-                    }}
-                  >
-                    <ZoomIn size={12} />
-                    <span>Click to Zoom</span>
-                  </div>
-
-                  {/* CBH BRAND WATERMARK - TRANSPARENT & CENTER */}
-                  {showWatermark && (
+                    {/* Click to Zoom Pill - Bottom Left */}
                     <div
                       style={{
                         position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 10,
-                        pointerEvents: 'none',
+                        bottom: '12px',
+                        left: '12px',
+                        background: 'rgba(15, 23, 42, 0.75)',
+                        backdropFilter: 'blur(4px)',
+                        color: '#FFFFFF',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11px',
                         display: 'flex',
-                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        opacity: 0.28,
-                        userSelect: 'none',
+                        gap: '5px',
+                        zIndex: 5,
                       }}
                     >
-                      <img
-                        src="/assets/cbh-watermark.png"
-                        alt="CBH Fasteners Watermark"
+                      <ZoomIn size={12} />
+                      <span>Click to Zoom</span>
+                    </div>
+
+                    {/* CBH BRAND WATERMARK - TRANSPARENT & CENTER */}
+                    {showWatermark && (
+                      <div
                         style={{
-                          width: '180px',
-                          maxWidth: '55%',
-                          height: 'auto',
-                          objectFit: 'contain',
-                          filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15))',
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 10,
+                          pointerEvents: 'none',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0.28,
+                          userSelect: 'none',
                         }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 2: CAD BLUEPRINT & DRAWINGS */}
-              {activeMediaTab === 'cad' && (
-                <div style={{ width: '100%', height: '100%', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' }}>
-                  <div style={{
-                    border: '1px dashed #CBD5E1',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    background: '#FFFFFF',
-                    fontFamily: 'var(--font-mono)',
-                    color: '#0F172A'
-                  }}>
-                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#0052CC', marginBottom: '10px' }}>
-                      Engineering 2D Blueprint // {product.standard}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px', textAlign: 'left' }}>
-                      <div><strong>Diameter (d):</strong> {product.diameter}</div>
-                      <div><strong>Length (l):</strong> {product.lengthMm} mm</div>
-                      <div><strong>Pitch (P):</strong> {product.pitchMm} mm</div>
-                      <div><strong>Grade:</strong> {product.grade}</div>
-                      <div><strong>Finish:</strong> {product.finish}</div>
-                      <div><strong>Size:</strong> {product.sizeFormatted}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    {product.drawingUrl ? (
-                      <a
-                        href={product.drawingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary"
-                        style={{ padding: '8px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
                       >
-                        <ExternalLink size={14} />
-                        <span>Open AutoCAD Drawing (CAD / Drive)</span>
-                      </a>
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#64748B' }}>CAD Drawing Available on Factory Order</span>
+                        <img
+                          src="/assets/cbh-watermark.png"
+                          alt="CBH Fasteners Watermark"
+                          style={{
+                            width: '180px',
+                            maxWidth: '55%',
+                            height: 'auto',
+                            objectFit: 'contain',
+                            filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15))',
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* TAB 3: NABL MILL CERTIFICATE */}
-              {activeMediaTab === 'cert' && (
-                <div style={{ textAlign: 'center', padding: '24px', background: '#FFFFFF', borderRadius: '8px', width: '90%', border: '1px solid #E2E8F0' }}>
-                  <Award size={44} color="#0052CC" style={{ margin: '0 auto 10px' }} />
-                  <h4 style={{ fontFamily: 'var(--font-headline)', fontSize: '16px', fontWeight: 800, marginBottom: '4px', color: '#0F172A' }}>
-                    NABL 3.1 Mill Test Certificate
-                  </h4>
-                  <p style={{ fontSize: '12px', color: '#64748B', maxWidth: '320px', margin: '0 auto 12px' }}>
-                    Certified EN 10204 Type 3.1 chemical & mechanical stress calibration for Grade {product.grade}.
-                  </p>
-                  <span className="badge badge-certified" style={{ fontSize: '11px' }}>
-                    100% Traceable Heat Melt
-                  </span>
-                </div>
-              )}
-            </div>
+                {/* TAB 2: CAD BLUEPRINT & DRAWINGS */}
+                {activeMediaTab === 'cad' && (
+                  <div style={{ width: '100%', height: '100%', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' }}>
+                    <div style={{
+                      border: '1px dashed #CBD5E1',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      background: '#FFFFFF',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#0F172A'
+                    }}>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#0052CC', marginBottom: '10px' }}>
+                        Engineering 2D Blueprint // {product.standard}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px', textAlign: 'left' }}>
+                        <div><strong>Diameter (d):</strong> {product.diameter}</div>
+                        <div><strong>Length (l):</strong> {product.lengthMm} mm</div>
+                        <div><strong>Pitch (P):</strong> {product.pitchMm} mm</div>
+                        <div><strong>Grade:</strong> {product.grade}</div>
+                        <div><strong>Finish:</strong> {product.finish}</div>
+                        <div><strong>Size:</strong> {product.sizeFormatted}</div>
+                      </div>
+                    </div>
 
-            {/* Thumbnail Navigation Row */}
-            <div className="pdp-thumbs-row" style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <button
-                type="button"
-                className={`pdp-thumb-btn ${activeMediaTab === 'photo' ? 'active' : ''}`}
-                onClick={() => setActiveMediaTab('photo')}
-                style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '8px',
-                  border: activeMediaTab === 'photo' ? '2px solid #0052CC' : '1px solid #E2E8F0',
-                  background: activeMediaTab === 'photo' ? '#EFF6FF' : '#F8FAFC',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-                title="View High-Res Photo"
-              >
-                <img
-                  src={product.imageUrl || '/assets/bolt_zinc.jpg'}
-                  alt="Thumb"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
-                />
-              </button>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      {product.drawingUrl ? (
+                        <a
+                          href={product.drawingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary"
+                          style={{ padding: '8px 16px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Open AutoCAD Drawing (CAD / Drive)</span>
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>CAD Drawing Available on Factory Order</span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-              <button
-                type="button"
-                className={`pdp-thumb-btn ${activeMediaTab === 'cad' ? 'active' : ''}`}
-                onClick={() => setActiveMediaTab('cad')}
-                style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '8px',
-                  border: activeMediaTab === 'cad' ? '2px solid #0052CC' : '1px solid #E2E8F0',
-                  background: activeMediaTab === 'cad' ? '#EFF6FF' : '#F8FAFC',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2px',
-                  fontSize: '9.5px',
-                  fontFamily: 'var(--font-mono)',
-                  color: activeMediaTab === 'cad' ? '#0052CC' : '#64748B',
-                  flexShrink: 0
-                }}
-                title="View CAD Blueprint"
-              >
-                <Layers size={18} color={activeMediaTab === 'cad' ? '#0052CC' : '#64748B'} />
-                <span>CAD 2D</span>
-              </button>
-
-              <button
-                type="button"
-                className={`pdp-thumb-btn ${activeMediaTab === 'cert' ? 'active' : ''}`}
-                onClick={() => setActiveMediaTab('cert')}
-                style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '8px',
-                  border: activeMediaTab === 'cert' ? '2px solid #059669' : '1px solid #E2E8F0',
-                  background: activeMediaTab === 'cert' ? '#ECFDF5' : '#F8FAFC',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2px',
-                  fontSize: '9.5px',
-                  fontFamily: 'var(--font-mono)',
-                  color: activeMediaTab === 'cert' ? '#059669' : '#64748B',
-                  flexShrink: 0
-                }}
-                title="View Inspection Certificate"
-              >
-                <Award size={18} color={activeMediaTab === 'cert' ? '#059669' : '#64748B'} />
-                <span>CERT 3.1</span>
-              </button>
-            </div>
-
-            {/* Quality Certifications Strip */}
-            <div className="mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-[10px] sm:text-xs font-mono">
-              <div className="bg-slate-50 p-2 rounded-lg">
-                <strong className="text-slate-900 block truncate">ISO 9001:2015</strong>
-                <span className="text-slate-500 text-[9px] sm:text-[10px]">Quality Audit</span>
+                {/* TAB 3: NABL MILL CERTIFICATE */}
+                {activeMediaTab === 'cert' && (
+                  <div style={{ textAlign: 'center', padding: '24px', background: '#FFFFFF', borderRadius: '8px', width: '90%', border: '1px solid #E2E8F0' }}>
+                    <Award size={44} color="#0052CC" style={{ margin: '0 auto 10px' }} />
+                    <h4 style={{ fontFamily: 'var(--font-headline)', fontSize: '16px', fontWeight: 800, marginBottom: '4px', color: '#0F172A' }}>
+                      NABL 3.1 Mill Test Certificate
+                    </h4>
+                    <p style={{ fontSize: '12px', color: '#64748B', maxWidth: '320px', margin: '0 auto 12px' }}>
+                      Certified EN 10204 Type 3.1 chemical & mechanical stress calibration for Grade {product.grade}.
+                    </p>
+                    <span className="badge badge-certified" style={{ fontSize: '11px' }}>
+                      100% Traceable Heat Melt
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="bg-slate-50 p-2 rounded-lg">
-                <strong className="text-slate-900 block truncate">RoHS / REACH</strong>
-                <span className="text-slate-500 text-[9px] sm:text-[10px]">Non-Toxic</span>
+
+              {/* Thumbnail Navigation Row */}
+              <div className="pdp-thumbs-row" style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  className={`pdp-thumb-btn ${activeMediaTab === 'photo' ? 'active' : ''}`}
+                  onClick={() => setActiveMediaTab('photo')}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '8px',
+                    border: activeMediaTab === 'photo' ? '2px solid #0052CC' : '1px solid #E2E8F0',
+                    background: activeMediaTab === 'photo' ? '#EFF6FF' : '#F8FAFC',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                  title="View High-Res Photo"
+                >
+                  <img
+                    src={product.imageUrl || '/assets/bolt_zinc.jpg'}
+                    alt="Thumb"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/assets/bolt_zinc.jpg'; }}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  className={`pdp-thumb-btn ${activeMediaTab === 'cad' ? 'active' : ''}`}
+                  onClick={() => setActiveMediaTab('cad')}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '8px',
+                    border: activeMediaTab === 'cad' ? '2px solid #0052CC' : '1px solid #E2E8F0',
+                    background: activeMediaTab === 'cad' ? '#EFF6FF' : '#F8FAFC',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '2px',
+                    fontSize: '9.5px',
+                    fontFamily: 'var(--font-mono)',
+                    color: activeMediaTab === 'cad' ? '#0052CC' : '#64748B',
+                    flexShrink: 0
+                  }}
+                  title="View CAD Blueprint"
+                >
+                  <Layers size={18} color={activeMediaTab === 'cad' ? '#0052CC' : '#64748B'} />
+                  <span>CAD 2D</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`pdp-thumb-btn ${activeMediaTab === 'cert' ? 'active' : ''}`}
+                  onClick={() => setActiveMediaTab('cert')}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '8px',
+                    border: activeMediaTab === 'cert' ? '2px solid #059669' : '1px solid #E2E8F0',
+                    background: activeMediaTab === 'cert' ? '#ECFDF5' : '#F8FAFC',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '2px',
+                    fontSize: '9.5px',
+                    fontFamily: 'var(--font-mono)',
+                    color: activeMediaTab === 'cert' ? '#059669' : '#64748B',
+                    flexShrink: 0
+                  }}
+                  title="View Inspection Certificate"
+                >
+                  <Award size={18} color={activeMediaTab === 'cert' ? '#059669' : '#64748B'} />
+                  <span>CERT 3.1</span>
+                </button>
               </div>
-              <div className="bg-slate-50 p-2 rounded-lg">
-                <strong className="text-slate-900 block truncate">NABL LAB</strong>
-                <span className="text-slate-500 text-[9px] sm:text-[10px]">Tested</span>
+
+              {/* Quality Certifications Strip */}
+              <div className="mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-[10px] sm:text-xs font-mono">
+                <div className="bg-slate-50 p-2 rounded-lg">
+                  <strong className="text-slate-900 block truncate">ISO 9001:2015</strong>
+                  <span className="text-slate-500 text-[9px] sm:text-[10px]">Quality Audit</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg">
+                  <strong className="text-slate-900 block truncate">RoHS / REACH</strong>
+                  <span className="text-slate-500 text-[9px] sm:text-[10px]">Non-Toxic</span>
+                </div>
+                <div className="bg-slate-50 p-2 rounded-lg">
+                  <strong className="text-slate-900 block truncate">NABL LAB</strong>
+                  <span className="text-slate-500 text-[9px] sm:text-[10px]">Tested</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ================================================================ */}
-        {/* RIGHT COLUMN: Product Intelligence & Commerce Engine            */}
-        {/* ================================================================ */}
-        <div className="lg:col-span-7 flex flex-col gap-4 sm:gap-5">
-          
-          {/* Title & SKU Header Block */}
-          <div className="pdp-title-block bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="font-mono text-[10.5px] sm:text-xs text-blue-700 font-bold tracking-wide">
-                Direct Factory Fasteners • Raw Industrial Hardware
-              </span>
-              <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold">
-                {toTitleCase(product.subGroup || 'Fastener')}
-              </span>
-            </div>
+          {/* ================================================================ */}
+          {/* RIGHT COLUMN: Product Intelligence & Commerce Engine            */}
+          {/* ================================================================ */}
+          <div className="lg:col-span-7 flex flex-col gap-4 sm:gap-5">
 
-            {/* Real Dynamic Product Name */}
-            <h4 className=" text-sm sm:text-md md:text-lg font-bold text-slate-900 ">
-              {toTitleCase(product.name)}
-            </h4>
-
-            <div className="pdp-sku-meta flex items-center flex-wrap gap-2 text-xs sm:text-[13px] text-slate-500 font-mono mt-2">
-              <span>SKU: <strong className="text-slate-900">{product.sku}</strong></span>
-              <span>•</span>
-              <span>Standard: <strong className="text-slate-900">{product.standard}</strong></span>
-              {product.din && <span>({product.din})</span>}
-              <span>•</span>
-              <span className={`font-bold ${product.stockPcs > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {product.stockPcs > 0 ? `${product.stockPcs.toLocaleString()} ${product.stockUom || 'Pcs'} Ready in Warehouse` : 'Made to Order'}
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Parametric Dimension Selectors */}
-          <div className="pdp-params-box bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col gap-3.5 sm:gap-4">
-            
-            {/* Diameter Selector */}
-            <div className="param-group">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs sm:text-sm font-bold text-slate-700">Thread Diameter (DIA):</span>
-                <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedDiameter}</span>
+            {/* Title & SKU Header Block */}
+            <div className="pdp-title-block bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="font-mono text-[10.5px] sm:text-xs text-blue-700 font-bold tracking-wide">
+                  Direct Factory Fasteners • Raw Industrial Hardware
+                </span>
+                <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-semibold">
+                  {toTitleCase(product.subGroup || 'Fastener')}
+                </span>
               </div>
-              <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-                {availableDiameters.map((dia) => (
-                  <button
-                    key={dia}
-                    type="button"
-                    onClick={() => setSelectedDiameter(dia)}
-                    className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
-                      selectedDiameter === dia
+
+              {/* Real Dynamic Product Name */}
+              <h4 className=" text-sm sm:text-md md:text-lg font-bold text-slate-900 ">
+                {toTitleCase(product.name)}
+              </h4>
+
+              <div className="pdp-sku-meta flex items-center flex-wrap gap-2 text-xs sm:text-[13px] text-slate-500 font-mono mt-2">
+                <span>SKU: <strong className="text-slate-900">{product.sku}</strong></span>
+                <span>•</span>
+                <span>Standard: <strong className="text-slate-900">{product.standard}</strong></span>
+                {product.din && <span>({product.din})</span>}
+                <span>•</span>
+                <span className={`font-bold ${product.stockPcs > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {product.stockPcs > 0 ? `${product.stockPcs.toLocaleString()} ${product.stockUom || 'Pcs'} Ready in Warehouse` : 'Made to Order'}
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Parametric Dimension Selectors */}
+            <div className="pdp-params-box bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col gap-3.5 sm:gap-4">
+
+              {/* Diameter Selector */}
+              <div className="param-group">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-slate-700">Thread Diameter (DIA):</span>
+                  <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedDiameter}</span>
+                </div>
+                <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                  {availableDiameters.map((dia) => (
+                    <button
+                      key={dia}
+                      type="button"
+                      onClick={() => setSelectedDiameter(dia)}
+                      className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${selectedDiameter === dia
                         ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold shadow-2xs'
                         : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400'
-                    }`}
-                  >
-                    {dia}
-                  </button>
-                ))}
+                        }`}
+                    >
+                      {dia}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Length Selector */}
-            <div className="param-group">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs sm:text-sm font-bold text-slate-700">Nominal Length (L):</span>
-                <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedLength} mm</span>
-              </div>
-              <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-                {availableLengths.map((len) => (
-                  <button
-                    key={len}
-                    type="button"
-                    onClick={() => setSelectedLength(len)}
-                    className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
-                      selectedLength === len
+              {/* Length Selector */}
+              <div className="param-group">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-slate-700">Nominal Length (L):</span>
+                  <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{selectedLength} mm</span>
+                </div>
+                <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                  {availableLengths.map((len) => (
+                    <button
+                      key={len}
+                      type="button"
+                      onClick={() => setSelectedLength(len)}
+                      className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${selectedLength === len
                         ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold shadow-2xs'
                         : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400'
-                    }`}
-                  >
-                    {len} mm
-                  </button>
-                ))}
+                        }`}
+                    >
+                      {len} mm
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
               {/* Material Grade & Finish Strip */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
@@ -816,7 +813,7 @@ export default function ProductDetailPage() {
 
             {/* Dual Pricing & Volume Discount Calculation Card */}
             <div className="pdp-price-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs">
-              
+
               {/* Price Head & Dual Unit Switcher */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                 <div>
@@ -843,18 +840,16 @@ export default function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => handleUnitToggle('PCS')}
-                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                      globalUnit === 'PCS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${globalUnit === 'PCS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     PCS
                   </button>
                   <button
                     type="button"
                     onClick={() => handleUnitToggle('KGS')}
-                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                      globalUnit === 'KGS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`py-1.5 px-3 rounded-md text-xs font-bold transition-all cursor-pointer ${globalUnit === 'KGS' ? 'bg-blue-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     KGS
                   </button>
@@ -926,7 +921,7 @@ export default function ProductDetailPage() {
               {/* Quantity Stepper & Add to RFQ Button */}
               <div className="flex flex-col gap-2.5 mb-3.5">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
-                  
+
                   {/* Stepper */}
                   <div className="flex items-center justify-between sm:justify-start bg-slate-100 rounded-xl border border-slate-300 p-1">
                     <button
@@ -1182,7 +1177,7 @@ export default function ProductDetailPage() {
 
             {/* Warehouse Stock & Pincode Telemetry */}
             <div className="pdp-telemetry-card bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
-              
+
               <div className="flex gap-3 items-start mb-3.5">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                   <Truck size={18} />
@@ -1194,7 +1189,7 @@ export default function ProductDetailPage() {
                   <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 mb-2 leading-relaxed">
                     Same-day dispatch for confirmed orders before 3:00 PM IST via BlueDart, SafeXpress, or Dedicated Full Truck Load.
                   </p>
-                  
+
                   {/* Pincode Checker */}
                   <div className="flex gap-2 w-full max-w-sm">
                     <input
@@ -1258,7 +1253,7 @@ export default function ProductDetailPage() {
         {/* SECTION: Tabbed Technical Engineering Specification Desk         */}
         {/* ================================================================ */}
         <div className="pdp-specs-desk mt-6 sm:mt-8 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          
+
           {/* Tabs Navigation (Horizontally scrollable for mobile) */}
           <div className="pdp-tabs-nav flex border-b-2 border-slate-200 bg-slate-50 overflow-x-auto scrollbar-none">
             {[
@@ -1296,7 +1291,7 @@ export default function ProductDetailPage() {
 
           {/* Tab Content */}
           <div className="pdp-tab-content p-4 sm:p-6">
-            
+
             {/* TAB 1: ALL 30+ EXCEL MASTER SPECIFICATIONS */}
             {activeSpecsTab === 'excel_master' && (
               <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">

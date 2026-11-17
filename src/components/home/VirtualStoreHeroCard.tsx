@@ -96,13 +96,13 @@ export default function VirtualStoreHeroCard() {
           <ArrowRight size={14} />
         </Link>
 
-        <Link
+        {/* <Link
           href="/virtual-store?mode=inspector"
           className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors no-underline text-center cursor-pointer border border-slate-200"
         >
           <Cpu size={15} className="text-[#0052CC]" />
           <span>CAD Inspector</span>
-        </Link>
+        </Link> */}
       </div>
     </div>
   );
