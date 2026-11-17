@@ -388,6 +388,15 @@ export function parseRowToProduct(
     pricePerPiece = 5.0; // Clean default
   }
 
+  // Normalize rate if the Excel sheet column was Rate per 100 or Rate per 1000 pcs
+  if (pricePerPiece > 2000 && weightPerPcKg > 0 && (pricePerPiece / weightPerPcKg) > 1500) {
+    if ((pricePerPiece / 100) / weightPerPcKg <= 1500) {
+      pricePerPiece = +(pricePerPiece / 100).toFixed(4);
+    } else if ((pricePerPiece / 1000) / weightPerPcKg <= 1500) {
+      pricePerPiece = +(pricePerPiece / 1000).toFixed(4);
+    }
+  }
+
   // Price Per Kg
   let pricePerKg = parseFloat(getRowValue(row, headerMap, ['priceperkg', 'rateperkg', 'costperkgs', 'costperkg'], 80));
   if (isNaN(pricePerKg) || pricePerKg <= 0) {

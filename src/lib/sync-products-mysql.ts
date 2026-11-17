@@ -1,6 +1,37 @@
 import { query } from './db';
 import { Product } from './types';
 
+let schemaExpanded = false;
+
+async function ensurePriceColumnsExpanded() {
+  if (schemaExpanded) return;
+  try {
+    const alterQueries = [
+      'ALTER TABLE products MODIFY COLUMN price_1000_pcs DECIMAL(16, 2) DEFAULT NULL',
+      'ALTER TABLE products MODIFY COLUMN price_100_pcs DECIMAL(16, 2) DEFAULT NULL',
+      'ALTER TABLE products MODIFY COLUMN price_per_piece DECIMAL(16, 4) NOT NULL DEFAULT 5.0000',
+      'ALTER TABLE products MODIFY COLUMN original_price_per_piece DECIMAL(16, 4) DEFAULT 5.0000',
+      'ALTER TABLE products MODIFY COLUMN price_per_kg DECIMAL(16, 4) NOT NULL DEFAULT 90.0000',
+      'ALTER TABLE products MODIFY COLUMN original_price_per_kg DECIMAL(16, 4) DEFAULT 90.0000',
+      'ALTER TABLE products MODIFY COLUMN weight_per_pc_kg DECIMAL(12, 4) NOT NULL DEFAULT 0.0600',
+      'ALTER TABLE products MODIFY COLUMN weight_per_1000_pcs_kg DECIMAL(14, 4) DEFAULT NULL',
+      'ALTER TABLE products MODIFY COLUMN small_box_weight_kg DECIMAL(10, 2) DEFAULT 2.50',
+      'ALTER TABLE products MODIFY COLUMN master_ctn_weight_kg DECIMAL(10, 2) DEFAULT 20.00',
+      'ALTER TABLE products MODIFY COLUMN stock_kg DECIMAL(16, 2) NOT NULL DEFAULT 0.00'
+    ];
+    for (const q of alterQueries) {
+      try {
+        await query(q);
+      } catch (err) {
+        // Ignored if already altered or insufficient permissions
+      }
+    }
+    schemaExpanded = true;
+  } catch (e) {
+    // Non-fatal
+  }
+}
+
 /**
  * Persists products to MySQL table `products` in batched chunks.
  * Uses ON DUPLICATE KEY UPDATE to merge existing SKUs seamlessly.
@@ -13,6 +44,9 @@ export async function syncProductsToMySQL(
   if (!products || products.length === 0) return true;
 
   try {
+    // Ensure table columns have wide decimal precision
+    await ensurePriceColumnsExpanded();
+
     if (mode === 'replace') {
       try {
         await query('DELETE FROM products');
@@ -27,14 +61,16 @@ export async function syncProductsToMySQL(
       const rows = chunk.map((p) => {
         const weight = Math.min(Math.max(0.0001, Number.isFinite(Number(p.weightPerPcKg)) && Number(p.weightPerPcKg) > 0 ? Number(p.weightPerPcKg) : 0.06), 999999.9999);
         const weight1000 = Math.min(Number((weight * 1000).toFixed(3)) || 60, 99999999.9999);
-        const pricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerPiece)) && Number(p.pricePerPiece) > 0 ? Number(p.pricePerPiece) : 5.0), 99999999.99);
-        const origPricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerPiece)) && Number(p.originalPricePerPiece) > 0 ? Number(p.originalPricePerPiece) : pricePc), 99999999.99);
-        const priceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerKg)) && Number(p.pricePerKg) > 0 ? Number(p.pricePerKg) : 90.0), 99999999.99);
-        const origPriceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerKg)) && Number(p.originalPricePerKg) > 0 ? Number(p.originalPricePerKg) : priceKg), 99999999.99);
-        const price100 = Math.min(Math.max(0, Number((pricePc * 100).toFixed(2)) || 0), 999999999999.99);
-        const price1000 = Math.min(Math.max(0, Number((pricePc * 1000).toFixed(2)) || 0), 999999999999.99);
+        const pricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerPiece)) && Number(p.pricePerPiece) > 0 ? Number(p.pricePerPiece) : 5.0), 9999999.9999);
+        const origPricePc = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerPiece)) && Number(p.originalPricePerPiece) > 0 ? Number(p.originalPricePerPiece) : pricePc), 9999999.9999);
+        const priceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.pricePerKg)) && Number(p.pricePerKg) > 0 ? Number(p.pricePerKg) : 90.0), 9999999.9999);
+        const origPriceKg = Math.min(Math.max(0.01, Number.isFinite(Number(p.originalPricePerKg)) && Number(p.originalPricePerKg) > 0 ? Number(p.originalPricePerKg) : priceKg), 9999999.9999);
+        
+        // Safely clamp to 8 digits before decimal so it always fits DECIMAL(10,2) or DECIMAL(16,2)
+        const price100 = Math.min(Math.max(0, Number((pricePc * 100).toFixed(2)) || 0), 99999999.99);
+        const price1000 = Math.min(Math.max(0, Number((pricePc * 1000).toFixed(2)) || 0), 99999999.99);
         const stockPcs = Math.min(Math.max(0, Math.round(Number(p.stockPcs) || 0)), 2000000000);
-        const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 999999999999.99);
+        const stockKg = Math.min(Math.max(0, parseFloat(String(p.stockKg || (stockPcs * weight))) || 0), 99999999.99);
 
         return [
           (p.sku || `SKU-${Date.now()}-${Math.random().toString(36).substring(7)}`).slice(0, 255),

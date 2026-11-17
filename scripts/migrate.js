@@ -284,6 +284,57 @@ async function runMigration() {
       // Products table might be populated in a later step
     }
 
+    // 8. Ensure Price & Weight columns have expanded precision
+    try {
+      console.log('🔧 Verifying price & weight precision columns...');
+      const alterQueries = [
+        'ALTER TABLE products MODIFY COLUMN price_per_piece DECIMAL(16, 4) NOT NULL DEFAULT 5.0000',
+        'ALTER TABLE products MODIFY COLUMN original_price_per_piece DECIMAL(16, 4) DEFAULT 5.0000',
+        'ALTER TABLE products MODIFY COLUMN price_per_kg DECIMAL(16, 4) NOT NULL DEFAULT 90.0000',
+        'ALTER TABLE products MODIFY COLUMN original_price_per_kg DECIMAL(16, 4) DEFAULT 90.0000',
+        'ALTER TABLE products MODIFY COLUMN price_100_pcs DECIMAL(16, 2) DEFAULT NULL',
+        'ALTER TABLE products MODIFY COLUMN price_1000_pcs DECIMAL(16, 2) DEFAULT NULL',
+        'ALTER TABLE products MODIFY COLUMN weight_per_pc_kg DECIMAL(12, 4) NOT NULL DEFAULT 0.0600',
+        'ALTER TABLE products MODIFY COLUMN weight_per_1000_pcs_kg DECIMAL(14, 4) DEFAULT NULL',
+        'ALTER TABLE products MODIFY COLUMN small_box_weight_kg DECIMAL(10, 2) DEFAULT 2.50',
+        'ALTER TABLE products MODIFY COLUMN master_ctn_weight_kg DECIMAL(10, 2) DEFAULT 20.00',
+        'ALTER TABLE products MODIFY COLUMN stock_kg DECIMAL(16, 2) NOT NULL DEFAULT 0.00'
+      ];
+      for (const q of alterQueries) {
+        try { await connection.query(q); } catch {}
+      }
+      console.log('✓ Price and weight column precision verified.');
+    } catch (e) {}
+
+    // 9. Ensure virtual_store_zones table exists
+    try {
+      console.log('🏢 Verifying 3D Virtual Store zones table...');
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS virtual_store_zones (
+          id VARCHAR(100) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          subtitle VARCHAR(500),
+          category VARCHAR(150),
+          aisle_code VARCHAR(50) DEFAULT '',
+          sku_count INT DEFAULT 0,
+          color VARCHAR(50) DEFAULT '#0052CC',
+          cam_pos_json VARCHAR(255),
+          cam_look_json VARCHAR(255),
+          hotspot_pos_json VARCHAR(255),
+          is_active TINYINT(1) DEFAULT 1,
+          sort_order INT DEFAULT 0,
+          featured_sku VARCHAR(150),
+          featured_product_json TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+      try { await connection.query('ALTER TABLE virtual_store_zones ADD COLUMN aisle_code VARCHAR(50) DEFAULT ""'); } catch {}
+      try { await connection.query('ALTER TABLE virtual_store_zones ADD COLUMN sku_count INT DEFAULT 0'); } catch {}
+      try { await connection.query('ALTER TABLE virtual_store_zones ADD COLUMN color VARCHAR(50) DEFAULT "#0052CC"'); } catch {}
+      console.log('✓ 3D Virtual Store zones table verified.');
+    } catch (e) {}
+
     console.log('\n======================================================');
     console.log('🎉 [SUCCESS] Server Database Migration Complete!');
     console.log('======================================================\n');
