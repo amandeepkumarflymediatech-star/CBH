@@ -482,5 +482,21 @@ export interface CustomProductRequest {
   updatedAt: string;
 }
 
+export interface GalleryItem {
+  id: string;
+  title: string;
+  category: 'manufacturing' | 'quality' | 'logistics' | 'applications' | 'exhibitions' | string;
+  categoryLabel?: string;
+  image: string;
+  location?: string;
+  date?: string;
+  description?: string;
+  specs?: string[];
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 
 

@@ -184,6 +184,7 @@ async function runMigration() {
     console.log('   - order_items');
     console.log('   - surplus_lots');
     console.log('   - blogs');
+    console.log('   - gallery_items');
 
     // 3. Seed Default Admin & Demo Customer if users table is empty
     const [userRows] = await connection.query('SELECT COUNT(*) as count FROM users');
@@ -264,6 +265,38 @@ async function runMigration() {
         ('SURP-ASTM-B7-M24-3000', 'ASTM A193 Grade B7 Heavy Continuous Studs M24x3000mm', 'Refinery expansion surplus studs. Heat treated chrome-moly steel for high temperature flanged joints.', 'ASTM A193 B7 / IS 1862 M24x3000mm', 3.50, 195.00, 117.00, 40, 'Jamnagar Refinery Ancillary Yard, Gujarat', 'RESERVED', '/assets/bolt_zinc.jpg');
       `);
       console.log('✓ 4 verified surplus liquidation lots seeded into MySQL.');
+    }
+
+    // 7. Seed Facility & Infrastructure Media Gallery if empty
+    const [galleryRows] = await connection.query('SELECT COUNT(*) as count FROM gallery_items');
+    if (galleryRows[0].count === 0) {
+      console.log('🌱 Seeding facility & infrastructure media gallery...');
+      const galleryJsonPath = path.resolve(__dirname, '..', 'src', 'data', 'gallery-data.json');
+      if (fs.existsSync(galleryJsonPath)) {
+        const galleryData = JSON.parse(fs.readFileSync(galleryJsonPath, 'utf8'));
+        for (const item of galleryData) {
+          await connection.query(
+            `INSERT INTO gallery_items 
+             (id, title, category, category_label, image_url, location, date_tag, description, specs_json, sort_order, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE title = VALUES(title)`,
+            [
+              item.id,
+              item.title,
+              item.category,
+              item.categoryLabel || item.category,
+              item.image,
+              item.location || '',
+              item.date || '',
+              item.description || '',
+              JSON.stringify(item.specs || []),
+              item.sortOrder || 0,
+              item.isActive !== false ? 1 : 0
+            ]
+          );
+        }
+        console.log(`✓ Seeded ${galleryData.length} media photographs into MySQL.`);
+      }
     }
 
     // 7. Ensure at least a few catalog products are flagged as surplus for dual surplus showcase

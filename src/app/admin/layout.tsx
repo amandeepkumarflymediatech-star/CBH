@@ -36,6 +36,7 @@ import {
   ChevronRight,
   ArrowLeft,
   Award,
+  Images,
   MessageSquare
 } from 'lucide-react';
 import { getStoredUser, setStoredUser, logout, DEMO_ADMIN, AuthUser } from '@/lib/auth';
@@ -270,6 +271,7 @@ export default function AdminLayout({
     if (pathname.startsWith('/admin/payments')) return 'Payment Gateways';
     if (pathname.startsWith('/admin/seo')) return 'SEO & Schemas';
     if (pathname.startsWith('/admin/profile')) return 'Operator Profile';
+    if (pathname.startsWith('/admin/gallery')) return 'Media Gallery';
     if (pathname.startsWith('/admin/blogs')) return 'Metallurgy Blog';
     return 'Dashboard';
   };
@@ -553,6 +555,48 @@ export default function AdminLayout({
                   </span>
                 )}
               </Link>
+
+              {/* 8. Media Gallery */}
+              <Link
+                href="/admin/gallery"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/gallery')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Facility & Infrastructure Media Gallery"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Images size={18} strokeWidth={isLinkActive('/admin/gallery') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>Media Gallery</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-50 text-[#0052CC] border border-blue-200">
+                    Photos
+                  </span>
+                )}
+              </Link>
+
+              {/* 9. Metallurgy Blog */}
+              <Link
+                href="/admin/blogs"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all no-underline ${
+                  isLinkActive('/admin/blogs')
+                    ? 'bg-[#0F172A] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                title="Metallurgy & Technical Articles Blog"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <BookOpen size={18} strokeWidth={isLinkActive('/admin/blogs') ? 2.4 : 1.9} />
+                  {!isSidebarCollapsed && <span>Articles & Blog</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {telemetry.blogsCount}
+                  </span>
+                )}
+              </Link>
             </div>
 
             {/* Group: SETTINGS */}
@@ -833,6 +877,22 @@ export default function AdminLayout({
                   >
                     <Award size={16} />
                     <span>Testimonials</span>
+                  </Link>
+                  <Link
+                    href="/admin/gallery"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <Images size={16} />
+                    <span>Media Gallery</span>
+                  </Link>
+                  <Link
+                    href="/admin/blogs"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 no-underline"
+                  >
+                    <BookOpen size={16} />
+                    <span>Articles & Blog</span>
                   </Link>
                   <Link
                     href="/admin/payments"

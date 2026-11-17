@@ -308,3 +308,25 @@ CREATE TABLE IF NOT EXISTS custom_product_requests (
     INDEX idx_cpr_phone (customer_phone),
     INDEX idx_cpr_email (customer_email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 12. Facility & Infrastructure Media Gallery Table
+CREATE TABLE IF NOT EXISTS gallery_items (
+    id VARCHAR(100) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    category_label VARCHAR(150),
+    image_url VARCHAR(500) NOT NULL,
+    location VARCHAR(255) DEFAULT '',
+    date_tag VARCHAR(100) DEFAULT '',
+    description TEXT DEFAULT NULL,
+    specs_json TEXT DEFAULT NULL,
+    sort_order INT DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_gallery_category ON gallery_items(category);
+CREATE INDEX idx_gallery_active ON gallery_items(is_active);
+CREATE INDEX idx_gallery_sort ON gallery_items(sort_order);
+

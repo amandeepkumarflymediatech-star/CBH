@@ -1,0 +1,240 @@
+[
+  {
+    "id": "gal-quality-1",
+    "title": "Universal Tensile & Proof Load Testing Machine",
+    "category": "quality",
+    "categoryLabel": "Testing & Lab",
+    "image": "/assets/quality_lab_tensile.jpg",
+    "location": "Central Metallurgy Lab, Ludhiana Works",
+    "date": "Certified Q4 2025",
+    "description": "Computer-controlled 1000 kN Universal Tensile Testing machine executing ISO 898-1 proof load and ultimate tensile rupture verification.",
+    "specs": [
+      "Calibrated under NABL standards",
+      "Full stress-strain digital curve logging",
+      "Wedge tensile testing for finished bolts"
+    ],
+    "sortOrder": 1,
+    "isActive": true
+  },
+  {
+    "id": "gal-quality-2",
+    "title": "High-Speed 360° Optical Sorting & Dimension Inspection",
+    "category": "quality",
+    "categoryLabel": "Testing & Lab",
+    "image": "/assets/quality_optical_sorting.jpg",
+    "location": "Automated Inspection Bay #3",
+    "date": "Daily In-Line QC",
+    "description": "High-speed glass disc optical sorting lines verifying thread pitch, shank straightness, and head concentricity up to 600 pcs/min.",
+    "specs": [
+      "Six-camera multi-angle telecentric lens system",
+      "Zero-defect automotive OEM PPM sorting",
+      "Automated laser dimensional gauging"
+    ],
+    "sortOrder": 2,
+    "isActive": true
+  },
+  {
+    "id": "gal-quality-3",
+    "title": "ASTM B117 Neutral Salt Spray Corrosion Chamber",
+    "category": "quality",
+    "categoryLabel": "Testing & Lab",
+    "image": "/assets/quality_salt_spray.jpg",
+    "location": "Surface Protection Testing Cell",
+    "date": "Batch Test Chamber",
+    "description": "Continuous ASTM B117 salt fog exposure chamber evaluating red rust resistance on HDG, Black Passivated, and Zinc coated fasteners.",
+    "specs": [
+      "Up to 1000 hours without red rust",
+      "Cyclic humidity and temperature programming",
+      "Conforms to ISO 9227 & ASTM B117"
+    ],
+    "sortOrder": 3,
+    "isActive": true
+  },
+  {
+    "id": "gal-quality-4",
+    "title": "EN 10204 3.1 Chemical Spectroscopy & MTC Verification",
+    "category": "quality",
+    "categoryLabel": "Testing & Lab",
+    "image": "/assets/quality_cert_inspection.jpg",
+    "location": "Spectrometry Laboratory",
+    "date": "Heat-by-Heat Verification",
+    "description": "Optical Emission Spectrometry analyzing raw carbon, boron, and alloy percentages for complete heat code traceability.",
+    "specs": [
+      "100% heat traceability back to primary steel mills",
+      "Complete Mill Test Certificate (MTC 3.1) issuance",
+      "Hardness testing: Rockwell HRC & Vickers HV"
+    ],
+    "sortOrder": 4,
+    "isActive": true
+  },
+  {
+    "id": "gal-logistics-1",
+    "title": "Central High-Density Automated Storage & Logistics Hub",
+    "category": "logistics",
+    "categoryLabel": "Warehouse & Dispatch",
+    "image": "/assets/global_logistics_hub.jpg",
+    "location": "National Central Depot, GT Road Ludhiana",
+    "date": "2,00,000+ SKUs In Stock",
+    "description": "High-bay racking depot housing 2 Lac+ Fastener SKUs in designated barcoded bin locations for rapid same-day dispatch.",
+    "specs": [
+      "Over 10,000 MT active inventory holding",
+      "Dual weighbridge digital tally integration",
+      "Real-time barcode picking and automated dispatch"
+    ],
+    "sortOrder": 5,
+    "isActive": true
+  },
+  {
+    "id": "gal-manufacturing-1",
+    "title": "High-Tensile Cold Forging & Thread Rolling Lines",
+    "category": "manufacturing",
+    "categoryLabel": "Forging & Plant",
+    "image": "/assets/hero.jpg",
+    "location": "Plant Unit #1 - Forging Division",
+    "date": "Continuous Production",
+    "description": "Multi-station cold headers and planetary cylindrical thread rollers forming M6 through M36 metric bolts with continuous grain flow.",
+    "specs": [
+      "Cold heading capacity: 25 MT / day",
+      "Grain-flow preserved uninterrupted threads",
+      "Automated wire uncoiling & phosphate pre-coating"
+    ],
+    "sortOrder": 6,
+    "isActive": true
+  },
+  {
+    "id": "gal-manufacturing-2",
+    "title": "Precision Metric Hex Bolt & Fastener Sizing Matrix",
+    "category": "manufacturing",
+    "categoryLabel": "Forging & Plant",
+    "image": "/assets/bolt_zinc.jpg",
+    "location": "Finished Goods Assembly",
+    "date": "DIN 933 / DIN 931 / ISO 4017",
+    "description": "Finished Class 8.8 and 10.9 high-tensile hexagonal screws with clear zinc and black passivated corrosion barriers.",
+    "specs": [
+      "Full and partial thread variations",
+      "Clean deburred lead-in chamfer",
+      "Compliant with Indian BIS 1364 specifications"
+    ],
+    "sortOrder": 7,
+    "isActive": true
+  },
+  {
+    "id": "gal-manufacturing-3",
+    "title": "Heavy Structural Anchors & Mechanical Expansion Fixings",
+    "category": "manufacturing",
+    "categoryLabel": "Forging & Plant",
+    "image": "/assets/anchor_bolt.jpg",
+    "location": "Anchor Bolt Assembly Line",
+    "date": "ETA Option 7 & Heavy Duty",
+    "description": "Engineered heavy mechanical concrete expansion anchors and high-load torque-controlled through bolts.",
+    "specs": [
+      "Option 7 cracked/non-cracked concrete approval",
+      "High shear and pull-out resistance",
+      "Precision machined expansion clip mechanism"
+    ],
+    "sortOrder": 8,
+    "isActive": true
+  },
+  {
+    "id": "gal-applications-1",
+    "title": "Mega Infrastructure & Highway Suspension Bridge Fasteners",
+    "category": "applications",
+    "categoryLabel": "Project Sites",
+    "image": "/assets/global_infra_bridge.jpg",
+    "location": "National Highway Infrastructure Works",
+    "date": "EPC Project Supply",
+    "description": "Supply of Class 10.9 hot-dip galvanized structural bolts, heavy hex nuts, and hardened round washers for highway overpasses.",
+    "specs": [
+      "HDG coating thickness: >65 microns",
+      "Extreme vibration resistance under live traffic loads",
+      "Full NABL lab test batch traceability"
+    ],
+    "sortOrder": 9,
+    "isActive": true
+  },
+  {
+    "id": "gal-applications-2",
+    "title": "Petrochemical Refineries & Offshore High-Pressure Piping",
+    "category": "applications",
+    "categoryLabel": "Project Sites",
+    "image": "/assets/global_oil_gas.jpg",
+    "location": "Jamnagar & Hazira Refineries Zone",
+    "date": "ASTM A193 B7 / A194 2H",
+    "description": "Chromium-molybdenum high-temperature alloy stud bolts and heavy hex nuts deployed in oil & gas catalytic cracking towers.",
+    "specs": [
+      "Operating temperature range: -40°C to +400°C",
+      "100% MPI magnetic particle crack inspected",
+      "Certified for corrosive offshore saline environment"
+    ],
+    "sortOrder": 10,
+    "isActive": true
+  },
+  {
+    "id": "gal-applications-3",
+    "title": "Utility-Scale Solar PV Farms & Wind Turbine Towers",
+    "category": "applications",
+    "categoryLabel": "Project Sites",
+    "image": "/assets/global_solar_wind.jpg",
+    "location": "Bhadla Solar Park, Rajasthan",
+    "date": "Renewable Clean Energy",
+    "description": "Dacromet and hot-dip galvanized mounting foundation bolts and serrated flange nuts across 500+ MW solar installations.",
+    "specs": [
+      "High wind uplift tensile certification",
+      "Long-term 25-year corrosion life expectancy",
+      "Rapid batch deliveries directly to desert sites"
+    ],
+    "sortOrder": 11,
+    "isActive": true
+  },
+  {
+    "id": "gal-exhibitions-1",
+    "title": "Fastener Fair & Industrial Engineering Expo Showcase",
+    "category": "exhibitions",
+    "categoryLabel": "Exhibitions & Expos",
+    "image": "/assets/exhibitions/exhibition_stand_branded.jpg",
+    "location": "Bombay Exhibition Centre, Mumbai",
+    "date": "Fastener Fair India Expo",
+    "description": "CBH Fasteners interactive booth demonstrating our 2 Lac+ SKU digital procurement matrix and live MTC traceability QR generator.",
+    "specs": [
+      "Engaged over 1,200 OEM engineers and EPC procurement leaders",
+      "Live demonstration of rapid RFQ and BOM spreadsheet parsing",
+      "Showcased Fischer high-performance anchoring range"
+    ],
+    "sortOrder": 12,
+    "isActive": true
+  },
+  {
+    "id": "gal-exhibitions-2",
+    "title": "Technical Metallurgy Consultations & OEM Stakeholder Dialogue",
+    "category": "exhibitions",
+    "categoryLabel": "Exhibitions & Expos",
+    "image": "/assets/exhibitions/exhibition_conversation.jpg",
+    "location": "Engineering Pavilion, Pragati Maidan New Delhi",
+    "date": "International Trade Fair",
+    "description": "Senior CBH metallurgists consulting with civil infrastructure consultants, heavy machinery manufacturers, and PEB contractors.",
+    "specs": [
+      "Discussed custom alloy forging requirements",
+      "Shared failure analysis and fastener fatigue research papers",
+      "Demonstrated dual PCS & KGS cost-saving models"
+    ],
+    "sortOrder": 13,
+    "isActive": true
+  },
+  {
+    "id": "gal-exhibitions-3",
+    "title": "CBH Fasteners Executive Display & Infrastructure Portfolio",
+    "category": "exhibitions",
+    "categoryLabel": "Exhibitions & Expos",
+    "image": "/assets/exhibitions/exhibition_stand_photo.jpg",
+    "location": "Automotive & Industrial Supply Expo, Pune",
+    "date": "National Manufacturing Summit",
+    "description": "Comprehensive physical display of over 500 fastener types including DIN 933, DIN 912 socket caps, and DIN 934 hex nuts.",
+    "specs": [
+      "Live weight-to-piece digital scale demonstration",
+      "BIS 1364 standard compliance documentation desk",
+      "One-on-one wholesale dealer onboardings"
+    ],
+    "sortOrder": 14,
+    "isActive": true
+  }
+]
