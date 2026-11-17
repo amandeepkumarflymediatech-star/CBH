@@ -89,8 +89,9 @@ function createPool(): any {
     password,
     database: targetDb,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 25,
     queueLimit: 0,
+    connectTimeout: 30000,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
   };
@@ -101,27 +102,43 @@ function createPool(): any {
 // Preserve pool across hot-reloads in Next.js development
 export const db: any = global.__mysqlPool ?? createPool();
 
-if (process.env.NODE_ENV !== 'production' && db) {
+if (db) {
   global.__mysqlPool = db;
 }
 
 /**
- * Execute a parameterized SQL query against MySQL
+ * Execute a parameterized SQL query against MySQL with automated retry on transient connection drops
  * @param sql - The SQL statement with '?' placeholders
  * @param values - Array of parameter values
  */
 export async function query<T = any>(sql: string, values?: any[]): Promise<T[]> {
-  if (!db) {
-    const freshPool = createPool();
-    if (!freshPool) {
-      console.warn('[MySQL DB] mysql2 driver not available. Please run: npm install mysql2');
-      return [] as T[];
-    }
-    const [rows] = await freshPool.query(sql, values);
-    return rows as T[];
+  const activePool = db || createPool();
+  if (!activePool) {
+    console.warn('[MySQL DB] mysql2 driver not available. Please run: npm install mysql2');
+    return [] as T[];
   }
-  const [rows] = await db.query(sql, values);
-  return rows as T[];
+
+  try {
+    const [rows] = await activePool.query(sql, values);
+    return rows as T[];
+  } catch (err: any) {
+    // Retry once on transient network or connection timeouts
+    if (
+      err?.code === 'ETIMEDOUT' ||
+      err?.code === 'ECONNRESET' ||
+      err?.code === 'PROTOCOL_CONNECTION_LOST' ||
+      err?.fatal
+    ) {
+      console.warn(`[MySQL DB] Transient ${err.code || 'connection issue'}, retrying query once...`);
+      await new Promise((res) => setTimeout(res, 600));
+      const freshPool = createPool();
+      if (freshPool) {
+        const [rows] = await freshPool.query(sql, values);
+        return rows as T[];
+      }
+    }
+    throw err;
+  }
 }
 
 export default db;

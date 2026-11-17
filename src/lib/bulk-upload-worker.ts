@@ -2,7 +2,7 @@ import { updateBulkUploadJob } from './bulk-upload-jobs';
 import { parseWorkbookBuffer } from './excel-product-parser';
 import { getProductsDb, setProductsDb } from './products-db';
 import { syncProductsToMySQL } from './sync-products-mysql';
-import { autoSaveUploadedImages } from './product-image-resolver';
+import { autoSaveUploadedImages, extractGoogleDriveId } from './product-image-resolver';
 import { query } from './db';
 import { Product } from './types';
 
@@ -150,15 +150,31 @@ export async function executeBackgroundImport(
     }
 
     // 5. Automatically resolve and cache Google Drive images in background with transparent center watermark
+    const driveIdToSkus = new Map<string, string[]>();
+    for (const p of parseResult.products) {
+      const dId = extractGoogleDriveId(p.gdriveImageUrl) || extractGoogleDriveId(p.imageUrl);
+      if (dId && p.sku) {
+        const list = driveIdToSkus.get(dId) || [];
+        list.push(p.sku);
+        driveIdToSkus.set(dId, list);
+      }
+    }
+
     autoSaveUploadedImages(
       parseResult.products,
       async (driveId, localPath) => {
         try {
-          await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ? OR image_url LIKE ?', [
-            localPath,
-            `%${driveId}%`,
-            `%${driveId}%`,
-          ]);
+          const targetSkus = driveIdToSkus.get(driveId);
+          if (targetSkus && targetSkus.length > 0) {
+            // Instant indexed update by SKU
+            await query('UPDATE products SET image_url = ? WHERE sku IN (?)', [localPath, targetSkus]);
+          } else {
+            await query('UPDATE products SET image_url = ? WHERE gdrive_image_url LIKE ? OR image_url LIKE ?', [
+              localPath,
+              `%${driveId}%`,
+              `%${driveId}%`,
+            ]);
+          }
 
           // Also synchronize in-memory / JSON products cache
           const current = getProductsDb();
