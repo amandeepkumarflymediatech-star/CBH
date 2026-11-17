@@ -277,28 +277,29 @@ export async function autoSaveUploadedImages(
   if (uniqueIds.size === 0) return resultMap;
 
   const idList = Array.from(uniqueIds);
-  const concurrency = 4;
+  const concurrency = 2;
 
-  const executing: Promise<any>[] = [];
-  for (const id of idList) {
-    const p = (async () => {
-      const savedPath = await downloadDriveImageToFile(id, applyWatermark);
-      resultMap.set(id, savedPath);
-      if (savedPath.startsWith('/assets/') && onImageSaved) {
+  // Process in strict small chunks to avoid overwhelming the server, network, and MySQL connection pool
+  for (let i = 0; i < idList.length; i += concurrency) {
+    const chunk = idList.slice(i, i + concurrency);
+    await Promise.all(
+      chunk.map(async (id) => {
         try {
-          await onImageSaved(id, savedPath);
-        } catch (e) {
-          console.warn('[Image AutoSave] Error in onImageSaved callback:', e);
+          const savedPath = await downloadDriveImageToFile(id, applyWatermark);
+          resultMap.set(id, savedPath);
+          if (savedPath.startsWith('/assets/') && onImageSaved) {
+            try {
+              await onImageSaved(id, savedPath);
+            } catch (e) {
+              console.warn('[Image AutoSave] Error in onImageSaved callback:', e);
+            }
+          }
+        } catch (err) {
+          console.warn(`[Image AutoSave] Error processing image ${id}:`, err);
         }
-      }
-    })();
-
-    executing.push(p);
-    if (executing.length >= concurrency) {
-      await Promise.race(executing);
-    }
+      })
+    );
   }
 
-  await Promise.all(executing);
   return resultMap;
 }

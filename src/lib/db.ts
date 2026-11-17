@@ -127,6 +127,8 @@ export async function query<T = any>(sql: string, values?: any[]): Promise<T[]> 
       err?.code === 'ETIMEDOUT' ||
       err?.code === 'ECONNRESET' ||
       err?.code === 'PROTOCOL_CONNECTION_LOST' ||
+      err?.code === 'ER_NET_READ_INTERRUPTED' ||
+      err?.errno === 1159 ||
       err?.fatal
     ) {
       console.warn(`[MySQL DB] Transient ${err.code || 'connection issue'}, retrying query once...`);
