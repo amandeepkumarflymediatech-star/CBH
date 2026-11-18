@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, CheckCircle2, PackageCheck, ArrowRight, Sparkles, Zap, Layers } from 'lucide-react';
@@ -10,6 +10,8 @@ import { formatINR, clampQty, formatQtyDisplay, MIN_QTY_PCS, MIN_QTY_KGS, toTitl
 interface CatalogMatrixProps {
   products: Product[];
   onAddToCart: (product: Product, qty: number, unit: GlobalUnit) => void;
+  isLoading?: boolean;
+  totalMatchingCount?: number;
 }
 
 interface CategoryTab {
@@ -102,10 +104,20 @@ const matchesTab = (p: Product, tabId: string): boolean => {
   }
 };
 
-export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixProps) {
+export default function CatalogMatrix({
+  products,
+  onAddToCart,
+  isLoading = false,
+  totalMatchingCount,
+}: CatalogMatrixProps) {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [cardUnits, setCardUnits] = useState<{ [id: number]: GlobalUnit }>({});
   const [cardQtys, setCardQtys] = useState<{ [id: number]: number }>({});
+
+  // When products update from external filter (FastenerFinder), reset activeTab to 'all' so results display immediately
+  useEffect(() => {
+    setActiveTab('all');
+  }, [products]);
 
   // Dynamic count calculation per tab
   const tabCounts = useMemo(() => {
@@ -125,11 +137,13 @@ export default function CatalogMatrix({ products, onAddToCart }: CatalogMatrixPr
   }, [tabCounts]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => matchesTab(p, activeTab));
+    if (activeTab === 'all') return products;
+    const subset = products.filter((p) => matchesTab(p, activeTab));
+    return subset.length > 0 ? subset : products;
   }, [products, activeTab]);
 
-  // Limit to exactly 8 cards on homepage
-  const visibleProducts = filteredProducts.slice(0, 8);
+  // Display up to 16 cards on homepage
+  const visibleProducts = filteredProducts.slice(0, 16);
 
   const getUnit = (id: number): GlobalUnit => cardUnits[id] || 'PCS';
   const getQty = (id: number): number => {

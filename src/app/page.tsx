@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainHeader from '@/components/header/MainHeader';
 import HeroSection from '@/components/home/HeroSection';
 import SimpleVisualCategories from '@/components/home/SimpleVisualCategories';
@@ -19,25 +19,29 @@ import { clampQty } from '@/lib/rfq-calculator';
 
 export default function HomePage() {
   const [globalUnit, setGlobalUnit] = useState<GlobalUnit>('PCS');
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProductsCount, setTotalProductsCount] = useState<number>(0);
+  const [matchingCount, setMatchingCount] = useState<number>(0);
   const [filterOptions, setFilterOptions] = useState<any>(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  // Fetch live products dynamically from database
+  // Initial fetch: 16 featured ready-to-dispatch products + filterOptions in ~30ms
   useEffect(() => {
-    fetch('/api/products?limit=0')
+    setIsLoadingProducts(true);
+    fetch('/api/products/paginated?limit=16&sortBy=featured')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setAllProducts(data.data);
           setProducts(data.data);
+          const total = data.total ?? data.data.length;
+          setTotalProductsCount(total);
+          setMatchingCount(total);
         }
         if (data.filterOptions) {
           setFilterOptions(data.filterOptions);
         }
       })
-      .catch((err) => console.log('Could not fetch dynamic products:', err))
+      .catch((err) => console.error('Failed to load initial catalog:', err))
       .finally(() => setIsLoadingProducts(false));
   }, []);
 
@@ -57,67 +61,48 @@ export default function HomePage() {
     return () => window.removeEventListener('cbh_cart_change', handleCartChange);
   }, []);
 
-  // Filter Handler
-  const handleFilterChange = (filters: FastenerFilters) => {
-    let filtered = [...allProducts];
+  // Real-time server-backed filter handler
+  const handleFilterChange = useCallback(async (filters: FastenerFilters) => {
+    setIsLoadingProducts(true);
 
-    // Tab-level filtering
-    if (filters.tab && filters.tab !== 'all') {
-      if (filters.tab === 'surplus') {
-        filtered = filtered.filter((p) => p.isSurplus);
-      } else {
-        const tabClean = filters.tab.toLowerCase().replace(/[^a-z0-9]/g, '');
-        filtered = filtered.filter((p) => {
-          const pCat = (p.category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          const pStd = (p.standard || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          const pName = (p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          return pCat.includes(tabClean) || pStd.includes(tabClean) || pName.includes(tabClean);
-        });
+    try {
+      const params = new URLSearchParams({
+        limit: '16',
+        page: '1',
+      });
+
+      // Semantic category handling:
+      let cat = '';
+      if (filters.category && filters.category !== 'all') {
+        cat = filters.category;
+      } else if (filters.tab && filters.tab !== 'all') {
+        cat = filters.tab;
       }
-    }
+      if (cat) params.set('category', cat);
 
-    // Category filter
-    if (filters.category && filters.category !== 'all') {
-      const catClean = filters.category.toLowerCase().replace(/[^a-z0-9]/g, '');
-      filtered = filtered.filter((p) => (p.category || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(catClean));
-    }
+      if (filters.standard && filters.standard !== 'all') params.set('standard', filters.standard);
+      if (filters.grade && filters.grade !== 'all') params.set('grade', filters.grade);
+      if (filters.diameter && filters.diameter !== 'all') params.set('diameter', filters.diameter);
+      if (filters.length && filters.length !== 'all') params.set('length', filters.length);
+      if (filters.finish && filters.finish !== 'all') params.set('finish', filters.finish);
+      if (filters.inStockOnly) params.set('inStockOnly', 'true');
 
-    // Standard filter
-    if (filters.standard && filters.standard !== 'all') {
-      const stdClean = filters.standard.toLowerCase().replace(/[^a-z0-9]/g, '');
-      filtered = filtered.filter((p) => (p.standard || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(stdClean));
-    }
+      const res = await fetch(`/api/products/paginated?${params.toString()}`);
+      const data = await res.json();
 
-    // Grade filter
-    if (filters.grade && filters.grade !== 'all') {
-      const gradeQuery = filters.grade.toLowerCase().replace(/^grade\s*/i, '').trim();
-      filtered = filtered.filter((p) => (p.grade || '').toLowerCase().replace(/^grade\s*/i, '').trim().includes(gradeQuery));
+      if (data.success && Array.isArray(data.data)) {
+        setProducts(data.data);
+        setMatchingCount(data.total ?? data.data.length);
+        if (data.filterOptions) {
+          setFilterOptions(data.filterOptions);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to filter products:', err);
+    } finally {
+      setIsLoadingProducts(false);
     }
-
-    // Diameter filter
-    if (filters.diameter && filters.diameter !== 'all') {
-      const diaClean = filters.diameter.toLowerCase().replace(/[^a-z0-9]/g, '');
-      filtered = filtered.filter((p) => (p.diameter || '').toLowerCase().replace(/[^a-z0-9]/g, '') === diaClean);
-    }
-
-    // Length filter
-    if (filters.length && filters.length !== 'all') {
-      filtered = filtered.filter((p) => String(p.lengthMm) === String(filters.length));
-    }
-
-    // Finish filter
-    if (filters.finish && filters.finish !== 'all') {
-      const finQuery = filters.finish.toLowerCase().replace(/[^a-z0-9]/g, '');
-      filtered = filtered.filter((p) => (p.finish || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(finQuery));
-    }
-
-    // In Stock Only filter
-    if (filters.inStockOnly) {
-      filtered = filtered.filter((p) => p.isInStock && p.stockPcs > 0);
-    }
-
-    setProducts(filtered);
-  };
+  }, []);
 
   // Add To Cart
   const handleAddToCart = (product: Product, qty: number, unit: GlobalUnit) => {
@@ -210,16 +195,18 @@ export default function HomePage() {
       {/* Fastener Finder Matrix (Hilti / Fischer Style Precision Engine) */}
       <FastenerFinder
         onFilterChange={handleFilterChange}
-        productsCount={products.length}
-        totalProductsCount={allProducts.length}
-        allProducts={allProducts}
+        productsCount={matchingCount}
+        totalProductsCount={totalProductsCount}
         filterOptions={filterOptions}
+        isLoading={isLoadingProducts}
       />
 
       {/* SECTION 2: High-Density Technical Catalog Matrix (Popular Fasteners In Stock) */}
       <CatalogMatrix
         products={products}
         onAddToCart={handleAddToCart}
+        isLoading={isLoadingProducts}
+        totalMatchingCount={matchingCount}
       />
 
       {/* SECTION 3: Bulk Order & Rapid RFQ Interactive Widget */}

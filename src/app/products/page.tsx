@@ -32,7 +32,8 @@ import {
   Ruler,
   Tag,
   RotateCcw,
-  ChevronDown
+  ChevronDown,
+  LayoutGrid
 } from 'lucide-react';
 import CustomProductRequestModal from '@/components/common/CustomProductRequestModal';
 
@@ -378,6 +379,31 @@ function FastenerCard({
 }
 
 // ============================================================================
+// MASTER CATALOG CATEGORIES (OFFICIAL CBH FASTENER FAMILIES)
+// ============================================================================
+
+interface CategoryOption {
+  key: string;
+  name: string;
+  shortName: string;
+  badge?: string;
+}
+
+const MASTER_CATEGORIES: CategoryOption[] = [
+  { key: 'HEX BOLTS', name: 'Hex Bolts & Screws', shortName: 'Hex Bolts', badge: 'DIN 931/933' },
+  { key: 'HEX SCREWS', name: 'Hexagon Head Screws', shortName: 'Hex Screws', badge: '16k+ Sizes' },
+  { key: 'SOCKET HEAD', name: 'Socket Allen Screws', shortName: 'Socket/Allen', badge: 'Grade 12.9' },
+  { key: 'HSFG BOLTS', name: 'HSFG Structural Bolts', shortName: 'HSFG Structural', badge: 'IS 3757' },
+  { key: 'CARRIAGE BOLTS', name: 'Carriage & Coach Bolts', shortName: 'Carriage', badge: 'DIN 603' },
+  { key: 'HEX FLANGE BOLTS', name: 'Hex Flange & Frame Bolts', shortName: 'Flange Bolts', badge: 'DIN 6921' },
+  { key: 'THREADED RODS', name: 'Threaded Rods & Studs', shortName: 'Threaded Rods', badge: 'ASTM B7' },
+  { key: 'NUTS', name: 'Hex Nuts & Lock Nuts', shortName: 'Hex & Lock Nuts', badge: 'DIN 934' },
+  { key: 'WASHERS', name: 'Industrial Washers', shortName: 'Washers', badge: 'Plain/Spring' },
+  { key: 'ROOFING BOLTS', name: 'Roofing & Cladding Bolts', shortName: 'Roofing Bolts', badge: 'Mushroom' },
+  { key: 'ANTI THEFT BOLTS', name: 'Anti-Theft Security Bolts', shortName: 'Anti-Theft', badge: 'Tamper-Proof' },
+];
+
+// ============================================================================
 // MAIN INNER CATALOG COMPONENT (CONSUMES URL SEARCH PARAMS)
 // ============================================================================
 
@@ -417,6 +443,13 @@ function ProductsPageInner() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'stock_desc'>('featured');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  // Category Carousel & Modal States
+  const [isAllCategoriesModalOpen, setIsAllCategoriesModalOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const categoryTrackRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   // Show all related products toggle when search has direct matches
   const [showAllRelated, setShowAllRelated] = useState(false);
@@ -687,14 +720,115 @@ function ProductsPageInner() {
   const dynamicFinishes = filterOptions.finishes || [];
   const dynamicCategories = filterOptions.categories || [];
 
+  // Master + Dynamic Categories merge (Official catalog families + dynamic DB categories)
+  const allCategoryOptions = useMemo<CategoryOption[]>(() => {
+    const list: CategoryOption[] = [...MASTER_CATEGORIES];
+    dynamicCategories.forEach((cat) => {
+      const trimmed = cat.trim();
+      if (!trimmed) return;
+      const lower = trimmed.toLowerCase();
+      const alreadyExists = list.some(
+        (m) =>
+          m.key.toLowerCase() === lower ||
+          m.name.toLowerCase() === lower ||
+          m.shortName.toLowerCase() === lower ||
+          m.key.toLowerCase().includes(lower) ||
+          lower.includes(m.key.toLowerCase())
+      );
+      if (!alreadyExists) {
+        list.push({
+          key: trimmed,
+          name: toTitleCase(trimmed),
+          shortName: toTitleCase(trimmed),
+        });
+      }
+    });
+    return list;
+  }, [dynamicCategories]);
+
+  const isCategoryActive = useCallback(
+    (key: string) => {
+      if (!selectedCategory || selectedCategory === 'all') return false;
+      const sel = selectedCategory.trim().toLowerCase();
+      const target = key.trim().toLowerCase();
+      if (sel === target) return true;
+      if (sel.replace(/\s+/g, ' ') === target.replace(/\s+/g, ' ')) return true;
+      return false;
+    },
+    [selectedCategory]
+  );
+
+  const getCategoryLabel = useCallback(
+    (catKey: string) => {
+      if (catKey === 'all') return 'All Fasteners';
+      if (catKey === 'surplus') return 'Surplus Deals (-60%)';
+      const matched = allCategoryOptions.find(
+        (c) => isCategoryActive(c.key) || c.key.toLowerCase() === catKey.toLowerCase()
+      );
+      return matched ? matched.name : catKey;
+    },
+    [allCategoryOptions, isCategoryActive]
+  );
+
+  const handleCategorySelect = (key: string) => {
+    if (isCategoryActive(key)) {
+      setSelectedCategory('all');
+    } else {
+      setSelectedCategory(key);
+    }
+    setCurrentPage(1);
+    if (isAllCategoriesModalOpen) {
+      setIsAllCategoriesModalOpen(false);
+    }
+  };
+
+  const checkTrackScroll = useCallback(() => {
+    const el = categoryTrackRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+  }, []);
+
+  const handleTrackScroll = (direction: 'left' | 'right') => {
+    const el = categoryTrackRef.current;
+    if (!el) return;
+    const scrollAmount = Math.max(240, Math.floor(el.clientWidth * 0.75));
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
+  useEffect(() => {
+    const el = categoryTrackRef.current;
+    if (!el) return;
+    checkTrackScroll();
+    el.addEventListener('scroll', checkTrackScroll, { passive: true });
+    window.addEventListener('resize', checkTrackScroll);
+    return () => {
+      el.removeEventListener('scroll', checkTrackScroll);
+      window.removeEventListener('resize', checkTrackScroll);
+    };
+  }, [checkTrackScroll, allCategoryOptions]);
+
+  // Auto-scroll active category button into view when selected
+  useEffect(() => {
+    if (!categoryTrackRef.current || selectedCategory === 'all') return;
+    const activeEl = categoryTrackRef.current.querySelector<HTMLElement>('[data-active="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [selectedCategory]);
+
   const quickDiameters = dynamicDiameters.slice(0, 6);
   const quickGrades = dynamicGrades.slice(0, 6);
   const quickStandards = dynamicStandards.slice(0, 6);
   const quickFinishes = dynamicFinishes.slice(0, 6);
-  const quickCategories = dynamicCategories.slice(0, 4);
+  const quickCategories = allCategoryOptions.slice(0, 6);
 
   const hasFilterSpecifications =
-    dynamicCategories.length > 0 ||
+    allCategoryOptions.length > 0 ||
     dynamicDiameters.length > 0 ||
     dynamicGrades.length > 0 ||
     dynamicStandards.length > 0 ||
@@ -724,7 +858,7 @@ function ProductsPageInner() {
             {selectedCategory !== 'all' && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
                 <Layers size={11} className="text-blue-600" />
-                {selectedCategory === 'surplus' ? 'Surplus Deals' : selectedCategory}
+                {getCategoryLabel(selectedCategory)}
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('all')}
@@ -872,7 +1006,7 @@ function ProductsPageInner() {
       ) : (
         <>
           {/* Category Filter */}
-          {dynamicCategories.length > 0 && (
+          {allCategoryOptions.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
@@ -881,7 +1015,7 @@ function ProductsPageInner() {
                 </label>
                 {selectedCategory !== 'all' && (
                   <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-                    {selectedCategory}
+                    {getCategoryLabel(selectedCategory)}
                   </span>
                 )}
               </div>
@@ -890,20 +1024,20 @@ function ProductsPageInner() {
               {quickCategories.length > 0 && (
                 <div className="grid grid-cols-2 gap-1.5">
                   {quickCategories.map((c) => {
-                    const isSelected = selectedCategory.toLowerCase() === c.toLowerCase();
+                    const isSelected = isCategoryActive(c.key);
                     return (
                       <button
-                        key={c}
+                        key={c.key}
                         type="button"
-                        onClick={() => setSelectedCategory(isSelected ? 'all' : c)}
+                        onClick={() => handleCategorySelect(c.key)}
                         className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center border cursor-pointer truncate ${
                           isSelected
                             ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                             : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200/90'
                         }`}
-                        title={c}
+                        title={c.name}
                       >
-                        {c}
+                        {c.shortName}
                       </button>
                     );
                   })}
@@ -914,17 +1048,21 @@ function ProductsPageInner() {
               <div className="relative">
                 <select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
                 >
                   <option value="all">
-                    All Categories ({dynamicCategories.length} Categories)
+                    All Categories ({allCategoryOptions.length} Families)
                   </option>
-                  {dynamicCategories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {allCategoryOptions.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.name}
                     </option>
                   ))}
+                  <option value="surplus">⚡ Surplus Deals (-60% Off)</option>
                 </select>
                 <ChevronDown
                   size={14}
@@ -1310,99 +1448,397 @@ function ProductsPageInner() {
       {/* ============================================================== */}
       {/* CATEGORY TABS & MOBILE FILTER TRIGGER                         */}
       {/* ============================================================== */}
-      <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          {/* Category Horizontal Scrolling Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1">
+      <div className="bg-white border-b border-slate-200 shadow-xs relative">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-2.5">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            {/* Desktop Left Scroll Chevron */}
             <button
               type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                selectedCategory === 'all'
-                  ? 'bg-blue-700 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+              onClick={() => handleTrackScroll('left')}
+              disabled={!canScrollLeft}
+              className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-all shrink-0 cursor-pointer disabled:opacity-20 disabled:pointer-events-none`}
+              aria-label="Scroll categories left"
             >
-              All Fasteners ({totalCount.toLocaleString()})
+              <ChevronLeft size={16} />
             </button>
-            {dynamicCategories.map((cat) => {
-              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
-              return (
+
+            {/* Category Horizontal Scrolling Track */}
+            <div className="relative flex-1 min-w-0 overflow-hidden">
+              {/* Fade masks */}
+              {canScrollLeft && (
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-r from-white to-transparent z-10" />
+              )}
+              {canScrollRight && (
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-l from-white to-transparent z-10" />
+              )}
+
+              <div
+                ref={categoryTrackRef}
+                className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto whitespace-nowrap py-1 px-0.5 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
+                {/* 1. All Fasteners Pill */}
                 <button
-                  key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(isSelected ? 'all' : cat)}
-                  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  onClick={() => handleCategorySelect('all')}
+                  data-active={selectedCategory === 'all'}
+                  className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                    selectedCategory === 'all'
+                      ? 'bg-blue-700 text-white border-blue-700 shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80'
                   }`}
                 >
-                  {cat}
+                  <span>All Fasteners</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {totalCount.toLocaleString()}
+                  </span>
                 </button>
-              );
-            })}
+
+                {/* 2. Master & Dynamic Categories Pills */}
+                {allCategoryOptions.map((cat) => {
+                  const isActive = isCategoryActive(cat.key);
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => handleCategorySelect(cat.key)}
+                      data-active={isActive}
+                      className={`px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-blue-700 text-white border-blue-700 shadow-xs ring-2 ring-blue-700/20'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80'
+                      }`}
+                      title={cat.name}
+                    >
+                      <span>{cat.shortName}</span>
+                      {cat.badge && (
+                        <span
+                          className={`hidden md:inline text-[9px] px-1 py-0.2 rounded font-semibold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-500'
+                          }`}
+                        >
+                          {cat.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* 3. Surplus Deals Pill */}
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('surplus')}
+                  data-active={selectedCategory === 'surplus'}
+                  className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+                    selectedCategory === 'surplus'
+                      ? 'bg-[#FF6B00] text-white border-[#FF6B00] shadow-xs ring-2 ring-[#FF6B00]/20'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  <Zap size={12} className={selectedCategory === 'surplus' ? 'text-white' : 'text-[#FF6B00]'} />
+                  <span>Surplus Deals (-60%)</span>
+                </button>
+
+                {/* 4. All Categories Catalog Matrix Button (In-Track) */}
+                <button
+                  type="button"
+                  onClick={() => setIsAllCategoriesModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
+                  title="View all fastener product families in full grid"
+                >
+                  <LayoutGrid size={13} className="text-blue-600" />
+                  <span>All Categories ({allCategoryOptions.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop Right Scroll Chevron */}
             <button
               type="button"
-              onClick={() => setSelectedCategory(selectedCategory === 'surplus' ? 'all' : 'surplus')}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                selectedCategory === 'surplus'
-                  ? 'bg-[#FF6B00] text-white shadow-sm'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-              }`}
+              onClick={() => handleTrackScroll('right')}
+              disabled={!canScrollRight}
+              className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-all shrink-0 cursor-pointer disabled:opacity-20 disabled:pointer-events-none`}
+              aria-label="Scroll categories right"
             >
-              <Zap size={13} />
-              <span>Surplus Deals (-60%)</span>
-            </button>
-          </div>
-
-          {/* Right Action Cluster: Sort Dropdown & Redesigned Filter Specs Button */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Redesigned Filter Specs Button (Desktop & Mobile) */}
-            <button
-              type="button"
-              onClick={() => setIsFilterDrawerOpen(true)}
-              className={`group inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-black transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0 border ${
-                hasActiveFilters
-                  ? 'bg-gradient-to-r from-[#0052CC] to-[#0A192F] text-white border-blue-400 ring-2 ring-[#FF6B00]/40'
-                  : 'bg-[#0A192F] hover:bg-[#132A4A] text-white border-[#0A192F]'
-              }`}
-              title="Open Fastener Technical Specifications Filter (Diameter, Grade, Standard, Finish)"
-            >
-              <span className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
-                hasActiveFilters ? 'bg-white/20 text-[#FF6B00]' : 'bg-white/10 text-[#FF6B00]'
-              }`}>
-                <SlidersHorizontal size={13} className="stroke-[2.5]" />
-              </span>
-              <span className="tracking-tight">Filter Specs</span>
-              {hasActiveFilters ? (
-                <span className="bg-[#FF6B00] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-4.5 text-center shadow-xs">
-                  {activeFilterCount}
-                </span>
-              ) : (
-                <span className="hidden lg:inline-flex items-center text-[10px] font-bold text-slate-300 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/10">
-                  Specs
-                </span>
-              )}
+              <ChevronRight size={16} />
             </button>
 
-            {/* Sort Dropdown */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span className="text-[11px] text-slate-500 font-semibold">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer"
+            {/* Right Action Cluster (Desktop & Tablet) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              {/* Filter Specs Button */}
+              <button
+                type="button"
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className={`group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0 border ${
+                  hasActiveFilters
+                    ? 'bg-gradient-to-r from-[#0052CC] to-[#0A192F] text-white border-blue-400 ring-2 ring-[#FF6B00]/40'
+                    : 'bg-[#0A192F] hover:bg-[#132A4A] text-white border-[#0A192F]'
+                }`}
+                title="Open Fastener Technical Specifications Filter (Diameter, Grade, Standard, Finish)"
               >
-                <option value="featured">Featured Fasteners</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="stock_desc">Highest Stock First</option>
-              </select>
+                <span
+                  className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
+                    hasActiveFilters ? 'bg-white/20 text-[#FF6B00]' : 'bg-white/10 text-[#FF6B00]'
+                  }`}
+                >
+                  <SlidersHorizontal size={13} className="stroke-[2.5]" />
+                </span>
+                <span className="tracking-tight">Filter Specs</span>
+                {hasActiveFilters ? (
+                  <span className="bg-[#FF6B00] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-4.5 text-center shadow-xs">
+                    {activeFilterCount}
+                  </span>
+                ) : (
+                  <span className="hidden lg:inline-flex items-center text-[10px] font-bold text-slate-300 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/10">
+                    Specs
+                  </span>
+                )}
+              </button>
+
+              {/* Sort Dropdown (Desktop & Tablet) */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500 font-semibold hidden md:inline">Sort:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-2.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 cursor-pointer shadow-2xs"
+                >
+                  <option value="featured">Featured Fasteners</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="stock_desc">Highest Stock First</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Mobile Tier 2 Action Sub-Bar (Mobile-only: gives mobile users instant access to Filter Specs, Sort, & Category Grid) */}
+        <div className="sm:hidden flex items-center justify-between gap-2 px-3 py-2 bg-slate-50/90 border-t border-slate-200/80">
+          <button
+            type="button"
+            onClick={() => setIsAllCategoriesModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-700 bg-white border border-slate-200 shadow-2xs cursor-pointer active:scale-95 transition-transform"
+          >
+            <LayoutGrid size={13} className="text-blue-600" />
+            <span>Categories</span>
+            <span className="bg-blue-50 text-blue-700 text-[10px] px-1 py-0.2 rounded font-black">
+              {allCategoryOptions.length}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Mobile Sort Dropdown */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="appearance-none pl-2.5 pr-6 py-1.5 rounded-lg border border-slate-300 text-[11px] font-bold text-slate-700 bg-white focus:outline-none shadow-2xs cursor-pointer"
+              >
+                <option value="featured">Featured</option>
+                <option value="price_asc">Price: Low → High</option>
+                <option value="price_desc">Price: High → Low</option>
+                <option value="stock_desc">High Stock</option>
+              </select>
+              <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Mobile Filter Specs Button */}
+            <button
+              type="button"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all shadow-xs cursor-pointer border ${
+                hasActiveFilters
+                  ? 'bg-blue-700 text-white border-blue-700'
+                  : 'bg-[#0A192F] text-white border-[#0A192F]'
+              }`}
+            >
+              <SlidersHorizontal size={12} className="text-[#FF6B00] stroke-[2.5]" />
+              <span>Filter</span>
+              {hasActiveFilters && (
+                <span className="bg-[#FF6B00] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-4 text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* ALL FASTENER CATEGORIES MODAL (Responsive Touch Matrix)        */}
+      {/* ============================================================== */}
+      {isAllCategoriesModalOpen && (
+        <div className="fixed inset-0 z-[2100] flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsAllCategoriesModalOpen(false)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl z-10 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <LayoutGrid size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                    Fastener Categories Catalog
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Select any category to instantly filter all {totalCount.toLocaleString()} products
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAllCategoriesModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center transition-colors cursor-pointer text-slate-600 hover:text-slate-900"
+                title="Close categories catalog"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Quick Search inside Categories Modal */}
+            <div className="p-3 sm:px-5 border-b border-slate-100 bg-white shrink-0">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  placeholder="Search categories (e.g. Hex, Socket, Structural, Washers)..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all"
+                />
+                {categorySearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCategorySearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Categories Grid List */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
+              {/* Special Quick Actions */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('all')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCategory === 'all'
+                      ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-600/20 text-blue-900'
+                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <div>
+                    <div className="text-xs font-black">All Fasteners</div>
+                    <div className="text-[10px] text-slate-500 font-medium">Entire inventory ({totalCount.toLocaleString()})</div>
+                  </div>
+                  {selectedCategory === 'all' && <Check size={16} className="text-blue-600 shrink-0" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('surplus')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                    selectedCategory === 'surplus'
+                      ? 'bg-amber-50 border-[#FF6B00] ring-2 ring-[#FF6B00]/20 text-amber-950'
+                      : 'bg-amber-50/50 hover:bg-amber-100/70 border-amber-200/80 text-amber-900'
+                  }`}
+                >
+                  <div>
+                    <div className="text-xs font-black flex items-center gap-1">
+                      <Zap size={12} className="text-[#FF6B00]" />
+                      Surplus Deals
+                    </div>
+                    <div className="text-[10px] text-amber-700 font-medium">Up to 60% off bulk surplus</div>
+                  </div>
+                  {selectedCategory === 'surplus' && <Check size={16} className="text-[#FF6B00] shrink-0" />}
+                </button>
+              </div>
+
+              {/* Master Catalog Categories Grid */}
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
+                  Fastener Product Families
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {allCategoryOptions
+                    .filter((cat) => {
+                      if (!categorySearchQuery) return true;
+                      const q = categorySearchQuery.toLowerCase();
+                      return (
+                        cat.name.toLowerCase().includes(q) ||
+                        cat.shortName.toLowerCase().includes(q) ||
+                        cat.key.toLowerCase().includes(q) ||
+                        (cat.badge && cat.badge.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((cat) => {
+                      const isActive = isCategoryActive(cat.key);
+                      return (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          onClick={() => handleCategorySelect(cat.key)}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2 group ${
+                            isActive
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
+                              : 'bg-white hover:bg-blue-50/50 border-slate-200 text-slate-800 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className={`text-xs font-black truncate ${isActive ? 'text-white' : 'text-slate-900 group-hover:text-blue-700'}`}>
+                              {cat.name}
+                            </div>
+                            {cat.badge && (
+                              <div className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
+                                {cat.badge}
+                              </div>
+                            )}
+                          </div>
+                          {isActive ? (
+                            <span className="w-5 h-5 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0 mt-0.5">
+                              <Check size={12} className="stroke-[3]" />
+                            </span>
+                          ) : (
+                            <ChevronRight size={14} className="text-slate-300 group-hover:text-blue-600 shrink-0 mt-1 transition-colors" />
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 sm:px-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <div className="text-[11px] text-slate-500 font-semibold">
+                Active: <span className="font-bold text-slate-800">{getCategoryLabel(selectedCategory)}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAllCategoriesModalOpen(false)}
+                className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* SLIDE-OVER FILTER SPECIFICATIONS DRAWER (Desktop & Mobile)     */}
@@ -1577,7 +2013,7 @@ function ProductsPageInner() {
               {selectedCategory !== 'all' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
                   <Layers size={12} className="text-blue-600" />
-                  Category: {selectedCategory === 'surplus' ? 'Surplus Deals' : selectedCategory}
+                  Category: {getCategoryLabel(selectedCategory)}
                   <button type="button" onClick={() => setSelectedCategory('all')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove category">
                     <X size={12} />
                   </button>

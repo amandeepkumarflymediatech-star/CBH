@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { GlobalUnit } from '@/lib/types';
 import { getStoredUser, logout, AuthUser } from '@/lib/auth';
+import CategoriesMegaMenu from '@/components/header/CategoriesMegaMenu';
+import MobileCategoriesAccordion from '@/components/header/MobileCategoriesAccordion';
 
 interface MainHeaderProps {
   unit?: GlobalUnit;
@@ -57,6 +59,7 @@ export default function MainHeader({
   // Authentication State
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileProductsOpen, setIsMobileProductsOpen] = useState(false);
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
@@ -105,7 +108,7 @@ export default function MainHeader({
   const navLinks = [
     { label: 'Home', href: '/', icon: Home, exact: true },
     { label: 'About', href: '/about', icon: Info },
-    { label: 'Product', href: '/products', icon: Package },
+    { label: 'Products', href: '/products', icon: Package },
     { label: 'Certificates', href: '/certificate', icon: Award },
     { label: 'Our Clients', href: '/clients', icon: Users2 },
     { label: 'Blogs', href: '/blog', icon: BookOpen },
@@ -140,6 +143,12 @@ export default function MainHeader({
           <nav className="header-nav-menu hide-tablet-down" aria-label="Main Navigation">
             {navLinks.map((link) => {
               const active = isLinkActive(link.href, link.exact);
+
+              // Hover on Products opens the Categories & Subcategories Mega Menu
+              if (link.href === '/products') {
+                return <CategoriesMegaMenu key={link.label} />;
+              }
+
               return (
                 <Link
                   key={link.label}
@@ -623,6 +632,99 @@ export default function MainHeader({
                 {navLinks.map((item) => {
                   const IconComp = item.icon;
                   const active = isLinkActive(item.href, item.exact);
+
+                  // Expandable Products Accordion in Mobile & Tablet Drawer
+                  if (item.href === '/products') {
+                    return (
+                      <div key={item.label} className="drawer-products-dropdown">
+                        <button
+                          type="button"
+                          onClick={() => setIsMobileProductsOpen((prev) => !prev)}
+                          className={`drawer-nav-item ${active || isMobileProductsOpen ? 'active' : ''}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                            background: isMobileProductsOpen ? '#EFF6FF' : undefined,
+                            color: isMobileProductsOpen ? '#0052CC' : undefined,
+                          }}
+                          aria-expanded={isMobileProductsOpen}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <IconComp size={18} />
+                            <span style={{ fontWeight: active || isMobileProductsOpen ? 700 : 500 }}>
+                              {item.label}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              padding: '2px 7px',
+                              borderRadius: '12px',
+                              background: '#DBEAFE',
+                              color: '#1D4ED8'
+                            }}>
+                              12 Families
+                            </span>
+                            <ChevronDown
+                              size={16}
+                              style={{
+                                transform: isMobileProductsOpen ? 'rotate(180deg)' : 'none',
+                                transition: 'transform 0.2s ease',
+                                color: isMobileProductsOpen ? '#0052CC' : '#94A3B8'
+                              }}
+                            />
+                          </div>
+                        </button>
+
+                        {/* Accordion panel listing all 12 categories and subcategories */}
+                        {isMobileProductsOpen && (
+                          <div style={{
+                            paddingLeft: '10px',
+                            paddingRight: '4px',
+                            paddingTop: '6px',
+                            paddingBottom: '8px',
+                            marginLeft: '12px',
+                            borderLeft: '2px solid #2563EB',
+                            background: '#F8FAFC',
+                            borderRadius: '0 8px 8px 0',
+                            marginTop: '2px',
+                            marginBottom: '6px'
+                          }}>
+                            {/* Fast Direct Link to all products */}
+                            <Link
+                              href="/products"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 12px',
+                                background: '#EFF6FF',
+                                border: '1px solid #BFDBFE',
+                                borderRadius: '6px',
+                                color: '#1D4ED8',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                marginBottom: '8px'
+                              }}
+                            >
+                              <span>Browse All 54,000+ Fasteners</span>
+                              <ChevronRight size={14} />
+                            </Link>
+
+                            <MobileCategoriesAccordion
+                              onCloseDrawer={() => setIsMobileMenuOpen(false)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
                     <Link
                       key={item.label}

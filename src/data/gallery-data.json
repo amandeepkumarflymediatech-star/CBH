@@ -14,7 +14,9 @@
       "Wedge tensile testing for finished bolts"
     ],
     "sortOrder": 1,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-quality-2",
@@ -31,7 +33,9 @@
       "Automated laser dimensional gauging"
     ],
     "sortOrder": 2,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-quality-3",
@@ -48,7 +52,9 @@
       "Conforms to ISO 9227 & ASTM B117"
     ],
     "sortOrder": 3,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-quality-4",
@@ -65,7 +71,9 @@
       "Hardness testing: Rockwell HRC & Vickers HV"
     ],
     "sortOrder": 4,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-logistics-1",
@@ -82,7 +90,9 @@
       "Real-time barcode picking and automated dispatch"
     ],
     "sortOrder": 5,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-manufacturing-1",
@@ -99,7 +109,9 @@
       "Automated wire uncoiling & phosphate pre-coating"
     ],
     "sortOrder": 6,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-manufacturing-2",
@@ -116,7 +128,9 @@
       "Compliant with Indian BIS 1364 specifications"
     ],
     "sortOrder": 7,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-manufacturing-3",
@@ -133,7 +147,9 @@
       "Precision machined expansion clip mechanism"
     ],
     "sortOrder": 8,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-applications-1",
@@ -150,7 +166,9 @@
       "Full NABL lab test batch traceability"
     ],
     "sortOrder": 9,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-applications-2",
@@ -167,7 +185,9 @@
       "Certified for corrosive offshore saline environment"
     ],
     "sortOrder": 10,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-applications-3",
@@ -184,7 +204,9 @@
       "Rapid batch deliveries directly to desert sites"
     ],
     "sortOrder": 11,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-exhibitions-1",
@@ -201,7 +223,9 @@
       "Showcased Fischer high-performance anchoring range"
     ],
     "sortOrder": 12,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-exhibitions-2",
@@ -218,7 +242,9 @@
       "Demonstrated dual PCS & KGS cost-saving models"
     ],
     "sortOrder": 13,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   },
   {
     "id": "gal-exhibitions-3",
@@ -235,6 +261,8 @@
       "One-on-one wholesale dealer onboardings"
     ],
     "sortOrder": 14,
-    "isActive": true
+    "isActive": true,
+    "createdAt": "2026-11-18T06:16:03.000Z",
+    "updatedAt": "2026-11-18T06:16:03.000Z"
   }
 ]

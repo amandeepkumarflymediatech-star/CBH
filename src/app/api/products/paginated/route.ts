@@ -64,6 +64,7 @@ let filterOptionsCache: {
   grades: string[];
   finishes: string[];
   diameters: string[];
+  lengths?: number[];
   timestamp: number;
 } | null = null;
 
@@ -73,6 +74,7 @@ async function getCachedFilterOptions(): Promise<{
   grades: string[];
   finishes: string[];
   diameters: string[];
+  lengths?: number[];
 }> {
   const now = Date.now();
   if (filterOptionsCache && now - filterOptionsCache.timestamp < 60000) {
@@ -80,12 +82,13 @@ async function getCachedFilterOptions(): Promise<{
   }
 
   try {
-    const [catRows, stdRows, grdRows, finRows, diaRows] = await Promise.all([
+    const [catRows, stdRows, grdRows, finRows, diaRows, lenRows] = await Promise.all([
       query<any>('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" ORDER BY category ASC LIMIT 50'),
       query<any>('SELECT DISTINCT standard FROM products WHERE standard IS NOT NULL AND standard != "" ORDER BY standard ASC LIMIT 100'),
       query<any>('SELECT DISTINCT grade FROM products WHERE grade IS NOT NULL AND grade != "" ORDER BY grade ASC LIMIT 50'),
       query<any>('SELECT DISTINCT finish FROM products WHERE finish IS NOT NULL AND finish != "" ORDER BY finish ASC LIMIT 50'),
       query<any>('SELECT DISTINCT diameter FROM products WHERE diameter IS NOT NULL AND diameter != "" ORDER BY diameter ASC LIMIT 100'),
+      query<any>('SELECT DISTINCT length_mm FROM products WHERE length_mm IS NOT NULL AND length_mm > 0 ORDER BY length_mm ASC LIMIT 100'),
     ]);
 
     const categories = (catRows || []).map((r) => String(r.category)).filter(Boolean).sort();
@@ -100,7 +103,12 @@ async function getCachedFilterOptions(): Promise<{
       return numA - numB;
     });
 
-    filterOptionsCache = { categories, standards, grades, finishes, diameters, timestamp: now };
+    const lengths = (lenRows || [])
+      .map((r) => Number(r.length_mm))
+      .filter((n) => !isNaN(n) && n > 0)
+      .sort((a, b) => a - b);
+
+    filterOptionsCache = { categories, standards, grades, finishes, diameters, lengths, timestamp: now };
     return filterOptionsCache;
   } catch {
     // Dynamic fallback to in-memory products DB (never hardcode dummy data)
@@ -114,8 +122,9 @@ async function getCachedFilterOptions(): Promise<{
       const numB = parseInt(b.replace(/\D/g, '')) || 0;
       return numA - numB;
     });
+    const lengths = Array.from(new Set(db.map((p) => Number(p.lengthMm)).filter((n) => !isNaN(n) && n > 0))).sort((a, b) => a - b);
 
-    return { categories, standards, grades, finishes, diameters };
+    return { categories, standards, grades, finishes, diameters, lengths };
   }
 }
 
@@ -132,6 +141,7 @@ export async function GET(request: Request) {
   const standard = (searchParams.get('standard') || 'all').trim();
   const grade = (searchParams.get('grade') || 'all').trim();
   const diameter = (searchParams.get('diameter') || 'all').trim();
+  const length = (searchParams.get('length') || 'all').trim();
   const finish = (searchParams.get('finish') || 'all').trim();
   const inStockOnly = searchParams.get('inStockOnly') === 'true' || searchParams.get('inStockOnly') === '1';
   const sortBy = searchParams.get('sortBy') || 'featured';
@@ -168,19 +178,37 @@ export async function GET(request: Request) {
 
     // Category / Tab filter
     if (category && category !== 'all') {
-      if (category === 'surplus') {
+      const catLower = category.toLowerCase().trim();
+      if (catLower === 'surplus') {
         whereClauses.push('is_surplus = 1');
-      } else if (category === 'din933') {
+      } else if (catLower === 'din933') {
         whereClauses.push('(standard LIKE "%DIN 933%" OR name LIKE "%DIN 933%")');
-      } else if (category === 'din931') {
+      } else if (catLower === 'din931') {
         whereClauses.push('(standard LIKE "%DIN 931%" OR name LIKE "%DIN 931%")');
-      } else if (category === 'din912') {
+      } else if (catLower === 'din912') {
         whereClauses.push('(standard LIKE "%DIN 912%" OR name LIKE "%DIN 912%")');
-      } else if (category === 'nuts') {
-        whereClauses.push('(category LIKE "%Hex Nuts%" OR standard LIKE "%DIN 934%" OR name LIKE "%DIN 934%")');
+      } else if (catLower === 'nuts' || catLower.includes('nut')) {
+        whereClauses.push('(LOWER(category) LIKE "%nut%" OR LOWER(sub_group) LIKE "%nut%" OR standard LIKE "%DIN 934%" OR LOWER(name) LIKE "%nut%")');
+      } else if (catLower === 'washers' || catLower.includes('washer')) {
+        whereClauses.push('(LOWER(category) LIKE "%washer%" OR LOWER(sub_group) LIKE "%washer%" OR LOWER(name) LIKE "%washer%")');
+      } else if (catLower.includes('socket') || catLower.includes('allen')) {
+        whereClauses.push('(LOWER(category) LIKE "%socket%" OR LOWER(sub_category) LIKE "%socket%" OR standard LIKE "%DIN 912%" OR LOWER(name) LIKE "%socket%" OR LOWER(name) LIKE "%allen%")');
+      } else if (catLower.includes('hsfg')) {
+        whereClauses.push('(LOWER(category) LIKE "%hsfg%" OR standard LIKE "%3757%" OR standard LIKE "%4000%" OR LOWER(name) LIKE "%hsfg%")');
+      } else if (catLower.includes('carriage')) {
+        whereClauses.push('(LOWER(category) LIKE "%carriage%" OR standard LIKE "%DIN 603%" OR LOWER(name) LIKE "%carriage%")');
+      } else if (catLower.includes('flange')) {
+        whereClauses.push('(LOWER(category) LIKE "%flange%" OR standard LIKE "%DIN 6921%" OR LOWER(name) LIKE "%flange%")');
+      } else if (catLower.includes('threaded rod') || catLower.includes('stud')) {
+        whereClauses.push('(LOWER(category) LIKE "%threaded rod%" OR LOWER(category) LIKE "%stud%" OR LOWER(name) LIKE "%threaded rod%" OR LOWER(name) LIKE "%stud%")');
+      } else if (catLower.includes('roofing')) {
+        whereClauses.push('(LOWER(category) LIKE "%roofing%" OR LOWER(name) LIKE "%roofing%")');
+      } else if (catLower.includes('theft') || catLower.includes('security')) {
+        whereClauses.push('(LOWER(category) LIKE "%theft%" OR LOWER(category) LIKE "%security%" OR LOWER(name) LIKE "%anti%theft%" OR LOWER(name) LIKE "%security%")');
       } else {
-        whereClauses.push('LOWER(category) LIKE ?');
-        params.push(`%${category.toLowerCase()}%`);
+        whereClauses.push('(LOWER(category) LIKE ? OR LOWER(sub_group) LIKE ? OR LOWER(sub_category) LIKE ? OR LOWER(name) LIKE ?)');
+        const q = `%${catLower}%`;
+        params.push(q, q, q, q);
       }
     }
 
@@ -199,6 +227,14 @@ export async function GET(request: Request) {
     if (diameter && diameter !== 'all') {
       whereClauses.push('LOWER(diameter) = ?');
       params.push(diameter.toLowerCase());
+    }
+
+    if (length && length !== 'all') {
+      const lenVal = parseFloat(length);
+      if (!isNaN(lenVal)) {
+        whereClauses.push('length_mm = ?');
+        params.push(lenVal);
+      }
     }
 
     if (finish && finish !== 'all') {
@@ -332,18 +368,60 @@ export async function GET(request: Request) {
 
   // Category filtering
   if (category && category !== 'all') {
-    if (category === 'surplus') {
+    const catLower = category.toLowerCase().trim();
+    if (catLower === 'surplus') {
       results = results.filter((p) => p.isSurplus);
-    } else if (category === 'din933') {
+    } else if (catLower === 'din933') {
       results = results.filter((p) => p.standard === 'DIN 933' || p.name.includes('DIN 933'));
-    } else if (category === 'din931') {
+    } else if (catLower === 'din931') {
       results = results.filter((p) => p.standard === 'DIN 931' || p.name.includes('DIN 931'));
-    } else if (category === 'din912') {
+    } else if (catLower === 'din912') {
       results = results.filter((p) => p.standard === 'DIN 912' || p.name.includes('DIN 912'));
-    } else if (category === 'nuts') {
-      results = results.filter((p) => p.category === 'Hex Nuts' || p.standard === 'DIN 934' || p.name.includes('DIN 934'));
+    } else if (catLower === 'nuts' || catLower.includes('nut')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('nut') ||
+        (p.subGroup || '').toLowerCase().includes('nut') ||
+        p.standard === 'DIN 934' ||
+        p.name.toLowerCase().includes('nut')
+      );
+    } else if (catLower === 'washers' || catLower.includes('washer')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('washer') ||
+        (p.subGroup || '').toLowerCase().includes('washer') ||
+        p.name.toLowerCase().includes('washer')
+      );
+    } else if (catLower.includes('socket') || catLower.includes('allen')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('socket') ||
+        (p.subCategory || '').toLowerCase().includes('socket') ||
+        p.standard === 'DIN 912' ||
+        p.name.toLowerCase().includes('socket') ||
+        p.name.toLowerCase().includes('allen')
+      );
+    } else if (catLower.includes('carriage')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('carriage') ||
+        p.standard === 'DIN 603' ||
+        p.name.toLowerCase().includes('carriage')
+      );
+    } else if (catLower.includes('flange')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('flange') ||
+        p.standard === 'DIN 6921' ||
+        p.name.toLowerCase().includes('flange')
+      );
+    } else if (catLower.includes('hsfg')) {
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes('hsfg') ||
+        p.name.toLowerCase().includes('hsfg')
+      );
     } else {
-      results = results.filter((p) => (p.category || '').toLowerCase().includes(category.toLowerCase()));
+      results = results.filter((p) =>
+        (p.category || '').toLowerCase().includes(catLower) ||
+        (p.subGroup || '').toLowerCase().includes(catLower) ||
+        (p.subCategory || '').toLowerCase().includes(catLower) ||
+        (p.name || '').toLowerCase().includes(catLower)
+      );
     }
   }
 
@@ -356,6 +434,9 @@ export async function GET(request: Request) {
   }
   if (diameter && diameter !== 'all') {
     results = results.filter((p) => (p.diameter || '').toLowerCase() === diameter.toLowerCase());
+  }
+  if (length && length !== 'all') {
+    results = results.filter((p) => String(p.lengthMm) === String(length));
   }
   if (finish && finish !== 'all') {
     results = results.filter((p) => (p.finish || '').toLowerCase() === finish.toLowerCase());
