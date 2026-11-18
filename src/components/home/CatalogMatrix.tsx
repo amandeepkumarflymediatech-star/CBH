@@ -190,7 +190,7 @@ export default function CatalogMatrix({
 
   return (
     <section className="py-8 sm:py-12 bg-[#F8FAFC]" id="catalog">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
         {/* Header & Categories Filter Section */}
         <div className="flex flex-col gap-4 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
@@ -226,8 +226,20 @@ export default function CatalogMatrix({
           </div>
         </div>
 
-        {/* 8 Product Cards Grid */}
-        {visibleProducts.length === 0 ? (
+        {/* Product Cards Grid (2-Column Mobile Grid) */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-white rounded-xl p-3 border border-slate-200 h-72 sm:h-80 animate-pulse flex flex-col justify-between">
+                <div className="w-full h-32 sm:h-36 bg-slate-100 rounded-lg" />
+                <div className="space-y-2 mt-3">
+                  <div className="h-3 bg-slate-100 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visibleProducts.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center max-w-md mx-auto my-6 shadow-xs">
             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
               <PackageCheck size={24} />
