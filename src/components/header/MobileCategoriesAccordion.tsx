@@ -123,25 +123,24 @@ export default function MobileCategoriesAccordion({
 
             {/* Expanded Subcategories Accordion Panel */}
             {isExpanded && (
-              <div className="p-2 pt-1.5 space-y-1.5 bg-slate-50/90 border-t border-blue-100">
-                {cat.subcategories.map((sub) => (
-                  <Link
-                    key={sub.id}
-                    href={sub.href}
-                    onClick={onCloseDrawer}
-                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-800 hover:text-blue-700 text-xs font-semibold shadow-2xs transition-colors"
-                  >
-                    <div className="flex flex-col min-w-0 pr-2">
-                      <span className="leading-snug break-words">{sub.name}</span>
+              <div className="p-2 pt-1.5 bg-slate-50/90 border-t border-blue-100">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {cat.subcategories.map((sub) => (
+                    <Link
+                      key={sub.id}
+                      href={sub.href}
+                      onClick={onCloseDrawer}
+                      className="flex flex-col justify-between p-2 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-800 hover:text-blue-700 text-xs font-semibold shadow-2xs transition-colors"
+                    >
+                      <span className="leading-snug line-clamp-2 text-[11px] font-bold">{sub.name}</span>
                       {sub.specBadge && (
-                        <span className="text-[9.5px] text-blue-600 font-mono mt-0.5 font-bold">
+                        <span className="text-[9px] text-blue-600 font-mono mt-1 font-bold">
                           {sub.specBadge}
                         </span>
                       )}
-                    </div>
-                    <ArrowRight size={13} className="text-slate-400 shrink-0" />
-                  </Link>
-                ))}
+                    </Link>
+                  ))}
+                </div>
 
                 {/* Direct Link to Category Catalog */}
                 <Link

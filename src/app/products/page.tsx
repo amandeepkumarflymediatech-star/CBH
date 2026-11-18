@@ -175,51 +175,51 @@ function FastenerCard({
           : relatedBadge
           ? 'border-blue-200 shadow-xs'
           : 'border-slate-200/90'
-      } p-4 sm:p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 relative h-full`}
+      } p-2.5 sm:p-4 md:p-5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 relative h-full`}
     >
       <div className="flex flex-col flex-1">
         {/* Top Badges */}
-        <div className="flex justify-between items-center mb-2 gap-1.5 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-extrabold font-mono tracking-wider">
+        <div className="flex justify-between items-center mb-1.5 gap-1 flex-wrap">
+          <div className="flex items-center gap-1">
+            <span className="bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px] sm:text-[11px] font-extrabold font-mono tracking-wider">
               {p.standard}
             </span>
 
             {p.isSurplus ? (
-              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold tracking-wide">
-                -{p.surplusDiscountPct || 60}% SURPLUS
+              <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[8.5px] sm:text-[10px] font-extrabold tracking-wide">
+                -{p.surplusDiscountPct || 60}%
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-emerald-600 text-[10px] sm:text-[11px] font-bold">
-                <CheckCircle2 size={12} />
-                <span>In Stock</span>
+              <span className="inline-flex items-center gap-0.5 text-emerald-600 text-[8.5px] sm:text-[11px] font-bold">
+                <CheckCircle2 size={11} />
+                <span className="hidden xs:inline">In Stock</span>
               </span>
             )}
           </div>
 
-          <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold font-mono border border-blue-200 whitespace-nowrap">
-            MOQ: 100 Pcs / 250g
+          <span className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-bold font-mono border border-blue-200 whitespace-nowrap">
+            MOQ: 100
           </span>
         </div>
 
         {/* Optional Related Reason Badge */}
         {relatedBadge && (
-          <div className={`mb-2 px-2 py-1 rounded-md text-[10px] font-extrabold border ${toneClass} flex items-center gap-1 leading-tight`}>
-            <Sparkles size={11} className="shrink-0" />
+          <div className={`mb-1.5 px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-[10px] font-extrabold border ${toneClass} flex items-center gap-1 leading-tight`}>
+            <Sparkles size={10} className="shrink-0" />
             <span className="truncate">{relatedBadge}</span>
           </div>
         )}
 
         {/* Product Image */}
-        <Link href={`/product/${p.id}`} className="block text-center my-1.5 group">
-          <div className="relative w-full h-28 sm:h-32 bg-white rounded-lg p-2 transition-transform group-hover:scale-102 duration-200">
+        <Link href={`/product/${p.id}`} className="block text-center my-1 group">
+          <div className="relative w-full h-32 sm:h-36 md:h-40 bg-white rounded-xl p-1 sm:p-1.5 transition-transform group-hover:scale-102 duration-200 overflow-hidden flex items-center justify-center">
             <Image
               src={p.imageUrl || '/assets/bolt_zinc.jpg'}
               alt={p.name}
               fill
               unoptimized={Boolean(p.imageUrl && p.imageUrl.startsWith('http'))}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-contain p-1"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-contain p-0.5"
               onError={(e) => {
                 try {
                   (e.target as any).src = '/assets/bolt_zinc.jpg';
@@ -234,76 +234,76 @@ function FastenerCard({
               <img
                 src="/assets/cbh-watermark.png"
                 alt=""
-                className="w-16 sm:w-20 max-w-[55%] h-auto object-contain"
-                style={{ filter: 'drop-shadow(0 1px 4px rgba(0, 0, 0, 0.12))' }}
+                className="w-12 sm:w-18 max-w-[50%] h-auto object-contain"
+                style={{ filter: 'drop-shadow(0 1px 3px rgba(0, 0, 0, 0.12))' }}
               />
             </div>
           </div>
         </Link>
 
         {/* Specs Matrix Strip */}
-        <div className="grid grid-cols-3 text-center bg-slate-50/90 rounded-lg p-1.5 text-[10px] font-mono border border-slate-100 mb-2">
-          <div>
-            <span className="text-slate-400 block text-[9px] font-sans font-medium">Grade</span>
+        <div className="grid grid-cols-3 text-center bg-slate-50/90 rounded-lg p-1 sm:p-1.5 text-[8.5px] sm:text-[10px] font-mono border border-slate-100 mb-1.5">
+          <div className="truncate px-0.5">
+            <span className="text-slate-400 block text-[7.5px] sm:text-[9px] font-sans font-medium">Grade</span>
             <strong className="text-slate-900 truncate block">{toTitleCase(p.grade)}</strong>
           </div>
-          <div>
-            <span className="text-slate-400 block text-[9px] font-sans font-medium">Size</span>
+          <div className="truncate px-0.5">
+            <span className="text-slate-400 block text-[7.5px] sm:text-[9px] font-sans font-medium">Size</span>
             <strong className="text-slate-900 truncate block" title={p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}>
               {p.sizeFormatted || `${p.diameter}x${p.lengthMm}`}
             </strong>
           </div>
-          <div>
-            <span className="text-slate-400 block text-[9px] font-sans font-medium">Pitch</span>
+          <div className="truncate px-0.5">
+            <span className="text-slate-400 block text-[7.5px] sm:text-[9px] font-sans font-medium">Pitch</span>
             <strong className="text-slate-900 truncate block">{p.pitchMm}mm</strong>
           </div>
         </div>
 
         {/* Title (exact 2-line height, no descender overflow) */}
-        <h3 className="text-xs sm:text-[13px] font-bold text-slate-900 line-clamp-2 h-[34px] leading-[17px] mb-2 overflow-hidden">
+        <h3 className="text-[11px] sm:text-[13px] font-bold text-slate-900 line-clamp-2 h-[30px] sm:h-[34px] leading-[15px] sm:leading-[17px] mb-1.5 overflow-hidden">
           <Link href={`/product/${p.id}`} className="hover:text-blue-700 transition-colors" title={p.name}>
             {toTitleCase(p.name)}
           </Link>
         </h3>
 
         {/* Packaging, Lead & Finish - 3-Column Micro Strip (Never wraps) */}
-        <div className="grid grid-cols-3 gap-1 text-[10px] text-center font-mono text-slate-600 mb-2">
-          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Small Box: ${pcsPerBox.toLocaleString()} pcs`}>
-            Box: <strong>{pcsPerBox.toLocaleString()}</strong>
+        <div className="grid grid-cols-3 gap-0.5 sm:gap-1 text-[8.5px] sm:text-[10px] text-center font-mono text-slate-600 mb-1.5">
+          <div className="bg-slate-100/90 rounded py-0.5 px-0.5 truncate" title={`Small Box: ${pcsPerBox.toLocaleString()} pcs`}>
+            Box: <strong>{pcsPerBox > 999 ? `${(pcsPerBox / 1000).toFixed(0)}k` : pcsPerBox}</strong>
           </div>
-          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Dispatch Lead Time: ${leadDays} days`}>
+          <div className="bg-slate-100/90 rounded py-0.5 px-0.5 truncate" title={`Dispatch Lead Time: ${leadDays} days`}>
             Lead: <strong>{leadDays}d</strong>
           </div>
-          <div className="bg-slate-100/90 rounded py-0.5 px-1 truncate" title={`Finish: ${p.finish || 'Standard'}`}>
+          <div className="bg-slate-100/90 rounded py-0.5 px-0.5 truncate" title={`Finish: ${p.finish || 'Standard'}`}>
             <strong>{toTitleCase(p.finish || 'Self')}</strong>
           </div>
         </div>
       </div>
 
       {/* Bottom Commercial Section */}
-      <div className="mt-auto pt-2.5 border-t border-slate-100 space-y-2">
+      <div className="mt-auto pt-2 border-t border-slate-100 space-y-1.5">
         {/* Dual Pricing Box */}
-        <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-200/80">
-          <div className="flex justify-between items-baseline mb-1">
-            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold">
-              {currentUnit === 'PCS' ? 'Rate / Pc:' : 'Rate / Kg:'}
+        <div className="bg-slate-50/90 rounded-lg p-1.5 sm:p-2.5 border border-slate-200/80">
+          <div className="flex justify-between items-baseline mb-0.5 sm:mb-1">
+            <span className="text-[9px] sm:text-[11px] text-slate-600 font-bold">
+              {currentUnit === 'PCS' ? 'Rate/Pc:' : 'Rate/Kg:'}
             </span>
-            <span className="text-base sm:text-lg font-black text-blue-700 font-mono">
+            <span className="text-sm sm:text-lg font-black text-blue-700 font-mono">
               {formatINR(currentPrice)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200/60">
-            <span className="whitespace-nowrap">
+          <div className="flex items-center justify-between text-[8.5px] sm:text-[10px] text-slate-500 font-mono pt-0.5 sm:pt-1 border-t border-slate-200/60">
+            <span className="whitespace-nowrap truncate">
               Alt: <strong className="text-slate-700">{formatINR(currentUnit === 'PCS' ? p.pricePerKg : p.pricePerPiece)}</strong>/{currentUnit === 'PCS' ? 'kg' : 'pc'}
             </span>
-            <span className="whitespace-nowrap text-slate-400">
+            <span className="whitespace-nowrap text-slate-400 hidden xs:inline">
               {(p.weightPerPcKg * 1000).toFixed(1)}g/pc
             </span>
           </div>
         </div>
 
         {/* Procurement Configurator (Full Width Stacked - Zero Overflow) */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {/* Segmented Unit Selector */}
           <div className="grid grid-cols-2 bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200/60">
             <button
@@ -314,14 +314,14 @@ function FastenerCard({
                   onToggleUnit('PCS');
                 }
               }}
-              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center ${
+              className={`py-0.5 sm:py-1 rounded text-[9.5px] sm:text-[11px] font-bold transition-all text-center ${
                 currentUnit === 'PCS'
                   ? 'bg-white text-blue-700 shadow-xs font-black cursor-default pointer-events-none'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer'
               }`}
               title={currentUnit === 'PCS' ? 'Pieces (Pcs) already selected' : 'Switch to Pieces (Pcs)'}
             >
-              Pieces (Pcs)
+              Pieces
             </button>
             <button
               type="button"
@@ -331,43 +331,43 @@ function FastenerCard({
                   onToggleUnit('KGS');
                 }
               }}
-              className={`py-1 rounded-md text-[11px] font-bold transition-all text-center ${
+              className={`py-0.5 sm:py-1 rounded text-[9.5px] sm:text-[11px] font-bold transition-all text-center ${
                 currentUnit === 'KGS'
                   ? 'bg-white text-blue-700 shadow-xs font-black cursor-default pointer-events-none'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer'
               }`}
               title={currentUnit === 'KGS' ? 'Weight (Kg) already selected' : 'Switch to Weight (Kg)'}
             >
-              Weight (Kg)
+              Weight
             </button>
           </div>
 
           {/* Full-Width Quantity Stepper */}
-          <div className="flex items-center justify-between border border-slate-300 rounded-lg bg-white px-2 py-1 shadow-2xs">
+          <div className="flex items-center justify-between border border-slate-300 rounded-lg bg-white px-1 sm:px-2 py-0.5 sm:py-1 shadow-2xs">
             <button
               type="button"
               disabled={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS)}
               onClick={() => onAdjustQty(-1)}
-              className="w-7 h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer text-sm transition-colors"
+              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer text-xs sm:text-sm transition-colors"
               aria-label="Decrease quantity"
               title={currentQty <= (currentUnit === 'KGS' ? MIN_QTY_KGS : MIN_QTY_PCS) ? `Minimum order reached (${currentUnit === 'KGS' ? '250 gm' : '100 pcs'})` : 'Decrease quantity'}
             >
               &minus;
             </button>
 
-            <div className="flex flex-col items-center justify-center min-w-0 px-2">
-              <span className="font-mono font-bold text-slate-900 text-xs sm:text-[13px] leading-tight truncate">
-                {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250 gm' : `${currentQty} Kg`) : `${currentQty.toLocaleString()} Pcs`}
+            <div className="flex flex-col items-center justify-center min-w-0 px-1">
+              <span className="font-mono font-bold text-slate-900 text-[11px] sm:text-[13px] leading-tight truncate">
+                {currentUnit === 'KGS' ? (currentQty === 0.25 ? '250g' : `${currentQty}Kg`) : `${currentQty.toLocaleString()} Pcs`}
               </span>
-              <span className="text-[9px] text-blue-600 font-semibold leading-none">
-                {currentUnit === 'KGS' ? 'Min: 250 gm (0.25 Kg)' : 'Min: 100 Pcs'}
+              <span className="text-[8px] sm:text-[9px] text-blue-600 font-semibold leading-none hidden xs:inline">
+                {currentUnit === 'KGS' ? 'Min: 250g' : 'Min: 100'}
               </span>
             </div>
 
             <button
               type="button"
               onClick={() => onAdjustQty(1)}
-              className="w-7 h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded cursor-pointer text-sm transition-colors"
+              className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center font-black text-slate-700 hover:bg-slate-100 rounded cursor-pointer text-xs sm:text-sm transition-colors"
               aria-label="Increase quantity"
               title="Increase quantity"
             >
@@ -380,10 +380,11 @@ function FastenerCard({
         <button
           type="button"
           onClick={() => onAddToCart(p)}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 sm:py-2.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-1.5 sm:py-2.5 px-2 rounded-lg text-[11px] sm:text-xs flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
         >
-          <ShoppingCart size={14} />
-          <span>Add to RFQ Quote</span>
+          <ShoppingCart size={13} />
+          <span className="sm:hidden">Add to RFQ</span>
+          <span className="hidden sm:inline">Add to RFQ Quote</span>
         </button>
       </div>
     </div>
@@ -1837,7 +1838,7 @@ function ProductsPageInner() {
                 <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
                   Fastener Product Families
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {allCategoryOptions
                     .filter((cat) => {
                       if (!categorySearchQuery) return true;
@@ -2151,7 +2152,7 @@ function ProductsPageInner() {
           {/* CASE 1: ZERO DIRECT MATCHES -> HELPFUL RELATED RECOMMENDATIONS  */}
           {/* ============================================================== */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div key={i} className="bg-white rounded-xl p-4 border border-slate-200 h-80 animate-pulse" />
               ))}
@@ -2270,7 +2271,7 @@ function ProductsPageInner() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6">
                     {relatedProducts.map(({ product: p, reason, tone }) => (
                       <FastenerCard
                         key={`zero-rel-${p.id}`}
@@ -2323,7 +2324,7 @@ function ProductsPageInner() {
               )}
 
               {/* Direct Matches Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6">
                 {products.map((p) => (
                   <FastenerCard
                     key={p.id}
@@ -2461,7 +2462,7 @@ function ProductsPageInner() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6">
                     {(showAllRelated ? relatedProducts : relatedProducts.slice(0, 8)).map(
                       ({ product: p, reason, tone }) => (
                         <FastenerCard

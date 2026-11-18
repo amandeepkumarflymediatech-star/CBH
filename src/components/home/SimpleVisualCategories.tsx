@@ -105,7 +105,7 @@ export default function SimpleVisualCategories() {
                 </div>
 
                 {/* Photo Frame */}
-                <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-200 mb-3 border border-slate-200/80">
+                <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-white mb-3 border border-slate-200/80">
                   <Image
                     src={cardImg}
                     alt={cat.name}

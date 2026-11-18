@@ -460,7 +460,7 @@ export default function ProductDetailPage() {
 
               {/* Main Visualizer Window */}
               <div
-                className="pdp-main-viewport w-full h-64 sm:h-80 md:h-[340px] bg-slate-50 border border-slate-200 rounded-xl relative overflow-hidden flex items-center justify-center"
+                className="pdp-main-viewport w-full h-64 sm:h-80 md:h-[340px] bg-white border border-slate-200 rounded-xl relative overflow-hidden flex items-center justify-center"
                 style={{ cursor: activeMediaTab === 'photo' ? 'zoom-in' : 'default' }}
                 onClick={() => {
                   if (activeMediaTab === 'photo') setIsLightboxOpen(true);
@@ -605,7 +605,7 @@ export default function ProductDetailPage() {
                     height: '60px',
                     borderRadius: '8px',
                     border: activeMediaTab === 'photo' ? '2px solid #0052CC' : '1px solid #E2E8F0',
-                    background: activeMediaTab === 'photo' ? '#EFF6FF' : '#F8FAFC',
+                    background: activeMediaTab === 'photo' ? '#EFF6FF' : '#FFFFFF',
                     padding: '4px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -632,7 +632,7 @@ export default function ProductDetailPage() {
                     height: '60px',
                     borderRadius: '8px',
                     border: activeMediaTab === 'cad' ? '2px solid #0052CC' : '1px solid #E2E8F0',
-                    background: activeMediaTab === 'cad' ? '#EFF6FF' : '#F8FAFC',
+                    background: activeMediaTab === 'cad' ? '#EFF6FF' : '#FFFFFF',
                     padding: '4px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -660,7 +660,7 @@ export default function ProductDetailPage() {
                     height: '60px',
                     borderRadius: '8px',
                     border: activeMediaTab === 'cert' ? '2px solid #059669' : '1px solid #E2E8F0',
-                    background: activeMediaTab === 'cert' ? '#ECFDF5' : '#F8FAFC',
+                    background: activeMediaTab === 'cert' ? '#ECFDF5' : '#FFFFFF',
                     padding: '4px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -682,15 +682,15 @@ export default function ProductDetailPage() {
 
               {/* Quality Certifications Strip */}
               <div className="mt-4 pt-3.5 border-t border-slate-100 grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-[10px] sm:text-xs font-mono">
-                <div className="bg-slate-50 p-2 rounded-lg">
+                <div className="bg-white border border-slate-200/80 p-2 rounded-lg">
                   <strong className="text-slate-900 block truncate">ISO 9001:2015</strong>
                   <span className="text-slate-500 text-[9px] sm:text-[10px]">Quality Audit</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg">
+                <div className="bg-white border border-slate-200/80 p-2 rounded-lg">
                   <strong className="text-slate-900 block truncate">RoHS / REACH</strong>
                   <span className="text-slate-500 text-[9px] sm:text-[10px]">Non-Toxic</span>
                 </div>
-                <div className="bg-slate-50 p-2 rounded-lg">
+                <div className="bg-white border border-slate-200/80 p-2 rounded-lg">
                   <strong className="text-slate-900 block truncate">NABL LAB</strong>
                   <span className="text-slate-500 text-[9px] sm:text-[10px]">Tested</span>
                 </div>
@@ -784,13 +784,13 @@ export default function ProductDetailPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
                 <div>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '4px' }}>Property Class / Grade:</span>
-                  <div style={{ padding: '6px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+                  <div style={{ padding: '6px 10px', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
                     {toTitleCase(product.grade || selectedGrade)}
                   </div>
                 </div>
                 <div>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '4px' }}>Surface Coating / Finish:</span>
-                  <div style={{ padding: '6px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+                  <div style={{ padding: '6px 10px', background: '#FFFFFF', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
                     {toTitleCase(product.finish || selectedFinish)}
                   </div>
                 </div>
@@ -1202,7 +1202,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Master Factory Packaging Telemetry */}
-              <div className="bg-slate-50 rounded-xl p-3 sm:p-3.5 border border-slate-200">
+              <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200">
                 <div className="flex justify-between items-center mb-2 flex-wrap gap-1">
                   <span className="text-[11px] font-bold text-slate-800">
                     Factory Packaging & Dispatch Details
@@ -1241,7 +1241,7 @@ export default function ProductDetailPage() {
         <div className="pdp-specs-desk mt-6 sm:mt-8 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
 
           {/* Tabs Navigation (Horizontally scrollable for mobile) */}
-          <div className="pdp-tabs-nav flex border-b-2 border-slate-200 bg-slate-50 overflow-x-auto scrollbar-none">
+          <div className="pdp-tabs-nav flex border-b-2 border-slate-200 bg-white overflow-x-auto scrollbar-none">
             {[
               { id: 'excel_master', label: '1. Master Specifications' },
               { id: 'mechanical', label: '2. Mechanical & Dimensions' },
@@ -1509,7 +1509,7 @@ export default function ProductDetailPage() {
                   </button>
                 </div>
 
-                <div style={{ border: '1px solid #E2E8F0', padding: '16px', borderRadius: '12px', background: '#F8FAFC' }}>
+                <div style={{ border: '1px solid #E2E8F0', padding: '16px', borderRadius: '12px', background: '#FFFFFF' }}>
                   <Layers size={24} color="#0052CC" style={{ marginBottom: '8px' }} />
                   <strong style={{ display: 'block', fontSize: '13px', color: '#0F172A' }}>AutoCAD 2D/3D STEP Model</strong>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', margin: '4px 0 10px' }}>
@@ -1538,7 +1538,7 @@ export default function ProductDetailPage() {
                   )}
                 </div>
 
-                <div style={{ border: '1px solid #E2E8F0', padding: '16px', borderRadius: '12px', background: '#F8FAFC' }}>
+                <div style={{ border: '1px solid #E2E8F0', padding: '16px', borderRadius: '12px', background: '#FFFFFF' }}>
                   <Award size={24} color="#059669" style={{ marginBottom: '8px' }} />
                   <strong style={{ display: 'block', fontSize: '13px', color: '#0F172A' }}>NABL 3.1 Mill Certificate Sample</strong>
                   <span style={{ fontSize: '11px', color: '#64748B', display: 'block', margin: '4px 0 10px' }}>
@@ -1573,46 +1573,46 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
-              <div className="min-w-0 flex-1 mr-2">
-                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 934</span>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 gap-2 shadow-2xs">
+              <div className="min-w-0 flex-1 sm:mr-2">
+                <span className="badge badge-din text-[9px] sm:text-[10px] mb-1 inline-block">DIN 934</span>
                 <strong className="text-xs sm:text-sm block text-slate-900 truncate">Hexagon Full Nuts Grade 8 ({selectedDiameter})</strong>
                 <span className="text-xs text-blue-700 font-bold">₹ 1.84 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center justify-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Hexagon Nut DIN 934', 'DIN 934', 1.84)}
               >
                 <Plus size={12} /> Add
               </button>
             </div>
 
-            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
-              <div className="min-w-0 flex-1 mr-2">
-                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 125A</span>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 gap-2 shadow-2xs">
+              <div className="min-w-0 flex-1 sm:mr-2">
+                <span className="badge badge-din text-[9px] sm:text-[10px] mb-1 inline-block">DIN 125A</span>
                 <strong className="text-xs sm:text-sm block text-slate-900 truncate">Form A Plain Flat Washers ({selectedDiameter})</strong>
                 <span className="text-xs text-blue-700 font-bold">₹ 0.72 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center justify-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Flat Washer DIN 125A', 'DIN 125A', 0.72)}
               >
                 <Plus size={12} /> Add
               </button>
             </div>
 
-            <div className="flex justify-between items-center bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200">
-              <div className="min-w-0 flex-1 mr-2">
-                <span className="badge badge-din text-[10px] mb-1 inline-block">DIN 127B</span>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 gap-2 shadow-2xs col-span-2 sm:col-span-1">
+              <div className="min-w-0 flex-1 sm:mr-2">
+                <span className="badge badge-din text-[9px] sm:text-[10px] mb-1 inline-block">DIN 127B</span>
                 <strong className="text-xs sm:text-sm block text-slate-900 truncate">Split Spring Lock Washers ({selectedDiameter})</strong>
                 <span className="text-xs text-blue-700 font-bold">₹ 0.95 / Pc</span>
               </div>
               <button
                 type="button"
-                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center gap-1 cursor-pointer"
+                className="btn-outline shrink-0 py-1.5 px-2.5 text-xs inline-flex items-center justify-center gap-1 cursor-pointer"
                 onClick={() => handleAddCompanion('Spring Washer DIN 127B', 'DIN 127B', 0.95)}
               >
                 <Plus size={12} /> Add
@@ -1685,7 +1685,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <div className="relative bg-slate-50 rounded-xl p-3 sm:p-5 min-h-[200px] max-h-[50vh] flex items-center justify-center overflow-hidden border border-slate-200">
+            <div className="relative bg-white rounded-xl p-3 sm:p-5 min-h-[200px] max-h-[50vh] flex items-center justify-center overflow-hidden border border-slate-200">
               <img
                 src={product.imageUrl || '/assets/bolt_zinc.jpg'}
                 alt={product.name}
