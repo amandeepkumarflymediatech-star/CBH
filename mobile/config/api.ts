@@ -161,7 +161,7 @@ function toQueryString(params: Record<string, unknown>): string {
 async function request<T = any>(
   endpoint: string,
   options: RequestInit = {},
-  timeoutMs = 6000
+  timeoutMs = 12000
 ): Promise<MobileApiResponse<T>> {
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
