@@ -198,6 +198,7 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
 
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [standardsList, setStandardsList] = useState<string[]>(['All']);
@@ -344,6 +345,82 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
     const price = unit === 'PCS' ? item.pricePerPiece : item.pricePerKg;
     const altPrice = unit === 'PCS' ? item.pricePerKg : item.pricePerPiece;
     const altUnit = unit === 'PCS' ? 'kg' : 'pc';
+
+    if (viewMode === 'grid') {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => onSelectProduct(item)}
+          style={[styles.gridCard, item.isSurplus && styles.gridCardSurplus]}
+        >
+          <View style={styles.gridImgBox}>
+            <FastenerProductImage
+              imageUrl={item.imageUrl}
+              category={item.category || item.subGroup}
+              productName={item.name}
+              standard={standard}
+              drawingUrl={item.drawingUrl}
+              height={124}
+              containerStyle={styles.gridImgInner}
+              showCadBadge={Boolean(item.drawingUrl)}
+            />
+            <View style={styles.gridStdBadge}>
+              <Text style={styles.gridStdText}>{standard}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                toggleFavorite(item.id);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.gridHeart}
+            >
+              <Text style={[styles.gridHeartIcon, isFav && styles.gridHeartActive]}>
+                {isFav ? '♥' : '♡'}
+              </Text>
+            </TouchableOpacity>
+            {item.isSurplus ? (
+              <View style={styles.gridSurplus}>
+                <Text style={styles.gridSurplusText}>-{item.surplusDiscountPct || 35}%</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.gridBody}>
+            <Text style={styles.gridTitle} numberOfLines={1}>
+              {getCleanFastenerTitle(item.name, item.subGroup)}
+            </Text>
+            <Text style={styles.gridSpec} numberOfLines={1}>
+              {size}{item.grade ? ` · Gr ${item.grade}` : ''}
+            </Text>
+            <View style={styles.stockRow}>
+              <View style={[styles.stockDot, { backgroundColor: item.isInStock ? '#16A34A' : '#D97706' }]} />
+              <Text style={[styles.stockText, { color: item.isInStock ? '#16A34A' : '#D97706' }]}>
+                {item.isInStock ? 'In stock' : 'Pre-order'}
+              </Text>
+            </View>
+            <View style={styles.priceRow}>
+              <Text style={styles.gridPrice}>
+                ₹{price.toFixed(2)}
+                <Text style={styles.priceUnit}>/{unit === 'PCS' ? 'pc' : 'kg'}</Text>
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  handleQuickAdd(item);
+                }}
+                style={[styles.gridAddBtn, isAdded && styles.addBtnDone]}
+              >
+                <Text style={[styles.gridAddBtnText, isAdded && styles.addBtnTextDone]}>
+                  {isAdded ? '✓' : 'Add'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
 
     return (
       <View style={[styles.card, item.isSurplus && styles.cardSurplus]}>
@@ -638,16 +715,25 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {hasActiveFilters ? (
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>
-            {products.length} of {totalCount} items
-          </Text>
-          <TouchableOpacity onPress={resetAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.metaLink}>Clear all</Text>
+      <View style={styles.metaRow}>
+        <Text style={styles.metaText}>
+          {totalCount > 0 ? `${totalCount.toLocaleString()} items` : `${products.length} items`}
+        </Text>
+        <View style={styles.metaRight}>
+          {hasActiveFilters ? (
+            <TouchableOpacity onPress={resetAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginRight: 10 }}>
+              <Text style={styles.metaLink}>Clear all</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            style={styles.viewToggleBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={styles.viewToggleText}>{viewMode === 'grid' ? '⊞ 2-Grid' : '☰ List'}</Text>
           </TouchableOpacity>
         </View>
-      ) : null}
+      </View>
 
       {/* List */}
       {isLoading ? (
@@ -659,7 +745,10 @@ export const CustomerCatalogScreen: React.FC<CustomerCatalogScreenProps> = ({
         </View>
       ) : (
         <FlatList
+          key={viewMode}
           data={products}
+          numColumns={viewMode === 'grid' ? 2 : 1}
+          columnWrapperStyle={viewMode === 'grid' ? styles.gridColWrapper : undefined}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           renderItem={renderProductItem}
           ListFooterComponent={renderFooter}
@@ -924,6 +1013,7 @@ const styles = StyleSheet.create({
   },
   addBtnDone: { backgroundColor: '#16A34A' },
   addBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  addBtnTextDone: { color: '#FFFFFF' },
 
   // Footer / loading
   footerLoader: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 16 },
@@ -958,7 +1048,7 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     overflow: 'hidden',
   },
-  relImg: { height: 90, backgroundColor: '#EEF4FF', alignItems: 'center', justifyContent: 'center' },
+  relImg: { height: 90, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   relBody: { padding: 10, gap: 2 },
   relReason: { fontSize: 11, fontWeight: '700', color: BLUE },
   relTitle: { fontSize: 14, fontWeight: '800', color: INK },
@@ -971,6 +1061,88 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 6,
   },
+
+  // 2-Column Grid Layout
+  gridColWrapper: {
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: '48.5%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    overflow: 'hidden',
+  },
+  gridCardSurplus: { borderColor: '#F59E0B', borderWidth: 1.5 },
+  gridImgBox: {
+    height: 124,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  gridImgInner: { width: '100%', height: '100%', backgroundColor: 'transparent', borderWidth: 0 },
+  gridStdBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#0047AB',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  gridStdText: { color: '#FFFFFF', fontSize: 9.5, fontWeight: '800' },
+  gridHeart: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridHeartIcon: { fontSize: 14, color: '#94A3B8' },
+  gridHeartActive: { color: '#EF4444' },
+  gridSurplus: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  gridSurplusText: { color: '#FFFFFF', fontSize: 9.5, fontWeight: '800' },
+  gridBody: { padding: 9, gap: 2 },
+  gridTitle: { fontSize: 13, fontWeight: '800', color: INK },
+  gridSpec: { fontSize: 11, color: MUTED, fontWeight: '600' },
+  gridPrice: { fontSize: 15, fontWeight: '900', color: BLUE },
+  gridAddBtn: {
+    borderWidth: 1.5,
+    borderColor: ORANGE,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#FFFFFF',
+    minWidth: 48,
+    alignItems: 'center',
+  },
+  gridAddBtnText: { color: ORANGE, fontSize: 11, fontWeight: '800' },
+  metaRight: { flexDirection: 'row', alignItems: 'center' },
+  viewToggleBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: LINE,
+  },
+  viewToggleText: { fontSize: 11, fontWeight: '800', color: INK },
 
   // Filter sheet
   backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },

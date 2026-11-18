@@ -131,13 +131,13 @@ export function resolveMediaUrl(
   url?: string,
   targetEnv?: ApiEnvironment
 ): string {
+  const host = getHostRootUrl(targetEnv).replace(/\/+$/, '');
   if (!url) {
-    return 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400';
+    return `${host}/assets/bolt_zinc.jpg`;
   }
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  const host = getHostRootUrl(targetEnv).replace(/\/+$/, '');
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   return `${host}${cleanPath}`;
 }

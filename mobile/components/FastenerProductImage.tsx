@@ -23,6 +23,7 @@ interface FastenerProductImageProps {
   height?: number;
   size?: number;
   showCadBadge?: boolean;
+  showWatermark?: boolean;
 }
 
 const LOCAL_3D_ASSETS = {
@@ -31,6 +32,8 @@ const LOCAL_3D_ASSETS = {
   screw: require('../assets/csk_screw_3d.jpg'),
   washer: require('../assets/flat_washer_3d.jpg'),
 };
+
+const WATERMARK_ASSET = require('../assets/cbh-watermark.png');
 
 function getCategoryFallbackAsset(category?: string, productName?: string, standard?: string) {
   const combined = `${category || ''} ${productName || ''} ${standard || ''}`.toLowerCase();
@@ -72,6 +75,7 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
   height,
   size,
   showCadBadge = false,
+  showWatermark = true,
 }) => {
   const effectiveCategory = category || subGroup;
   const effectiveName = productName || name;
@@ -135,6 +139,17 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
         </>
       )}
 
+      {/* CBH Brand Watermark Overlay */}
+      {showWatermark && (
+        <View pointerEvents="none" style={styles.watermarkWrap}>
+          <Image
+            source={WATERMARK_ASSET}
+            style={styles.watermarkImage}
+            resizeMode="contain"
+          />
+        </View>
+      )}
+
       {showCadBadge && drawingUrl ? (
         <View style={styles.cadBadge}>
           <Text style={styles.cadBadgeText}>CAD 2D</Text>
@@ -147,7 +162,7 @@ export const FastenerProductImage: React.FC<FastenerProductImageProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -155,14 +170,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    padding: 8,
+    padding: 3,
   },
   loadingWrap: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     zIndex: 1,
+  },
+  watermarkWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+    opacity: 0.22,
+  },
+  watermarkImage: {
+    width: '46%',
+    height: '46%',
   },
   image: {
     width: '100%',

@@ -203,6 +203,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
       originalPricePerKg: lot.regularPriceKg,
       stockPcs: lot.excessQtyPcs || 5000,
       stockKg: lot.excessQtyKg || 250,
+      imageUrl: (lot as any).imageUrl || '/assets/bolt_zinc.jpg',
       isInStock: true,
       isSurplus: true,
       surplusDiscountPct: lot.clearanceDiscountPct || 35,
@@ -360,7 +361,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
           </TouchableOpacity>
         </View>
         <View style={styles.catRow}>
-          {CATEGORIES.slice(0, 4).map((cat) => (
+          {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={styles.catCard}
@@ -577,7 +578,7 @@ export const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = ({
                       productName={product.name}
                       standard={standard}
                       drawingUrl={product.drawingUrl}
-                      height={110}
+                      height={128}
                       containerStyle={styles.gridImg}
                     />
                     <View style={styles.gridStdBadge}>
@@ -849,11 +850,12 @@ const styles = StyleSheet.create({
   // Categories
   catRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
-    alignItems: 'stretch',
+    justifyContent: 'space-between',
   },
   catCard: {
-    flex: 1,
+    width: '31.5%',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingVertical: 10,
@@ -863,6 +865,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     gap: 2,
+    marginBottom: 6,
   },
   catBadge: {
     alignSelf: 'center',
@@ -954,8 +957,8 @@ const styles = StyleSheet.create({
   },
   gridCardSurplus: { borderColor: '#F59E0B', borderWidth: 1.5 },
   gridImgBox: {
-    height: 112,
-    backgroundColor: '#EEF4FF',
+    height: 128,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
