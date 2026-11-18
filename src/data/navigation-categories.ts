@@ -238,7 +238,7 @@ export const NAVIGATION_CATEGORIES: NavCategoryItem[] = [
         nameHi: 'एचएसएफजी हार्डन्ड वाशर',
         specBadge: 'IS 6649 Hardened',
         description: 'Through-hardened flat washers for uniform load distribution',
-        href: '/products?category=HSFG%20BOLTS&standard=IS%206649',
+        href: '/products?category=WASHERS&standard=IS%206649',
       },
       {
         id: 'hsfg-grade109',

@@ -214,9 +214,10 @@ export async function GET(request: Request) {
 
     // Dropdown filters
     if (standard && standard !== 'all') {
-      whereClauses.push('(LOWER(standard) = ? OR LOWER(din) = ? OR LOWER(iso_standard) = ?)');
-      const s = standard.toLowerCase();
-      params.push(s, s, s);
+      const s = standard.toLowerCase().trim();
+      whereClauses.push('(LOWER(standard) LIKE ? OR LOWER(din) LIKE ? OR LOWER(iso_standard) LIKE ? OR LOWER(name) LIKE ?)');
+      const q = `%${s}%`;
+      params.push(q, q, q, q);
     }
 
     if (grade && grade !== 'all') {
@@ -427,7 +428,14 @@ export async function GET(request: Request) {
 
   // Dropdown filtering
   if (standard && standard !== 'all') {
-    results = results.filter((p) => p.standard.toLowerCase() === standard.toLowerCase());
+    const s = standard.toLowerCase().trim();
+    results = results.filter(
+      (p) =>
+        (p.standard || '').toLowerCase().includes(s) ||
+        (p.din || '').toLowerCase().includes(s) ||
+        (p.isoStandard || '').toLowerCase().includes(s) ||
+        (p.name || '').toLowerCase().includes(s)
+    );
   }
   if (grade && grade !== 'all') {
     results = results.filter((p) => p.grade.toLowerCase().includes(grade.toLowerCase()));

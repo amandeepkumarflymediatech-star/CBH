@@ -53,11 +53,11 @@ export default function TopOpsBar() {
             <Factory size={13} />
             <span>Direct Factory Wholesale (सीधे फैक्टरी रेट)</span>
           </span>
-          <span className="hide-tablet" style={{ color: '#2C3440' }}>|</span>
-          <span className="hide-tablet" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          {/* <span className="hide-tablet" style={{ color: '#2C3440' }}>|</span> */}
+          {/* <span className="hide-tablet" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <CheckCircle size={13} color="#059669" />
             <span>2,00,000+ Fasteners In Stock</span>
-          </span>
+          </span> */}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

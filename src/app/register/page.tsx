@@ -523,7 +523,11 @@ function RegisterForm() {
               )}
 
               {/* Form */}
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <form onSubmit={handleSubmit} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Prevent aggressive browser password managers from auto-injecting existing credentials into registration */}
+                <input type="text" name="prevent_autofill_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+                <input type="password" name="prevent_autofill_pwd" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
+
                 {/* Row 1: Representative & Company */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
@@ -536,6 +540,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type="text"
+                        name="fullName"
+                        autoComplete="off"
                         required
                         placeholder="e.g. Rajeshwar Singh"
                         value={fullName}
@@ -575,6 +581,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type="text"
+                        name="companyName"
+                        autoComplete="off"
                         required
                         placeholder="e.g. Ludhiana Heavy Engg."
                         value={companyName}
@@ -621,6 +629,8 @@ function RegisterForm() {
                     </div>
                     <input
                       type="text"
+                      name="gstin"
+                      autoComplete="off"
                       maxLength={15}
                       placeholder="e.g. 03AABCL9876E1Z4 (Required for GST Input Tax Credit)"
                       value={gstin}
@@ -664,6 +674,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type="email"
+                        name="email"
+                        autoComplete="off"
                         required
                         placeholder="purchase@company.com"
                         value={email}
@@ -703,6 +715,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type="tel"
+                        name="phone"
+                        autoComplete="off"
                         required
                         placeholder="+91 98880 21000"
                         value={phone}
@@ -745,6 +759,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        autoComplete="new-password"
                         required
                         placeholder="Min. 8 characters"
                         value={password}
@@ -802,6 +818,8 @@ function RegisterForm() {
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        autoComplete="new-password"
                         required
                         placeholder="Repeat password"
                         value={confirmPassword}
