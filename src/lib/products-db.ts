@@ -7,8 +7,9 @@ const CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'products-cache.json'
 const LEGACY_CACHE_FILE = path.join(process.cwd(), 'src', 'data', 'erpnext-cached-products.json');
 
 // Memory cache state tracking
-let isDbInitialized = false;
-let productsDb: Product[] = [];
+declare global {
+  var __cbh_products_db__: Product[] | undefined;
+}
 
 export function loadCombinedProducts(): Product[] {
   try {
@@ -31,16 +32,16 @@ export function loadCombinedProducts(): Product[] {
 }
 
 export function getProductsDb(): Product[] {
-  if (!isDbInitialized) {
-    productsDb = loadCombinedProducts();
-    isDbInitialized = true;
+  if (globalThis.__cbh_products_db__ && globalThis.__cbh_products_db__.length > 0) {
+    return globalThis.__cbh_products_db__;
   }
-  return productsDb;
+  const loaded = loadCombinedProducts();
+  globalThis.__cbh_products_db__ = loaded;
+  return loaded;
 }
 
 export function setProductsDb(newProducts: Product[]): void {
-  productsDb = [...newProducts];
-  isDbInitialized = true;
+  globalThis.__cbh_products_db__ = [...newProducts];
   try {
     fs.writeFileSync(CACHE_FILE, JSON.stringify(newProducts, null, 2), 'utf-8');
   } catch (err) {
@@ -49,12 +50,11 @@ export function setProductsDb(newProducts: Product[]): void {
 }
 
 export function resetProductsToDefault(): Product[] {
-  productsDb = [...ALL_STATIC_PRODUCTS];
-  isDbInitialized = true;
+  globalThis.__cbh_products_db__ = [...ALL_STATIC_PRODUCTS];
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(productsDb, null, 2), 'utf-8');
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(globalThis.__cbh_products_db__, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed resetting products cache to defaults:', err);
   }
-  return productsDb;
+  return globalThis.__cbh_products_db__;
 }

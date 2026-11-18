@@ -38,13 +38,16 @@ export function getCategoryPlaceholder(category: string = '', name: string = '')
     return '/assets/images/grub-screw-real.png';
   }
   if (combined.includes('socket') || combined.includes('allen') || combined.includes('csk')) {
-    return '/assets/products/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g.png';
+    return 'https://lh3.googleusercontent.com/d/1U_Tqo_2VpVxvv1P7BUPGeHXZe2akS68g=w400';
   }
   if (combined.includes('flange')) {
-    return '/assets/products/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT.png';
+    return 'https://lh3.googleusercontent.com/d/1ITZ9-R797BC3OIbAZD4utchxvf4eUwRT=w400';
   }
   if (combined.includes('rod') || combined.includes('hsfg') || combined.includes('stud')) {
-    return '/assets/products/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE.png';
+    return 'https://lh3.googleusercontent.com/d/1cM0hddDO7TQq_s7ceszHilx-XZYgqnHE=w400';
+  }
+  if (combined.includes('anchor')) {
+    return '/assets/anchor_bolt.jpg';
   }
   return '/assets/bolt_zinc.jpg';
 }
@@ -154,7 +157,7 @@ export function resolveProductImageUrl(
 
     const driveMatch = trimmed.match(/\/assets\/products\/([a-zA-Z0-9_-]{20,})\.[a-zA-Z0-9]+/);
     if (driveMatch) {
-      return `/api/watermark?src=${encodeURIComponent(`https://lh3.googleusercontent.com/d/${driveMatch[1]}`)}`;
+      return `https://lh3.googleusercontent.com/d/${driveMatch[1]}=w400`;
     }
 
     return getCategoryPlaceholder(category, name);
@@ -171,8 +174,7 @@ export function resolveProductImageUrl(
       }
     } catch {}
 
-    // Route through dynamic watermark endpoint with transparent center watermark
-    return `/api/watermark?src=${encodeURIComponent(`https://lh3.googleusercontent.com/d/${driveId}`)}`;
+    return `https://lh3.googleusercontent.com/d/${driveId}=w400`;
   }
 
   // If it's an external HTTP/HTTPS image

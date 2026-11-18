@@ -776,6 +776,11 @@ export async function GET(request: Request) {
     }
   }
 
+  const sanitizedPageSlice = pageSlice.map((p) => ({
+    ...p,
+    imageUrl: resolveProductImageUrl(p.imageUrl || p.gdriveImageUrl, p.category, p.name),
+  }));
+
   return NextResponse.json({
     success: true,
     page,
@@ -784,7 +789,7 @@ export async function GET(request: Request) {
     totalPages,
     hasMore: page < totalPages,
     filterOptions: fallbackFilterOptions,
-    data: pageSlice,
+    data: sanitizedPageSlice,
     relatedProducts: fallbackRelated,
     autoRelaxed: fallbackAutoRelaxed,
   });
