@@ -11,6 +11,7 @@ import {
   Wrench,
   ShieldCheck,
   Layers,
+  Car,
   Anchor,
   Flame,
   CircleDot,
@@ -36,6 +37,8 @@ function renderIcon(iconName: string, className = 'w-4 h-4') {
       return <ShieldCheck className={className} />;
     case 'Layers':
       return <Layers className={className} />;
+    case 'Car':
+      return <Car className={className} />;
     case 'Anchor':
       return <Anchor className={className} />;
     case 'Flame':

@@ -502,12 +502,28 @@ export default function MainHeader({
             {/* Mobile & Tablet Fixed Menu Hamburger Button */}
             <button
               type="button"
-              className="mobile-menu-trigger show-tablet-down"
+              className="mobile-menu-trigger show-tablet-down lg:hidden"
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open Navigation Menu"
               title="Menu"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                minHeight: '40px',
+                background: '#0F172A',
+                color: '#FFFFFF',
+                borderRadius: '8px',
+                border: '1px solid #1E293B',
+                cursor: 'pointer',
+                flexShrink: 0,
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.12)'
+              }}
             >
-              <Menu size={22} />
+              <Menu size={22} color="#FFFFFF" strokeWidth={2.4} />
             </button>
           </div>
         </div>
@@ -534,7 +550,7 @@ export default function MainHeader({
                   src="/assets/cbh-logo-stacked.png"
                   alt="CBH.STORE"
                   className="brand-logo-img"
-                  style={{ height: '56px' }}
+                  style={{ height: '48px', width: 'auto' }}
                 />
               </Link>
               <button
@@ -542,30 +558,44 @@ export default function MainHeader({
                 className="drawer-close-btn"
                 onClick={() => setIsMobileMenuOpen(false)}
                 aria-label="Close menu"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '38px',
+                  height: '38px',
+                  minWidth: '38px',
+                  minHeight: '38px',
+                  borderRadius: '8px',
+                  background: '#F1F5F9',
+                  border: '1px solid #CBD5E1',
+                  color: '#0F172A',
+                  cursor: 'pointer'
+                }}
               >
-                <X size={22} />
+                <X size={20} color="#0F172A" strokeWidth={2.4} />
               </button>
             </div>
 
             {/* Drawer Body */}
             <div className="mobile-drawer-body">
-              {/* Mobile Search */}
-              <form onSubmit={handleSearchSubmit} style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '8px 12px' }}>
-                  <Search size={16} color="#64748B" />
+              {/* Quick Search */}
+              <form onSubmit={handleSearchSubmit} style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '8px', padding: '8px 12px' }}>
+                  <Search size={15} color="#0052CC" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Bolts, Nuts, Screws (e.g. M12, नट, बोल्ट)..."
+                    placeholder="Search "
                     style={{ border: 'none', background: 'transparent', outline: 'none', marginLeft: '8px', fontSize: '13px', width: '100%', color: '#0F172A' }}
                   />
-                  <button type="submit" style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', padding: '0 4px' }}>Go</button>
+                  <button type="submit" style={{ fontSize: '12px', fontWeight: 700, color: '#0052CC', padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer' }}>Search</button>
                 </div>
               </form>
 
-              {/* WhatsApp Quick Order & Helpline Bar in Mobile Drawer */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              {/* Compact Quick Contact Strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                 <a
                   href="https://wa.me/919888021000?text=Hi%20CBH%20Fasteners,%20I%20want%20to%20order%20nuts%20and%20bolts.%20Please%20help%20me."
                   target="_blank"
@@ -574,18 +604,19 @@ export default function MainHeader({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
+                    justifyContent: 'center',
+                    gap: '6px',
                     background: '#25D366',
                     color: '#FFFFFF',
-                    padding: '10px 14px',
+                    padding: '8px 10px',
                     borderRadius: '8px',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: '12px',
                     textDecoration: 'none'
                   }}
                 >
-                  <MessageCircle size={18} />
-                  <span>WhatsApp Order (फोटो भेजें)</span>
+                  <MessageCircle size={15} />
+                  <span>WhatsApp</span>
                 </a>
                 <a
                   href="tel:+919888021000"
@@ -593,37 +624,22 @@ export default function MainHeader({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
+                    justifyContent: 'center',
+                    gap: '6px',
                     background: '#F1F5F9',
                     color: '#0F172A',
-                    padding: '9px 14px',
+                    padding: '8px 10px',
                     borderRadius: '8px',
                     fontWeight: 700,
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     textDecoration: 'none',
                     border: '1px solid #CBD5E1'
                   }}
                 >
-                  <Phone size={15} color="#0052CC" />
-                  <span>Helpline: +91 98880 21000</span>
+                  <Phone size={14} color="#0052CC" />
+                  <span>Helpline</span>
                 </a>
               </div>
-
-              {/* Primary RFQ CTA */}
-              <Link
-                href="/bulk-order"
-                className="drawer-rfq-button"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <div className="rfq-button-icon">
-                  <Zap size={18} />
-                </div>
-                <div className="rfq-button-text">
-                  <strong>Rapid RFQ Matrix</strong>
-                  <span>Instant CSV upload &amp; direct quotes</span>
-                </div>
-                <ChevronRight size={18} />
-              </Link>
 
               {/* Main Navigation Links */}
               <nav className="mobile-drawer-links">
@@ -648,12 +664,28 @@ export default function MainHeader({
                             width: '100%',
                             background: isMobileProductsOpen ? '#EFF6FF' : undefined,
                             color: isMobileProductsOpen ? '#0052CC' : undefined,
+                            padding: '8px 10px',
+                            borderRadius: '8px',
                           }}
                           aria-expanded={isMobileProductsOpen}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <IconComp size={18} />
-                            <span style={{ fontWeight: active || isMobileProductsOpen ? 700 : 500 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                background: active || isMobileProductsOpen ? '#DBEAFE' : '#F1F5F9',
+                                border: active || isMobileProductsOpen ? '1px solid #93C5FD' : '1px solid #E2E8F0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <IconComp size={16} color={active || isMobileProductsOpen ? '#1D4ED8' : '#334155'} />
+                            </div>
+                            <span style={{ fontWeight: active || isMobileProductsOpen ? 700 : 600, fontSize: '13.5px' }}>
                               {item.label}
                             </span>
                           </div>
@@ -731,48 +763,39 @@ export default function MainHeader({
                       href={item.href}
                       className={`drawer-nav-item ${active ? 'active' : ''}`}
                       onClick={() => setIsMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                      }}
                     >
-                      <IconComp size={18} />
-                      <span style={{ fontWeight: active ? 700 : 500 }}>{item.label}</span>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: active ? '#EFF6FF' : '#F1F5F9',
+                          border: active ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <IconComp size={16} color={active ? '#0052CC' : '#334155'} />
+                      </div>
+                      <span style={{ fontWeight: active ? 700 : 600, fontSize: '13.5px' }}>{item.label}</span>
                     </Link>
                   );
                 })}
-
-                <div className="nav-group-title">SPECIALIZED CATALOGS</div>
-
-                <Link
-                  href="/products"
-                  className="drawer-nav-item"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <ShieldCheck size={18} />
-                  <span>Fixings &amp; Structural Anchors</span>
-                </Link>
-
-                <Link
-                  href="/surplus"
-                  className="drawer-nav-item surplus-highlight"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Flame size={18} color="#FF6B00" />
-                  <span>Clearance &amp; Surplus Stock</span>
-                  <span className="drawer-badge-red" style={{ background: '#FF6B00' }}>-60%</span>
-                </Link>
-
-                <Link
-                  href="/virtual-store"
-                  className="drawer-nav-item"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Package size={18} />
-                  <span>3D Virtual Depot (Interactive)</span>
-                </Link>
 
                 <div className="nav-group-title">PORTALS &amp; ACCOUNT</div>
 
                 {currentUser ? (
                   <>
-                    <div style={{ padding: '8px 16px', background: '#F8FAFC', borderRadius: '8px', margin: '4px 0 8px' }}>
+                    <div style={{ padding: '8px 14px', background: '#F8FAFC', borderRadius: '8px', margin: '4px 0 8px', border: '1px solid #E2E8F0' }}>
                       <span style={{ fontSize: '11px', color: '#64748B', display: 'block' }}>Signed in as:</span>
                       <strong style={{ fontSize: '13px', color: '#0F172A', display: 'block' }}>{currentUser.fullName}</strong>
                       <span style={{ fontSize: '11px', color: currentUser.role === 'admin' ? '#0052CC' : '#EA580C', fontWeight: 700 }}>
@@ -784,12 +807,33 @@ export default function MainHeader({
                       href={currentUser.role === 'admin' ? '/admin' : '/customer'}
                       className="drawer-nav-item"
                       onClick={() => setIsMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                      }}
                     >
-                      <Building2 size={18} color={currentUser.role === 'admin' ? '#0052CC' : '#FF6B00'} />
-                      <span>{currentUser.role === 'admin' ? 'Admin Operations Terminal' : 'Client Portal & Order History'}</span>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: currentUser.role === 'admin' ? '#EFF6FF' : '#FFF7ED',
+                          border: currentUser.role === 'admin' ? '1px solid #BFDBFE' : '1px solid #FFEDD5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Building2 size={16} color={currentUser.role === 'admin' ? '#0052CC' : '#FF6B00'} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>
+                        {currentUser.role === 'admin' ? 'Admin Operations Terminal' : 'Client Portal & Order History'}
+                      </span>
                     </Link>
-
-
 
                     <button
                       type="button"
@@ -798,10 +842,31 @@ export default function MainHeader({
                         setIsMobileMenuOpen(false);
                         logout('/');
                       }}
-                      style={{ color: '#EF4444' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        color: '#EF4444'
+                      }}
                     >
-                      <LogOut size={18} />
-                      <span>Sign Out</span>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#FEF2F2',
+                          border: '1px solid #FEE2E2',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <LogOut size={16} color="#EF4444" />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 600 }}>Sign Out</span>
                     </button>
                   </>
                 ) : (
@@ -810,18 +875,60 @@ export default function MainHeader({
                       href="/login"
                       className="drawer-nav-item"
                       onClick={() => setIsMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                      }}
                     >
-                      <Building2 size={18} color="#FF6B00" />
-                      <span>Sign In to Client Portal</span>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#FFF7ED',
+                          border: '1px solid #FFEDD5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Building2 size={16} color="#FF6B00" />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>Sign In to Client Portal</span>
                     </Link>
 
                     <Link
                       href="/register"
                       className="drawer-nav-item"
                       onClick={() => setIsMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                      }}
                     >
-                      <User size={18} color="#0284C7" />
-                      <span>Register OEM Account</span>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#F0F9FF',
+                          border: '1px solid #E0F2FE',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <User size={16} color="#0284C7" />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>Register OEM Account</span>
                     </Link>
                   </>
                 )}
@@ -833,29 +940,35 @@ export default function MainHeader({
                     setIsMobileMenuOpen(false);
                     onOpenCart();
                   }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    marginTop: '4px',
+                  }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <ShoppingBag size={18} />
-                    <span>View RFQ Cart</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <ShoppingBag size={16} color="#FFFFFF" />
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>View RFQ Cart</span>
                   </div>
                   <span className="drawer-cart-pill">{cartCount} items</span>
                 </button>
               </nav>
-
-              {/* Direct Dispatch Support Contact */}
-              <div className="drawer-dispatch-card">
-                <div className="dispatch-badge">
-                  <Phone size={13} />
-                  <span>Direct Dispatch Works Helpline</span>
-                </div>
-                <a href="tel:+919888021000" className="dispatch-phone">
-                  +91 98880 21000
-                </a>
-                <div className="dispatch-email">rfq@cbh.store</div>
-                <div className="dispatch-hours">
-                  Mon – Sat: 08:00 – 20:00 IST • Multimodal Freight Ready
-                </div>
-              </div>
             </div>
           </div>
         </div>

@@ -455,6 +455,11 @@ function ProductsPageInner() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'featured' | 'price_asc' | 'price_desc' | 'stock_desc'>('featured');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [autoRelaxedInfo, setAutoRelaxedInfo] = useState<{
+    type: 'category' | 'subfilter';
+    message: string;
+    originalCategory?: string;
+  } | null>(null);
 
   // Category Carousel & Modal States
   const [isAllCategoriesModalOpen, setIsAllCategoriesModalOpen] = useState(false);
@@ -489,21 +494,31 @@ function ProductsPageInner() {
   }, []);
 
   // Sync state from URL query parameters on load / update
+  // Unconditionally synchronizes all filter states to the current URL searchParams
+  // This completely eliminates ghost filters when switching categories or subcategories
   useEffect(() => {
-    const q = searchParams.get('search') || searchParams.get('q');
-    if (q !== null && q !== undefined) {
-      setSearchQuery(q);
-    }
-    const cat = searchParams.get('category');
-    if (cat) setSelectedCategory(cat);
-    const std = searchParams.get('standard');
-    if (std) setSelectedStandard(std);
-    const grd = searchParams.get('grade');
-    if (grd) setSelectedGrade(grd);
-    const dia = searchParams.get('diameter');
-    if (dia) setSelectedDiameter(dia);
-    const fin = searchParams.get('finish');
-    if (fin) setSelectedFinish(fin);
+    const q = searchParams.get('search') || searchParams.get('q') || '';
+    setSearchQuery(q);
+
+    const cat = searchParams.get('category') || 'all';
+    setSelectedCategory(cat);
+
+    const std = searchParams.get('standard') || 'all';
+    setSelectedStandard(std);
+
+    const grd = searchParams.get('grade') || 'all';
+    setSelectedGrade(grd);
+
+    const dia = searchParams.get('diameter') || 'all';
+    setSelectedDiameter(dia);
+
+    const fin = searchParams.get('finish') || 'all';
+    setSelectedFinish(fin);
+
+    const inStock = searchParams.get('inStockOnly') === 'true';
+    setInStockOnly(inStock);
+
+    setCurrentPage(1);
   }, [searchParams]);
 
   // Debounce search query to prevent excessive queries while typing
@@ -555,6 +570,7 @@ function ProductsPageInner() {
         setProducts(data.data);
         setTotalCount(data.total ?? 0);
         setTotalPages(data.totalPages ?? 1);
+        setAutoRelaxedInfo(data.autoRelaxed || null);
         if (data.filterOptions) {
           setFilterOptions(data.filterOptions);
         }
@@ -710,8 +726,12 @@ function ProductsPageInner() {
     setSelectedDiameter('all');
     setInStockOnly(false);
     setSortBy('featured');
+    setAutoRelaxedInfo(null);
     setCurrentPage(1);
     setIsFilterDrawerOpen(false);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/products');
+    }
   };
 
   const activeFilterCount =
@@ -783,14 +803,21 @@ function ProductsPageInner() {
   );
 
   const handleCategorySelect = (key: string) => {
-    if (isCategoryActive(key)) {
-      setSelectedCategory('all');
-    } else {
-      setSelectedCategory(key);
-    }
+    const nextCategory = isCategoryActive(key) ? 'all' : key;
+    setSelectedCategory(nextCategory);
+    // When switching category on the page, automatically clear conflicting sub-filters so zero ghost dead-ends occur
+    setSelectedStandard('all');
+    setSelectedDiameter('all');
+    setSelectedGrade('all');
+    setSelectedFinish('all');
+    setSearchQuery('');
     setCurrentPage(1);
     if (isAllCategoriesModalOpen) {
       setIsAllCategoriesModalOpen(false);
+    }
+    if (typeof window !== 'undefined') {
+      const url = nextCategory !== 'all' ? `/products?category=${encodeURIComponent(nextCategory)}` : '/products';
+      window.history.pushState({}, '', url);
     }
   };
 
@@ -867,6 +894,20 @@ function ProductsPageInner() {
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
+            {searchQuery.trim() && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                <Search size={11} className="text-blue-600" />
+                &ldquo;{searchQuery}&rdquo;
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="hover:text-rose-600 ml-0.5 p-0.5 rounded cursor-pointer"
+                  title="Remove search query"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            )}
             {selectedCategory !== 'all' && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
                 <Layers size={11} className="text-blue-600" />
@@ -1061,8 +1102,18 @@ function ProductsPageInner() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => {
-                    setSelectedCategory(e.target.value);
+                    const nextCat = e.target.value;
+                    setSelectedCategory(nextCat);
+                    setSelectedStandard('all');
+                    setSelectedDiameter('all');
+                    setSelectedGrade('all');
+                    setSelectedFinish('all');
+                    setSearchQuery('');
                     setCurrentPage(1);
+                    if (typeof window !== 'undefined') {
+                      const url = nextCat !== 'all' ? `/products?category=${encodeURIComponent(nextCat)}` : '/products';
+                      window.history.pushState({}, '', url);
+                    }
                   }}
                   className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg border border-slate-200 hover:border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 transition-all cursor-pointer"
                 >
@@ -2022,6 +2073,15 @@ function ProductsPageInner() {
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
                 Applied:
               </span>
+              {searchQuery.trim() && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
+                  <Search size={12} className="text-blue-600" />
+                  Search: &ldquo;{searchQuery}&rdquo;
+                  <button type="button" onClick={() => setSearchQuery('')} className="hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer" title="Remove search query">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
               {selectedCategory !== 'all' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 text-xs font-bold shadow-xs">
                   <Layers size={12} className="text-blue-600" />
@@ -2127,20 +2187,68 @@ function ProductsPageInner() {
 
                     {/* Action buttons inside banner */}
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setIsCustomRequestOpen(true)}
-                        className="bg-[#0052CC] hover:bg-[#0747A6] text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
-                      >
-                        <Sparkles size={14} />
-                        <span>Request Custom Specification (1-Click)</span>
-                      </button>
+                      {/* Smart Recovery: If search query + category conflict, 1-click search across entire catalog */}
+                      {selectedCategory !== 'all' && searchQuery.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory('all');
+                            if (typeof window !== 'undefined') {
+                              window.history.pushState({}, '', `/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                            }
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Search size={13} />
+                          <span>Search &ldquo;{searchQuery}&rdquo; in All Categories</span>
+                        </button>
+                      )}
+
+                      {/* Smart Recovery: If category + standard conflict, 1-click view all category items */}
+                      {selectedCategory !== 'all' && selectedStandard !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStandard('all');
+                            if (typeof window !== 'undefined') {
+                              window.history.pushState({}, '', `/products?category=${encodeURIComponent(selectedCategory)}`);
+                            }
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Layers size={13} />
+                          <span>Show All {getCategoryLabel(selectedCategory)}</span>
+                        </button>
+                      )}
+
+                      {/* Clear search query keeping category */}
+                      {searchQuery && selectedCategory !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <X size={13} />
+                          <span>Clear Search &amp; Show All {getCategoryLabel(selectedCategory)}</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={resetFilters}
-                        className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold px-3 py-2 rounded-xl text-xs transition-colors"
+                        className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors flex items-center gap-1 cursor-pointer"
                       >
-                        Reset All Filters
+                        <RotateCcw size={13} />
+                        <span>Reset All Filters</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomRequestOpen(true)}
+                        className="bg-slate-900 hover:bg-black text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Sparkles size={13} />
+                        <span>Request Custom Specification (1-Click)</span>
                       </button>
                     </div>
                   </div>
@@ -2185,6 +2293,35 @@ function ProductsPageInner() {
             /* CASE 2: DIRECT MATCHES GRID + RELATED SPECIFICATIONS SECTION    */
             /* ============================================================== */
             <div className="space-y-8">
+              {/* Auto-Relaxation Self-Healing Notice Bar */}
+              {autoRelaxedInfo && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5 sm:mt-0">
+                      <Sparkles size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">
+                        {autoRelaxedInfo.message}
+                      </h4>
+                      <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                        Conflicting criteria were automatically resolved so you don&apos;t have to clear your filters manually.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-700 text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Reset All</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Direct Matches Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                 {products.map((p) => (
