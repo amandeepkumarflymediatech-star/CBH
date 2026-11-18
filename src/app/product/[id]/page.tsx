@@ -66,7 +66,7 @@ export default function ProductDetailPage() {
   // Tab States
   const [activeMediaTab, setActiveMediaTab] = useState<'photo' | 'cad' | 'cert'>('photo');
   const [activeSpecsTab, setActiveSpecsTab] = useState<'excel_master' | 'mechanical' | 'chemical' | 'torque' | 'downloads'>('excel_master');
-  const [showWatermark, setShowWatermark] = useState<boolean>(true);
+  const [showWatermark] = useState<boolean>(true);
 
   // Modal & Notification States
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -451,20 +451,6 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Watermark Toggle Button on UI */}
-                  <button
-                    type="button"
-                    onClick={() => setShowWatermark(!showWatermark)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${showWatermark
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs'
-                      : 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200'
-                      }`}
-                    title="Toggle CBH Watermark (Transparent Center)"
-                  >
-                    <img src="/assets/cbh-watermark.png" alt="" className="h-3 w-auto object-contain" />
-                    <span>{showWatermark ? 'Watermark: ON' : 'Watermark: OFF'}</span>
-                  </button>
-
                   <span className="inline-flex items-center gap-1 text-emerald-700 text-xs font-mono font-semibold">
                     <CheckCircle2 size={13} />
                     BIS / ISO Calibrated

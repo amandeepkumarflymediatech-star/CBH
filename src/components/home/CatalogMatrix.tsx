@@ -206,7 +206,7 @@ export default function CatalogMatrix({
                 </span>
               </div>
               <h2 className="font-headline text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-                Popular Fasteners In Stock <span className="text-blue-700 text-lg sm:text-xl font-bold">(फैक्टरी में तैयार सामान)</span>
+                Popular Fasteners In Stock
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 Direct mill pricing with certified proof load test certs, DIN/ISO standards, and instant dispatch.
@@ -223,61 +223,6 @@ export default function CatalogMatrix({
                 <ArrowRight size={13} />
               </Link>
             </div>
-          </div>
-
-          {/* Filter Tabs Bar (Horizontal scrolling with counts) */}
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {availableTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const count = tabCounts[tab.id] ?? 0;
-
-              if (tab.isSurplus) {
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border cursor-pointer shrink-0 inline-flex items-center gap-1.5 ${
-                      isActive
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                        : 'bg-amber-50/70 text-amber-800 hover:bg-amber-100 border-amber-200'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-amber-500'}`} />
-                    <span>{tab.label}</span>
-                    {count > 0 && (
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                        isActive ? 'bg-amber-700/60 text-white' : 'bg-amber-200/80 text-amber-900'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              }
-
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border cursor-pointer shrink-0 inline-flex items-center gap-1.5 ${
-                    isActive
-                      ? 'bg-blue-700 text-white border-blue-700 shadow-sm'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-slate-200'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {count > 0 && (
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                      isActive ? 'bg-blue-800/60 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -358,6 +303,18 @@ export default function CatalogMatrix({
                             } catch {}
                           }}
                         />
+                        {/* CBH Brand Watermark - Transparent & Center */}
+                        <div
+                          className="absolute inset-0 pointer-events-none flex items-center justify-center z-10 select-none"
+                          style={{ opacity: 0.28 }}
+                        >
+                          <img
+                            src="/assets/cbh-watermark.png"
+                            alt=""
+                            className="w-16 sm:w-20 max-w-[55%] h-auto object-contain"
+                            style={{ filter: 'drop-shadow(0 1px 4px rgba(0, 0, 0, 0.12))' }}
+                          />
+                        </div>
                       </div>
                     </Link>
 

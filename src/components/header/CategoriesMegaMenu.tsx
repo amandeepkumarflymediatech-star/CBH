@@ -123,18 +123,13 @@ export default function ProductsNavMegaMenu() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Products Navigation Button (Toggles on click/tap; opens on hover for mouse) */}
-      <button
-        type="button"
-        className={`header-nav-link flex items-center gap-1 select-none cursor-pointer bg-transparent border-none ${
+      {/* Products Navigation Link - Redirects to /products on click; opens mega menu on hover */}
+      <Link
+        href="/products"
+        className={`header-nav-link flex items-center gap-1 select-none cursor-pointer ${
           isProductsActive ? 'active' : ''
         }`}
-        onClick={(e) => {
-          e.preventDefault();
-          setIsOpen((prev) => !prev);
-        }}
-        aria-expanded={isOpen}
-        aria-haspopup="true"
+        onClick={() => setIsOpen(false)}
       >
         <span>Products</span>
         <ChevronDown
@@ -143,7 +138,7 @@ export default function ProductsNavMegaMenu() {
             isOpen ? 'rotate-180 text-blue-600' : ''
           }`}
         />
-      </button>
+      </Link>
 
       {/* Floating Clean Mega Menu Dropdown */}
       {isOpen && (

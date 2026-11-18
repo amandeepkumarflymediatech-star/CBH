@@ -212,7 +212,7 @@ function FastenerCard({
 
         {/* Product Image */}
         <Link href={`/product/${p.id}`} className="block text-center my-1.5 group">
-          <div className="relative w-full h-28 sm:h-32 bg-slate-50/70 rounded-lg p-2 transition-transform group-hover:scale-102 duration-200">
+          <div className="relative w-full h-28 sm:h-32 bg-white rounded-lg p-2 transition-transform group-hover:scale-102 duration-200">
             <Image
               src={p.imageUrl || '/assets/bolt_zinc.jpg'}
               alt={p.name}
@@ -226,6 +226,18 @@ function FastenerCard({
                 } catch {}
               }}
             />
+            {/* CBH Brand Watermark - Transparent & Center */}
+            <div
+              className="absolute inset-0 pointer-events-none flex items-center justify-center z-10 select-none"
+              style={{ opacity: 0.28 }}
+            >
+              <img
+                src="/assets/cbh-watermark.png"
+                alt=""
+                className="w-16 sm:w-20 max-w-[55%] h-auto object-contain"
+                style={{ filter: 'drop-shadow(0 1px 4px rgba(0, 0, 0, 0.12))' }}
+              />
+            </div>
           </div>
         </Link>
 
